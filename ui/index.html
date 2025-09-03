@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Dils Wallet • UI</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="app">
+    <div class="row">
+      <div class="card">
+        <h1>Login</h1>
+        <div style="display:grid;gap:8px;grid-template-columns:1fr 1fr auto">
+          <input id="email" placeholder="email" value="teste@dilswallet.com"/>
+          <input id="pass" type="password" placeholder="senha" value="123456"/>
+          <button id="btn-login">Entrar</button> <button id="btn-logout">Sair</button>
+        </div>
+        <p class="muted" id="authState">Não autenticado</p>
+      </div>
+      <div class="card">
+        <h1>Saldo</h1>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="font-size:36px;font-weight:800" id="saldo">--</div>
+          <button id="btn-atualizar">Atualizar</button>
+        </div>
+        <p class="muted">Somatório: depósitos − saques − transferências</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h1>Nova transação</h1>
+        <div style="display:grid;gap:8px;grid-template-columns:160px 1fr 1fr auto">
+          <select id="tipo">
+            <option value="deposito">depósito</option>
+            <option value="saque">saque</option>
+            <option value="transferencia">transferência</option>
+          </select>
+          <input id="valor" type="number" min="0" step="0.01" placeholder="valor ex. 100.50"/>
+          <input id="ref" placeholder="referência ex. teste"/>
+          <button id="btn-salvar">Salvar</button>
+        </div>
+        <div id="msg" class="muted" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <h1>Transações</h1>
+        <div style="overflow:auto;max-height:320px">
+          <table>
+            <thead><tr><th>ID</th><th>Tipo</th><th>Valor</th><th>Ref</th><th>Criado</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js?v=3"></script>
+</body>
+</html>
