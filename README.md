@@ -31,3 +31,8 @@ Abra: http://127.0.0.1:8686/ui
 - Paginação na lista
 - Testes (pytest) e migrations (Alembic)
 - Observabilidade/CI (quando sair do MVP)
+ 
+
+
+## Histórico de commits
+* 03/09/2025 as 19:44 — push do README e MVP
