@@ -31,8 +31,9 @@
     <div class="row">
       <div class="card">
         <h1>Nova transação</h1>
-        <div style="display:grid;gap:8px;grid-template-columns:160px 1fr 1fr auto">
+        <div style="display:grid;gap:8px;grid-template-columns:160px 1.2fr 1fr 1fr auto">
           <select id="tipo">
+          <input id="dest" placeholder="e-mail destino" style="display:none"/>
             <option value="deposito">depósito</option>
             <option value="saque">saque</option>
             <option value="transferencia">transferência</option>
@@ -57,5 +58,6 @@
   </div>
 
   <script src="./app.js?v=3"></script>
+  <script src="transfer.js?v=1756942330"></script>
 </body>
 </html>
