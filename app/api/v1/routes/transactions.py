@@ -59,3 +59,81 @@ def get_balance(
     ).filter(models.Transaction.user_id == current_user.id)
     saldo = q.scalar() or 0.0
     return schemas.BalanceOut(saldo=saldo)
+
+# --- Transferência entre usuários (gera 2 lançamentos) ---
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+from sqlalchemy import func, case
+from app.security import get_current_user
+
+class TransferIn(BaseModel):
+    destino_email: EmailStr
+    valor: float
+    referencia: Optional[str] = None
+
+@router.post("/transfer")
+def create_transfer(
+    payload: TransferIn,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    # validações básicas
+    if payload.valor is None or payload.valor <= 0:
+        raise HTTPException(status_code=400, detail="valor deve ser > 0")
+    if payload.destino_email.lower() == getattr(current_user, "email", "").lower():
+        raise HTTPException(status_code=400, detail="destino não pode ser o próprio usuário")
+
+    # verifica destinatário
+    dest = db.query(models.User).filter(models.User.email == payload.destino_email).first()
+    if not dest:
+        raise HTTPException(status_code=404, detail="destinatário não encontrado")
+
+    # saldo do remetente
+    saldo_q = db.query(
+        func.coalesce(func.sum(
+            case(
+                (models.Transaction.tipo == "deposito", models.Transaction.valor),
+                (models.Transaction.tipo == "saque", -models.Transaction.valor),
+                (models.Transaction.tipo == "transferencia", -models.Transaction.valor),
+                else_=0.0
+            )
+        ), 0.0)
+    ).filter(models.Transaction.user_id == current_user.id)
+    saldo_atual = float(saldo_q.scalar() or 0.0)
+    if saldo_atual < payload.valor:
+        raise HTTPException(status_code=400, detail="saldo insuficiente")
+
+    # cria lançamentos: saída do remetente (transferencia) e entrada do destinatário (deposito)
+    try:
+        tx_out = models.Transaction(
+            user_id=current_user.id,
+            tipo="transferencia",
+            valor=payload.valor,
+            referencia=payload.referencia or f"para {payload.destino_email}",
+        )
+        tx_in = models.Transaction(
+            user_id=dest.id,
+            tipo="deposito",
+            valor=payload.valor,
+            referencia=payload.referencia or f"de {current_user.email}",
+        )
+        db.add(tx_out)
+        db.add(tx_in)
+        db.commit()
+        db.refresh(tx_out)
+        db.refresh(tx_in)
+    except Exception:
+        db.rollback()
+        raise
+
+    novo_saldo = saldo_atual - float(payload.valor)
+    return {
+        "ok": True,
+        "valor": float(payload.valor),
+        "de": current_user.email,
+        "para": payload.destino_email,
+        "saida_id": tx_out.id,
+        "entrada_id": tx_in.id,
+        "saldo_apos": novo_saldo,
+    }
+# --- fim transferência ---
