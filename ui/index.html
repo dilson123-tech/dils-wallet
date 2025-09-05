@@ -57,7 +57,27 @@
     </div>
   </div>
 
-  <script src="./app.js?v=3"></script>
+  <script src="./app.js?v=5"></script>
   <script src="transfer.js?v=1756942330"></script>
+
+<!-- Pager Dils Wallet -->
+<section id="pager" style="margin:20px 0;display:grid;gap:8px">
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="tx-prev">◀ Prev</button>
+    <span id="tx-page-label">página <b id="tx-page">1</b></span>
+    <button id="tx-next">Next ▶</button>
+    <label style="margin-left:12px">page size
+      <select id="tx-page-size">
+        <option>5</option><option selected>10</option><option>20</option><option>50</option>
+      </select>
+    </label>
+  </div>
+  <table border="1" width="100%">
+    <thead><tr><th>ID</th><th>Tipo</th><th>Valor</th><th>Ref</th><th>Criado</th></tr></thead>
+    <tbody id="tx-paged-tbody"></tbody>
+  </table>
+  <small id="tx-meta"></small>
+</section>
+
 </body>
 </html>

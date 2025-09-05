@@ -140,3 +140,159 @@ async function transferir(){
 document.addEventListener('DOMContentLoaded', ()=>{
   $('btn-xfer')?.addEventListener('click', transferir);
 });
+
+
+// === Dils Wallet: Pager de Transações (paged API) ===
+window.addEventListener("load", function(){
+(function () {
+  const prevBtn = document.getElementById('tx-prev');
+  const nextBtn = document.getElementById('tx-next');
+  const pageEl  = document.getElementById('tx-page');
+  const sizeSel = document.getElementById('tx-page-size');
+  const tbody   = document.getElementById('tx-paged-tbody');
+  const metaEl  = document.getElementById('tx-meta');
+  if (!prevBtn || !nextBtn || !pageEl || !sizeSel || !tbody) return; // UI antiga? então não faz nada
+
+  let page = 1;
+  let pageSize = parseInt(sizeSel.value || '10', 10) || 10;
+
+  function getToken() {
+    return (window.AUTH_TOKEN)
+        || (window.token)
+        || localStorage.getItem('auth_token')
+        || localStorage.getItem('token')
+        || '';
+  }
+
+  async function fetchPaged() {
+    const token = getToken();
+    pageEl.textContent = String(page);
+    prevBtn.disabled = page <= 1;
+
+    if (!token) {
+      metaEl.textContent = 'Faça login para listar as transações.';
+      tbody.innerHTML = '';
+      nextBtn.disabled = true;
+      return;
+    }
+
+    metaEl.textContent = "Carregando…";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      sizeSel.disabled = true;
+      const url = `/api/v1/transactions/paged?page=${page}&page_size=${pageSize}`;
+    try {
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) {
+        metaEl.textContent = `Erro ${res.status}`;
+        tbody.innerHTML = '';
+        nextBtn.disabled = true;
+        return;
+      }
+      const data = await res.json();
+      tbody.innerHTML = '';
+      (data.items || []).forEach(t => {
+        const tr = document.createElement('tr');
+        const criado = t.criado_em || t.created_at || '';
+        tr.innerHTML = `<td>${t.id}</td><td>${t.tipo}</td><td>${t.valor}</td><td>${t.referencia || ''}</td><td>${criado}</td>`;
+        tbody.appendChild(tr);
+      });
+      const m = data.meta || {};
+      metaEl.textContent = `total ${m.total ?? 0} • páginas ${m.total_pages ?? 1}`;
+      nextBtn.disabled = !(m.has_next);
+      prevBtn.disabled = page <= 1;
+      sizeSel.disabled = false;
+    } catch (e) {
+      metaEl.textContent = 'Erro de rede';
+      tbody.innerHTML = '';
+      nextBtn.disabled = true;
+    }
+  }
+
+  prevBtn.addEventListener('click', () => { if (page > 1) { page--; fetchPaged(); } });
+  nextBtn.addEventListener('click', () => { page++; fetchPaged(); });
+  sizeSel.addEventListener('change', () => { pageSize = parseInt(sizeSel.value || '10', 10) || 10; page = 1; fetchPaged(); });
+
+  // tenta rodar após o load (se já tiver token, lista; senão mostra dica de login)
+  window.addEventListener('load', () => setTimeout(fetchPaged, 300));
+
+  // expõe um hook opcional para o fluxo de login existente
+  window.dilsPagedRefresh = fetchPaged;
+})()
+});
+;
+
+
+/* === Pager v2 (robusto, auto-boot) === */
+(function(){
+  function boot(){
+    const prevBtn = document.getElementById('tx-prev');
+    const nextBtn = document.getElementById('tx-next');
+    const pageEl  = document.getElementById('tx-page');
+    const sizeSel = document.getElementById('tx-page-size');
+    const tbody   = document.getElementById('tx-paged-tbody');
+    const metaEl  = document.getElementById('tx-meta');
+    if (!prevBtn || !nextBtn || !pageEl || !sizeSel || !tbody) return;
+    if (tbody.dataset.pagerBound) return; // evita dupla ligação
+
+    let page = 1;
+    let pageSize = parseInt(sizeSel.value || '10', 10) || 10;
+
+    function getToken(){
+      return (window.AUTH_TOKEN) || (window.token) ||
+             localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
+    }
+
+    async function fetchPaged(){
+      const t = getToken();
+      pageEl.textContent = String(page);
+      prevBtn.disabled = page <= 1;
+
+      if (!t){
+        metaEl.textContent = 'Faça login para listar as transações.';
+        tbody.innerHTML = '';
+        nextBtn.disabled = true;
+        return;
+      }
+      metaEl.textContent = "Carregando…";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      sizeSel.disabled = true;
+      const url = `/api/v1/transactions/paged?page=${page}&page_size=${pageSize}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${t}` } });
+      if (!res.ok){
+        metaEl.textContent = `Erro ${res.status}`;
+        tbody.innerHTML = '';
+        nextBtn.disabled = true;
+        return;
+      }
+      const data = await res.json();
+      tbody.innerHTML = '';
+      (data.items || []).forEach(it => {
+        const tr = document.createElement('tr');
+        const criado = it.criado_em || it.created_at || '';
+        tr.innerHTML = `<td>${it.id}</td><td>${it.tipo}</td><td>${it.valor}</td><td>${it.referencia || ''}</td><td>${criado}</td>`;
+        tbody.appendChild(tr);
+      });
+      const m = data.meta || {};
+      metaEl.textContent = `total ${m.total ?? 0} • páginas ${m.total_pages ?? 1}`;
+      nextBtn.disabled = !(m.has_next);
+      prevBtn.disabled = page <= 1;
+      sizeSel.disabled = false;
+    }
+
+    prevBtn.addEventListener('click', () => { if (page > 1){ page--; fetchPaged(); } });
+    nextBtn.addEventListener('click', () => { page++; fetchPaged(); });
+    sizeSel.addEventListener('change', () => { pageSize = parseInt(sizeSel.value || '10', 10) || 10; page = 1; fetchPaged(); });
+
+    tbody.dataset.pagerBound = '1';
+    window.dilsPagedRefresh = fetchPaged;
+    fetchPaged();
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive'){
+    setTimeout(boot, 0);
+  } else {
+    window.addEventListener('DOMContentLoaded', boot);
+  }
+})();

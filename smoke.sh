@@ -43,3 +43,10 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/api/v1/transactions" \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -d '{"tipo":"deposito","valor":-1,"referencia":"invalid"}' | grep -q '^400$' && echo "ok (400)"
 echo "SMOKE: PASS"
+# --- smoke: transactions paged ---
+BASE=${BASE:-http://127.0.0.1:8000}
+U=${U:-teste@dilswallet.com}
+P=${P:-123456}
+TOKEN=$(curl -s -X POST "$BASE/api/v1/auth/login" -H "Content-Type: application/x-www-form-urlencoded" -d "username=$U&password=$P" | jq -r .access_token)
+echo "[smoke] /transactions/paged p1 x5"
+curl -s -H "Authorization: Bearer $TOKEN" "$BASE/api/v1/transactions/paged?page=1&page_size=5" | jq -r '.meta | "page=\(.page) size=\(.page_size) total=\(.total) total_pages=\(.total_pages) next=\(.has_next) prev=\(.has_prev)"'

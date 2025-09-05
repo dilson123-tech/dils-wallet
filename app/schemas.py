@@ -46,3 +46,18 @@ class TokenData(BaseModel):
 from pydantic import BaseModel
 class BalanceOut(BaseModel):
     saldo: float
+# --- Pagination (Dils Wallet) ---
+from pydantic import BaseModel
+from typing import List
+
+class PageMeta(BaseModel):
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+class TransactionsPage(BaseModel):
+    items: List[TransactionResponse]  # usa o schema já definido acima no arquivo
+    meta: PageMeta
