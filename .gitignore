@@ -33,3 +33,8 @@ migrations/**/__pycache__/
 *.bak*
 *.sqlite*
 dev.db
+
+# Dev artifacts
+*.bak*
+app/schemas/
+dev.db
