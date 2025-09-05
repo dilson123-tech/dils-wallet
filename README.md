@@ -36,3 +36,29 @@ Abra: http://127.0.0.1:8686/ui
 
 ## Histórico de commits
 * 03/09/2025 as 19:44 — push do README e MVP
+
+## Paginação de transações
+**Endpoint:** `GET /api/v1/transactions/paged`  
+**Query:** `page` (>=1), `page_size` (1..100)  
+**Resposta:**
+```json
+{
+  "items": [ /* TransactionResponse[] */ ],
+  "meta": {
+    "page": 1, "page_size": 5, "total": 10,
+    "total_pages": 2, "has_next": true, "has_prev": false
+  }
+}
+
+
+\n\n## Paginação de transações
+**Endpoint:** `GET /api/v1/transactions/paged`
+**Query:** `page` (>=1), `page_size` (1..100)
+**Resposta (exemplo):** {\"items\": [...], \"meta\": {\"page\": 1, \"page_size\": 5, \"total\": 10, \"total_pages\": 2, \"has_next\": true, \"has_prev\": false}}
+
+**cURL:**
+BASE=http://127.0.0.1:8000
+TOKEN=(POST /api/v1/auth/login)
+GET /api/v1/transactions/paged?page=1&page_size=5
+
+**UI:** pager em `/ui` (Prev/Next + page size).
