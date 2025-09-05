@@ -154,7 +154,8 @@ window.addEventListener("load", function(){
   if (!prevBtn || !nextBtn || !pageEl || !sizeSel || !tbody) return; // UI antiga? então não faz nada
 
   let page = 1;
-  let pageSize = parseInt(sizeSel.value || '10', 10) || 10;
+  let pageSize = parseInt((localStorage.getItem('tx_page_size') || sizeSel.value || '10'), 10) || 10;
+  if (sizeSel) sizeSel.value = String(pageSize);
 
   function getToken(){
   try{ if(typeof TOKEN!=="undefined" && TOKEN) return TOKEN; }catch(_){ }
@@ -193,6 +194,9 @@ window.addEventListener("load", function(){
       }
       const data = await res.json();
       tbody.innerHTML = '';
+      if (!data.items || data.items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">sem transações</td></tr>';
+      }
       (data.items || []).forEach(t => {
         const tr = document.createElement('tr');
         const criado = t.criado_em || t.created_at || '';

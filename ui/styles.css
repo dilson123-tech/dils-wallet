@@ -117,3 +117,6 @@ th,td{padding:10px;border-bottom:1px solid #1f2937;text-align:left}
   }
 }
 
+/* DILS: pager sticky header (desktop) */
+#pager thead th { position: sticky; top: 0; background: #0b1220; z-index: 2; }
+#pager table { border-collapse: collapse; }
