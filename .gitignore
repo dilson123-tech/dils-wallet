@@ -28,3 +28,8 @@ Thumbs.db
 
 # Alembic (artefatos)
 migrations/**/__pycache__/
+
+# Dev artifacts
+*.bak*
+*.sqlite*
+dev.db
