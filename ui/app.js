@@ -156,7 +156,9 @@ window.addEventListener("load", function(){
   let page = 1;
   let pageSize = parseInt(sizeSel.value || '10', 10) || 10;
 
-  function getToken() {
+  function getToken(){
+  try{ if(typeof TOKEN!=="undefined" && TOKEN) return TOKEN; }catch(_){ }
+
     return (window.AUTH_TOKEN)
         || (window.token)
         || localStorage.getItem('auth_token')
