@@ -4,7 +4,19 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Dils Wallet • UI</title>
-  <link rel="stylesheet" href="./styles.css"/>
+  <link rel="stylesheet" href="./styles.css?v=15"/>
+<!-- DILS: mobile hotfix -->
+<style id="dils-mobile-hotfix">
+@media (max-width: 768px){
+  html,body{overflow-x:hidden}
+  /* empilha TUDO que é filho direto do body */
+  body > *{display:block !important;width:100% !important;max-width:100% !important;margin:10px 0 !important}
+  /* pager full-width + scroll horizontal */
+  #pager{display:block !important;width:100% !important;max-width:100% !important;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #pager table{width:100% !important;min-width:560px !important}
+  #pager th,#pager td{white-space:nowrap}
+}
+</style>
 </head>
 <body>
   <div class="app">

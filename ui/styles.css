@@ -13,3 +13,107 @@ th,td{padding:10px;border-bottom:1px solid #1f2937;text-align:left}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700}
 .dep{background:#052e16;color:#86efac}.saq{background:#3f0d12;color:#fecaca}.tra{background:#111827;color:#f472b6;border:1px solid #27272a}
 .ok{color:var(--ok)}.err{color:var(--bad)}
+
+
+/* DILS: fix pager display */
+#pager table{ display: table; width: 100%; }
+#pager tbody tr{ display: table-row; }
+#pager th, #pager td{ display: table-cell; padding: 6px 8px; }
+
+/* DILS: pager mobile light (safe) */
+#pager{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#pager table{width:100%;min-width:560px;border-collapse:collapse}
+#pager th,#pager td{padding:6px 8px;vertical-align:middle;white-space:nowrap}
+#tx-meta{margin-left:8px;opacity:.85}
+
+@media (max-width:720px){
+  #tx-prev,#tx-next{padding:6px 10px}
+  #tx-page-size{height:28px}
+  #tx-meta{display:block;margin:6px 0 0 0;font-size:12px}
+}
+/* DILS: pager mobile light END */
+
+
+/* DILS: layout mobile safe */
+@media (max-width: 720px){
+  html,body{overflow-x:hidden}
+  /* empilha cards */
+  section,.card{width:100%!important;margin:8px 0!important}
+  /* garante que o card de transferência não force largura */
+  #transfer,#xfer,#transfer-card,.transfer,.transferencia{width:100%!important;float:none!important;max-width:100%!important}
+  /* pager com scroll horizontal se precisar */
+  #pager{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #pager table{width:100%;min-width:560px;border-collapse:collapse}
+  #pager th,#pager td{padding:6px 8px;white-space:nowrap}
+}
+
+
+/* DILS: mobile stack containers */
+@media (max-width: 720px){
+  /* força containers a empilharem */
+  #root, #app, main, .container, .wrap, .grid, .layout { display:block !important; width:100% !important; }
+  .grid, .layout { grid-template-columns: 1fr !important; }
+  /* mata floats/cols fixas comuns */
+  [class*="col"], .col, .column, .left, .right { float:none !important; width:100% !important; }
+  /* cada card ocupa a linha toda */
+  section, .card { display:block; width:100% !important; max-width:100% !important; margin:8px 0 !important; }
+  /* transferência não força largura */
+  #transfer, #transfer-card, .transfer, .transferencia { width:100% !important; max-width:100% !important; }
+  /* pager com scroll horizontal seguro */
+  #pager { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  #pager table { width:100%; min-width:560px; border-collapse:collapse; }
+  #pager th, #pager td { padding:6px 8px; white-space:nowrap; }
+}
+\n\n/* DILS: mobile harden (force) */
+@media (max-width: 720px){
+  html,body{overflow-x:hidden}
+  /* empilha cards/sections */
+  section, .card, .panel { display:block !important; width:100% !important; max-width:100% !important; margin:8px 0 !important; }
+  /* força o card de transferência a não ficar colado na direita */
+  #transfer, #transfer-card, .transfer, .transferencia { width:100% !important; max-width:100% !important; float:none !important; }
+  /* pager full-width + scroll horizontal se precisar */
+  #pager{ display:block !important; width:100% !important; max-width:100% !important; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  #pager table{ width:100% !important; min-width:560px !important; border-collapse:collapse; }
+  #pager th, #pager td{ padding:6px 8px; white-space:nowrap; }
+}
+\n
+/* DILS: grid breakpoint — stack rows on mobile */
+@media (max-width: 900px){
+  /* tira o centro rígido do body pra caber em tela pequena */
+  body{align-items:flex-start !important; justify-content:flex-start !important; padding:16px !important;}
+  /* a grade .row passa de 2 colunas -> 1 coluna */
+  .row{grid-template-columns:1fr !important;}
+  /* só pra dar um respiro menor */
+  .app{gap:12px !important; width:100% !important;}
+}
+
+/* DILS: mobile stack (row -> 1 col) + safe tables */
+@media (max-width: 900px){
+  /* tira centrão do body p/ caber na tela */
+  body{align-items:flex-start !important; justify-content:flex-start !important; padding:16px !important;}
+  /* a grade vira 1 coluna */
+  .app{display:block !important; width:100% !important;}
+  .row{display:block !important; grid-template-columns:1fr !important;}
+  .row > *{width:100% !important; max-width:100% !important; margin:8px 0 !important;}
+  /* transf à direita passa a ocupar a linha toda */
+  #transfer, #transfer-card, .transfer, .transferencia{width:100% !important; max-width:100% !important; float:none !important;}
+  /* tabelas responsivas (lista e pager) */
+  .card{overflow-x:auto;}
+  .card table{min-width:560px;}
+  #pager{display:block !important; width:100% !important; max-width:100% !important; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  #pager table{width:100% !important; min-width:560px !important; border-collapse:collapse;}
+  #pager th,#pager td{white-space:nowrap;}
+}
+
+
+/* DILS: pager acima + spacing */
+#pager{ position:relative; z-index:3; margin:12px 0 !important; }
+
+/* DILS: força Transferência a não sobrepor no mobile */
+@media (max-width:900px){
+  #transfer, #transfer-card, .transfer, .transferencia, #xfer{
+    position:static !important; float:none !important; clear:both !important;
+    width:100% !important; max-width:100% !important; margin-top:12px !important;
+  }
+}
+
