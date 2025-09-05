@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app import models, schemas, database
@@ -137,3 +137,37 @@ def create_transfer(
         "saldo_apos": novo_saldo,
     }
 # --- fim transferência ---
+
+@router.get("/paged", response_model=schemas.TransactionsPage)
+def list_transactions_paged(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Lista paginada das transações do usuário atual.
+    Retorna {"items":[TransactionResponse...], "meta":{page,page_size,total,total_pages,has_next,has_prev}}.
+    """
+    base_q = db.query(models.Transaction).filter(models.Transaction.user_id == current_user.id)
+
+    total = base_q.count()
+    items = (
+        base_q.order_by(models.Transaction.id.desc())
+             .offset((page - 1) * page_size)
+             .limit(page_size)
+             .all()
+    )
+    total_pages = (total + page_size - 1) // page_size
+
+    return schemas.TransactionsPage(
+        items=[schemas.TransactionResponse(id=t.id, tipo=t.tipo, valor=t.valor, referencia=t.referencia, criado_em=t.criado_em, user_id=t.user_id) for t in items],
+        meta=schemas.PageMeta(
+            page=page,
+            page_size=page_size,
+            total=total,
+            total_pages=total_pages,
+            has_next=(page * page_size) < total,
+            has_prev=page > 1,
+        ),
+    )
