@@ -176,7 +176,11 @@ window.addEventListener("load", function(){
       return;
     }
 
-    const url = `/api/v1/transactions/paged?page=${page}&page_size=${pageSize}`;
+    metaEl.textContent = "Carregando…";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      sizeSel.disabled = true;
+      const url = `/api/v1/transactions/paged?page=${page}&page_size=${pageSize}`;
     try {
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!res.ok) {
@@ -197,6 +201,7 @@ window.addEventListener("load", function(){
       metaEl.textContent = `total ${m.total ?? 0} • páginas ${m.total_pages ?? 1}`;
       nextBtn.disabled = !(m.has_next);
       prevBtn.disabled = page <= 1;
+      sizeSel.disabled = false;
     } catch (e) {
       metaEl.textContent = 'Erro de rede';
       tbody.innerHTML = '';
@@ -249,6 +254,10 @@ window.addEventListener("load", function(){
         nextBtn.disabled = true;
         return;
       }
+      metaEl.textContent = "Carregando…";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      sizeSel.disabled = true;
       const url = `/api/v1/transactions/paged?page=${page}&page_size=${pageSize}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${t}` } });
       if (!res.ok){
@@ -269,6 +278,7 @@ window.addEventListener("load", function(){
       metaEl.textContent = `total ${m.total ?? 0} • páginas ${m.total_pages ?? 1}`;
       nextBtn.disabled = !(m.has_next);
       prevBtn.disabled = page <= 1;
+      sizeSel.disabled = false;
     }
 
     prevBtn.addEventListener('click', () => { if (page > 1){ page--; fetchPaged(); } });
