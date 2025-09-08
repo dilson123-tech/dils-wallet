@@ -55,3 +55,20 @@ app.include_router(_auth.router,  prefix="/api/v1/auth",         tags=["auth"])
 app.include_router(_users.router, prefix="/api/v1/users",        tags=["users"])
 app.include_router(_tx.router,    prefix="/api/v1/transactions", tags=["transactions"])
 # ============================================================
+
+# === Observabilidade mínima (logs JSON + request_id) ===
+from app.observability import setup_logging, RequestContextMiddleware  # type: ignore
+setup_logging("INFO")
+app.add_middleware(RequestContextMiddleware)
+# =======================================================
+
+# === Security headers (básico) ===
+from app.security_headers import SecurityHeadersMiddleware  # type: ignore
+app.add_middleware(SecurityHeadersMiddleware)
+# =================================
+
+# === Rate limiting (básico em memória) ===
+from app.rate_limit import RateLimitMiddleware  # type: ignore
+# capacidade=20 req por 10s por IP+rota (ajuste se quiser)
+app.add_middleware(RateLimitMiddleware, capacity=20, refill_time_s=10)
+# =========================================
