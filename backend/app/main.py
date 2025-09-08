@@ -12,7 +12,9 @@ from .database import engine, Base, get_db
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
-app.mount("/ui", StaticFiles(directory="ui", html=True), name="ui")
+from pathlib import Path
+UI_DIR = (Path(__file__).resolve().parents[1] / "ui")
+app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
 @app.get("/favicon.ico")
 def favicon():
     return Response(status_code=204)
