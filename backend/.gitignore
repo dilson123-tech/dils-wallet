@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# FastAPI / logs
+*.log
+
+# Env/Secrets
+.env
+.env.*
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Alembic (artefatos)
+migrations/**/__pycache__/
+
+# Dev artifacts
+*.bak*
+*.sqlite*
+dev.db
+
+# Dev artifacts
+*.bak*
+app/schemas/
+dev.db
+
+uvicorn.out
+__pycache__/
+*.sqlite3
