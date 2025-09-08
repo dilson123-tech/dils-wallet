@@ -72,3 +72,14 @@ from app.rate_limit import RateLimitMiddleware  # type: ignore
 # capacidade=20 req por 10s por IP+rota (ajuste se quiser)
 app.add_middleware(RateLimitMiddleware, capacity=20, refill_time_s=10)
 # =========================================
+
+# === Observabilidade externa (Sentry) ===
+from app.sentry_init import setup_sentry  # type: ignore
+setup_sentry()
+# ========================================
+
+# === Rota de debug do Sentry ===
+@app.get("/debug-sentry")
+def debug_sentry():
+    1 / 0  # força ZeroDivisionError
+# =================================
