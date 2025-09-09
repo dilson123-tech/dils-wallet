@@ -1,3 +1,5 @@
+![CI](https://github.com/dilson123-tech/dils-wallet/actions/workflows/ci.yml/badge.svg)
+
 # Dils Wallet — MVP
 
 API + UI simples para gerenciar transações (depósito/saque) com autenticação JWT.
