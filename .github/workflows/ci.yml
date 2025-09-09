@@ -1,0 +1,46 @@
+name: CI - Dils Wallet (backend)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq (for smoke script)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Build Docker image
+        run: docker compose build --no-cache
+
+      - name: Up (detached)
+        run: docker compose up -d
+
+      - name: Wait for health
+        run: |
+          for i in {1..20}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8686/healthz || true)
+            if [ "$code" = "200" ]; then echo "API up!"; exit 0; fi
+            sleep 1
+          done
+          echo "API não subiu a tempo"; exit 1
+
+      - name: Smoke script
+        env:
+          BASE: "http://127.0.0.1:8686"
+        run: bash backend/smoke.sh
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs dils-wallet-api || true
+
+      - name: Down
+        if: always()
+        run: docker compose down
