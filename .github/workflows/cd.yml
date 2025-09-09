@@ -1,30 +1,25 @@
-name: CD - Build & Push Docker (GHCR)
+name: CD - Publish API image to GHCR
 
 on:
   push:
-    branches: [ main ]
-  # publica imagem também quando criar tag (ex.: v20250908-ci)
-  tags:
-    - 'v*'
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'backend/**'
+      - '.github/workflows/cd.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: dils-wallet-api # nome curto da imagem
-  IMAGE_NAMESPACE: dilson123-tech # sua org/usuário no GH
-
 jobs:
-  build-and-push:
+  publish:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -37,21 +32,25 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
+          images: ghcr.io/${{ github.repository_owner }}/dils-wallet-api
           tags: |
-            type=ref,event=branch,enable=true,priority=900 # ex: main
-            type=ref,event=tag,enable=true
-            type=sha,priority=800                           # ghcr.io/...:sha-xxxx
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
+            type=sha
 
       - name: Build & Push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
-          platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
+      - name: Make GHCR package public
+        run: |
+          curl -sS -L \
+            -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user/packages/container/dils-wallet-api/visibility \
+            -d '{"visibility":"public"}' || true
