@@ -1,0 +1,20 @@
+# Python/venv
+**/__pycache__/
+**/*.pyc
+backend/venv/
+
+# Artigos de dev
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.bak*
+**/dev.db
+**/.coverage
+
+# Git/IDE
+.git/
+.vscode/
+.idea/
+
+# Node (se tiver algo no futuro)
+node_modules/
