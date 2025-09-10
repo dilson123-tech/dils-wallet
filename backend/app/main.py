@@ -12,6 +12,9 @@ from .database import engine, Base, get_db
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+
+from app.routers import export_csv
+app.include_router(export_csv.router)
 from pathlib import Path
 UI_DIR = (Path(__file__).resolve().parents[1] / "ui")
 app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")

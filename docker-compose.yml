@@ -1,16 +1,12 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: dils-wallet-api:dev
-    container_name: dils-wallet-api
-    ports:
-      - "8686:8686"
-    environment:
-      # defina seu DSN real no host quando precisar
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - SENTRY_ENV=${SENTRY_ENV:-dev}
-      - SENTRY_TRACES=${SENTRY_TRACES:-0.1}
-      - SENTRY_PROFILES=${SENTRY_PROFILES:-0.1}
-    # Se em algum momento usar .env, o compose já consome automaticamente
+    build: .
+    ports: ["8686:8686"]
+    environment: ["ENV=dev"]
+    profiles: ["dev"]
+
+  api-prod:
+    image: ghcr.io/dilson123-tech/dils-wallet-api:latest
+    ports: ["8686:8686"]
+    environment: ["ENV=prod"]
+    profiles: ["prod"]

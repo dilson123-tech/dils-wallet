@@ -1,0 +1,4 @@
+"\"id\",\"criado_em\",\"tipo\",\"valor\",\"referencia\",\"user_id\",\"owner_email\""
+"1,\"2025-09-10T03:29:26.376328\",\"deposito\",500,\"seed inicial\",1,\"teste@dilswallet.com\""
+"2,\"2025-09-10T03:38:07.745055\",\"transferencia\",120,\"primeiro teste\",1,\"teste@dilswallet.com\""
+"3,\"2025-09-10T03:38:07.745058\",\"deposito\",120,\"primeiro teste\",2,\"alvo@teste.com\""

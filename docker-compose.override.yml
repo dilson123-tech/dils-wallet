@@ -1,0 +1,14 @@
+services:
+  api-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dils_wallet-api:local
+    environment:
+      PORT: "8686"       # container escuta 8686
+      ENV: "prod"
+    ports:
+      - "8787:8686"      # host 8787 → container 8686
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8686/healthz"]
