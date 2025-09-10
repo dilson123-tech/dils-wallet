@@ -185,3 +185,52 @@ document.querySelector("#tx-prev")?.addEventListener("click", () => {
 document.querySelector("#tx-next")?.addEventListener("click", () => {
   if (txPage*txPageSize < txData.length) { txPage++; renderPage(); }
 });
+// --- safe 401 auto-register wrapper (appended) ---
+(function(){
+  const API = (window.API_BASE || "");
+  const _fetch = window.fetch;
+
+  async function tryLoginThenRegister(url, opts){
+    // Only handle the login route
+    if (!/\/api\/v1\/auth\/login\b/.test(url)) return _fetch(url, opts);
+
+    // 1st try: normal login
+    let r = await _fetch(API + "/api/v1/auth/login", opts);
+    if (r.status !== 401) return r;
+
+    // If 401, try to read credentials from body and register
+    try {
+      const body = opts && opts.body ? String(opts.body) : "";
+      const mUser = body.match(/username=([^&]+)/);
+      const mPass = body.match(/password=([^&]+)/);
+      const email = mUser ? decodeURIComponent(mUser[1]) : null;
+      const pass  = mPass ? decodeURIComponent(mPass[1]) : null;
+
+      if (!email || !pass) return r; // no creds to register
+
+      await _fetch(API + "/api/v1/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass })
+      });
+
+      // retry login
+      const r2 = await _fetch(API + "/api/v1/auth/login", opts);
+      if (r2.ok) {
+        // best-effort: update badge if your page has it
+        const s = document.querySelector('#authState');
+        if (s) s.textContent = "Autenticado (novo)";
+      }
+      return r2;
+    } catch (e) {
+      console.warn("[UI] auto-register wrapper falhou:", e);
+      return r; // fall back to original 401
+    }
+  }
+
+  window.fetch = function(url, opts){
+    try { return tryLoginThenRegister(url, opts); }
+    catch { return _fetch(url, opts); }
+  };
+})();
+ // --- end safe wrapper ---
