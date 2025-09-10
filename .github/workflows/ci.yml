@@ -23,10 +23,22 @@ jobs:
       - name: Up (detached)
         run: docker compose up -d
 
-      - name: Wait for health
+      - name: Detect host port
+        id: detect
+        shell: bash
         run: |
-          for i in {1..20}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8686/healthz || true)
+          PORT="$(docker compose port api 8787 | awk -F: '{print $2}')"
+          if [ -z "$PORT" ]; then PORT=8686; fi
+          echo "Usando porta host: $PORT"
+          echo "port=$PORT" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for health
+        shell: bash
+        run: |
+          HOST=127.0.0.1
+          PORT="${{ steps.detect.outputs.port }}"
+          for i in {1..60}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://$HOST:$PORT/healthz" || true)
             if [ "$code" = "200" ]; then echo "API up!"; exit 0; fi
             sleep 1
           done
@@ -34,13 +46,13 @@ jobs:
 
       - name: Smoke script
         env:
-          BASE: "http://127.0.0.1:8686"
+          BASE: "http://127.0.0.1:${{ steps.detect.outputs.port }}"
         run: bash backend/smoke.sh
 
-      - name: Show container logs on failure
+      - name: Show compose logs on failure
         if: failure()
-        run: docker logs dils-wallet-api || true
+        run: docker compose logs --no-color || true
 
       - name: Down
         if: always()
-        run: docker compose down
+        run: docker compose down -v
