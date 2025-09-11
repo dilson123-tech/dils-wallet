@@ -14,7 +14,7 @@
 
   async function updateBalance() {
     try {
-      const r = await fetch("/api/v1/transactions/balance", { headers: { ...authHdr() }});
+      const r = await api("/api/v1/transactions/balance", { headers: { ...authHdr() }});
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
       elSaldo.textContent = (j?.saldo ?? j?.balance ?? "--");
@@ -25,7 +25,7 @@
 
   async function loadHistorico() {
     try {
-      const r = await fetch("/api/v1/transactions", { headers: { ...authHdr() }});
+      const r = await api("/api/v1/transactions", { headers: { ...authHdr() }});
       if (!r.ok) throw new Error("HTTP " + r.status);
       const arr = await r.json();
       const tbody = document.querySelector("#tx-body"); if (!tbody) return;
@@ -34,7 +34,6 @@
         const tr = document.createElement("tr");
         const fmtDate = (s) => (s ? s.toString().replace("T"," ").slice(0,16) : "");
         const badge = (tipo) =>
-          tipo === "deposito" ? '<span class="badge in">Depósito ✅</span>' :
           tipo === "saque" ? '<span class="badge out">Saque ❌</span>' :
           '<span class="badge out">Transferência ❌</span>';
         tr.innerHTML = `
@@ -55,7 +54,7 @@
       const pass  = document.querySelector("#pass").value;
       const body  = new URLSearchParams({ username: email, password: pass });
 
-      const r = await fetch("/api/v1/auth/login", {
+      const r = await api("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
@@ -70,7 +69,6 @@
 
       localStorage.setItem("access_token", token);
       setAuth(); await updateBalance(); await loadHistorico();
-      alert("Login OK ✅");
     } catch (e) { console.error("[UI] login erro:", e); alert("Erro no login."); }
   });
 
@@ -86,14 +84,13 @@
   // EXPORT CSV
   document.querySelector("#btn-export")?.addEventListener("click", async () => {
     try {
-      const r = await fetch("/api/v1/transactions/export", { headers: { ...authHdr() }});
+      const r = await api("/api/v1/transactions/export", { headers: { ...authHdr() }});
       if (!r.ok) throw new Error("HTTP " + r.status);
       const blob = await r.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href = url; a.download = "transacoes.csv";
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      alert("CSV exportado ✅");
     } catch (e) { console.error("[UI] export erro", e); alert("Erro ao exportar CSV."); }
   });
 
@@ -105,13 +102,12 @@
     if (!valor || valor <= 0) { alert("Informe um valor válido."); return; }
 
     try {
-      const r = await fetch("/api/v1/transactions", {
+      const r = await api("/api/v1/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHdr() },
         body: JSON.stringify({ tipo, valor, descricao }),
       });
       if (!r.ok) { const t = await r.text(); console.error("[UI] salvar", r.status, t); alert("Falha ao salvar: "+r.status); return; }
-      alert("Transação salva ✅");
       await updateBalance(); setTimeout(loadHistorico, 300);
     } catch (e) { console.error("[UI] salvar erro:", e); alert("Erro ao salvar transação."); }
   });
@@ -124,13 +120,12 @@
     if (!destinatario || !valor || valor <= 0) { alert("Informe destinatário e valor válido."); return; }
 
     try {
-      const r = await fetch("/api/v1/transactions/transfer", {
+      const r = await api("/api/v1/transactions/transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHdr() },
         body: JSON.stringify({ destino_email: destinatario, valor, descricao }),
       });
       if (!r.ok) { const t = await r.text(); console.error("[UI] transfer", r.status, t); alert("Falha na transferência: "+r.status); return; }
-      alert("Transferência realizada ✅");
       await updateBalance(); setTimeout(loadHistorico, 500);
     } catch (e) { console.error("[UI] transfer erro:", e); alert("Erro na transferência."); }
   });
@@ -148,7 +143,7 @@ let txPage = 1, txPageSize = 10, txData = [];
 
 async function loadHistorico() {
   try {
-    const r = await fetch("/api/v1/transactions", { headers: { ...authHdr() }});
+    const r = await api("/api/v1/transactions", { headers: { ...authHdr() }});
     if (!r.ok) throw new Error("HTTP " + r.status);
     txData = await r.json();
     renderPage();
@@ -164,7 +159,6 @@ function renderPage() {
     const tr = document.createElement("tr");
     const fmtDate = (s) => (s ? s.toString().replace("T"," ").slice(0,16) : "");
     const badge = (tipo) =>
-      tipo === "deposito" ? '<span class="badge in">Depósito ✅</span>' :
       tipo === "saque" ? '<span class="badge out">Saque ❌</span>' :
       '<span class="badge out">Transferência ❌</span>';
     tr.innerHTML = `
@@ -234,3 +228,95 @@ document.querySelector("#tx-next")?.addEventListener("click", () => {
   };
 })();
  // --- end safe wrapper ---
+
+// --- saldo: atualizar via API ---
+async function updateBalance() {
+  const $btn = document.querySelector('#btn-balance');
+  const $out = document.querySelector('#saldo-valor') || document.querySelector('#saldo') || document.querySelector('.saldo, .big');
+
+  try {
+    if ($btn) { $btn.disabled = true; $btn.dataset._txt ??= $btn.textContent; $btn.textContent = 'Atualizando…'; }
+
+    const r = await api('/api/v1/transactions/balance', { headers: { ...authHdr() }});
+    if (!r.ok) {
+      if (r.status === 401) {
+        localStorage.removeItem('access_token');
+        alert('Sessão expirada. Entre novamente.');
+        return;
+      }
+      throw new Error('HTTP ' + r.status);
+    }
+    const data = await r.json();            // { saldo: number }
+    const valor = Number(data.saldo ?? 0);
+
+    if ($out) $out.textContent = valor.toFixed(0); // ou toFixed(2) se preferir cents
+    console.log('[UI] saldo =', valor);
+  } catch (e) {
+    console.error('[UI] erro saldo:', e);
+    alert('Erro ao atualizar saldo.');
+  } finally {
+    if ($btn) { $btn.disabled = false; $btn.textContent = $btn.dataset._txt || 'Atualizar saldo'; }
+  }
+}
+
+// botão "Atualizar saldo"
+document.querySelector('#btn-balance')?.addEventListener('click', updateBalance);
+
+// se já tiver token salvo, atualiza saldo quando a página carregar
+if (localStorage.getItem('access_token')) {
+  updateBalance();
+}
+if (localStorage.getItem("access_token")) { updateBalance(); }
+// --- harden: transferência com logs detalhados ---
+(function () {
+  const btn = document.querySelector('#btn-transferir');
+  if (!btn) return;
+
+  // remove listeners duplicados
+  const clone = btn.cloneNode(true);
+  btn.parentNode.replaceChild(clone, btn);
+
+  clone.addEventListener('click', async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) { alert('Entre primeiro.'); return; }
+
+    const email = document.querySelector('#destinatario')?.value?.trim();
+    const valorStr = document.querySelector('#valor_transfer')?.value?.trim();
+    const desc  = document.querySelector('#descricao_transfer')?.value?.trim() || '';
+
+    const valor = Number(parseFloat(valorStr));
+    if (!email || !Number.isFinite(valor) || valor <= 0) {
+      alert('Informe destinatário e valor válido.'); return;
+    }
+
+    const url = '/api/v1/transactions/transfer';
+    clone.disabled = true;
+
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ destino_email: email, valor, descricao: desc })
+      });
+
+      if (!r.ok) {
+        const txt = await r.text().catch(()=>'');
+        console.error('[UI] transfer fail', r.status, url, txt);
+        alert('Falha na transferência: ' + r.status);
+        return;
+      }
+
+      alert('Transferência realizada ✅');
+      try { window.updateBalance?.(); } catch {}
+      try { window.loadHistorico?.(); } catch {}
+    } catch (e) {
+      console.error('[UI] erro na transferência', e);
+      alert('Erro na transferência.');
+    } finally {
+      clone.disabled = false;
+    }
+  });
+})();
