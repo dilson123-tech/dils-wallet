@@ -320,3 +320,89 @@ if (localStorage.getItem("access_token")) { updateBalance(); }
     }
   });
 })();
+
+// ===== fallback robusto para transferência =====
+async function postJSON(url, token, payload) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+    body: JSON.stringify(payload),
+  });
+  return r;
+}
+
+async function tentaTransferencia(token, email, valor, desc) {
+  const urls = [
+    '/api/v1/transactions/transfer',
+    '/api/v1/transfer',
+    '/api/v1/transactions/transferir'
+  ];
+  const corpos = [
+    { destino_email: email, valor, descricao: desc },
+    { destinatario_email: email, valor, descricao: desc },
+    { destinatario: email, valor, descricao: desc },
+    { destino: email, valor, descricao: desc }
+  ];
+
+  const erros = [];
+  for (const url of urls) {
+    for (const body of corpos) {
+      try {
+        const r = await postJSON(url, token, body);
+        if (r.ok) return { ok:true, url, body, r };
+        const txt = await r.text().catch(()=> '');
+        erros.push({ url, body, status:r.status, txt });
+        // 404/405/501/500 -> tenta próximo combo
+        if (![400,401,403].includes(r.status)) continue;
+      } catch (e) {
+        erros.push({ url, body, status:'fetch_err', txt:String(e) });
+      }
+    }
+  }
+  return { ok:false, erros };
+}
+// --- handler de transferência com fallback e mensagens claras ---
+(function () {
+  const btnOld = document.querySelector('#btn-transferir');
+  if (!btnOld) return;
+
+  // substitui o botão por um clone pra garantir que só exista 1 listener
+  const btn = btnOld.cloneNode(true);
+  btnOld.replaceWith(btn);
+
+  btn.addEventListener('click', async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) { alert('Entre primeiro.'); return; }
+
+    const email = document.querySelector('#destinatario')?.value?.trim();
+    const valorStr = document.querySelector('#valor_transfer')?.value?.trim();
+    const desc = document.querySelector('#descricao_transfer')?.value?.trim() || '';
+    const valor = Number(parseFloat(valorStr));
+
+    if (!email || !Number.isFinite(valor) || valor <= 0) {
+      alert('Informe destinatário e valor válido.');
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      // usa o fallback que testará várias rotas/corpos
+      const res = await tentaTransferencia(token, email, valor, desc);
+      if (res.ok) {
+        alert('Transferência realizada ✅');
+        try { window.updateBalance?.(); } catch {}
+        try { window.loadHistorico?.(); } catch {}
+      } else {
+        console.error('[UI] transfer falhou - tentativas:', res.erros);
+        const ultimo = res.erros?.[res.erros.length-1] || {};
+        const msg = (ultimo.txt && ultimo.txt.length < 300) ? ` ${ultimo.txt}` : '';
+        alert(`Falha na transferência. Último status: ${ultimo.status ?? 'desconhecido'}.${msg}`);
+      }
+    } catch (e) {
+      console.error('[UI] erro na transferência', e);
+      alert('Erro na transferência.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
