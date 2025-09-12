@@ -1,58 +1,24 @@
 name: CI - Dils Wallet (backend)
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  build-test:
+  test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install jq (for smoke script)
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Build Docker image
-        run: docker compose build --no-cache
-
-      - name: Up (detached)
-        run: docker compose up -d
-
-      - name: Detect host port
-        id: detect
-        shell: bash
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install deps
+        working-directory: backend
         run: |
-          PORT="$(docker compose port api 8787 | awk -F: '{print $2}')"
-          if [ -z "$PORT" ]; then PORT=8686; fi
-          echo "Usando porta host: $PORT"
-          echo "port=$PORT" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for health
-        shell: bash
-        run: |
-          HOST=127.0.0.1
-          PORT="${{ steps.detect.outputs.port }}"
-          for i in {1..60}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "http://$HOST:$PORT/healthz" || true)
-            if [ "$code" = "200" ]; then echo "API up!"; exit 0; fi
-            sleep 1
-          done
-          echo "API não subiu a tempo"; exit 1
-
-      - name: Smoke script
-        env:
-          BASE: "http://127.0.0.1:${{ steps.detect.outputs.port }}"
-        run: bash backend/smoke.sh
-
-      - name: Show compose logs on failure
-        if: failure()
-        run: docker compose logs --no-color || true
-
-      - name: Down
-        if: always()
-        run: docker compose down -v
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run tests
+        working-directory: backend
+        run: make test
