@@ -1,13 +1,10 @@
-# Compat shim: expõe símbolos esperados por imports antigos
-# Tenta importar dos módulos novos; se não houver, cai pro legado models_base.
+# models package export shim
+# Expõe Transaction/User se existirem nos módulos internos.
 try:
-    # Se você tiver modules específicos no pacote novo, exponha aqui:
-    from .transaction import Transaction  # opcional: só se existir
+    from .transaction import Transaction  # noqa: F401
 except Exception:
-    pass
-
-# Fallback legado
+    Transaction = None  # type: ignore
 try:
-    from ..models_base import Transaction  # principal usado no projeto
+    from .user import User  # noqa: F401
 except Exception:
-    pass
+    User = None  # type: ignore

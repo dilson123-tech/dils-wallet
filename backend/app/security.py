@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer

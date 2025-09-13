@@ -1,6 +1,4 @@
 from fastapi.responses import Response
-from app.routers import export_csv as export_csv_routes
-from app.api.v1.routes import transactions as transactions_routes
 from app.api.v1.routes import users as users_routes
 from app.api.v1.routes import auth as auth_routes
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -14,8 +12,8 @@ from app.core.db import get_db
 from fastapi import Response
 from app.routers import dev as dev_router
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Request
-from fastapi.openapi.utils import get_openapi, Depends
+from fastapi import FastAPI, Depends, Request, Depends
+from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import time
@@ -35,7 +33,6 @@ app = FastAPI(title="Dils Wallet API", version="0.1.0", docs_url="/docs", redoc_
 
 # --- include resiliente para export_csv ---
 try:
-    from app.routers import export_csv as _export_csv_mod
     if hasattr(_export_csv_mod, "router"):
         app.include_router(_export_csv_mod.router)
     elif hasattr(_export_csv_mod, "export_csv"):
