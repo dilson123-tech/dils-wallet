@@ -4,8 +4,12 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
-app = FastAPI(title="Dils Wallet API", version="0.1.0")
-
+\1
+try:
+    from app.api.v1.routes import auth as auth_routes
+    app.include_router(auth_routes.router, prefix="/api/v1/auth", tags=["auth"])
+except Exception as _e:
+    print(f"[router-include] warn: auth não carregou:", _e)
 # --- healthcheck SEMPRE disponível ---
 @app.get("/healthz")
 def healthz():
