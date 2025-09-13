@@ -1,4 +1,8 @@
-from app.models import Transaction as TransactionORM
+try:
+    from app.models import Transaction as TransactionORM
+except Exception:
+    from app.models_base import Transaction as TransactionORM
+
 assert hasattr(TransactionORM, '__table__'), 'Import errado: TransactionORM não é ORM (fugiu pro Pydantic)'
 from datetime import datetime
 def _tx_to_dict(t):
