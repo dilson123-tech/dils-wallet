@@ -31,6 +31,21 @@ app = FastAPI(title="Dils Wallet API", version="0.1.0", docs_url="/docs", redoc_
 
 
 
+
+
+# --- include resiliente para export_csv ---
+try:
+    from app.routers import export_csv as _export_csv_mod
+    if hasattr(_export_csv_mod, "router"):
+        app.include_router(_export_csv_mod.router)
+    elif hasattr(_export_csv_mod, "export_csv"):
+        app.add_api_route("/api/v1/transactions/export.csv", _export_csv_mod.export_csv, methods=["GET"], tags=["transactions"])
+    else:
+        print("WARN: export_csv sem router nem função export_csv; ignorando.")
+except Exception as e:
+    print("WARN: falha ao carregar export_csv:", e)
+# --- fim include resiliente ---
+
 # --- OpenAPI resiliente: evita 502 se schema quebrar ---
 _openapi_cache = None
 def custom_openapi():
