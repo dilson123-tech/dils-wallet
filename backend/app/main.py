@@ -14,7 +14,8 @@ from app.core.db import get_db
 from fastapi import Response
 from app.routers import dev as dev_router
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
+from fastapi.openapi.utils import get_openapi, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import time
@@ -27,6 +28,32 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0", docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json")
 
+
+
+
+# --- OpenAPI resiliente: evita 502 se schema quebrar ---
+_openapi_cache = None
+def custom_openapi():
+    global _openapi_cache
+    if _openapi_cache:
+        return _openapi_cache
+    try:
+        _openapi_cache = get_openapi(
+            title=getattr(app, "title", "Dils Wallet API"),
+            version="0.1.0",
+            routes=app.routes,
+        )
+    except Exception as e:
+        # Fallback mínimo, mas válido
+        _openapi_cache = {
+            "openapi": "3.1.0",
+            "info": {"title": getattr(app, "title", "Dils Wallet API"), "version": "0.1.0"},
+            "paths": {},
+        }
+    return _openapi_cache
+
+app.openapi = custom_openapi
+# --- fim OpenAPI resiliente ---
 
 DOCS_PATHS = {"/docs", "/redoc"}
 
