@@ -58,4 +58,12 @@ def _try_include():
     except Exception as e:
         print("[routes] export_csv OFF ->", e)
 
+
+    # DEV DB tools
+    try:
+        from app.routers import dev_db as dev_db_routes
+        app.include_router(dev_db_routes.router)
+        print("[routes] dev_db ON")
+    except Exception as e:
+        print("[routes] dev_db OFF ->", e)
 _try_include()
