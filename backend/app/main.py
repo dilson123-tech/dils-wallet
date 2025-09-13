@@ -85,7 +85,7 @@ async def csp_for_docs(request: Request, call_next):
 try:
     app.include_router(auth_routes.router,        prefix="/api/v1/auth")
     app.include_router(users_routes.router,       prefix="/api/v1/users")
-    app.include_router(transactions_routes.router,prefix="/api/v1/transactions")
+# DISABLED on Railway: transactions router
     app.include_router(export_csv_routes.router)  # já vem com prefix /api/v1/transactions
 except Exception as e:
     print("[router-include] warn:", e)
@@ -97,8 +97,7 @@ app.add_middleware(CORSMiddleware,
     allow_headers=["*"],
 )
 app.include_router(dev_router.router)
-
-from app.routers import export_csv
+# removed static export_csv import
 # DISABLED DUP: app.include_router(export_csv.router)
 from pathlib import Path
 UI_DIR = (Path(__file__).resolve().parents[1] / "ui")
@@ -143,7 +142,7 @@ _tx = importlib.import_module("app.api.v1.routes.transactions")
 
 app.include_router(_auth.router,  prefix="/api/v1/auth",         tags=["auth"])
 app.include_router(_users.router, prefix="/api/v1/users",        tags=["users"])
-app.include_router(_tx.router,    prefix="/api/v1/transactions", tags=["transactions"])
+# DISABLED on Railway: transactions router
 # ============================================================
 
 # === Observabilidade mínima (logs JSON + request_id) ===
