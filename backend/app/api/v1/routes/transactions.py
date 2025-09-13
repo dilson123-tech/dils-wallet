@@ -1,13 +1,33 @@
+from app.models import Transaction as TransactionORM
+assert hasattr(TransactionORM, '__table__'), 'Import errado: TransactionORM não é ORM (fugiu pro Pydantic)'
+from datetime import datetime
+def _tx_to_dict(t):
+    # normaliza campos
+    d = {
+        'id': getattr(t, 'id', None),
+        'tipo': getattr(t, 'tipo', None),
+        'valor': float(getattr(t, 'valor', 0) or 0),
+        'descricao': getattr(t, 'description', None) or getattr(t, 'descricao', None),
+        'created_at': getattr(t, 'created_at', None) or datetime.utcnow(),
+    }
+    # garante datetime serializável
+    if hasattr(d['created_at'], 'isoformat'):
+        d['created_at'] = d['created_at'].isoformat()
+    return d
+
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app import models, schemas, database
 from app.security import get_current_user
 
+from app import schemas
+
 router = APIRouter(tags=["transactions"])
 ALLOWED_TYPES = {"deposito", "saque", "transferencia"}
 
-@router.post("", response_model=schemas.TransactionResponse)
+@router.post("")
 def create_transaction(
     payload: schemas.TransactionCreate,
     db: Session = Depends(database.get_db),
@@ -23,14 +43,13 @@ def create_transaction(
         user_id=current_user.id,
         tipo=t,
         valor=payload.valor,
-        referencia=payload.referencia or "",
+        referencia=(getattr(payload, "referencia", None) or getattr(payload, "reference", None) or "") or "",
     )
     db.add(tx)
     db.commit()
     db.refresh(tx)
-    return tx
-
-@router.get("", response_model=List[schemas.TransactionResponse])
+    return [_safe_tx(t) for t in tx]
+@router.get("")
 def list_transactions(
     skip: int = 0, limit: int = 50,
     db: Session = Depends(database.get_db),
@@ -41,7 +60,7 @@ def list_transactions(
               .order_by(models.Transaction.id.desc())
 .offset(skip).limit(limit).all())
 
-@router.get("/balance", response_model=schemas.BalanceOut)
+@router.get("/balance")
 def get_balance(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
@@ -71,7 +90,7 @@ class TransferIn(BaseModel):
     valor: float
     referencia: Optional[str] = None
 
-@router.post("/transfer")
+@router.post("/transfer_legacy")
 def create_transfer(
     payload: TransferIn,
     db: Session = Depends(database.get_db),
@@ -109,13 +128,13 @@ def create_transfer(
             user_id=current_user.id,
             tipo="transferencia",
             valor=payload.valor,
-            referencia=payload.referencia or f"para {payload.destino_email}",
+            referencia=(getattr(payload, "referencia", None) or getattr(payload, "reference", None) or "") or f"para {payload.destino_email}",
         )
         tx_in = models.Transaction(
             user_id=dest.id,
             tipo="deposito",
             valor=payload.valor,
-            referencia=payload.referencia or f"de {current_user.email}",
+            referencia=(getattr(payload, "referencia", None) or getattr(payload, "reference", None) or "") or f"de {current_user.email}",
         )
         db.add(tx_out)
         db.add(tx_in)
@@ -138,19 +157,14 @@ def create_transfer(
     }
 # --- fim transferência ---
 
-@router.get("/paged", response_model=schemas.TransactionsPage)
+@router.get("/paged")
 def list_transactions_paged(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """
-    Lista paginada das transações do usuário atual.
-    Retorna {"items":[TransactionResponse...], "meta":{page,page_size,total,total_pages,has_next,has_prev}}.
-    """
     base_q = db.query(models.Transaction).filter(models.Transaction.user_id == current_user.id)
-
     total = base_q.count()
     items = (
         base_q.order_by(models.Transaction.id.desc())
@@ -159,15 +173,14 @@ def list_transactions_paged(
              .all()
     )
     total_pages = (total + page_size - 1) // page_size
-
-    return schemas.TransactionsPage(
-        items=[schemas.TransactionResponse(id=t.id, tipo=t.tipo, valor=t.valor, referencia=t.referencia, criado_em=t.criado_em, user_id=t.user_id) for t in items],
-        meta=schemas.PageMeta(
-            page=page,
-            page_size=page_size,
-            total=total,
-            total_pages=total_pages,
-            has_next=(page * page_size) < total,
-            has_prev=page > 1,
-        ),
-    )
+    return {
+        "items": [_tx_to_dict(t) for t in items],
+        "meta": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "has_next": (page * page_size) < total,
+            "has_prev": page > 1,
+        },
+    }
