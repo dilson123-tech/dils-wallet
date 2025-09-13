@@ -1,6 +1,20 @@
+from fastapi.responses import Response
+from app.routers import export_csv as export_csv_routes
+from app.api.v1.routes import transactions as transactions_routes
+from app.api.v1.routes import users as users_routes
+from app.api.v1.routes import auth as auth_routes
+from prometheus_fastapi_instrumentator import Instrumentator
+from pythonjsonlogger import jsonlogger
+import logging
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
+from app.core.db import get_db
 from fastapi import Response
+from app.routers import dev as dev_router
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import time
@@ -11,10 +25,42 @@ from .database import engine, Base, get_db
 # Criar as tabelas automaticamente
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Dils Wallet API", version="0.1.0")
+app = FastAPI(title="Dils Wallet API", version="0.1.0", docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json")
+
+
+DOCS_PATHS = {"/docs", "/redoc"}
+
+@app.middleware("http")
+async def csp_for_docs(request: Request, call_next):
+    resp: Response = await call_next(request)
+    if request.url.path in DOCS_PATHS:
+        resp.headers["content-security-policy"] = (
+            "default-src 'self'; "
+            "img-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "script-src 'self' https://cdn.jsdelivr.net"
+        )
+    return resp
+
+# === Routers v1 ===
+try:
+    app.include_router(auth_routes.router,        prefix="/api/v1/auth")
+    app.include_router(users_routes.router,       prefix="/api/v1/users")
+    app.include_router(transactions_routes.router,prefix="/api/v1/transactions")
+    app.include_router(export_csv_routes.router)  # já vem com prefix /api/v1/transactions
+except Exception as e:
+    print("[router-include] warn:", e)
+
+app.add_middleware(CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(dev_router.router)
 
 from app.routers import export_csv
-app.include_router(export_csv.router)
+# DISABLED DUP: app.include_router(export_csv.router)
 from pathlib import Path
 UI_DIR = (Path(__file__).resolve().parents[1] / "ui")
 app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
@@ -88,3 +134,36 @@ setup_sentry()
 def debug_sentry():
     1 / 0  # força ZeroDivisionError
 # =================================
+
+from app.routers.transactions import router as transactions_router
+# DISABLED DUP: app.include_router(transactions_router)
+
+from app.routers.dev_seed import router as dev_router
+app.include_router(dev_router)
+
+# --- logging JSON ---
+_handler = logging.StreamHandler()
+_handler.setFormatter(jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
+logging.getLogger().handlers = [_handler]
+logging.getLogger().setLevel(logging.INFO)
+
+# --- Prometheus metrics ---
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+
+# --- Security headers (safe) ---
+@app.middleware("http")
+async def security_headers_safe(request, call_next):
+    response = await call_next(request)
+    headers = {
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:",
+    }
+    for k, v in headers.items():
+        # não sobrescreve se já existir
+        if k not in response.headers:
+            response.headers[k] = v
+    return response
