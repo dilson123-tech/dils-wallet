@@ -8,41 +8,35 @@ from app.security import create_access_token
 
 router = APIRouter()
 
+
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-def register(payload: dict = Body(...), db: Session = Depends(database.get_db)):
+def register(payload: schemas.UserCreate = Body(...), db: Session = Depends(database.get_db)):
     # já existe?
-    email = (payload or {}).get('email')
-password = (payload or {}).get('password')
-full_name = (payload or {}).get('full_name')
-if not isinstance(email, str) or not isinstance(password, str):
-    raise HTTPException(status_code=422, detail='email e password são obrigatórios')
-existing = db.query(models.User).filter(models.User.email == email).first()
+    existing = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email já registrado")
 
-    hashed_pw = utils.hash_password(password)
+    hashed_pw = utils.hash_password(payload.password)
     new_user = models.User(
-        email=email,
-        full_name=full_name,
+        email=payload.email,
+        full_name=payload.full_name,
         password_hash=hashed_pw,
     )
 
     # se a coluna 'type' existir e for NOT NULL, define default 'pf'
     if hasattr(models.User, "type"):
         try:
-            col = models.User.__table__.c.get("type")  # type: ignore[attr-defined]
+            col = models.User.__table__.c.get("type")
         except Exception:
             col = None
         if col is not None and getattr(col, "nullable", True) is False and getattr(new_user, "type", None) in (None, ""):
-            try:
-                setattr(new_user, "type", "pf")
-            except Exception:
-                pass
+            setattr(new_user, "type", "pf")
 
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
+
 
 @router.post("/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
