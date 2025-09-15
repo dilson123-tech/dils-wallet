@@ -24,7 +24,12 @@ def register(payload: schemas.UserCreate = Body(...), db: Session = Depends(data
         
         password_hash=hashed_pw,
     )
-    db.add(new_user)
+    if hasattr(models.User, 'type') and getattr(models.User.__table__.c, 'type', None) is not None and getattr(models.User.__table__.c.type, 'nullable', True) is False:
+        try:
+            setattr(new_user, 'type', 'pf')
+        except Exception:
+            pass
+db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
