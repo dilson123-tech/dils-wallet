@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import Request, APIRouter, Depends, HTTPException, status, Body, Request, Request
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -10,31 +10,55 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-def register(payload: schemas.UserCreate = Body(...), db: Session = Depends(database.get_db)):
-    # já existe?
-    existing = db.query(models.User).filter(models.User.email == payload.email).first()
+
+async def register(request: Request, db: Session = Depends(database.get_db)):
+
+    try:
+
+        payload = await request.json()
+
+    except Exception:
+
+        raise HTTPException(status_code=400, detail="JSON inválido")
+
+    if not isinstance(payload, dict):
+
+        raise HTTPException(status_code=422, detail="Corpo deve ser JSON object")
+
+    email = payload.get("email")
+
+    password = payload.get("password")
+
+    full_name = payload.get("full_name")
+
+    if not isinstance(email, str) or not isinstance(password, str):
+
+        raise HTTPException(status_code=422, detail="Campos email e password são obrigatórios")
+
+    existing = db.query(models.User).filter(models.User.email == email).first()
+
     if existing:
+
         raise HTTPException(status_code=400, detail="Email já registrado")
 
-    hashed_pw = utils.hash_password(payload.password)
-    new_user = models.User(
-        email=payload.email,
-        full_name=payload.full_name,
-        password_hash=hashed_pw,
-    )
+    hashed_pw = utils.hash_password(password)
 
-    # se a coluna 'type' existir e for NOT NULL, define default 'pf'
+    new_user = models.User(email=email, full_name=full_name, password_hash=hashed_pw)
+
     if hasattr(models.User, "type"):
-        try:
-            col = models.User.__table__.c.get("type")
-        except Exception:
-            col = None
-        if col is not None and getattr(col, "nullable", True) is False and getattr(new_user, "type", None) in (None, ""):
+
+        col = getattr(models.User.__table__.c, "type", None)
+
+        if col is not None and not getattr(col, "nullable", True) and getattr(new_user, "type", None) in (None, ""):
+
             setattr(new_user, "type", "pf")
 
     db.add(new_user)
+
     db.commit()
+
     db.refresh(new_user)
+
     return new_user
 
 
