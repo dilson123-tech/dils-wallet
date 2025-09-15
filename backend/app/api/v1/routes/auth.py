@@ -10,17 +10,18 @@ from app import models, schemas, utils, database, config
 router = APIRouter()
 
 # Registrar usuário
+from fastapi import Body
 @router.post("/register", response_model=schemas.UserResponse)
-def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+def register(payload: schemas.UserCreate = Body(...), db: Session = Depends(database.get_db)):
+    db_user = db.query(models.User).filter(models.User.email == payload.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email já registrado")
     
-    hashed_pw = utils.hash_password(user.password)
+    hashed_pw = utils.hash_password(payload.password)
     new_user = models.User(
-        email=user.email,
-        full_name=user.full_name,
-        type=user.type,
+        email=payload.email,
+        full_name=payload.full_name,
+        
         password_hash=hashed_pw,
     )
     db.add(new_user)
