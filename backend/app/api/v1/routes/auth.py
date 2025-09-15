@@ -9,16 +9,21 @@ from app.security import create_access_token
 router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-def register(payload: schemas.UserCreate = Body(...), db: Session = Depends(database.get_db)):
+def register(payload: dict = Body(...), db: Session = Depends(database.get_db)):
     # já existe?
-    existing = db.query(models.User).filter(models.User.email == payload.email).first()
+    email = (payload or {}).get('email')
+password = (payload or {}).get('password')
+full_name = (payload or {}).get('full_name')
+if not isinstance(email, str) or not isinstance(password, str):
+    raise HTTPException(status_code=422, detail='email e password são obrigatórios')
+existing = db.query(models.User).filter(models.User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email já registrado")
 
-    hashed_pw = utils.hash_password(payload.password)
+    hashed_pw = utils.hash_password(password)
     new_user = models.User(
-        email=payload.email,
-        full_name=payload.full_name,
+        email=email,
+        full_name=full_name,
         password_hash=hashed_pw,
     )
 
