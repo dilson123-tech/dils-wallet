@@ -13,47 +13,27 @@ logger = logging.getLogger("uvicorn.error")
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
 
-async def register(request: Request, db: Session = Depends(database.get_db)):
+def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
 
-    try:
-
-        payload = await request.json()
-
-    except Exception:
-
-        raise HTTPException(status_code=400, detail="JSON inválido")
-
-    if not isinstance(payload, dict):
-
-        raise HTTPException(status_code=422, detail="Corpo deve ser JSON object")
-
-    email = payload.get("email")
-
-    password = payload.get("password")
-
-    full_name = payload.get("full_name")
-
-    if not isinstance(email, str) or not isinstance(password, str):
-
-        raise HTTPException(status_code=422, detail="Campos email e password são obrigatórios")
-
-    existing = db.query(models.User).filter(models.User.email == email).first()
+    existing = db.query(models.User).filter(models.User.email == user.email).first()
 
     if existing:
 
         raise HTTPException(status_code=400, detail="Email já registrado")
 
-    hashed_pw = utils.hash_password(password)
+    hashed_pw = utils.hash_password(user.password)
 
-    new_user = models.User(email=email, full_name=full_name, password_hash=hashed_pw)
+    new_user = models.User(
 
-    if hasattr(models.User, "type"):
+        email=user.email,
 
-        col = getattr(models.User.__table__.c, "type", None)
+        full_name=user.full_name,
 
-        if col is not None and not getattr(col, "nullable", True) and getattr(new_user, "type", None) in (None, ""):
+        password_hash=hashed_pw,
 
-            setattr(new_user, "type", "pf")
+        type=getattr(user, "type", "pf"),
+
+    )
 
     db.add(new_user)
 
@@ -62,6 +42,7 @@ async def register(request: Request, db: Session = Depends(database.get_db)):
     db.refresh(new_user)
 
     return new_user
+
 
 
 @router.post("/login", response_model=schemas.Token)
