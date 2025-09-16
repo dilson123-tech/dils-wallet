@@ -1,6 +1,6 @@
+from __future__ import annotations
 import os,sys; print(f"[startup] running file: {__file__}, cwd: {os.getcwd()}, argv: {sys.argv}")
 
-from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
@@ -67,7 +67,6 @@ def try_include():
         print("[routes] dev_db ON")
     except Exception as e:
         print("[routes] dev_db OFF ->", e)
-try_include()
 
 
 # --- DB init seguro (cria tabelas se não existirem) ---
@@ -106,3 +105,5 @@ try:
 except Exception as e:
     print("[debug] _routes endpoint não registrado:", e)
 # -------------------------------------------
+
+try_include()  # registra rotas auth no import
