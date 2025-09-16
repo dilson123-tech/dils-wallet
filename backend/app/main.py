@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+try_include()  # garante registro imediato de routers
 
 # ---- healthcheck simples ----
 @app.get("/healthz")
@@ -67,3 +68,18 @@ def _try_include():
     except Exception as e:
         print("[routes] dev_db OFF ->", e)
 _try_include()
+
+
+# --- DB init seguro (cria tabelas se não existirem) ---
+try:
+    from app.database import Base, engine
+    @app.on_event("startup")
+    def _init_db_on_startup():
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("[startup] DB create_all OK")
+        except Exception as e:
+            print("[startup] DB create_all falhou:", e)
+except Exception as e:
+    print("[startup] DB init não injetado:", e)
+# -------------------------------------------------------
