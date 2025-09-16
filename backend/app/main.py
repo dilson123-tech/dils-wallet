@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
-try_include()  # garante registro imediato de routers
 
 # ---- healthcheck simples ----
 @app.get("/healthz")
@@ -26,7 +25,7 @@ def _safe_openapi():
 app.openapi = _safe_openapi
 
 # ---- includes opcionais (não quebram o boot se falharem) ----
-def _try_include():
+def try_include():
     # AUTH
     try:
         from app.api.v1.routes import auth as auth_routes
@@ -67,7 +66,7 @@ def _try_include():
         print("[routes] dev_db ON")
     except Exception as e:
         print("[routes] dev_db OFF ->", e)
-_try_include()
+try_include()
 
 
 # --- DB init seguro (cria tabelas se não existirem) ---
