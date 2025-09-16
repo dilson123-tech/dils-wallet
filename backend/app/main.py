@@ -1,3 +1,4 @@
+import os,sys; print(f"[startup] running file: {__file__}, cwd: {os.getcwd()}, argv: {sys.argv}")
 
 from __future__ import annotations
 
