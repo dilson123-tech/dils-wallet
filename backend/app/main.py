@@ -82,3 +82,26 @@ try:
 except Exception as e:
     print("[startup] DB init não injetado:", e)
 # -------------------------------------------------------
+
+# ---- DEBUG: lista de rotas registradas ----
+try:
+    @app.get("/_routes")
+    def _routes():
+        try:
+            return {
+                "count": len(app.routes),
+                "routes": [
+                    {
+                        "path": r.path,
+                        "name": getattr(r, "name", None),
+                        "methods": sorted(list(getattr(r, "methods", []) or [])),
+                        "include_in_schema": getattr(r, "include_in_schema", True),
+                    }
+                    for r in app.routes
+                ],
+            }
+        except Exception as e:
+            return {"error": str(e)}
+except Exception as e:
+    print("[debug] _routes endpoint não registrado:", e)
+# -------------------------------------------
