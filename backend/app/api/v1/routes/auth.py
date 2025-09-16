@@ -9,7 +9,7 @@ from app.security import create_access_token
 router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+def register(user: schemas.UserCreate = Body(...), db: Session = Depends(database.get_db)):
     # --- debug defensivo ---
     import logging
     logger = logging.getLogger("uvicorn.error")
