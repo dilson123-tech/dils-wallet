@@ -1,20 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
+import logging
 
 from app import models, schemas, utils, database, config
 from app.security import create_access_token
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    # e-mail já cadastrado?
+async def register(req: Request, db: Session = Depends(database.get_db)):
+    body = await req.json()
+    logger.info("DEBUG register raw body: %s", body)
+
+    try:
+        user = schemas.UserCreate(**body)
+    except Exception as e:
+        logger.exception("Falha ao parsear UserCreate")
+        raise HTTPException(status_code=400, detail=f"Erro parse: {e}")
+
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email já registrado")
 
-    # cria usuário
     hashed_pw = utils.hash_password(user.password)
     new_user = models.User(
         email=user.email,
@@ -22,9 +31,8 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
         password_hash=hashed_pw,
     )
 
-    # se existir coluna 'type' NOT NULL, default 'pf'
     if hasattr(models.User, "type"):
-        col = getattr(models.User.__table__.c, "type", None)  # type: ignore[attr-defined]
+        col = getattr(models.User.__table__.c, "type", None)
         if col is not None and not getattr(col, "nullable", True) and getattr(new_user, "type", None) in (None, ""):
             setattr(new_user, "type", "pf")
 
