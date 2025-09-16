@@ -2,11 +2,13 @@ from fastapi import Request, APIRouter, Depends, HTTPException, status, Body, Re
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
+import logging
 
 from app import models, schemas, utils, database, config
 from app.security import create_access_token
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
