@@ -1,49 +1,37 @@
-from fastapi import Request, APIRouter, Depends, HTTPException, status, Body, Request, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
-import logging
 
 from app import models, schemas, utils, database, config
 from app.security import create_access_token
 
 router = APIRouter()
-logger = logging.getLogger("uvicorn.error")
-
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-
 def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
-
-    existing = db.query(models.User).filter(models.User.email == user.email).first()
-
-    if existing:
-
+    # e-mail já cadastrado?
+    if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email já registrado")
 
+    # cria usuário
     hashed_pw = utils.hash_password(user.password)
-
     new_user = models.User(
-
         email=user.email,
-
         full_name=user.full_name,
-
         password_hash=hashed_pw,
-
-        type=getattr(user, "type", "pf"),
-
     )
 
+    # se existir coluna 'type' NOT NULL, default 'pf'
+    if hasattr(models.User, "type"):
+        col = getattr(models.User.__table__.c, "type", None)  # type: ignore[attr-defined]
+        if col is not None and not getattr(col, "nullable", True) and getattr(new_user, "type", None) in (None, ""):
+            setattr(new_user, "type", "pf")
+
     db.add(new_user)
-
     db.commit()
-
     db.refresh(new_user)
-
     return new_user
-
-
 
 @router.post("/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
