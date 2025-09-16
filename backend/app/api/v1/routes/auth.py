@@ -42,3 +42,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     access_token_expires = timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
     token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/_version")
+def _version():
+    # ajuda a diagnosticar se o deploy pegou este arquivo
+    return {"marker":"AUTH_OK","file": __file__}
