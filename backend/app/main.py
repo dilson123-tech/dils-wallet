@@ -1,4 +1,3 @@
-import os
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
@@ -27,12 +26,3 @@ def _openapi():
     app.openapi_schema = schema
     return app.openapi_schema
 app.openapi = _openapi
-# --- feature flag: transactions router (prod-safe) ---
-if os.getenv("ROUTES_TRANSACTIONS", "0") == "1":
-    from app.api.v1.routes import transactions
-    app.include_router(
-        transactions.router,
-        prefix="/api/v1/transactions",
-        tags=["transactions"],
-    )
-# --- end flag ---
