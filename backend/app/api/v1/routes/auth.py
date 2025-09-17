@@ -98,3 +98,28 @@ def register2(payload: dict, db: Session = Depends(database.get_db)):
         logger.error("register2 failed: %s", e); logger.error(traceback.format_exc())
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=f"register2 failed: {e.__class__.__name__}: {e}")
+
+
+@router.post("/register2", status_code=201)
+def register2(payload: dict, db: Session = Depends(database.get_db)):
+    # implementação mínima de registro (sem Pydantic), para isolar erro
+    email = payload.get("email")
+    pwd   = payload.get("password")
+    full  = payload.get("full_name")
+    if not email or not pwd:
+        raise HTTPException(status_code=422, detail="email e password são obrigatórios")
+
+    if db.query(models.User).filter(models.User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email já registrado")
+
+    hashed = utils.hash_password(pwd)
+    u = models.User(email=email, full_name=full, password_hash=hashed)
+
+    # se coluna type existir e for NOT NULL, define 'pf'
+    if hasattr(models.User, "type"):
+        col = getattr(models.User.__table__.c, "type", None)  # type: ignore[attr-defined]
+        if col is not None and not getattr(col, "nullable", True) and getattr(u, "type", None) in (None, ""):
+            setattr(u, "type", "pf")
+
+    db.add(u); db.commit(); db.refresh(u)
+    return {"id": u.id, "email": u.email, "full_name": u.full_name}
