@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
+import logging, traceback
 
 from app import models, schemas, utils, database, config
 from app.security import create_access_token
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
 def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
@@ -49,3 +52,21 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),
 def _version():
     import os
     return {"marker": "AUTH_OK", "file": __file__}
+
+
+@router.get("/db-ping")
+def db_ping(db: Session = Depends(database.get_db)):
+    # testa conexão e existência da tabela users
+    try:
+        db.execute(text("SELECT 1"))
+        ok = True
+    except Exception as e:
+        logger.error("db-ping failed: %s", e)
+        ok = False
+    # tenta contar users (pode falhar se tabela não existir)
+    count = None
+    try:
+        count = db.query(models.User).count()
+    except Exception as e:
+        logger.error("users count failed: %s", e)
+    return {"db_ok": ok, "users_count": count}
