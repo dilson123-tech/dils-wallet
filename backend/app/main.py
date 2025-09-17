@@ -1,3 +1,5 @@
+import logging
+import os
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
@@ -26,3 +28,25 @@ def _openapi():
     app.openapi_schema = schema
     return app.openapi_schema
 app.openapi = _openapi
+
+from app.api.v1.routes import transactions
+app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
+
+# --- feature flag: transactions (robusto) ---
+def _env_on(name: str) -> bool:
+    return os.getenv(name, "0").strip().lower() in {"1","true","on","yes","y"}
+
+logging.getLogger("startup").info("ROUTES_TRANSACTIONS=%s", os.getenv("ROUTES_TRANSACTIONS"))
+
+if _env_on("ROUTES_TRANSACTIONS"):
+    try:
+        from importlib import import_module
+        transactions = import_module("app.api.v1.routes.transactions")
+        app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
+        logging.getLogger("startup").info("transactions router ENABLED")
+    except Exception as e:
+        logging.getLogger("startup").exception("failed to enable transactions router: %s", e)
+else:
+    logging.getLogger("startup").info("transactions router DISABLED")
+# --- end flag ---
+
