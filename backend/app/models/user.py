@@ -8,4 +8,5 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     full_name = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
-    type = Column(String, nullable=True)  # pode ser "pf", "pj", etc.
+    # opcional no schema atual; se sua coluna for NOT NULL, ajuste defaults
+    type = Column(String, nullable=True)  # ex.: "pf", "pj"
