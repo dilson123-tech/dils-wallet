@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -9,13 +9,7 @@ from app.security import create_access_token
 router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
-def register(user: schemas.UserCreate = Body(...), db: Session = Depends(database.get_db)):
-    # --- debug defensivo ---
-    import logging
-    logger = logging.getLogger("uvicorn.error")
-    logger.info("DEBUG register payload -> %r", user.dict() if hasattr(user, "dict") else user)
-
-    # checa se já existe
+def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email já registrado")
 
@@ -26,7 +20,6 @@ def register(user: schemas.UserCreate = Body(...), db: Session = Depends(databas
         password_hash=hashed_pw,
     )
 
-    # define type se necessário
     if hasattr(models.User, "type"):
         col = getattr(models.User.__table__.c, "type", None)  # type: ignore[attr-defined]
         if col is not None and not getattr(col, "nullable", True) and getattr(new_user, "type", None) in (None, ""):
