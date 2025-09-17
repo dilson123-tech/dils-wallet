@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
-import logging, traceback
+import logging
+import traceback, traceback
 
 from app import models, schemas, utils, database, config
 from app.security import create_access_token
@@ -70,3 +71,30 @@ def db_ping(db: Session = Depends(database.get_db)):
     except Exception as e:
         logger.error("users count failed: %s", e)
     return {"db_ok": ok, "users_count": count}
+
+@router.post("/register_echo")
+def register_echo(payload: dict):
+    return {"echo": payload}
+
+@router.post("/register2", status_code=201)
+def register2(payload: dict, db: Session = Depends(database.get_db)):
+    try:
+        email = payload.get("email"); pwd = payload.get("password"); full = payload.get("full_name")
+        if not email or not pwd:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=422, detail="email e password são obrigatórios")
+        if db.query(models.User).filter(models.User.email == email).first():
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Email já registrado")
+        hashed = utils.hash_password(pwd)
+        u = models.User(email=email, full_name=full, password_hash=hashed)
+        if hasattr(models.User, "type"):
+            col = getattr(models.User.__table__.c, "type", None)
+            if col is not None and not getattr(col, "nullable", True) and getattr(u, "type", None) in (None, ""):
+                setattr(u, "type", "pf")
+        db.add(u); db.commit(); db.refresh(u)
+        return {"id": u.id, "email": u.email, "full_name": u.full_name}
+    except Exception as e:
+        logger.error("register2 failed: %s", e); logger.error(traceback.format_exc())
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"register2 failed: {e.__class__.__name__}: {e}")
