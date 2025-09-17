@@ -26,3 +26,6 @@ def _openapi():
     app.openapi_schema = schema
     return app.openapi_schema
 app.openapi = _openapi
+
+from app.api.v1.routes import transactions
+app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
