@@ -46,7 +46,7 @@ def create_transaction(
     db.add(tx)
     db.commit()
     db.refresh(tx)
-    return [_safe_tx(t) for t in tx]
+    return _tx_to_dict(tx)
 @router.get("")
 def list_transactions(
     skip: int = 0, limit: int = 50,
