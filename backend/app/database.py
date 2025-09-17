@@ -1,20 +1,15 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-import os
 
-# SQLite local (padrão)
-DB_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///placeholder.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Config para SQLite (check_same_thread só para uso local/single-thread)
-engine = create_engine(
-    DB_URL,
-    connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {}
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
-# Dependency p/ FastAPI
 def get_db():
     db = SessionLocal()
     try:
