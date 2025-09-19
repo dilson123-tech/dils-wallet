@@ -122,8 +122,12 @@ def metrics():
 # --- /metrics ---
 
 
+# -- safe import for admin routes --
+try:
+    from app.api.v1.routes import admin as admin_routes
+    app.include_router(admin_routes.router, prefix="/api/v1/admin", tags=["admin"])
+except Exception as e:
+    import logging
+    logging.warning("admin routes disabled: %s", e)
+# -- end safe import --
 
-
-
-
-app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
