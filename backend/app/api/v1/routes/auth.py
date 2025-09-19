@@ -22,7 +22,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     hashed = utils.hash_password(user.password)
     new_user = models.User(
         email=user.email,
-        full_name=user.full_name,
+        full_name=getattr(user, "full_name", None),
         password_hash=hashed,
     )
 

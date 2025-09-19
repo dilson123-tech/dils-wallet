@@ -55,8 +55,14 @@ def create_transaction(
     if v <= 0:
         raise HTTPException(status_code=400, detail="valor deve ser > 0")
 
-    tx = models.Transaction(user_id=current_user.id, tipo=t, valor=v, referencia=(getattr(payload, "referencia", None) or getattr(payload, "reference", None) or "") or "",
-        referencia=(getattr(payload, "descricao", None) or getattr(payload, "referencia", None)),
+    tx = models.Transaction(
+        user_id=current_user.id,
+        tipo=t,
+        valor=v,
+        referencia=(getattr(payload, "descricao", None)
+                   or getattr(payload, "referencia", None)
+                   or getattr(payload, "reference", None)
+                   or ""),
     )
     db.add(tx)
     db.commit()
