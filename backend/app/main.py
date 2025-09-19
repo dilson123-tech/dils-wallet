@@ -1,6 +1,6 @@
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 import os
 from fastapi import FastAPI
@@ -55,14 +55,4 @@ else:
 
 
 
-# --- debug exception handler (TEMP) ---
-from fastapi.responses import JSONResponse
-import traceback, logging
-@app.exception_handler(Exception)
-async def _unhandled_ex(request, exc):
-    logging.exception("Unhandled exception")
-    return JSONResponse(status_code=500, content={
-        "error":"internal_error",
-        "detail": str(exc)
-    })
 
