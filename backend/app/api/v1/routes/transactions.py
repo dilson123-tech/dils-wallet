@@ -56,15 +56,15 @@ def create_transaction(
         user_id=getattr(current_user, "id", 1),
         tipo=t,
         valor=v,
-        referencia=(payload.referencia or "").strip() if payload.referencia else None,
+        referencia=(getattr(payload, "referencia", None) or "").strip() if getattr(payload, "referencia", None) else None,
     )
     db.add(tx)
     db.commit()
     db.refresh(tx)
     d = _tx_to_dict(tx)
     # reforça retorno para UX (se referencia vier None mas payload tinha valor)
-    if not d.get("referencia") and payload.referencia:
-        d["referencia"] = payload.referencia
+    if not d.get("referencia") and getattr(payload, "referencia", None):
+        d["referencia"] = getattr(payload, "referencia", None)
     if payload.descricao:
         d["descricao"] = payload.descricao
     return d
