@@ -33,3 +33,10 @@ def migrate_decimal(x_admin_secret: str | None = Header(None, alias="X-Admin-Sec
         """))
         c.commit()
         return {"status":"migrated", "to":"numeric(12,2)"}
+
+
+@router.get("/secret_status")
+def secret_status():
+    import os
+    s = os.getenv("MIGRATE_SECRET")
+    return {"loaded": bool(s), "length": len(s) if s else 0}
