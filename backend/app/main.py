@@ -1,4 +1,7 @@
 import logging
+logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
+
 import os
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
