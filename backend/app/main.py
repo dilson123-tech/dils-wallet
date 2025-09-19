@@ -3,6 +3,8 @@ logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.INFO)
 
 import os
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
@@ -55,4 +57,31 @@ else:
 
 
 
+
+
+
+# CORS configurável por env: CORS_ALLOW_ORIGINS="https://app.seudominio.com,https://www.seuoutro.com"
+_allow = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = [o.strip() for o in _allow.split(",")] if _allow else ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+    allow_headers=["Authorization","Content-Type","Accept","Origin","X-Requested-With"],
+)
+
+
+
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    # HSTS só faz sentido sob HTTPS (Railway usa HTTPS na borda)
+    resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    # Trava APIs do navegador que não precisamos
+    resp.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    return resp
 
