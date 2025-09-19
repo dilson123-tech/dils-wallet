@@ -121,3 +121,39 @@ def metrics():
     return PlainTextResponse(body, media_type="text/plain")
 # --- /metrics ---
 
+
+
+# --- startup migration: valor -> NUMERIC(12,2) (idempotente) ---
+try:
+    import logging
+    from sqlalchemy import text
+    from app.database import engine
+    @app.on_event("startup")
+    def _migrate_valor_decimal():
+        try:
+            with engine.connect() as c:
+                if c.dialect.name != "postgresql":
+                    return  # só migra em Postgres
+                row = c.execute(text("""
+                    select data_type, numeric_precision, numeric_scale
+                    from information_schema.columns
+                    where table_name='transactions' and column_name='valor'
+                """)).fetchone()
+                if not row:
+                    return
+                m = getattr(row, "_mapping", None)
+                data_type = (m or row)[0]
+                prec      = (m or row)[1]
+                scale     = (m or row)[2]
+                if not (str(data_type) in ("numeric","decimal") and int(prec)==12 and int(scale)==2):
+                    c.execute(text("""
+                        ALTER TABLE transactions
+                        ALTER COLUMN valor TYPE numeric(12,2)
+                        USING ROUND(valor::numeric, 2)
+                    """))
+                    c.commit()
+                    logging.info("migrated: transactions.valor -> numeric(12,2)")
+        except Exception as e:
+            logging.warning("startup migration skipped: %s", e)
+# --- end startup migration ---
+
