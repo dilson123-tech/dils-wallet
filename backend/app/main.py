@@ -53,3 +53,16 @@ else:
     logging.getLogger("startup").info("transactions router DISABLED")
 # --- end flag ---
 
+
+
+# --- debug exception handler (TEMP) ---
+from fastapi.responses import JSONResponse
+import traceback, logging
+@app.exception_handler(Exception)
+async def _unhandled_ex(request, exc):
+    logging.exception("Unhandled exception")
+    return JSONResponse(status_code=500, content={
+        "error":"internal_error",
+        "detail": str(exc)
+    })
+
