@@ -15,7 +15,7 @@ def _tx_to_dict(t):
         "user_id": getattr(t, "user_id", None),
         "tipo": getattr(t, "tipo", None),
         "valor": float(getattr(t, "valor", 0) or 0),
-        "descricao": getattr(t, "description", None) or getattr(t, "descricao", None),
+        "descricao": getattr(t, "descricao", None) or getattr(t, "description", None) or getattr(t, "referencia", None),
         "referencia": getattr(t, "referencia", None) or getattr(t, "reference", None),
         "created_at": getattr(t, "created_at", None) or datetime.utcnow(),
     }
@@ -60,7 +60,7 @@ def create_transaction(
         tipo=t,
         valor=v,
         referencia=(getattr(payload, "referencia", None) or getattr(payload, "reference", None) or "") or "",
-        descricao=getattr(payload, "descricao", None),
+        referencia=(getattr(payload, "descricao", None) or getattr(payload, "referencia", None)),
     )
     db.add(tx)
     db.commit()
