@@ -60,7 +60,7 @@ def create_transaction(
         tipo=t,
         valor=v,
         referencia=(getattr(payload, "referencia", None) or getattr(payload, "reference", None) or "") or "",
-        description=getattr(payload, "descricao", None),
+        descricao=getattr(payload, "descricao", None),
     )
     db.add(tx)
     db.commit()
