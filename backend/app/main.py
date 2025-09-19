@@ -125,3 +125,5 @@ def metrics():
 
 
 
+
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
