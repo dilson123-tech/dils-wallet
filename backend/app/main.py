@@ -13,6 +13,14 @@ from app.api.v1.routes import auth as auth_routes
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
 
+from os import getenv
+try:
+    _ms = (getenv('METRICS_SECRET','') or '').strip()
+    print('[metrics] METRICS_SECRET len=', len(_ms))
+except Exception as _e:
+    print('[metrics] warn:', _e)
+
+
 @app.get("/healthz")
 def health():
     return {"status": "ok"}
