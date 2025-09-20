@@ -4,6 +4,18 @@ app = FastAPI()
 
 
 
+
+from fastapi import Request
+import os, hashlib
+
+@app.get("/metrics_diag")
+def metrics_diag(request: Request):
+    hdr = (request.headers.get("X-Stats-Secret") or request.headers.get("x-stats-secret") or "").strip()
+    env = (os.getenv("METRICS_SECRET_V2") or os.getenv("METRICS_SECRET") or "").strip()
+    h8  = hashlib.sha256(hdr.encode()).hexdigest()[:8] if hdr else "None"
+    e8  = hashlib.sha256(env.encode()).hexdigest()[:8] if env else "None"
+    return {"hdr_len": len(hdr), "hdr_sha8": h8, "env_len": len(env), "env_sha8": e8}
+
 from hashlib import sha256
 from fastapi import Request, HTTPException
 
