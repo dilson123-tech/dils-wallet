@@ -152,3 +152,4 @@ except Exception as e:
     import logging
     logging.warning("transactions routes disabled: %s", e)
 # -- end safe transactions --
+# redeploy bump sáb 20 set 2025 14:51:41 -03
