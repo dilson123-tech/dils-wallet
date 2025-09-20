@@ -6,6 +6,7 @@ import os
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi import FastAPI
+from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
 
 # importa o router do auth
@@ -35,7 +36,6 @@ async def rate_limit(request, call_next):
         while q and now - q[0] > _WINDOW:
             q.popleft()
         if len(q) >= _RATE_LIMIT:
-            from fastapi import HTTPException
             raise HTTPException(status_code=429, detail="too many requests")
         q.append(now)
     return await call_next(request)
@@ -97,7 +97,6 @@ def metrics(x_secret: str | None = Header(None, alias="X-Stats-Secret")):
     import os
     secret = os.getenv("METRICS_SECRET")
     if secret and x_secret != secret:
-        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="unauthorized")
 
     m = app.state.metrics
