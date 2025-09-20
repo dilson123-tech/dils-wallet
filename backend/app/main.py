@@ -15,6 +15,10 @@ from app.api.v1.routes import auth as auth_routes
 
 
 
+from fastapi import FastAPI
+
+app = FastAPI()
+
 from os import getenv
 import hashlib as _hl
 try:
