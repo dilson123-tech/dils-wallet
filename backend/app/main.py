@@ -15,6 +15,15 @@ from app.api.v1.routes import auth as auth_routes
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
 
 from os import getenv
+import hashlib as _hl
+try:
+    _ms = (getenv('METRICS_SECRET','') or '').strip()
+    print('[metrics] METRICS_SECRET len=', len(_ms), 'sha256[:8]=', _hl.sha256(_ms.encode()).hexdigest()[:8])
+except Exception as _e:
+    print('[metrics] warn:', _e)
+
+
+from os import getenv
 print('[ratelimit] RPM=', getenv('RATE_LIMIT_RPM','60'))
 
 import time
