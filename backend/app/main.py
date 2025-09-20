@@ -18,60 +18,6 @@ def health():
     return {"status": "ok"}
 
 # canário simples direto no main (prova de vida do arquivo em prod)
-@app.get("/canary/auth/ping")
-def canary():
-    return {"ping": "pong", "file": __file__}
-
-# monta o router de auth SEM condições
-app.include_router(auth_routes.router, prefix="/api/v1/auth", tags=["auth"])
-
-# (opcional) OpenAPI estável
-def _openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
-    app.openapi_schema = schema
-    return app.openapi_schema
-app.openapi = _openapi
-
-from app.api.v1.routes import transactions
-app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
-
-# --- feature flag: transactions (robusto) ---
-def _env_on(name: str) -> bool:
-    return os.getenv(name, "0").strip().lower() in {"1","true","on","yes","y"}
-
-logging.getLogger("startup").info("ROUTES_TRANSACTIONS=%s", os.getenv("ROUTES_TRANSACTIONS"))
-
-if _env_on("ROUTES_TRANSACTIONS"):
-    try:
-        from importlib import import_module
-        transactions = import_module("app.api.v1.routes.transactions")
-        app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
-        logging.getLogger("startup").info("transactions router ENABLED")
-    except Exception as e:
-        logging.getLogger("startup").exception("failed to enable transactions router: %s", e)
-else:
-    logging.getLogger("startup").info("transactions router DISABLED")
-# --- end flag ---
-
-
-
-
-
-
-# CORS configurável por env: CORS_ALLOW_ORIGINS="https://app.seudominio.com,https://www.seuoutro.com"
-_allow = os.getenv("CORS_ALLOW_ORIGINS", "*")
-allow_origins = [o.strip() for o in _allow.split(",")] if _allow else ["*"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=True,
-    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-    allow_headers=["Authorization","Content-Type","Accept","Origin","X-Requested-With"],
-)
-
-
 
 @app.middleware("http")
 async def _security_headers(request, call_next):
