@@ -9,7 +9,7 @@ async def protect_metrics(request, call_next):
     if request.url.path.startswith("/metrics"):
         from os import getenv
         hdr = (request.headers.get("X-Stats-Secret") or request.headers.get("x-stats-secret") or "").strip()
-        env = getenv("METRICS_SECRET", "").strip()
+        env = (getenv("METRICS_SECRET_V2") or getenv("METRICS_SECRET") or "").strip()
         print(f"[metrics] hdr_len={len(hdr)} sha8={sha256(hdr.encode()).hexdigest()[:8]} "
               f"env_len={len(env)} env_sha8={sha256(env.encode()).hexdigest()[:8]}")
         if not env or hdr != env:
