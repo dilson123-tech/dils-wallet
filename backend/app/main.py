@@ -12,6 +12,10 @@ from fastapi.openapi.utils import get_openapi
 from app.api.v1.routes import auth as auth_routes
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+
+from os import getenv
+print('[ratelimit] RPM=', getenv('RATE_LIMIT_RPM','60'))
+
 import time
 from collections import defaultdict, deque
 from os import getenv
