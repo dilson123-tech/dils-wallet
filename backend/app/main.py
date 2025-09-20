@@ -81,3 +81,23 @@ except Exception as e:
     logging.warning("admin routes disabled: %s", e)
 # -- end safe import --
 
+
+
+# -- safe import for auth routes --
+try:
+    from app.api.v1.routes import auth as auth_routes
+    app.include_router(auth_routes.router, prefix="/api/v1/auth", tags=["auth"])
+except Exception as e:
+    import logging
+    logging.warning("auth routes disabled: %s", e)
+# -- end safe auth --
+
+
+# -- safe import for transactions routes --
+try:
+    from app.api.v1.routes import transactions as transactions_routes
+    app.include_router(transactions_routes.router, prefix="/api/v1/transactions", tags=["transactions"])
+except Exception as e:
+    import logging
+    logging.warning("transactions routes disabled: %s", e)
+# -- end safe transactions --
