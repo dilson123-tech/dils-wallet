@@ -13,7 +13,6 @@ from fastapi.openapi.utils import get_openapi
 from app.api.v1.routes import auth as auth_routes
 
 
-
 # [AUTO] metrics_secret_boot_probe
 from os import getenv as _getenv
 import hashlib as _hl
