@@ -13,22 +13,12 @@ from fastapi.openapi.utils import get_openapi
 from app.api.v1.routes import auth as auth_routes
 
 
-# [AUTO] metrics_secret_boot_probe
-from os import getenv as _getenv
-import hashlib as _hl
-
-@app.on_event("startup")
-async def _metrics_secret_boot_probe():
-    _ms = (_getenv("METRICS_SECRET","") or "").strip()
-    print("[metrics] boot probe len=", len(_ms), "sha256[:8]=", _hl.sha256(_ms.encode()).hexdigest()[:8])
-# [/AUTO]
 
 
 from os import getenv
 import hashlib as _hl
 try:
     _ms = (getenv('METRICS_SECRET','') or '').strip()
-    print('[metrics] METRICS_SECRET len=', len(_ms), 'sha256[:8]=', _hl.sha256(_ms.encode()).hexdigest()[:8])
 except Exception as _e:
     print('[metrics] warn:', _e)
 
