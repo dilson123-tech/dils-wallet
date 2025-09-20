@@ -1,5 +1,21 @@
 from fastapi import FastAPI
 app = FastAPI()
+@app.middleware("http")
+async def metrics_guard(request, call_next):
+    import os, hashlib
+    path = request.url.path or ""
+    if not path.startswith("/metrics"):
+        return await call_next(request)
+    hdr = (request.headers.get("X-Stats-Secret") or request.headers.get("x-stats-secret") or "").strip()
+    env = (os.getenv("METRICS_SECRET_V2") or os.getenv("METRICS_SECRET") or "").strip()
+    h8  = hashlib.sha256(hdr.encode()).hexdigest()[:8] if hdr else "None"
+    e8  = hashlib.sha256(env.encode()).hexdigest()[:8] if env else "None"
+    print(f"[metrics] hdr_len={len(hdr)} hdr_sha8={h8}  env_len={len(env)} env_sha8={e8}")
+    if not hdr or not env or hdr != env:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="unauthorized")
+    return await call_next(request)
+
 
 
 
@@ -62,6 +78,22 @@ from app.api.v1.routes import auth as auth_routes
 from fastapi import FastAPI
 
 app = FastAPI()
+@app.middleware("http")
+async def metrics_guard(request, call_next):
+    import os, hashlib
+    path = request.url.path or ""
+    if not path.startswith("/metrics"):
+        return await call_next(request)
+    hdr = (request.headers.get("X-Stats-Secret") or request.headers.get("x-stats-secret") or "").strip()
+    env = (os.getenv("METRICS_SECRET_V2") or os.getenv("METRICS_SECRET") or "").strip()
+    h8  = hashlib.sha256(hdr.encode()).hexdigest()[:8] if hdr else "None"
+    e8  = hashlib.sha256(env.encode()).hexdigest()[:8] if env else "None"
+    print(f"[metrics] hdr_len={len(hdr)} hdr_sha8={h8}  env_len={len(env)} env_sha8={e8}")
+    if not hdr or not env or hdr != env:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="unauthorized")
+    return await call_next(request)
+
 
 from os import getenv
 import hashlib as _hl
