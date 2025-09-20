@@ -12,7 +12,18 @@ from fastapi.openapi.utils import get_openapi
 # importa o router do auth
 from app.api.v1.routes import auth as auth_routes
 
-app = FastAPI(title="Dils Wallet API", version="0.1.0")
+\1
+
+# [AUTO] metrics_secret_boot_probe
+from os import getenv as _getenv
+import hashlib as _hl
+
+@app.on_event("startup")
+async def _metrics_secret_boot_probe():
+    _ms = (_getenv("METRICS_SECRET","") or "").strip()
+    print("[metrics] boot probe len=", len(_ms), "sha256[:8]=", _hl.sha256(_ms.encode()).hexdigest()[:8])
+# [/AUTO]
+
 
 from os import getenv
 import hashlib as _hl
