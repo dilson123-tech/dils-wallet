@@ -54,7 +54,6 @@ async def rate_limit(request, call_next):
 from os import getenv
 try:
     _ms = (getenv('METRICS_SECRET','') or '').strip()
-    print('[metrics] METRICS_SECRET len=', len(_ms))
 except Exception as _e:
     print('[metrics] warn:', _e)
 
