@@ -12,6 +12,31 @@ from fastapi.openapi.utils import get_openapi
 from app.api.v1.routes import auth as auth_routes
 
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+import time
+from collections import defaultdict, deque
+from os import getenv
+
+# --- rate limit leve ---
+_RATE_LIMIT = int(getenv("RATE_LIMIT_RPM", "60"))
+_WINDOW     = 60
+_buckets    = defaultdict(deque)
+
+@app.middleware("http")
+async def rate_limit(request, call_next):
+    path = request.url.path
+    if path.startswith(("/auth", "/transactions", "/metrics")):
+        ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        q = _buckets[ip]
+        while q and now - q[0] > _WINDOW:
+            q.popleft()
+        if len(q) >= _RATE_LIMIT:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=429, detail="too many requests")
+        q.append(now)
+    return await call_next(request)
+# --- fim rate limit ---
+
 
 from os import getenv
 try:
