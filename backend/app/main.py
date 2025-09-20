@@ -35,7 +35,7 @@ async def _security_headers(request, call_next):
 
 # --- lightweight metrics (Prometheus-like) ---
 from collections import defaultdict
-from fastapi import Request
+from fastapi import Request, Header
 from fastapi.responses import PlainTextResponse
 
 if not hasattr(app.state, "metrics"):
@@ -55,7 +55,14 @@ async def _metrics_mw(request: Request, call_next):
     return resp
 
 @app.get("/metrics")
-def metrics():
+def metrics(x_secret: str | None = Header(None, alias="X-Stats-Secret")):
+    
+    import os
+    secret = os.getenv("METRICS_SECRET")
+    if secret and x_secret != secret:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="unauthorized")
+
     m = app.state.metrics
     lines = []
     lines.append("# TYPE app_requests_total counter")
