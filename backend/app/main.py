@@ -12,7 +12,7 @@ from fastapi.openapi.utils import get_openapi
 # importa o router do auth
 from app.api.v1.routes import auth as auth_routes
 
-\1
+
 
 # [AUTO] metrics_secret_boot_probe
 from os import getenv as _getenv
