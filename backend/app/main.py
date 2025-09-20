@@ -9,7 +9,7 @@ async def protect_metrics(request, call_next):
     if request.url.path.startswith("/metrics"):
         from os import getenv
         hdr = (request.headers.get("X-Stats-Secret") or request.headers.get("x-stats-secret") or "").strip()
-        env = (getenv("METRICS_SECRET_V2") or getenv("METRICS_SECRET") or "").strip()
+        env = (getenv("METRICS_SECRET_V2") or getenv('METRICS_SECRET_V2') or getenv('METRICS_SECRET') or '' or "").strip()
         print(f"[metrics] hdr_len={len(hdr)} sha8={sha256(hdr.encode()).hexdigest()[:8]} "
               f"env_len={len(env)} env_sha8={sha256(env.encode()).hexdigest()[:8]}")
         if not env or hdr != env:
@@ -41,7 +41,7 @@ app = FastAPI()
 from os import getenv
 import hashlib as _hl
 try:
-    _ms = (getenv('METRICS_SECRET','') or '').strip()
+    _ms = (getenv('METRICS_SECRET_V2') or getenv('METRICS_SECRET') or '' or '').strip()
 except Exception as _e:
     print('[metrics] warn:', _e)
 
@@ -76,7 +76,7 @@ async def rate_limit(request, call_next):
 
 from os import getenv
 try:
-    _ms = (getenv('METRICS_SECRET','') or '').strip()
+    _ms = (getenv('METRICS_SECRET_V2') or getenv('METRICS_SECRET') or '' or '').strip()
 except Exception as _e:
     print('[metrics] warn:', _e)
 
@@ -126,7 +126,7 @@ async def _metrics_mw(request: Request, call_next):
 def metrics(x_secret: str | None = Header(None, alias="X-Stats-Secret")):
     
     import os
-    secret = os.getenv("METRICS_SECRET")
+    secret = os.getenv('METRICS_SECRET_V2') or os.getenv('METRICS_SECRET_V2') or getenv('METRICS_SECRET') or '' or ''
     if secret and x_secret != secret:
         raise HTTPException(status_code=401, detail="unauthorized")
 
