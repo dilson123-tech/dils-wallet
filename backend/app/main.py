@@ -3,6 +3,31 @@ app = FastAPI()
 
 
 
+
+from hashlib import sha256
+from fastapi import Request, HTTPException
+
+@app.middleware("http")
+async def _protect_metrics(request: Request, call_next):
+    p = request.url.path or ""
+    if p.startswith("/metrics"):
+        # header (case-insensitive) + strip
+        hdr = (request.headers.get("x-stats-secret") or request.headers.get("X-Stats-Secret") or "").strip()
+        # env: V2 -> V1 -> vazio; strip
+        from os import getenv
+        env = (getenv("METRICS_SECRET_V2") or getenv("METRICS_SECRET") or "").strip()
+
+        # comparação
+        if not hdr or not env or hdr != env:
+            try:
+                h8  = sha256(hdr.encode()).hexdigest()[:8] if hdr else "None"
+                e8  = sha256(env.encode()).hexdigest()[:8] if env else "None"
+                print(f"[metrics] unauthorized: hdr len={len(hdr)} sha8={h8} | env len={len(env)} sha8={e8}")
+            except Exception as e:
+                print(f"[metrics] diag error: {e}")
+            raise HTTPException(status_code=401, detail="unauthorized")
+    return await call_next(request)
+
 from hashlib import sha256
 @app.middleware("http")
 async def protect_metrics(request, call_next):
