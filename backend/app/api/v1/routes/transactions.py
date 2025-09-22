@@ -51,6 +51,25 @@ def create_transaction(
         raise HTTPException(status_code=400, detail="valor inválido")
     if v <= 0:
         raise HTTPException(status_code=400, detail="valor deve ser > 0")
+    # anti-fraude: bloqueia saque > saldo
+    if t == "saque":
+        from sqlalchemy import func, case
+        saldo_q = db.query(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (models.Transaction.tipo == "deposito", models.Transaction.valor),
+                        (models.Transaction.tipo == "saque", -models.Transaction.valor),
+                        (models.Transaction.tipo == "transferencia", -models.Transaction.valor),
+                        else_=0.0,
+                    )
+                ),
+                0.0,
+            )
+        ).filter(models.Transaction.user_id == current_user.id)
+        saldo_atual = float(saldo_q.scalar() or 0.0)
+        if v > saldo_atual:
+            raise HTTPException(status_code=400, detail="Saldo insuficiente")
 
     tx = TxModel(
         user_id=getattr(current_user, "id", 1),
