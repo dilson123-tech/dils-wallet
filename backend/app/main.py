@@ -1,5 +1,7 @@
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 
@@ -74,6 +76,7 @@ from app.api.v1.routes import auth as auth_routes
 from fastapi import FastAPI
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 from os import getenv
 import hashlib as _hl
@@ -208,6 +211,8 @@ except Exception as e:
 try:
     from app.api.v1.routes import transactions as transactions_routes
     app.include_router(transactions_routes.router, prefix="/api/v1/transactions", tags=["transactions"])
+    from app.routers import ui_public as ui_public_router
+    app.include_router(ui_public_router.router, tags=["ui"])
 except Exception as e:
     import logging
     logging.warning("transactions routes disabled: %s", e)

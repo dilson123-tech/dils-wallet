@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DilsWallet — Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/main.css') }}">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-md mx-auto pt-16 px-4">
+    <h1 class="text-3xl font-extrabold text-center text-indigo-700">DilsWallet</h1>
+    <p class="text-center text-gray-600 mt-2">Faça login para ver seu saldo</p>
+
+    <!-- Login -->
+    <form id="loginForm" class="bg-white shadow-lg rounded-2xl p-6 mt-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">E-mail</label>
+        <input id="email" type="email" required
+               class="mt-1 w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Senha</label>
+        <input id="password" type="password" required
+               class="mt-1 w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <button type="submit"
+              class="w-full rounded-xl bg-indigo-600 text-white font-semibold py-2 hover:bg-indigo-700">
+        Entrar
+      </button>
+      <p id="loginError" class="text-sm text-red-600 hidden"></p>
+    </form>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="bg-white shadow-lg rounded-2xl p-6 mt-6 hidden">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold">Seu saldo</h2>
+        <button id="logoutBtn" class="text-sm text-gray-500 underline">sair</button>
+      </div>
+      <p class="mt-2 text-3xl font-extrabold text-emerald-600">R$ <span id="saldoSpan">0,00</span></p>
+
+      <div class="mt-6 flex gap-2">
+        <button id="btnDepositar" class="flex-1 rounded-xl bg-emerald-600 text-white py-2">Depositar +10</button>
+        <button id="btnSacar" class="flex-1 rounded-xl bg-rose-600 text-white py-2">Sacar -10</button>
+      </div>
+
+      <h3 class="mt-6 font-semibold">Últimas transações</h3>
+      <ul id="extratoList" class="mt-2 space-y-2 text-sm text-gray-700"></ul>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', path='/js/app.js') }}"></script>
+</body>
+</html>
