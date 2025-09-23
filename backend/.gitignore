@@ -42,3 +42,8 @@ dev.db
 uvicorn.out
 __pycache__/
 *.sqlite3
+
+.env
+placeholder.db
+*.sqlite
+*.db
