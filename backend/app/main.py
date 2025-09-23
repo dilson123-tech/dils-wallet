@@ -66,7 +66,6 @@ import os
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi import FastAPI
-from app.routers import favicon
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
 
@@ -77,10 +76,8 @@ from app.api.v1.routes import auth as auth_routes
 
 
 from fastapi import FastAPI
-from app.routers import favicon
 
 app = FastAPI()
-app.include_router(favicon.router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 from os import getenv
