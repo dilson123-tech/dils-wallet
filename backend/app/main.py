@@ -200,7 +200,7 @@ except Exception as e:
 try:
     from app.api.v1.routes import auth as auth_routes
     app.include_router(auth_routes.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(refresh_routes.router, prefix="/api/v1/auth")
+    app.include_router(refresh_routes.router, prefix="/api/v1/auth")
 except Exception as e:
     import logging
     logging.warning("auth routes disabled: %s", e)

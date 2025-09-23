@@ -6,7 +6,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     password: str
-    model_config = ConfigDict(from_attributes=True)  # pydantic v2
+    model_config = ConfigDict(from_attributes=True)
 
 # ----- Output -----
 class UserResponse(BaseModel):
@@ -17,4 +17,6 @@ class UserResponse(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
+    refresh_token: str
+    model_config = ConfigDict(from_attributes=True)
