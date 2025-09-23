@@ -1,7 +1,9 @@
+from app.cors import add_cors
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 from app.routers import favicon
 app = FastAPI()
+add_cors(app)
 app.include_router(favicon.router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
