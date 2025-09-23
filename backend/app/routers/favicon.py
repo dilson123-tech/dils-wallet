@@ -4,7 +4,7 @@ from pathlib import Path
 
 router = APIRouter()
 
-FAVICON_PATH = Path(__file__).resolve().parents[1] / "ui" / "favicon.ico"
+FAVICON_PATH = Path(__file__).resolve().parents[2] / "ui" / "favicon.ico"
 
 @router.get("/favicon.ico", include_in_schema=False)
 def favicon():
