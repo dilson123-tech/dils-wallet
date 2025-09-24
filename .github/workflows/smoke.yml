@@ -1,0 +1,63 @@
+name: smoke-prod
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "requirements.txt"
+      - ".github/workflows/smoke.yml"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      BASE: ${{ secrets.SMOKE_BASE }}
+
+    steps:
+      - name: Check BASE secret
+        run: |
+          if [ -z "$BASE" ]; then echo "Missing secret SMOKE_BASE"; exit 1; fi
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Make ephemeral creds
+        id: vars
+        run: |
+          TS=$(date +%s)
+          echo "email=smoke${TS}@dilswallet.com" >> $GITHUB_OUTPUT
+          echo "pass=smoke-${TS}" >> $GITHUB_OUTPUT
+
+      - name: Register (ignore already-exists)
+        run: |
+          curl -sS -o reg.json -w "%{http_code}\n" -X POST \
+            "$BASE/api/v1/auth/register" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${{ steps.vars.outputs.email }}\",\"password\":\"${{ steps.vars.outputs.pass }}\"}" || true
+
+      - name: Login
+        id: login
+        run: |
+          CODE=$(curl -sS -o login.json -w "%{http_code}" -X POST \
+            "$BASE/api/v1/auth/login" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${{ steps.vars.outputs.email }}&password=${{ steps.vars.outputs.pass }}")
+          test "$CODE" -eq 200
+          echo "access=$(jq -r '.access_token' login.json)"  >> $GITHUB_OUTPUT
+          echo "refresh=$(jq -r '.refresh_token' login.json)" >> $GITHUB_OUTPUT
+
+      - name: Refresh
+        id: refresh
+        run: |
+          CODE=$(curl -sS -o refresh.json -w "%{http_code}" -X POST \
+            "$BASE/api/v1/auth/refresh" \
+            -H "Content-Type: application/json" \
+            -d "{\"refresh_token\":\"${{ steps.login.outputs.refresh }}\"}")
+          test "$CODE" -eq 200
+          echo "new_access=$(jq -r '.access_token' refresh.json)" >> $GITHUB_OUTPUT
+
+      - name: Balance
+        run: |
+          curl -sS -H "Authorization: Bearer ${{ steps.refresh.outputs.new_access }}" \
+            "$BASE/api/v1/transactions/balance" | tee bal.json
