@@ -348,3 +348,16 @@ async def preflight_any(rest_of_path: str, request: Request):
         }
     # 204 com (ou sem) headers; se origin não permitido, volta 204 mas sem Allow-Origin (browser vai bloquear)
     return Response(status_code=204, headers=headers)
+
+@app.options("/{full_path:path}")
+async def _preflight_all(full_path: str, request: Request):
+    origin = request.headers.get("origin", "*")
+    acrm   = request.headers.get("access-control-request-method", "POST")
+    acrh   = request.headers.get("access-control-request-headers", "content-type")
+    headers = {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": acrh,
+    }
+    return Response(status_code=204, headers=headers)
