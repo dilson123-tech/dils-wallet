@@ -1,5 +1,1 @@
-PyJWT>=2.8
-
-PyJWT>=2.8
-bcrypt==4.0.1
-passlib[bcrypt]>=1.7.4
+-r backend/requirements.txt
