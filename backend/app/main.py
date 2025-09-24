@@ -1,3 +1,4 @@
+from app._cors_hard import HardCORS
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, Response, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -364,3 +365,9 @@ async def _preflight_all(full_path: str, request: Request):
 
 from .cors_hard import init as _cors_init
 _cors_init(app)
+
+# --- CORS hard ---
+try:
+    app.add_middleware(HardCORS)
+except Exception as e:
+    print("[cors warn]", e)
