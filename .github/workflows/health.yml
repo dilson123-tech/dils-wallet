@@ -1,0 +1,22 @@
+name: health-prod
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      BASE: ${{ secrets.SMOKE_BASE }}
+      TOKEN: ${{ secrets.HEALTH_TOKEN }}
+    steps:
+      - name: Check secrets
+        run: |
+          test -n "$BASE"  || { echo "SMOKE_BASE missing";  exit 1; }
+          test -n "$TOKEN" || { echo "HEALTH_TOKEN missing"; exit 1; }
+      - name: Ping /healthz
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "X-Health-Token: $TOKEN" "$BASE/healthz")
+          echo "HTTP $CODE"
+          test "$CODE" -eq 200
