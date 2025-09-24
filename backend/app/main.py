@@ -1,7 +1,16 @@
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routers import favicon
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5500","http://localhost:5500","https://dils-wallet-production.up.railway.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(favicon.router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -66,6 +75,7 @@ import os
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
 
@@ -73,6 +83,7 @@ from fastapi.openapi.utils import get_openapi
 from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import refresh as refresh_routes
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
