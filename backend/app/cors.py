@@ -14,7 +14,7 @@ def add_cors(app):
     )
 
 def include_preflight(app):
-    async def _preflight(full_path: str, request: Request):
+    async def _preflight(request: Request, full_path: str = ""):
         origin = request.headers.get("origin", "")
         allow_origin = origin if origin in ALLOWED_ORIGINS else "*"
         allow_headers = request.headers.get("access-control-request-headers", "*")
@@ -29,11 +29,5 @@ def include_preflight(app):
         }
         return Response(status_code=204, headers=headers)
 
-    # Rota OPTIONS global (schema off) — cobre qualquer caminho
-    app.add_api_route(
-        "/{full_path:path}",
-        _preflight,
-        methods=["OPTIONS"],
-        include_in_schema=False,
-        name="__preflight__",
-    )
+    # registra OPTIONS global no roteador do app
+    app.router.add_route("/{full_path:path}", _preflight, methods=["OPTIONS"])
