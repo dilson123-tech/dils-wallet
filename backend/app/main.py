@@ -1,5 +1,5 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import favicon
 ALLOWED_ORIGINS = {"http://127.0.0.1:5500","http://localhost:5500"}
@@ -30,19 +30,7 @@ def _preflight_headers(origin: str):
         "Vary": "Origin",
     }
 
-@app.options("/api/v1/auth/login")
-async def _options_login(request: Request):
-    origin = request.headers.get("origin", "")
-    if origin in ALLOWED_ORIGINS:
-        return Response(status_code=204, headers=_preflight_headers(origin))
-    return Response(status_code=204)
 
-@app.options("/api/v1/auth/refresh")
-async def _options_refresh(request: Request):
-    origin = request.headers.get("origin", "")
-    if origin in ALLOWED_ORIGINS:
-        return Response(status_code=204, headers=_preflight_headers(origin))
-    return Response(status_code=204)
 # --- END: explicit preflight
 
 # --- CORS: handler explícito para preflight (catch-all) ---
@@ -86,10 +74,6 @@ async def _boost_preflight(request: Request, call_next):
             return Response(status_code=204, headers=headers)
     return await call_next(request)
 
-@app.options("/{full_path:path}")
-async def _preflight_any(full_path: str, request: Request):
-    # 204 vazio; CORSMiddleware já injeta os cabeçalhos CORS
-    return Response(status_code=204)
 
 app.add_middleware(
     CORSMiddleware,
@@ -162,7 +146,7 @@ logging.basicConfig(level=logging.INFO)
 import os
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
@@ -170,7 +154,7 @@ from fastapi.openapi.utils import get_openapi
 # importa o router do auth
 from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import refresh as refresh_routes
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -348,3 +332,19 @@ async def _preflight_any_options_mw(request: Request, call_next):
         resp.headers.setdefault("Vary", "Origin")
     return resp
 # --- END universal preflight middleware
+
+
+@app.options("/{rest_of_path:path}")
+async def preflight_any(rest_of_path: str, request: Request):
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in ALLOWED_ORIGINS:
+        headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+            "Access-Control-Max-Age": "86400",
+            "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
+        }
+    # 204 com (ou sem) headers; se origin não permitido, volta 204 mas sem Allow-Origin (browser vai bloquear)
+    return Response(status_code=204, headers=headers)
