@@ -1,6 +1,7 @@
 from app._cors_hard import HardCORS
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Request, Response, Request, Response
+from fastapi import FastAPI
+from app.cors_setup import apply_cors, Request, Response, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import favicon
 ALLOWED_ORIGINS = {"http://127.0.0.1:5500","http://localhost:5500"}
@@ -9,6 +10,7 @@ app = FastAPI()
 
 
 
+apply_cors(app)
 app.add_middleware(CORSMiddleware,
     allow_origins=["http://127.0.0.1:5500","http://localhost:5500"],
     allow_credentials=True,
@@ -147,7 +149,8 @@ logging.basicConfig(level=logging.INFO)
 import os
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
+from app.cors_setup import apply_cors, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
@@ -155,10 +158,12 @@ from fastapi.openapi.utils import get_openapi
 # importa o router do auth
 from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import refresh as refresh_routes
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
+from app.cors_setup import apply_cors, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+apply_cors(app)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 from os import getenv
@@ -334,34 +339,6 @@ async def _preflight_any_options_mw(request: Request, call_next):
     return resp
 # --- END universal preflight middleware
 
-
-@app.options("/{rest_of_path:path}")
-async def preflight_any(rest_of_path: str, request: Request):
-    origin = request.headers.get("origin", "")
-    headers = {}
-    if origin in ALLOWED_ORIGINS:
-        headers = {
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-            "Access-Control-Max-Age": "86400",
-            "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
-        }
-    # 204 com (ou sem) headers; se origin não permitido, volta 204 mas sem Allow-Origin (browser vai bloquear)
-    return Response(status_code=204, headers=headers)
-
-@app.options("/{full_path:path}")
-async def _preflight_all(full_path: str, request: Request):
-    origin = request.headers.get("origin", "*")
-    acrm   = request.headers.get("access-control-request-method", "POST")
-    acrh   = request.headers.get("access-control-request-headers", "content-type")
-    headers = {
-        "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": acrh,
-    }
-    return Response(status_code=204, headers=headers)
 
 from .cors_hard import init as _cors_init
 _cors_init(app)
