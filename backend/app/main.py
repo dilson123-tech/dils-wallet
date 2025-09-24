@@ -361,3 +361,6 @@ async def _preflight_all(full_path: str, request: Request):
         "Access-Control-Allow-Headers": acrh,
     }
     return Response(status_code=204, headers=headers)
+
+from .cors_hard import init as _cors_init
+_cors_init(app)
