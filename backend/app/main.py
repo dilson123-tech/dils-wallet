@@ -345,6 +345,5 @@ _cors_init(app)
 
 # --- CORS hard ---
 try:
-    app.add_middleware(HardCORS)
 except Exception as e:
     print("[cors warn]", e)
