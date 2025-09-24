@@ -317,3 +317,34 @@ except Exception as e:
     logging.warning("transactions routes disabled: %s", e)
 # -- end safe transactions --
 # redeploy bump sáb 20 set 2025 14:51:41 -03
+
+# --- BEGIN universal preflight middleware
+_ALLOWED_ORIGINS = {"http://127.0.0.1:5500", "http://localhost:5500"}
+
+def _cors_headers_for(origin: str, req: Request):
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": req.headers.get("access-control-request-headers", "content-type, authorization"),
+        "Vary": "Origin",
+    }
+
+@app.middleware("http")
+async def _preflight_any_options_mw(request: Request, call_next):
+    # responde TODO OPTIONS com 204 + CORS
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "")
+        if origin in _ALLOWED_ORIGINS:
+            return Response(status_code=204, headers=_cors_headers_for(origin, request))
+        return Response(status_code=204)
+
+    # demais métodos seguem; injeta CORS na resposta
+    resp = await call_next(request)
+    origin = request.headers.get("origin", "")
+    if origin in _ALLOWED_ORIGINS:
+        resp.headers.setdefault("Access-Control-Allow-Origin", origin)
+        resp.headers.setdefault("Access-Control-Allow-Credentials", "true")
+        resp.headers.setdefault("Vary", "Origin")
+    return resp
+# --- END universal preflight middleware
