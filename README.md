@@ -1,66 +1,43 @@
-![CI](https://github.com/dilson123-tech/dils-wallet/actions/workflows/ci.yml/badge.svg)
+# Dils Wallet — Backend & Frontend
 
-# Dils Wallet — MVP
+[![smoke-prod](https://github.com/dilson123-tech/dils-wallet/actions/workflows/smoke.yml/badge.svg?branch=main)](https://github.com/dilson123-tech/dils-wallet/actions/workflows/smoke.yml)
+[![health-prod](https://github.com/dilson123-tech/dils-wallet/actions/workflows/health.yml/badge.svg?branch=main)](https://github.com/dilson123-tech/dils-wallet/actions/workflows/health.yml)
 
-API + UI simples para gerenciar transações (depósito/saque) com autenticação JWT.
+API de carteira minimal + front estático simples. Tokens JWT com **login** + **refresh**, CORS habilitado p/ dev local, smoke/health no GitHub Actions e `/healthz` protegido por token.
 
-## ✅ O que já foi feito
-- **Auth:** registro e login (`/api/v1/auth/register`, `/api/v1/auth/login`) com JWT (PyJWT).
-- **Usuário:** `/api/v1/users/me`.
-- **Transações:** `POST/GET /api/v1/transactions` e `GET /api/v1/transactions/balance`.
-- **UI Web:** `/ui` (login, saldo, lista, criar transação, logout).
-- **Smoke test:** `./smoke.sh` (health, login/registro, criar/listar, saldo, negativo 400).
-- **Higiene:** `healthz`, favicon 204, rotas normalizadas, SECRET_KEY via env.
+---
 
-## ▶️ Como rodar (dev)
-**Terminal A (server)**
-$ export SECRET_KEY="${SECRET_KEY:-$(openssl rand -hex 32)}"
-$ uvicorn app.main:app --host 127.0.0.1 --port 8686 --reload --log-level debug
+## 🔗 Endpoints (API)
+**Base (prod):** `https://dils-wallet-production.up.railway.app`
 
-**Terminal C (sanity)**
-$ BASE=http://127.0.0.1:8686
-$ curl -i $BASE/healthz
+- `POST /api/v1/auth/register` — `{ "email", "password" }`  
+- `POST /api/v1/auth/login` — `Content-Type: application/x-www-form-urlencoded`  
+  - body: `username=<email>&password=<senha>`  
+  - retorna: `access_token`, `refresh_token`
+- `POST /api/v1/auth/refresh` — `Content-Type: application/json`  
+  - body: `{ "refresh_token": "<...>" }`  
+  - retorna: `access_token` novo
+- `GET /api/v1/transactions/balance` — `Authorization: Bearer <access>`  
+- `GET /healthz` — **requer** header `X-Health-Token: <token>` (em prod)
 
-**Login rápido**
-$ TOKEN=$(curl -s -X POST $BASE/api/v1/auth/login -H "Content-Type: application/x-www-form-urlencoded" -d 'username=teste@dilswallet.com&password=123456' | jq -r '.access_token')
-$ curl -s $BASE/api/v1/users/me -H "Authorization: Bearer $TOKEN" | jq
+---
 
-**UI**
-Abra: http://127.0.0.1:8686/ui
+## 🧪 Curl Snippets úteis
 
-## 🔜 Próximos passos
-- Transferência (`tipo=transferencia`)
-- Paginação na lista
-- Testes (pytest) e migrations (Alembic)
-- Observabilidade/CI (quando sair do MVP)
- 
+```bash
+# Login (x-www-form-urlencoded)
+curl -sS -X POST "$BASE/api/v1/auth/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=teste9@dilswallet.com&password=123456"
 
+# Refresh (JSON)
+curl -sS -X POST "$BASE/api/v1/auth/refresh" \
+  -H "Content-Type: application/json" \
+  -d "{\"refresh_token\":\"<REFRESH>\"}"
 
-## Histórico de commits
-* 03/09/2025 as 19:44 — push do README e MVP
+# Saldo
+curl -sS -H "Authorization: Bearer <ACCESS>" "$BASE/api/v1/transactions/balance"
 
-## Paginação de transações
-**Endpoint:** `GET /api/v1/transactions/paged`  
-**Query:** `page` (>=1), `page_size` (1..100)  
-**Resposta:**
-```json
-{
-  "items": [ /* TransactionResponse[] */ ],
-  "meta": {
-    "page": 1, "page_size": 5, "total": 10,
-    "total_pages": 2, "has_next": true, "has_prev": false
-  }
-}
+# Health (prod)
+curl -i -H "X-Health-Token: <TOKEN>" "$BASE/healthz"
 
-
-\n\n## Paginação de transações
-**Endpoint:** `GET /api/v1/transactions/paged`
-**Query:** `page` (>=1), `page_size` (1..100)
-**Resposta (exemplo):** {\"items\": [...], \"meta\": {\"page\": 1, \"page_size\": 5, \"total\": 10, \"total_pages\": 2, \"has_next\": true, \"has_prev\": false}}
-
-**cURL:**
-BASE=http://127.0.0.1:8000
-TOKEN=(POST /api/v1/auth/login)
-GET /api/v1/transactions/paged?page=1&page_size=5
-
-**UI:** pager em `/ui` (Prev/Next + page size).
