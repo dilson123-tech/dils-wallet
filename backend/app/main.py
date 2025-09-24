@@ -1,8 +1,13 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import favicon
 app = FastAPI()
+@app.options("/{full_path:path}")
+async def _preflight_any(full_path: str, request: Request):
+    # 204 vazio; CORSMiddleware já injeta os cabeçalhos CORS
+    return Response(status_code=204)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5500","http://localhost:5500","https://dils-wallet-production.up.railway.app"],
