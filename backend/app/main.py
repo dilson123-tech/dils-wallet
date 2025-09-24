@@ -83,7 +83,9 @@ from app.api.v1.routes import refresh as refresh_routes
 from app.cors import add_cors, include_preflight
 from app.health import router as health_router
 
-app = FastAPI()
+\1
+add_cors(app)
+include_preflight(app)
 app.include_router(health_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
