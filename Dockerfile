@@ -1,25 +1,18 @@
-FROM python:3.11-slim
+# base sem Docker Hub (Chainguard Python 3.11)
+FROM cgr.dev/chainguard/python:3.11-dev
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+# copie e instale deps
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Vamos trabalhar dentro de /app/backend
-WORKDIR /app/backend
+# copie o código
+COPY backend /app
 
-# Instala deps primeiro (cache)
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+# porta do Railway
+ENV PORT=8000
+EXPOSE 8000
 
-# Copia o código
-COPY backend /app/backend
-
-EXPOSE 8686
-ENV SENTRY_ENV=dev
-
-# Importa como você usa localmente (sem pacote 'backend')
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8686"]
+# start
+CMD ["sh","-c","uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
