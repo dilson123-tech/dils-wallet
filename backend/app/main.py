@@ -7,6 +7,37 @@ ALLOWED_ORIGINS = {"http://127.0.0.1:5500","http://localhost:5500"}
 app = FastAPI()
 
 
+
+# --- BEGIN: explicit preflight (login/refresh)
+from fastapi import Request
+from fastapi.responses import Response
+
+ALLOWED_ORIGINS = {"http://127.0.0.1:5500", "http://localhost:5500"}
+
+def _preflight_headers(origin: str):
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "content-type, authorization",
+        "Vary": "Origin",
+    }
+
+@app.options("/api/v1/auth/login")
+async def _options_login(request: Request):
+    origin = request.headers.get("origin", "")
+    if origin in ALLOWED_ORIGINS:
+        return Response(status_code=204, headers=_preflight_headers(origin))
+    return Response(status_code=204)
+
+@app.options("/api/v1/auth/refresh")
+async def _options_refresh(request: Request):
+    origin = request.headers.get("origin", "")
+    if origin in ALLOWED_ORIGINS:
+        return Response(status_code=204, headers=_preflight_headers(origin))
+    return Response(status_code=204)
+# --- END: explicit preflight
+
 # --- CORS: handler explícito para preflight (catch-all) ---
 async def _global_preflight(full_path: str, request: Request):
     origin = request.headers.get("origin")
