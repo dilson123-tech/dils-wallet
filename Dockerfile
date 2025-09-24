@@ -1,16 +1,15 @@
-# base sem Docker Hub (Chainguard Python 3.11)
-FROM cgr.dev/chainguard/python:3.11-dev
+FROM cgr.dev/chainguard/python:latest-dev
 
 WORKDIR /app
 
-# copie e instale deps
+# deps
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# copie o código
+# código
 COPY backend /app
 
-# porta do Railway
+# porta padrão usada pelo Railway
 ENV PORT=8000
 EXPOSE 8000
 
