@@ -1,12 +1,7 @@
 from fastapi.staticfiles import StaticFiles
-\1
-from app.cors import add_cors, include_preflight
-from app.health import router as health_router
+from fastapi import FastAPI
 from app.routers import favicon
-\1
-add_cors(app)
-include_preflight(app)
-app.include_router(health_router)
+app = FastAPI()
 app.include_router(favicon.router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -70,23 +65,16 @@ logging.basicConfig(level=logging.INFO)
 import os
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-\1
-from app.cors import add_cors, include_preflight
-from app.health import router as health_router
+from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
 from fastapi.openapi.utils import get_openapi
 
 # importa o router do auth
 from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import refresh as refresh_routes
-\1
-from app.cors import add_cors, include_preflight
-from app.health import router as health_router
+from fastapi import FastAPI
 
-\1
-add_cors(app)
-include_preflight(app)
-app.include_router(health_router)
+app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 from os import getenv
