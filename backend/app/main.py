@@ -1,12 +1,14 @@
 from starlette.responses import RedirectResponse
 from app.cors import add_cors
+from app.static_mount import attach_static
 from app.preflight import router as preflight_router
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 from app.routers import favicon
 app = FastAPI()
 add_cors(app)
-app.mount("/app", StaticFiles(directory="app/static", html=True), name="static")
+attach_static(app)
+
 app.mount(\"/\", StaticFiles(directory=\"app/static\", html=True), name=\"static\")
 app.include_router(preflight_router)
 app.include_router(favicon.router)
