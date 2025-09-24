@@ -15,10 +15,10 @@ def add_cors(app):
 
 def include_preflight(app):
     async def _preflight(request: Request, full_path: str = ""):
-        origin = request.headers.get("origin", "")
+        origin = request.headers.get("origin") or ""
         allow_origin = origin if origin in ALLOWED_ORIGINS else "*"
-        allow_headers = request.headers.get("access-control-request-headers", "*")
-        allow_method  = request.headers.get("access-control-request-method", "GET")
+        allow_headers = request.headers.get("access-control-request-headers") or "*"
+        allow_method  = request.headers.get("access-control-request-method") or "GET"
         headers = {
             "Access-Control-Allow-Origin": allow_origin,
             "Vary": "Origin",
@@ -29,5 +29,4 @@ def include_preflight(app):
         }
         return Response(status_code=204, headers=headers)
 
-    # registra OPTIONS global no roteador do app
     app.router.add_route("/{full_path:path}", _preflight, methods=["OPTIONS"])
