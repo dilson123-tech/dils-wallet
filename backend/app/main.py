@@ -6,6 +6,29 @@ ALLOWED_ORIGINS = {"http://127.0.0.1:5500","http://localhost:5500"}
 
 app = FastAPI()
 
+
+# --- CORS: handler explícito para preflight (catch-all) ---
+async def _global_preflight(full_path: str, request: Request):
+    origin = request.headers.get("origin")
+    acrm   = request.headers.get("access-control-request-method")
+    if not (origin and acrm):
+        # Não é preflight "mesmo", só confirma sem abrir CORS
+        return Response(status_code=204)
+
+    allow_headers = request.headers.get("access-control-request-headers") or "*"
+    headers = {
+        "Vary": "Origin",
+        "Access-Control-Allow-Origin": origin if origin in ALLOWED_ORIGINS else "",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": allow_headers,
+    }
+    # se a origem não for permitida, devolve 204 sem ACAO (browser bloqueia)
+    if headers["Access-Control-Allow-Origin"] == "":
+        headers.pop("Access-Control-Allow-Origin")
+        headers.pop("Access-Control-Allow-Credentials")
+    return Response(status_code=204, headers=headers)
+
 @app.middleware("http")
 async def _boost_preflight(request: Request, call_next):
     # intercepta preflight antes do roteamento
@@ -39,6 +62,7 @@ app.add_middleware(
 )
 
 app.include_router(favicon.router)
+app.add_api_route("/{full_path:path}", _global_preflight, methods=["OPTIONS"], include_in_schema=False)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
