@@ -62,7 +62,6 @@ app.add_middleware(
 )
 
 app.include_router(favicon.router)
-app.add_api_route("/{full_path:path}", _global_preflight, methods=["OPTIONS"], include_in_schema=False)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
