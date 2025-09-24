@@ -6,7 +6,7 @@ router = APIRouter()
 TOKEN = os.getenv("HEALTH_TOKEN", "")
 
 @router.get("/healthz", include_in_schema=False)
-def healthz(x_health_token: str | None = Header(None, convert_underscores=False)):
+def healthz(x_health_token: str | None = Header(None, alias="X-Health-Token")):
     if TOKEN:
         if not x_health_token or x_health_token != TOKEN:
             raise HTTPException(status_code=401, detail="unauthorized")
