@@ -2,7 +2,29 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import favicon
+ALLOWED_ORIGINS = {"http://127.0.0.1:5500","http://localhost:5500"}
+
 app = FastAPI()
+
+@app.middleware("http")
+async def _boost_preflight(request: Request, call_next):
+    # intercepta preflight antes do roteamento
+    if (request.method == "OPTIONS"
+        and request.headers.get("origin")
+        and request.headers.get("access-control-request-method")):
+        origin = request.headers.get("origin")
+        if origin in ALLOWED_ORIGINS:
+            allow_headers = request.headers.get("access-control-request-headers") or "*"
+            headers = {
+                "Access-Control-Allow-Origin": origin,
+                "Vary": "Origin",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+                "Access-Control-Allow-Headers": allow_headers,
+            }
+            return Response(status_code=204, headers=headers)
+    return await call_next(request)
+
 @app.options("/{full_path:path}")
 async def _preflight_any(full_path: str, request: Request):
     # 204 vazio; CORSMiddleware já injeta os cabeçalhos CORS
