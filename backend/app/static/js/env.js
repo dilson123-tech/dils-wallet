@@ -1,4 +1,4 @@
 window.ENV = {
-  BASE: "https://dils-wallet-production.up.railway.app",
+  BASE: "",
   API_PREFIX: "/api/v1"
 };
