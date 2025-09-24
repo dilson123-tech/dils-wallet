@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DilsWallet – Front</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>DilsWallet — Login & Teste</h1>
+
+    <section class="card">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Email
+          <input id="email" type="email" required />
+        </label>
+        <label>Senha
+          <input id="password" type="password" required />
+        </label>
+        <button type="submit">Entrar</button>
+      </form>
+      <p id="loginStatus" class="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>Operações</h2>
+      <button id="btnSaldo">Ver saldo</button>
+      <pre id="out"></pre>
+    </section>
+  </main>
+
+  <script src="js/env.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
