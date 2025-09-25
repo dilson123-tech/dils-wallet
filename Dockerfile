@@ -1,15 +1,15 @@
 FROM cgr.dev/chainguard/python:latest-dev
 WORKDIR /app
 
-# deps
+# Instala dependências
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# código
+# Copia código
 COPY backend /app
 
-# apenas documenta; o Railway injeta $PORT
+# Apenas documentação da porta (Railway injeta PORT real)
 EXPOSE 8080
 
-# MUITO IMPORTANTE: usar sh -c para $PORT ser expandido em runtime
-CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"
+# Start usando a PORT do Railway (com fallback p/ 8080 local)
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"
