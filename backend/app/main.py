@@ -46,6 +46,8 @@ def test_db(_: Session = Depends(get_db)) -> Response:
 # Startup: cria tabelas (seguro)
 @app.on_event("startup")
 def on_startup() -> None:
+    import os
+    print('[startup] PORT=', os.getenv('PORT'))
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as exc:  # não derruba o boot por erro de migração
