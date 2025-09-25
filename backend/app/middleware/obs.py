@@ -2,7 +2,7 @@ import time
 import logging
 import traceback
 from typing import Callable, Awaitable
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -19,19 +19,34 @@ class RequestObsMiddleware(BaseHTTPMiddleware):
         t0 = time.perf_counter()
 
         try:
-            # Log de início (sem corpo para não vazar credenciais)
-            logger.info(f"[req] rid=%s method=%s path=%s content_type=%s", rid, method, path, request.headers.get("content-type"))
+            logger.info(
+                "[req] rid=%s method=%s path=%s content_type=%s",
+                rid,
+                method,
+                path,
+                request.headers.get("content-type"),
+            )
 
             response = await call_next(request)
-            dt = (time.perf_counter() - t0) * 1000
-            # Log de sucesso
-            logger.info(f"[res] rid=%s status=%s duration_ms=%.2f path=%s", rid, getattr(response, "status_code", "?"), dt, path)
+            dt = (time.perf_counter() - t0) * 1000.0
+            logger.info(
+                "[res] rid=%s status=%s duration_ms=%.2f path=%s",
+                rid,
+                getattr(response, "status_code", "?"),
+                dt,
+                path,
+            )
             return response
 
         except Exception as exc:
-            dt = (time.perf_counter() - t0) * 1000
-            # Log detalhado do erro + traceback
+            dt = (time.perf_counter() - t0) * 1000.0
             tb = "".join(traceback.format_exc())
-            logger.error(f"[err] rid=%s duration_ms=%.2f path=%s exc=%r\n%s", rid, dt, path, exc, tb)
-            # Re-levanta para framework devolver 500 (ou trate aqui se preferir)
+            logger.error(
+                "[err] rid=%s duration_ms=%.2f path=%s exc=%r\n%s",
+                rid,
+                dt,
+                path,
+                exc,
+                tb,
+            )
             raise

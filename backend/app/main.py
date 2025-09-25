@@ -7,8 +7,6 @@ from app.routers import favicon
 ALLOWED_ORIGINS = {"http://127.0.0.1:5500","http://localhost:5500"}
 
 app = FastAPI()
-    from .middleware.obs import RequestObsMiddleware
-    app.add_middleware(RequestObsMiddleware)
 
 
 
@@ -165,8 +163,6 @@ from app.cors_setup import apply_cors, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
-    from .middleware.obs import RequestObsMiddleware
-    app.add_middleware(RequestObsMiddleware)
 apply_cors(app)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
