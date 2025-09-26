@@ -11,3 +11,4 @@ sentry-sdk[fastapi]>=2.0
 email-validator>=2.0
 psycopg2-binary
 Jinja2
+uvicorn[standard]
