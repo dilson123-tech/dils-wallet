@@ -5,9 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=${PORT:-8080}
 
 WORKDIR /app
-COPY canary_app/requirements.txt /app/requirements.txt
+
+# Como o build context é canary_app/, copiamos arquivos locais
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY canary_app /app
+COPY . /app
+
 EXPOSE 8080
 CMD python -m uvicorn main:app --host 0.0.0.0 --port ${PORT}
