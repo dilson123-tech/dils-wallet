@@ -1,15 +1,9 @@
-FROM cgr.dev/chainguard/python:latest-dev
+FROM cgr.dev/chainguard/python:latest
 WORKDIR /app
 
-# deps
-COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-# código
-COPY backend /app
-
-# opcional (só documentação)
+# porta padrão só pra local; em produção o Railway injeta PORT
+ENV PORT=8080
 EXPOSE 8080
 
-# usa a porta que o Railway injeta (fallback 8080 local)
-CMD sh -c "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"
+# servidor mínimo que sempre responde 200 em "/"
+CMD sh -c 'echo "ok" > index.html && python -m http.server ${PORT:-8080}'
