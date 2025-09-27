@@ -6,13 +6,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 RUN pip install --upgrade pip
 
-# Copia só o requirements do backend primeiro (garante que o arquivo exista no contexto)
+# instala deps
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
-# Agora copia o resto do projeto
+# copia app
 COPY . /app
 
-# Railway injeta $PORT
+# Railway injeta PORT; define default pra rodar local se precisar
 ENV PORT=8080
-CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+
+# >>> Shell form (expande ${PORT})
+CMD sh -c 'python -m uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT}'
