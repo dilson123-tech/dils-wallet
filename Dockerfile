@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 8080
 
 # inicia o servidor FastAPI
-CMD /bin/sh -c "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
+CMD /bin/sh -c "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port  --log-level debug"
