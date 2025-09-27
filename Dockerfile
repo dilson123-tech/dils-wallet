@@ -17,4 +17,4 @@ COPY . /app
 ENV PORT=8080
 
 # >>> Shell form (expande ${PORT})
-CMD sh -c 'python -m uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT}'
+CMD /bin/sh -c "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
