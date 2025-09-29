@@ -10,12 +10,13 @@ RUN pip install --upgrade pip
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
-# app + entrypoint
+# app + healthcheck script
 COPY . /app
-RUN chmod +x /app/entrypoint.sh
+COPY healthcheck.py /app/healthcheck.py
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
-  CMD wget -qO- "http://127.0.0.1:${PORT:-8080}/api/v1/health" || exit 1
+  CMD python /app/healthcheck.py
 
-CMD ["/bin/sh", "-c", "/app/entrypoint.sh"]
+# usa o PORT injetado pelo Railway; fallback 8080
+CMD /bin/sh -c "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8080}"
