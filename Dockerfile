@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# deps de sistema úteis (inclui curl p/ qualquer healthcheck interno)
+# deps de sistema úteis (inclui curl para qualquer healthcheck interno)
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # deps Python
@@ -15,8 +15,12 @@ RUN pip install --no-cache-dir -U pip && pip install --no-cache-dir -r /app/requ
 # código
 COPY backend /app/backend
 
-# porta interna fixa 8080 (Railway faz proxy do $PORT -> 8080)
+# script de start
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# porta interna fixa 8080 (Railway faz proxy $PORT -> 8080)
 EXPOSE 8080
 
 # inicia a API
-CMD ["./start.sh"]
+CMD ["/app/start.sh"]
