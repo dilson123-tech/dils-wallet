@@ -19,4 +19,4 @@ COPY backend /app/backend
 EXPOSE 8080
 
 # inicia a API
-CMD ["python","-m","uvicorn","backend.app.main:app","--host","0.0.0.0","--port","8080"]
+CMD ["./start.sh"]
