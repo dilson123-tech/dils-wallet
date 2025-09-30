@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from .... import models, database
-from ....security import get_current_user
+from backend.app.api.v1.routes.security import get_current_user
 
 
 def _tx_to_dict(t):

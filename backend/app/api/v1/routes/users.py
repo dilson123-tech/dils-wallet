@@ -1,4 +1,4 @@
-from ....security import get_current_user
+from backend.app.api.v1.routes.security import get_current_user
 from .api.v1.routes import auth
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session

@@ -8,7 +8,7 @@ import logging
 import traceback
 
 from .... import models, schemas, utils, database, config
-from ....security import create_access_token
+from backend.app.api.v1.routes.security import create_access_token
 from .utils.jwt import create_refresh_token
 
 router = APIRouter()
