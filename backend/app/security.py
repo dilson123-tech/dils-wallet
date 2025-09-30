@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import jwt
 
-from app import models, database, config
+from . import models, database, config
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -31,7 +31,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 from typing import Any, TYPE_CHECKING
 try:
-    from app import models  # pacote principal (pode não ter User)
+    from . import models  # pacote principal (pode não ter User)
 except Exception:
     models = None
 
