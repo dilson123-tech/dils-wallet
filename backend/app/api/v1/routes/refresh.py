@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from .api.v1.schemas.auth import RefreshRequest
 from .utils.jwt import verify_refresh_token
 from .security import create_access_token
-from app import config
+from .... import config
 
 router = APIRouter()
 

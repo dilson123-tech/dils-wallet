@@ -7,7 +7,7 @@ from datetime import timedelta
 import logging
 import traceback
 
-from app import models, schemas, utils, database, config
+from .... import models, schemas, utils, database, config
 from .security import create_access_token
 from .utils.jwt import create_refresh_token
 
