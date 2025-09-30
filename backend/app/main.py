@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 # DB
-from app.database import engine, Base, get_db  # mantém como está no projeto
+from .database import engine, Base, get_db  # mantém como está no projeto
 
 # App
 app = FastAPI(title="Dils Wallet API", version="0.1.0")

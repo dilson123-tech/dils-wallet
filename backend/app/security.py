@@ -37,9 +37,9 @@ except Exception:
 
 # tenta importar User do pacote models; se falhar, cai para models_base
 try:
-    from app.models import User as UserORM  # type: ignore
+from .models import User as UserORM  # type: ignore
 except Exception:
     try:
-        from app.models_base import User as UserORM  # type: ignore
+from .models_base import User as UserORM  # type: ignore
     except Exception:
         UserORM = None  # fallback duro: sem modelo de usuário

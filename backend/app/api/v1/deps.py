@@ -1,8 +1,8 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import User
-from app.api.v1.routes.auth import get_current_user  # reaproveita função já existente
+from .database import get_db
+from .models import User
+from .api.v1.routes.auth import get_current_user  # reaproveita função já existente
 
 # só repassa, pra evitar import circular
 def get_current_user_dep(

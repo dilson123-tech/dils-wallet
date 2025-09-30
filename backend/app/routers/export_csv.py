@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.database import get_db
-from app.security import get_current_user  # ajuste se o caminho diferir
+from .database import get_db
+from .security import get_current_user  # ajuste se o caminho diferir
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
 

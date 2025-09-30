@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app import models, database
-from app.security import get_current_user
+from .security import get_current_user
 
 
 def _tx_to_dict(t):

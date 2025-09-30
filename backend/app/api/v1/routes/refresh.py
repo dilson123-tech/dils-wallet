@@ -1,8 +1,8 @@
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException
-from app.api.v1.schemas.auth import RefreshRequest
-from app.utils.jwt import verify_refresh_token
-from app.security import create_access_token
+from .api.v1.schemas.auth import RefreshRequest
+from .utils.jwt import verify_refresh_token
+from .security import create_access_token
 from app import config
 
 router = APIRouter()
