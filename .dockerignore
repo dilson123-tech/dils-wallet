@@ -1,0 +1,9 @@
+.git
+.github
+frontend
+tests
+*.csv
+*.db
+*.bak
+__pycache__/
+*.pyc
