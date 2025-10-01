@@ -1,31 +1,33 @@
 #!/usr/bin/env sh
-set -euxo pipefail
+set -eux
 
 PORT="${PORT:-8080}"
 APP="backend.app.main:app"
 
-echo "== container / runtime info =="
-date
+echo "== runtime info =="
+date || true
 echo "PWD=$(pwd)"
 id || true
 uname -a || true
 
-echo "== env (top) =="
+echo "== env (top 120) =="
 env | sort | sed -n '1,120p' || true
 
-echo "== filesystem =="
+echo "== tree /app =="
 ls -la /app || true
 ls -la /app/backend || true
 
-echo "== python =="
+echo "== python & deps =="
 python3 -V || true
 python3 - <<'PY' || true
-import sys
+import sys, importlib
 print("executable:", sys.executable)
-try:
-    import uvicorn; print("uvicorn:", uvicorn.__version__)
-except Exception as e:
-    print("uvicorn import FAIL:", repr(e))
+for m in ("uvicorn","fastapi","starlette"):
+    try:
+        mod = importlib.import_module(m)
+        print(m, "OK", getattr(mod,"__version__", "?"))
+    except Exception as e:
+        print(m, "FAIL:", repr(e))
 PY
 
 echo "== preflight imports =="
@@ -49,22 +51,27 @@ for m in mods:
 print("preflight_ok=", ok)
 PY
 
-# watcher: tenta bater no openapi local enquanto o uvicorn sobe
+# watcher sem 'seq' (100% POSIX). Roda em background.
 (
-  for i in $(seq 1 40); do
-    sleep 1
+  i=0
+  while [ "$i" -lt 300 ]; do
+    i=$((i+1))
     echo "[watch] try $i -> http://127.0.0.1:${PORT}/openapi.json"
     if curl -fsS "http://127.0.0.1:${PORT}/openapi.json" >/dev/null 2>&1; then
       echo "[watch] OK: openapi respondeu"
       break
     fi
+    sleep 1
   done
+  if [ "$i" -ge 300 ]; then
+    echo "[watch] NUNCA ficou pronto em 300s"
+  fi
 ) &
 
-echo "== start uvicorn =="
-exec python3 -m uvicorn "$APP" \
+echo "== start uvicorn on PORT=${PORT} =="
+exec python3 -m uvicorn "${APP}" \
   --host 0.0.0.0 \
-  --port "$PORT" \
+  --port "${PORT}" \
   --proxy-headers \
   --forwarded-allow-ips="*" \
   --access-log \
