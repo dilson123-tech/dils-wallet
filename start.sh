@@ -1,8 +1,12 @@
 #!/usr/bin/env sh
-set -e
-exec python3 -m uvicorn backend.app.main:app \
+set -euo pipefail
+
+PORT="${PORT:-8080}"
+APP="backend.app.main:app"
+
+echo "Starting Uvicorn on port $PORT"
+exec python3 -m uvicorn "$APP" \
   --host 0.0.0.0 \
-  --port "${PORT:-8080}" \
+  --port "$PORT" \
   --proxy-headers \
-  --forwarded-allow-ips="*" \
-  --log-level info
+  --forwarded-allow-ips="*"
