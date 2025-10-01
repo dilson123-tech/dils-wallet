@@ -2,7 +2,7 @@
 set -e
 exec python3 -m uvicorn backend.app.main:app \
   --host 0.0.0.0 \
-  --port 8080 \
+  --port "${PORT:-8080}" \
   --proxy-headers \
   --forwarded-allow-ips="*" \
   --log-level info
