@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
-set -euo pipefail
+set -eu
 
 PORT="${PORT:-8080}"
 APP="backend.app.main:app"
 
-echo "Starting Uvicorn on port $PORT"
+echo "== boot: starting uvicorn on port ${PORT}"
 exec python3 -m uvicorn "$APP" \
   --host 0.0.0.0 \
   --port "$PORT" \
