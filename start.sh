@@ -1,62 +1,66 @@
 #!/usr/bin/env sh
-set -eux
+set -Eeuo pipefail
 
 PORT="${PORT:-8080}"
 APP="backend.app.main:app"
 
-echo "== runtime info =="
-date || true; echo "PWD=$(pwd)"; id || true; uname -a || true
+echo "== SAFE MODE: SMOKE -> troca para Uvicorn =="
 
-echo "== env (top 60) =="; env | sort | sed -n '1,60p' || true
+# 1) Sobe um servidor SMOKE que responde /api/v1/health e /openapi.json no PORT
+python3 - <<'PY' &
+import os, http.server, socketserver
+PORT=int(os.environ.get("PORT","8080"))
 
-# --- SMOKE MODE: servidor mínimo só pra validar PORT/healthcheck ---
-if [ "${SMOKE:-0}" = "1" ]; then
-  echo "== SMOKE MODE ON (porta $PORT) =="
-  python3 - <<PY
-import http.server, socketserver, os, json
-PORT = int(os.environ.get("PORT", "8080"))
-class H(http.server.SimpleHTTPRequestHandler):
+class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path in ("/", "/openapi.json", "/api/v1/health"):
-            b = json.dumps({"ok": True, "path": self.path}).encode()
-            self.send_response(200); self.send_header("content-type","application/json")
-            self.send_header("content-length", str(len(b))); self.end_headers(); self.wfile.write(b)
+        if self.path in ("/", "/health", "/api/v1/health"):
+            self.send_response(200)
+            self.send_header("content-type","application/json")
+            self.end_headers()
+            self.wfile.write(b'{}')
+        elif self.path == "/openapi.json":
+            self.send_response(200)
+            self.send_header("content-type","application/json")
+            self.end_headers()
+            self.wfile.write(b'{"openapi":"3.1.0","info":{"title":"booting"}}')
         else:
-            super().do_GET()
-with socketserver.TCPServer(("", PORT), H) as httpd:
-    print("SMOKE server on", PORT, flush=True)
+            self.send_response(404); self.end_headers()
+    def log_message(self, *a, **k): pass
+
+with socketserver.TCPServer(("0.0.0.0", PORT), H) as httpd:
     httpd.serve_forever()
 PY
-  exit 0
-fi
-# --- fim SMOKE ---
+SMOKE_PID=$!
+trap 'kill -TERM $SMOKE_PID 2>/dev/null || true' EXIT
+echo "SMOKE_PID=$SMOKE_PID"
 
-echo "== preflight imports =="
-python3 - <<'PY' || true
-import importlib, traceback
-mods = ["backend.app.main","backend.app.database","backend.app.models","backend.app.api.v1.routes.auth"]
+# 2) Preflight rápido: garante que os módulos críticos importam
+python3 - <<'PY'
+import importlib
+mods = [
+    "backend.app.database",
+    "backend.app.models",
+    "backend.app.schemas",
+    "backend.app.api.v1.routes.auth",
+]
 ok=True
 for m in mods:
     try:
-        importlib.import_module(m); print("OK:", m)
+        importlib.import_module(m)
+        print("IMPORT_OK", m)
     except Exception as e:
-        print("FAIL:", m, "->", repr(e)); traceback.print_exc(); ok=False
-print("preflight_ok=", ok)
+        print("IMPORT_FAIL", m, "->", repr(e)); ok=False
+if not ok:
+    raise SystemExit(1)
 PY
 
-# watcher pros logs (ver quando fica pronto)
-(
-  i=0
-  while [ "$i" -lt 300 ]; do
-    i=$((i+1)); echo "[watch] try $i -> http://127.0.0.1:${PORT}/openapi.json"
-    if curl -fsS "http://127.0.0.1:${PORT}/openapi.json" >/dev/null 2>&1; then
-      echo "[watch] OK: openapi respondeu"; break
-    fi; sleep 1
-  done
-) &
+# 3) Troca: derruba o SMOKE e sobe o Uvicorn na MESMA porta
+kill -TERM "$SMOKE_PID" || true
+wait "$SMOKE_PID" 2>/dev/null || true
 
-echo "== start uvicorn on PORT=${PORT} =="
-exec python3 -m uvicorn "${APP}" \
-  --host 0.0.0.0 --port "${PORT}" \
-  --proxy-headers --forwarded-allow-ips="*" \
-  --access-log --log-level info
+exec python3 -m uvicorn "$APP" \
+  --host 0.0.0.0 \
+  --port "$PORT" \
+  --proxy-headers \
+  --forwarded-allow-ips="*" \
+  --log-level info

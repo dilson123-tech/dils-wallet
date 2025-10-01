@@ -1,14 +1,25 @@
-fastapi>=0.111
-uvicorn[standard]>=0.29
-SQLAlchemy>=2.0
-pydantic>=2.7
-python-multipart>=0.0.9
-PyJWT>=2.8
-passlib[bcrypt]>=1.7.4
-bcrypt>=4.0.1
-sentry-sdk[fastapi]>=2.0
+fastapi==0.118.0
+uvicorn==0.37.0
+SQLAlchemy==2.0.43
+pydantic==2.11.9
+pydantic-core==2.33.2
+python-multipart==0.0.20
+python-dotenv==1.1.1
+email-validator==2.3.0
 
-email-validator>=2.0
-psycopg2-binary
-Jinja2
-uvicorn[standard]
+# auth / senha
+passlib[bcrypt]==1.7.4
+bcrypt==5.0.0
+PyJWT==2.10.1
+
+# banco
+psycopg2-binary==2.9.10
+
+# util/perf (iguais aos do container que subiu)
+Jinja2==3.1.6
+sentry-sdk==2.39.0
+uvloop==0.21.0
+httptools==0.6.4
+watchfiles==1.1.0
+websockets==15.0.1
+typing-extensions==4.15.0
