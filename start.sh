@@ -17,7 +17,7 @@ import http.server, socketserver, os, json
 PORT = int(os.environ.get("PORT", "8080"))
 class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/" or self.path == "/openapi.json":
+        if self.path in ("/", "/openapi.json", "/api/v1/health"):
             b = json.dumps({"ok": True, "path": self.path}).encode()
             self.send_response(200); self.send_header("content-type","application/json")
             self.send_header("content-length", str(len(b))); self.end_headers(); self.wfile.write(b)
