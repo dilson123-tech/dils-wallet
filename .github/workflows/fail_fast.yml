@@ -1,0 +1,12 @@
+name: Fail Fast
+on:
+  workflow_dispatch:
+
+jobs:
+  boom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail on purpose
+        run: |
+          echo "Forçando falha para testar Notify on Failure (Telegram)"
+          exit 1
