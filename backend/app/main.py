@@ -65,10 +65,12 @@ def on_startup() -> None:
 # Routers (import tardio para evitar ciclos)
 def _include_routes() -> None:
     auth_mod = importlib.import_module("backend.app.api.v1.routes.auth")
+    refresh_mod = importlib.import_module("backend.app.api.v1.routes.refresh")
     users_mod = importlib.import_module("backend.app.api.v1.routes.users")
     tx_mod = importlib.import_module("backend.app.api.v1.routes.transactions")
 
     app.include_router(auth_mod.router, prefix="/api/v1/auth", tags=["auth"])
+    app.include_router(refresh_mod.router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(users_mod.router, prefix="/api/v1/users", tags=["users"])
     app.include_router(tx_mod.router, prefix="/api/v1/transactions", tags=["transactions"])
 
