@@ -1,0 +1,32 @@
+name: Smoke Prod
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"   # a cada 6h (ajusta se quiser)
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup bash deps (jq, curl)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Run smoke_prod.sh (posts no Slack)
+        env:
+          # base/health opcionais conforme seu backend
+          SMOKE_BASE: ${{ secrets.SMOKE_BASE }}
+          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # se quiser customizar usuário/valor nesta execução:
+          # EMAIL: "smoke@dilswallet.com"
+          # PASS: "123456"
+          # AMOUNT: "37.50"
+          # WITHDRAW: "5.00"
+        run: |
+          chmod +x scripts/smoke_prod.sh
+          ./scripts/smoke_prod.sh
