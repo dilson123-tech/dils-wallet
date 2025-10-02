@@ -1,19 +1,48 @@
-name: Smoke Prod
+name: Smoke + Health
+
 on:
   workflow_dispatch:
   push:
     branches: [main]
+  schedule:
+    - cron: '*/15 * * * *'  # a cada 15 minutos
 
 jobs:
   smoke:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y jq
-      - env:
+      - name: Run smoke test (STRICT)
+        env:
           BASE: https://dils-wallet-production.up.railway.app
           EMAIL: smoke@dilswallet.com
           PASS: 123456
           AMOUNT: "37.50"
           WITHDRAW: "5.00"
+          STRICT: "true"
         run: bash scripts/smoke_prod.sh
+      - name: Upload artifacts (extrato)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extrato-smoke
+          path: artifacts/*
+
+  health:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Health ping
+        env:
+          BASE: https://dils-wallet-production.up.railway.app
+        run: |
+          set -euo pipefail
+          echo "▶ GET $BASE/api/v1/health"
+          OUT=$(curl -fsS "$BASE/api/v1/health")
+          echo "$OUT"
+          # valida JSON com jq e exige status=ok
+          echo "$OUT" | jq -r '.status' | grep -qx 'ok'
+          echo "✔ Health OK (status=ok)"
