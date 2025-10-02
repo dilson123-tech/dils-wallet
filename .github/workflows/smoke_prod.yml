@@ -2,7 +2,7 @@ name: Smoke Prod
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # a cada 6h (ajusta se quiser)
+    - cron: "0 */3 * * *"   # a cada 6h (ajusta se quiser)
 
 jobs:
   smoke:
