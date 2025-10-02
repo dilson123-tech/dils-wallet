@@ -1,0 +1,35 @@
+name: Smoke PR (Read-only)
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deps (jq, curl)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Smoke read-only
+        env:
+          SMOKE_BASE: ${{ secrets.SMOKE_BASE }} # produção ok porque é somente leitura
+          EMAIL: "smoke@dilswallet.com"
+          PASS: "123456"
+        run: |
+          chmod +x scripts/smoke_readonly.sh
+          ./scripts/smoke_readonly.sh
+
+      - name: Notificar Slack se falhar
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          MSG=$(printf '{"text":"❌ Smoke PR falhou @ %s\nrepo: %s\nrun: %s\njob: %s"}' \
+              "$TS" "${{ github.repository }}" "${{ github.run_id }}" "smoke_pr")
+          curl -s -L -X POST -H 'Content-type: application/json' --data "$MSG" "$WEBHOOK"
