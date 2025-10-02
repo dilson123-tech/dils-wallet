@@ -35,9 +35,8 @@ if Path(UI_DIR).is_dir():
 
 # Health
 @app.get("/api/v1/health")
-def health() -> Response:
-    return Response(status_code=200)
-
+async def health():
+    return {"status": "ok", "service": "dils-wallet"}
 # Teste de DB (204 se conectar)
 @app.get("/api/v1/users/test-db")
 def test_db(_: Session = Depends(get_db)) -> Response:
