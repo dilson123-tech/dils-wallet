@@ -20,6 +20,16 @@ trap 'echo; warn "Último passo falhou. Verifique logs acima."' ERR
 need curl
 need jq
 
+# === Modo estrito para CI (falha em avisos críticos) ===
+STRICT="${STRICT:-false}"
+die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
+  if [[ "$STRICT" == "true" ]]; then
+    fail "$*"
+  else
+    warn "$*"
+  fi
+}
+
 say "Ping /api/v1/health"
 curl -fsS "$BASE/api/v1/health" | jq . && ok "Health OK"
 
@@ -55,7 +65,7 @@ ME_CODE=$(curl -s -o /tmp/me.json -w "%{http_code}" "$BASE/api/v1/users/me" "${A
 if [[ "$ME_CODE" == "200" ]]; then
   ok "users/me OK: $(jq -r '.email // .username // "unknown"' /tmp/me.json)"
 else
-  warn "users/me -> $ME_CODE — SKIP"
+  die_or_warn "users/me -> $ME_CODE"
 fi
 
 say "DB: /users/test-db (verifica conexão/persistência)"
@@ -142,7 +152,7 @@ ABS_DELTA=$(awk -v d="$DELTA" 'BEGIN{if (d<0) d=-d; printf "%.2f", d}')
 if awk -v d="$ABS_DELTA" 'BEGIN{exit !(d <= 0.01)}'; then
   ok "Saldo validado: BEFORE - WITHDRAW ≈ AFTER (dif=$ABS_DELTA)"
 else
-  warn "Saldo divergente: BEFORE=$SALDO_BEFORE, WITHDRAW=$WITHDRAW, AFTER=$SALDO_AFTER (dif=$ABS_DELTA)"
+  die_or_warn "Saldo divergente: BEFORE=$SALDO_BEFORE, WITHDRAW=$WITHDRAW, AFTER=$SALDO_AFTER (dif=$ABS_DELTA)"
 fi
 
 say "Resumo final"
@@ -155,3 +165,25 @@ jq -n --arg base "$BASE" \
       '{base:$base,email:$email,amount:$amount,desc:$desc,tx_post_code:$tx_post_code,health:$health}' | jq .
 
 ok "Smoke de produção finalizado 🎯"
+
+# --- Notificação opcional no Slack ----------------------
+if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+  TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+  STATUS="OK"
+  # Monta texto resumido (sem vazar token):
+  MSG="[$STATUS] smoke_prod • $TS
+base=$BASE
+email=$EMAIL
+amount=$AMOUNT
+desc=$DESC
+tx_post_code=${TX_POST_CODE:-${POST_CODE:-}}
+withdraw=${WITHDRAW:-0}
+health=${health:-OK}"
+
+  JSON_PAYLOAD=$(printf '{"text":"%s"}' "$MSG")
+  CODE=$(curl -sS -L --max-redirs 5 -o /tmp/slack_smoke.txt -w "%{http_code}" \
+         -X POST -H 'Content-type: application/json' \
+         --data "$JSON_PAYLOAD" "$SLACK_WEBHOOK_URL" || true)
+  echo "Slack notify HTTP=$CODE"
+fi
+# --------------------------------------------------------
