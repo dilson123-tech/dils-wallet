@@ -33,6 +33,15 @@ UI_DIR = os.getenv("UI_DIR", str(Path(__file__).resolve().parent.parent / "ui"))
 if Path(UI_DIR).is_dir():
     app.mount("/ui", StaticFiles(directory=UI_DIR, html=True), name="ui")
 
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "dils-wallet"}
+
+@app.get("/health")
+async def health_root():
+    return {"status": "ok", "service": "dils-wallet"}
+
 # Health
 @app.get("/api/v1/health")
 async def health():
