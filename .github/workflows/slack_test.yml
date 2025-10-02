@@ -6,18 +6,16 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Send test to Slack (with debug)
+      - name: Send test to Slack (no jq, with debug)
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           set -euo pipefail
           TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          MSG=$(jq -n --arg t "✅ Slack webhook OK via GitHub Actions @ $TS" '{text:$t}')
+          MSG="✅ Slack webhook OK via GitHub Actions @ $TS"
+          JSON_PAYLOAD=$(printf '{"text":"%s"}' "$MSG")
           CODE=$(curl -s -o /tmp/slack_resp.txt -w "%{http_code}" -X POST -H 'Content-type: application/json' \
-            --data "$MSG" "$WEBHOOK")
+            --data "$JSON_PAYLOAD" "$WEBHOOK")
           echo "HTTP=$CODE"
           echo "BODY=$(cat /tmp/slack_resp.txt || true)"
           test "$CODE" = "200"
