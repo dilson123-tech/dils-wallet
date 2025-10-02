@@ -8,8 +8,8 @@ import logging
 import traceback
 
 from .... import models, schemas, utils, database, config
-from backend.app.api.v1.routes.security import create_access_token
-from .utils.jwt import create_refresh_token
+from ....security import create_access_token
+from ..utils.jwt import create_refresh_token
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
