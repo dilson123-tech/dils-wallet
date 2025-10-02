@@ -6,16 +6,30 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Send test to Slack (no jq, with debug)
+      - name: Send test to Slack (follow redirects + debug)
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           set -euo pipefail
+          # Sanity check (sem vazar o segredo)
+          echo "Len WEBHOOK: $(printf "%s" "$WEBHOOK" | wc -c) chars"
+          echo "$WEBHOOK" | grep -qE '^https://hooks\.slack\.com/services/.+/.+/.+$' || { echo "URL do webhook parece inválida"; exit 1; }
+
           TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           MSG="✅ Slack webhook OK via GitHub Actions @ $TS"
           JSON_PAYLOAD=$(printf '{"text":"%s"}' "$MSG")
-          CODE=$(curl -s -o /tmp/slack_resp.txt -w "%{http_code}" -X POST -H 'Content-type: application/json' \
+
+          # -L segue redirects, -D /tmp/headers salva cabeçalhos
+          CODE=$(curl -sS -L --max-redirs 5 -D /tmp/headers.txt \
+            -o /tmp/slack_resp.txt -w "%{http_code}" \
+            -X POST -H 'Content-type: application/json' \
             --data "$JSON_PAYLOAD" "$WEBHOOK")
+
           echo "HTTP=$CODE"
-          echo "BODY=$(cat /tmp/slack_resp.txt || true)"
+          echo "--- Response headers ---"
+          sed -e 's/^/H: /' /tmp/headers.txt || true
+          echo "--- Body ---"
+          cat /tmp/slack_resp.txt || true
+
+          # Esperado: 200 + body 'ok'
           test "$CODE" = "200"
