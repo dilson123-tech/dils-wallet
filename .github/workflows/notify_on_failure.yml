@@ -8,14 +8,11 @@ on:
       - Fail Fast
     types: [completed]
 
-permissions:
-  contents: read
-
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Context debug
+      - name: Context debug (always)
         run: |
           echo "TRIGGERED BY: ${{ github.event.workflow_run.name }}"
           echo "STATUS:       ${{ github.event.workflow_run.status }}"
@@ -23,37 +20,40 @@ jobs:
           echo "HTML_URL:     ${{ github.event.workflow_run.html_url }}"
           echo "REPO:         ${{ github.event.workflow_run.repository.full_name }}"
 
-      # Gate: só continua se FALHOU (ou foi cancelado/timed_out)
-      - name: Gate (only when not success)
+      - name: Decide if should notify
+        id: gate
         run: |
           c='${{ github.event.workflow_run.conclusion }}'
           if [ "$c" = "success" ]; then
-            echo "Upstream SUCCESS → nada a notificar."; exit 0
+            echo "should=false" >> $GITHUB_OUTPUT
+            echo "Upstream SUCCESS → nada a notificar."
+          else
+            echo "should=true" >> $GITHUB_OUTPUT
+            echo "Upstream NÃO foi success → vamos notificar."
           fi
 
-      - name: Send Telegram alert
+      - name: Send Telegram alert (best-effort)
+        if: steps.gate.outputs.should == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          REPO:       ${{ github.event.workflow_run.repository.full_name }}
-          NAME:       ${{ github.event.workflow_run.name }}
-          STATUS:     ${{ github.event.workflow_run.conclusion }}
-          HTML_URL:   ${{ github.event.workflow_run.html_url }}
+          REPO:     ${{ github.event.workflow_run.repository.full_name }}
+          NAME:     ${{ github.event.workflow_run.name }}
+          STATUS:   ${{ github.event.workflow_run.conclusion }}
+          HTML_URL: ${{ github.event.workflow_run.html_url }}
         run: |
           set -euo pipefail
-          # valida vars (evita 404 do Telegram)
-          : "${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN vazio}"
-          : "${TELEGRAM_CHAT_ID:?TELEGRAM_CHAT_ID vazio}"
-
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "Sem TELEGRAM_* secrets; pulando envio." ; exit 0
+          fi
           MSG="❌ $NAME falhou em $REPO
 status=$STATUS
 run=$HTML_URL"
-
-          echo "Enviando para Telegram chat_id=$TELEGRAM_CHAT_ID..."
           HTTP=$(curl -s -o /tmp/tg.txt -w '%{http_code}' \
                  -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                  -d chat_id="$TELEGRAM_CHAT_ID" \
-                 --data-urlencode text="$MSG" )
+                 --data-urlencode text="$MSG") || true
           echo "HTTP=$HTTP"
-          echo "BODY=$(cat /tmp/tg.txt)"
-          [ "$HTTP" = "200" ] || exit 1
+          echo "BODY=$(cat /tmp/tg.txt || true)"
+          # não falha o job mesmo se der ruim
+          exit 0
