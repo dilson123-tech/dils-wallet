@@ -6,11 +6,15 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Send test to Slack
+      - name: Send test to Slack (with debug)
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           set -euo pipefail
-          curl -s -X POST -H 'Content-type: application/json' \
-            --data '{"text":"✅ Slack webhook OK via GitHub Actions"}' \
-            "$WEBHOOK"
+          TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          MSG=$(jq -n --arg t "✅ Slack webhook OK via GitHub Actions @ $TS" '{text:$t}')
+          CODE=$(curl -s -o /tmp/slack_resp.txt -w "%{http_code}" -X POST -H 'Content-type: application/json' \
+            --data "$MSG" "$WEBHOOK")
+          echo "HTTP=$CODE"
+          echo "BODY=$(cat /tmp/slack_resp.txt || true)"
+          test "$CODE" = "200"
