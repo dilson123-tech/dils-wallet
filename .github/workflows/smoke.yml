@@ -56,6 +56,11 @@ run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.ru
             echo '{"ok":true,"skipped":true}' > tg.txt
           fi
       - name: Upload TG artifacts (smoke)
+      - name: Ensure TG files exist (safety)
+        if: always()
+        run: |
+          [ -s tg.http ] || echo "HTTP=000" > tg.http
+          [ -s tg.txt ]  || echo "{""ok"":false,""note"":""no request""}" > tg.txt
         if: always()
         uses: actions/upload-artifact@v4
         with:
