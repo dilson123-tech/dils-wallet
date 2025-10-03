@@ -1,15 +1,14 @@
 name: Notify on Failure (Telegram)
+
 on:
   workflow_run:
-    workflows:
-      - Smoke Prod
-      - Smoke PR (Read-only)
-      - Slack Webhook Test
-      - Fail Fast
+    workflows: ["*"]   # aciona para QUALQUER workflow
     types: [completed]
 
 jobs:
   notify:
+    # roda só quando o workflow upstream FALHA
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - name: Context debug (always)
@@ -20,20 +19,7 @@ jobs:
           echo "HTML_URL:     ${{ github.event.workflow_run.html_url }}"
           echo "REPO:         ${{ github.event.workflow_run.repository.full_name }}"
 
-      - name: Decide if should notify
-        id: gate
-        run: |
-          c='${{ github.event.workflow_run.conclusion }}'
-          if [ "$c" = "success" ]; then
-            echo "should=false" >> $GITHUB_OUTPUT
-            echo "Upstream SUCCESS → nada a notificar."
-          else
-            echo "should=true" >> $GITHUB_OUTPUT
-            echo "Upstream NÃO foi success → vamos notificar."
-          fi
-
       - name: Send Telegram alert (best-effort)
-        if: steps.gate.outputs.should == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -55,5 +41,4 @@ run=$HTML_URL"
                  --data-urlencode text="$MSG") || true
           echo "HTTP=$HTTP"
           echo "BODY=$(cat /tmp/tg.txt || true)"
-          # não falha o job mesmo se der ruim
           exit 0
