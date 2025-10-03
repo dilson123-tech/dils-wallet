@@ -118,3 +118,34 @@ run=$RUN_URL"
           path: |
             tg.http
             tg.txt
+
+  notify_smoke:
+    needs: smoke
+    if: ${{ always() && needs.smoke.result == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram alert (Smoke job failed)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
+          NAME:     Smoke + Health (smoke)
+          RUN_URL:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          sleep 2
+          MSG="❌ $NAME falhou em $GITHUB_REPOSITORY
+run=$RUN_URL"
+          HTTP=$(curl -s -o tg.txt -w %{http_code} \
+                 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                 -d chat_id="$TELEGRAM_CHAT_ID" \
+                 --data-urlencode text="$MSG") || true
+          echo "HTTP=$HTTP" | tee tg.http
+          tail -c 800 tg.txt || true
+      - name: Upload TG artifacts (notify)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tg-debug-smoke
+          path: |
+            tg.http
+            tg.txt
