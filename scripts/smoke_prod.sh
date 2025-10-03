@@ -1,4 +1,17 @@
 #!/usr/bin/env bash
+send_tg() {
+  local MSG="$1"
+  if [ -n "${TG_BOT_TOKEN:-}" ] && [ -n "${TG_CHAT_ID:-}" ]; then
+    curl -s -o /dev/null -w "%{http_code}" \
+      -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+      -d chat_id="${TG_CHAT_ID}" \
+      --data-urlencode text="$MSG" || true
+  fi
+}
+trap "send_tg \"❌ Smoke + Health (smoke) falhou em ${GITHUB_REPOSITORY}
+run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"" ERR
+
+set -Eeuo pipefail
 
 send_tg() {
   local MSG="$1"
