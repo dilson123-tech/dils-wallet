@@ -1,0 +1,39 @@
+name: Notify (Reusable — Telegram)
+
+on:
+  workflow_call:
+    inputs:
+      workflow_name:
+        required: true
+        type: string
+      run_url:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram alert (reusable)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
+          NAME:     ${{ inputs.workflow_name }}
+          HTML_URL: ${{ inputs.run_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "Sem TG secrets; pulando envio." ; exit 0
+          fi
+          MSG="❌ $NAME falhou em $GITHUB_REPOSITORY
+run=$HTML_URL"
+          HTTP=$(curl -s -o /tmp/tg.txt -w '%{http_code}' \
+                 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                 -d chat_id="$TELEGRAM_CHAT_ID" \
+                 --data-urlencode text="$MSG") || true
+          echo "HTTP=$HTTP"
+          echo "BODY=$(tail -c 800 /tmp/tg.txt || true)"
+          exit 0
