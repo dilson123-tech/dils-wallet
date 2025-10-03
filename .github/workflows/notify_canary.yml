@@ -1,0 +1,16 @@
+name: Notify Canary (workflow_run)
+
+on:
+  workflow_run:
+    types: [completed]
+
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print workflow_run payload (essentials)
+        run: |
+          echo "TRIGGERED BY:  ${{ github.event.workflow_run.name }}"
+          echo "EVENT STATUS:  ${{ github.event.workflow_run.status }}"
+          echo "CONCLUSION:    ${{ github.event.workflow_run.conclusion }}"
+          echo "HTML_URL:      ${{ github.event.workflow_run.html_url }}"
