@@ -78,6 +78,7 @@ run=$RUN_URL"
                  --data-urlencode text="$MSG") || true
           echo "HTTP=$HTTP" | tee tg.http
           tail -c 800 /tmp/tg.txt || true
+          cp -f /tmp/tg.txt tg.txt 2>/dev/null || true
       - name: Upload TG artifacts (health)
         if: always()
         uses: actions/upload-artifact@v4
