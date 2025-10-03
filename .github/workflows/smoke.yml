@@ -31,6 +31,11 @@ jobs:
           path: artifacts/*
           if-no-files-found: warn
       - name: Notify Telegram on failure (Smoke)
+      - name: Force fail (test)
+        if: env.FORCE_SMOKE_FAIL == '1'
+        env:
+          FORCE_SMOKE_FAIL: "1"
+        run: exit 1
         if: failure()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
