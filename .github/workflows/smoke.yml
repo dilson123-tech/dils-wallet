@@ -9,7 +9,7 @@ on:
 
 jobs:
   smoke:
-    if: ${{ always()     if: github.event_name != 'schedule'    if: github.event_name != 'schedule' needs.smoke.result != 'success' }}
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,27 +24,48 @@ jobs:
           STRICT: "true"
         run: bash scripts/smoke_prod.sh
       - name: Upload artifacts (extrato)
-        if: ${{ always()         if: always()        if: always() needs.smoke.result != 'success' }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: extrato-smoke
           path: artifacts/*
           if-no-files-found: warn
-      - name: Notify Telegram on failure (Smoke)
-      - name: Force fail (test)
-        if: ${{ always()         if: always()        if: always() needs.smoke.result != 'success' }}
-        run: exit 1
+
+  notify_smoke:
+    needs: [smoke]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    env:
+      RESULT: ${{ needs.smoke.result }}
+    steps:
+      - name: Decide & send Telegram if smoke failed
+        run: |
+          set -euo pipefail
+          echo "smoke result: $RESULT"
+          if [ "${RESULT:-}" != "success" ]; then
+            MSG="❌ Smoke + Health (smoke) falhou em $GITHUB_REPOSITORY
+run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            HTTP=$(curl -s -o tg.txt -w '%{http_code}' \
+                   -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+                   -d chat_id="${{ secrets.TG_CHAT_ID }}" \
+                   --data-urlencode text="$MSG") || true
+            echo "HTTP=$HTTP" | tee tg.http
+            tail -c 800 tg.txt || true
+          else
+            echo "smoke success; skip TG" | tee tg.http
+            echo '{"ok":true,"skipped":true}' > tg.txt
+          fi
       - name: Upload TG artifacts (smoke)
-        if: ${{ always()         if: always()        if: always() needs.smoke.result != 'success' }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tg-debug-smoke
           path: |
             tg.http
-            /tmp/tg.txt
+            tg.txt
 
   health:
-    if: ${{ always()     if: github.event_name == 'schedule'    if: github.event_name == 'schedule' needs.smoke.result != 'success' }}
+    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - run: sudo apt-get update && sudo apt-get install -y jq
@@ -59,51 +80,20 @@ jobs:
           # valida JSON com jq e exige status=ok
           echo "$OUT" | jq -r '.status' | grep -qx 'ok'
           echo "✔ Health OK (status=ok)"
-          echo "✔ Health OK (status=ok)"
-      - name: Notify Telegram on failure (Health)
-        if: ${{ always()         if: failure()        if: failure() needs.smoke.result != 'success' }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
-          NAME:     Smoke + Health (health)
-          RUN_URL:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          sleep 2
-          MSG="❌ $NAME falhou em $GITHUB_REPOSITORY
-run=$RUN_URL"
-          HTTP=$(curl -s -o /tmp/tg.txt -w %{http_code} \
-                 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-                 -d chat_id="$TELEGRAM_CHAT_ID" \
-                 --data-urlencode text="$MSG") || true
-          echo "HTTP=$HTTP" | tee tg.http
-          tail -c 800 /tmp/tg.txt || true
-          cp -f /tmp/tg.txt tg.txt 2>/dev/null || true
-      - name: Upload TG artifacts (health)
-        if: ${{ always()         if: always()        if: always() needs.smoke.result != 'success' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: tg-debug-health
-          path: |
-            tg.http
-            /tmp/tg.txt
 
-
-
-  notify_smoke:
-    needs: [smoke]
+  notify_health:
+    needs: [health]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     env:
-      SMOKE_RESULT: ${{ needs.smoke.result }}
+      RESULT: ${{ needs.health.result }}
     steps:
-      - name: Decide & send Telegram if smoke failed
+      - name: Decide & send Telegram if health failed
         run: |
           set -euo pipefail
-          echo "smoke result: $SMOKE_RESULT"
-          if [ "${SMOKE_RESULT:-}" != "success" ]; then
-            sleep 1
-            MSG="❌ Smoke + Health (smoke) falhou em $GITHUB_REPOSITORY
+          echo "health result: $RESULT"
+          if [ "${RESULT:-}" != "success" ]; then
+            MSG="❌ Smoke + Health (health) falhou em $GITHUB_REPOSITORY
 run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             HTTP=$(curl -s -o tg.txt -w '%{http_code}' \
                    -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
@@ -112,14 +102,14 @@ run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.ru
             echo "HTTP=$HTTP" | tee tg.http
             tail -c 800 tg.txt || true
           else
-            echo "smoke success; skip TG" | tee tg.http
+            echo "health success; skip TG" | tee tg.http
             echo '{"ok":true,"skipped":true}' > tg.txt
           fi
-      - name: Upload TG artifacts
+      - name: Upload TG artifacts (health)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tg-debug-smoke
+          name: tg-debug-health
           path: |
             tg.http
             tg.txt
