@@ -29,6 +29,7 @@ jobs:
         with:
           name: extrato-smoke
           path: artifacts/*
+          if-no-files-found: warn
       - name: Notify Telegram on failure (Smoke)
         if: failure()
         env:
