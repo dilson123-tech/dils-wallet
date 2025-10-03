@@ -12,3 +12,31 @@ jobs:
         run: |
           echo "Forçando falha para testar Notify on Failure (Telegram)"
           exit 1
+
+  notify:
+    needs: boom
+    if: failure()   # roda apenas se o job 'boom' falhar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram alert (Fail Fast)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPO:     ${{ github.repository }}
+          RUN_URL:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BRANCH:   ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "Sem TELEGRAM_* secrets; pulando envio."; exit 0
+          fi
+          MSG="❌ Fail Fast falhou em $REPO
+branch=$BRANCH
+run=$RUN_URL"
+          HTTP=$(curl -s -o /tmp/tg.txt -w '%{http_code}' \
+                 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                 -d chat_id="$TELEGRAM_CHAT_ID" \
+                 --data-urlencode text="$MSG") || true
+          echo "HTTP=$HTTP"
+          tail -c 1000 /tmp/tg.txt || true
+          exit 0
