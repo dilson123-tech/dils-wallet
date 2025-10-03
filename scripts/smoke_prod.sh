@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+exit 1  # FORÇANDO FALHA TEMPORÁRIA PARA TESTE
 
 send_tg() {
   local MSG="$1"
