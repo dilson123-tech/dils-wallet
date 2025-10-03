@@ -28,8 +28,8 @@ jobs:
 
       - name: Send Telegram alert (best-effort)
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
           REPO:     ${{ github.event.workflow_run.repository.full_name }}
           NAME:     ${{ github.event.workflow_run.name }}
           STATUS:   ${{ github.event.workflow_run.conclusion }}

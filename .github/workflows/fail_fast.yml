@@ -20,8 +20,8 @@ jobs:
     steps:
       - name: Send Telegram alert (Fail Fast)
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
           REPO:     ${{ github.repository }}
           RUN_URL:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BRANCH:   ${{ github.ref_name }}
