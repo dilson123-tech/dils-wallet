@@ -2,12 +2,19 @@ name: Notify on Failure (Telegram)
 
 on:
   workflow_run:
-    workflows: ["*"]   # aciona para QUALQUER workflow
+    workflows:
+      - Fail Fast
+      - CI - Dils Wallet (backend)
+      - Smoke Prod
+      - Smoke PR (Read-only)
+      - Smoke + Health
+      - health-prod
+      - CD - Publish Docker image (GHCR)
+      - Slack Webhook Test
     types: [completed]
 
 jobs:
   notify:
-    # roda só quando o workflow upstream FALHA
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     steps:
