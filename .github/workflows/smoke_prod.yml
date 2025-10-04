@@ -22,6 +22,8 @@ jobs:
           SMOKE_BASE: ${{ secrets.SMOKE_BASE }}
           HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
           # se quiser customizar usuário/valor nesta execução:
           # EMAIL: "smoke@dilswallet.com"
           # PASS: "123456"
