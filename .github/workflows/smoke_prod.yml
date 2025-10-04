@@ -44,6 +44,17 @@ jobs:
           echo "PWD=$(pwd)"
           ls -lahR artifacts || true
 
+      - name: Sanity TG env
+        if: always()
+        run: |
+          [ -n "${TG_BOT_TOKEN:-}" ] || { echo "FALTA TG_BOT_TOKEN"; exit 1; }
+          [ -n "${TG_CHAT_ID:-}" ]   || { echo "FALTA TG_CHAT_ID"; exit 1; }
+
+      - name: Zip TG artifacts
+        if: always()
+        run: |
+          mkdir -p artifacts/tg/smoke_prod
+          zip -j "artifacts/tg/smoke_prod/tg-${{ github.run_id }}.zip" artifacts/tg/smoke_prod/tg.* || true
       - name: Upload TG artifacts (smoke_prod)
         if: always()
         uses: actions/upload-artifact@v4
