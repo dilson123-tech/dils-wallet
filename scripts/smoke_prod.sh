@@ -1,51 +1,26 @@
 #!/usr/bin/env bash
-send_tg() {
+set -Eeuo pipefail
+send_tg(){
   local MSG="$1"
-  if [ -n "${TG_BOT_TOKEN:-}" ] && [ -n "${TG_CHAT_ID:-}" ]; then
-    curl -s -o /dev/null -w "%{http_code}" \
-      -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-      -d chat_id="${TG_CHAT_ID}" \
-  mkdir -p artifacts/tg/smoke_prod
-  HTTP=$(curl -s -o artifacts/tg/smoke_prod/tg.txt -w "%{http_code}" \
+  ARTDIR="${GITHUB_WORKSPACE:-.}/artifacts/tg/smoke_prod"
+  mkdir -p "$ARTDIR"
+  HTTP=$(curl -s -o "$ARTDIR/tg.txt" -w "%{http_code}" \
     -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
     -d chat_id="${TG_CHAT_ID}" \
     --data-urlencode text="$MSG") || true
-  echo "HTTP=$HTTP" | tee artifacts/tg/smoke_prod/tg.http
-  return 0
-  fi
+  echo "HTTP=$HTTP" | tee "$ARTDIR/tg.http"
 }
-trap "send_tg \"❌ Smoke Prod falhou em ${GITHUB_REPOSITORY}
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"" ERR
+trap 'send_tg "❌ Smoke Prod falhou em ${GITHUB_REPOSITORY}
+run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
 
-set -Eeuo pipefail
-send_tg() {
-  local MSG="$1"
-  if [ -n "${TG_BOT_TOKEN:-}" ] && [ -n "${TG_CHAT_ID:-}" ]; then
-    curl -s -o /dev/null -w "%{http_code}" \
-      -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-      -d chat_id="${TG_CHAT_ID}" \
-      --data-urlencode text="$MSG" || true
-  fi
-}
-trap "send_tg \"❌ Smoke + Health (smoke) falhou em ${GITHUB_REPOSITORY}
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"" ERR
 
-set -Eeuo pipefail
+# --- removed duplicate send_tg() ---
+# --- end removed ---
 
-send_tg() {
-  local MSG="$1"
-  if [ -n "${TG_BOT_TOKEN:-}" ] && [ -n "${TG_CHAT_ID:-}" ]; then
-    curl -s -o /dev/null -w "%{http_code}" \
-      -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-      -d chat_id="${TG_CHAT_ID}" \
-      --data-urlencode text="$MSG" || true
-  fi
-}
-trap "send_tg \"❌ Smoke + Health (smoke) falhou em ${GITHUB_REPOSITORY}
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"" ERR
 
-set -Eeuo pipefail
-set -euo pipefail
+# --- removed duplicate send_tg() ---
+# --- end removed ---
+
 
 ### === Config ===
 : "${BASE:=https://dils-wallet-production.up.railway.app}"
@@ -61,7 +36,6 @@ ok()  { printf "\033[1;32m✔ %s\033[0m\n" "$*"; }
 warn(){ printf "\033[1;33m⚠ %s\033[0m\n" "$*"; }
 fail(){ printf "\033[1;31m✘ %s\033[0m\n" "$*"; exit 1; }
 
-trap 'echo; warn "Último passo falhou. Verifique logs acima."' ERR
 echo "FORCE_FAIL_SMOKE_PROD=${FORCE_FAIL_SMOKE_PROD:-unset}"
 [ "${FORCE_FAIL_SMOKE_PROD:-0}" = "1" ] && { echo "[TEST] Forçando falha (FORCE_FAIL_SMOKE_PROD=1)"; false; }
 
@@ -77,6 +51,8 @@ die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
     warn "$*"
   fi
 }
+run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
+run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"" ERR
 
 say "Ping /api/v1/health"
 curl -fsS "$BASE/api/v1/health" | jq . && ok "Health OK"
@@ -166,6 +142,8 @@ saldo_from_file() {
              else 0 end ] 
          | add // 0' "$1" 2>/dev/null
 }
+run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
+run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"" ERR
 
 say "Saldo (antes do saque) — somando lista atual"
 # Recarrega lista atual para saldo base (caso a anterior não exista)
