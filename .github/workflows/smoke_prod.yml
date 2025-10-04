@@ -1,14 +1,14 @@
 name: Smoke Prod
 on:
   workflow_dispatch:
-      FORCE_FAIL_SMOKE_PROD:
-        required: false
-        type: choice
-  workflow_dispatch:
+    inputs:
       FORCE_FAIL_SMOKE_PROD:
         description: "Force failure for TG test"
         required: false
-        default: "0"
+        default: "1"
+        type: choice
+        options: ["0","1"]
+
   schedule:
     - cron: "0 */3 * * *"   # a cada 6h (ajusta se quiser)
 
