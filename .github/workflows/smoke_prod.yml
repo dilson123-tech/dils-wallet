@@ -38,3 +38,10 @@ jobs:
         run: |
           chmod +x scripts/smoke_prod.sh
           ./scripts/smoke_prod.sh
+      - name: Upload TG artifacts (smoke_prod)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tg-debug-smoke-prod
+          path: artifacts/tg/smoke_prod/*
+          if-no-files-found: warn
