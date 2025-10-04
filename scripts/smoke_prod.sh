@@ -5,7 +5,13 @@ send_tg() {
     curl -s -o /dev/null -w "%{http_code}" \
       -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
       -d chat_id="${TG_CHAT_ID}" \
-      --data-urlencode text="$MSG" || true
+  mkdir -p artifacts/tg/smoke_prod
+  HTTP=$(curl -s -o artifacts/tg/smoke_prod/tg.txt -w "%{http_code}" \
+    -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+    -d chat_id="${TG_CHAT_ID}" \
+    --data-urlencode text="$MSG") || true
+  echo "HTTP=$HTTP" | tee artifacts/tg/smoke_prod/tg.http
+  return 0
   fi
 }
 trap "send_tg \"❌ Smoke Prod falhou em ${GITHUB_REPOSITORY}
