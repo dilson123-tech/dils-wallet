@@ -1,6 +1,11 @@
 name: Smoke Prod
 on:
   workflow_dispatch:
+    inputs:
+      FORCE_FAIL_SMOKE_PROD:
+        description: "Force failure for TG test"
+        required: false
+        default: "0"
   schedule:
     - cron: "0 */3 * * *"   # a cada 6h (ajusta se quiser)
 
@@ -22,6 +27,7 @@ jobs:
           SMOKE_BASE: ${{ secrets.SMOKE_BASE }}
           HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          FORCE_FAIL_SMOKE_PROD: ${{ inputs.FORCE_FAIL_SMOKE_PROD }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
           # se quiser customizar usuário/valor nesta execução:
