@@ -1,15 +1,10 @@
 name: Smoke Prod
 on:
   workflow_dispatch:
-    inputs:
       FORCE_FAIL_SMOKE_PROD:
-        description: "Forçar falha do smoke"
         required: false
-        default: "0"
         type: choice
-        options: ["0","1"]
   workflow_dispatch:
-    inputs:
       FORCE_FAIL_SMOKE_PROD:
         description: "Force failure for TG test"
         required: false
