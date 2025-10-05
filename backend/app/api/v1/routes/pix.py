@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from backend.app.deps import get_db, get_current_user
-from ....models.account import Account
+from backend.app.models.account import Account
 from ....models.transaction import Transaction
 from ....models.idempotency import IdempotencyKey
 from backend.app.pix.schemas import PixMockIn, PixMockOut
