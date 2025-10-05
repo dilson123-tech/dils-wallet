@@ -4,7 +4,7 @@ from backend.app.deps import get_db, get_current_user
 from ....models.account import Account
 from ....models.transaction import Transaction
 from ....models.idempotency import IdempotencyKey
-from ....schemas.pix import PixMockIn, PixMockOut
+from backend.app.pix.schemas import PixMockIn, PixMockOut
 from ....core.crypto import stable_hash_payload
 import json
 
