@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
-from ...deps import get_db, get_current_user
+from backend.app.deps import get_db, get_current_user
 from ....models.account import Account
 from ....models.transaction import Transaction
 from ....models.idempotency import IdempotencyKey
