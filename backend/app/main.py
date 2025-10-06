@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, Depends
+from backend.app.api.v1.register_daily import include_daily_routes
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +15,8 @@ from .database import engine, Base, get_db  # mantém como está no projeto
 
 # App
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+app = FastAPI(title="Dils Wallet API", version="0.1.0")
+include_daily_routes(app)  # PIX daily-summary routes
 
 # CORS
 CORS_ORIGINS: List[str] = []
