@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from datetime import date
-from backend.app import database as database  # ajuste se seu caminho de deps for outro
+from backend.app import database as database  # usa database.get_db
 
 router = APIRouter(prefix="/pix", tags=["PIX"])
 
@@ -15,25 +15,22 @@ def get_daily_summary(
     end: Optional[date]   = Query(None, description="Data final (YYYY-MM-DD, UTC, inclusiva)")
 ):
     """
-    Retorna série diária de métricas de PIX a partir da view materializada `pix_daily_summary`.
-    Filtros por `start` e `end` (UTC). Ordenado crescente por dia.
+    Retorna série diária da MV `pix_daily_summary` com filtros opcionais.
+    Usa parâmetros nomeados (:start, :end) — compatível com SQLAlchemy.
     """
-    sql = """
+    sql = text("""
         SELECT day_utc, total_count, total_amount, avg_amount, min_amount, max_amount,
                distinct_senders, distinct_receivers, accounts_active
         FROM pix_daily_summary
-        WHERE ($1::date IS NULL OR day_utc >= $1::date)
-          AND ($2::date IS NULL OR day_utc <= $2::date)
+        WHERE (:start IS NULL OR day_utc >= :start)
+          AND (:end   IS NULL OR day_utc <= :end)
         ORDER BY day_utc ASC
-    """
-    res = db.execute(text(sql).bindparams(start, end)).mappings().all()
+    """)
+    res = db.execute(sql, {"start": start, "end": end}).mappings().all()
     return [dict(r) for r in res]
 
 @router.post("/daily-summary/refresh", status_code=202)
 def refresh_daily_summary(*, db: Session = Depends(database.get_db)):
-    """
-    Dispara refresh CONCURRENTLY da materialized view (não bloqueia leitura).
-    """
     db.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY pix_daily_summary;"))
     db.commit()
     return {"status": "refresh started"}
