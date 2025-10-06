@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from backend.app.deps import get_db, get_current_user
 from backend.app.models.account import Account
 from backend.app.models.pix_transaction import PixTransaction
@@ -37,8 +38,25 @@ def pix_mock_transfer(
 
     a_from = db.get(Account, body.from_account_id)
     a_to   = db.get(Account, body.to_account_id)
+
+    # seed automático apenas para o endpoint MOCK: cria contas se não existirem
     if not a_from or not a_to:
-        raise HTTPException(404, "Conta inexistente")
+        try:
+            if not a_from:
+                a_from = Account(id=body.from_account_id, owner=f"mock:{body.from_account_id}", balance=1000.0)
+                db.add(a_from)
+            if not a_to:
+                a_to = Account(id=body.to_account_id, owner=f"mock:{body.to_account_id}", balance=100.0)
+                db.add(a_to)
+            db.flush()  # garante IDs agora
+        except IntegrityError:
+            db.rollback()
+            # corrida? reconsulta após rollback
+            a_from = db.get(Account, body.from_account_id)
+            a_to   = db.get(Account, body.to_account_id)
+
+        if not a_from or not a_to:
+            raise HTTPException(404, "Conta inexistente")
 
     if a_from.balance < body.amount:
         raise HTTPException(422, "Saldo insuficiente")
