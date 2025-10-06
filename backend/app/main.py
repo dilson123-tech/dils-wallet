@@ -80,4 +80,9 @@ def _include_routes() -> None:
     app.include_router(pix_mod.router, prefix="/api/v1/pix", tags=["pix"])
     app.include_router(pix_history.router)
 
+# Compat: healthcheck do Railway bate em /healthz
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
 _include_routes()
