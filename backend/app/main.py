@@ -63,6 +63,7 @@ def on_startup() -> None:
         print(f"[startup] warning: create_all failed: {exc!r}")
 
 # Routers (import tardio para evitar ciclos)
+
 def _include_routes() -> None:
     # imports tardios para evitar ciclos
     from importlib import import_module
@@ -73,6 +74,7 @@ def _include_routes() -> None:
     pix_mod = import_module("backend.app.api.v1.routes.pix")
     from backend.app.api.v1.routes import pix_history
     from backend.app.api.v1.routes import pix_summary
+    from backend.app.api.v1.routes import pix_stats
 
     app.include_router(auth_mod.router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(refresh_mod.router, prefix="/api/v1/auth", tags=["auth"])
@@ -81,5 +83,6 @@ def _include_routes() -> None:
     app.include_router(pix_mod.router, prefix="/api/v1/pix", tags=["pix"])
     app.include_router(pix_history.router)
     app.include_router(pix_summary.router)
+    app.include_router(pix_stats.router)
 
 _include_routes()
