@@ -9,6 +9,7 @@ from backend.app.models import Transaction  # usa o Transaction de backend/app/m
 from backend.app.pix.schemas import PixMockIn, PixMockOut
 from backend.app.core.crypto import stable_hash_payload
 import json
+import os
 
 router = APIRouter(prefix="/pix", tags=["pix"])
 
@@ -39,7 +40,14 @@ def pix_mock_transfer(
     a_from = db.get(Account, body.from_account_id)
     a_to   = db.get(Account, body.to_account_id)
 
-    # seed automático apenas para o endpoint MOCK: cria contas se não existirem
+
+    # (feature-flag) seed automático controlado por env PIX_MOCK_SEED_ENABLED
+
+
+    if os.getenv("PIX_MOCK_SEED_ENABLED", "").lower() in ("1","true","yes"):
+
+
+        # seed automático apenas para o endpoint MOCK: cria contas se não existirem
     if not a_from or not a_to:
         try:
             if not a_from:
@@ -55,7 +63,7 @@ def pix_mock_transfer(
             a_from = db.get(Account, body.from_account_id)
             a_to   = db.get(Account, body.to_account_id)
 
-        if not a_from or not a_to:
+            if not a_from or not a_to:
             raise HTTPException(404, "Conta inexistente")
 
     if a_from.balance < body.amount:
