@@ -3,14 +3,14 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from datetime import date
-from backend.app.api.deps import get_db  # ajuste se seu caminho de deps for outro
+from backend.app import database as database  # ajuste se seu caminho de deps for outro
 
 router = APIRouter(prefix="/pix", tags=["PIX"])
 
 @router.get("/daily-summary", response_model=List[Dict[str, Any]])
 def get_daily_summary(
     *,
-    db: Session = Depends(get_db),
+    db: Session = Depends(database.get_db),
     start: Optional[date] = Query(None, description="Data inicial (YYYY-MM-DD, UTC)"),
     end: Optional[date]   = Query(None, description="Data final (YYYY-MM-DD, UTC, inclusiva)")
 ):
@@ -30,7 +30,7 @@ def get_daily_summary(
     return [dict(r) for r in res]
 
 @router.post("/daily-summary/refresh", status_code=202)
-def refresh_daily_summary(*, db: Session = Depends(get_db)):
+def refresh_daily_summary(*, db: Session = Depends(database.get_db)):
     """
     Dispara refresh CONCURRENTLY da materialized view (não bloqueia leitura).
     """
