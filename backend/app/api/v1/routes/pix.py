@@ -41,30 +41,25 @@ def pix_mock_transfer(
     a_to   = db.get(Account, body.to_account_id)
 
 
+
     # (feature-flag) seed automático controlado por env PIX_MOCK_SEED_ENABLED
+    if os.getenv('PIX_MOCK_SEED_ENABLED', '').lower() in ('1','true','yes'):
+        if not a_from or not a_to:
+            try:
+                if not a_from:
+                    a_from = Account(id=body.from_account_id, owner=f'mock:{body.from_account_id}', balance=1000.0)
+                    db.add(a_from)
+                if not a_to:
+                    a_to = Account(id=body.to_account_id, owner=f'mock:{body.to_account_id}', balance=100.0)
+                    db.add(a_to)
+                db.flush()
+            except IntegrityError:
+                db.rollback()
+                a_from = db.get(Account, body.from_account_id)
+                a_to   = db.get(Account, body.to_account_id)
 
-
-    if os.getenv("PIX_MOCK_SEED_ENABLED", "").lower() in ("1","true","yes"):
-
-
-        # seed automático apenas para o endpoint MOCK: cria contas se não existirem
     if not a_from or not a_to:
-        try:
-            if not a_from:
-                a_from = Account(id=body.from_account_id, owner=f"mock:{body.from_account_id}", balance=1000.0)
-                db.add(a_from)
-            if not a_to:
-                a_to = Account(id=body.to_account_id, owner=f"mock:{body.to_account_id}", balance=100.0)
-                db.add(a_to)
-            db.flush()  # garante IDs agora
-        except IntegrityError:
-            db.rollback()
-            # corrida? reconsulta após rollback
-            a_from = db.get(Account, body.from_account_id)
-            a_to   = db.get(Account, body.to_account_id)
-
-            if not a_from or not a_to:
-            raise HTTPException(404, "Conta inexistente")
+        raise HTTPException(404, 'Conta inexistente')
 
     if a_from.balance < body.amount:
         raise HTTPException(422, "Saldo insuficiente")
