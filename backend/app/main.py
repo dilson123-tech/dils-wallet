@@ -64,16 +64,20 @@ def on_startup() -> None:
 
 # Routers (import tardio para evitar ciclos)
 def _include_routes() -> None:
-    auth_mod = importlib.import_module("backend.app.api.v1.routes.auth")
-    refresh_mod = importlib.import_module("backend.app.api.v1.routes.refresh")
-    users_mod = importlib.import_module("backend.app.api.v1.routes.users")
-    tx_mod = importlib.import_module("backend.app.api.v1.routes.transactions")
-    pix_mod = importlib.import_module("backend.app.api.v1.routes.pix")
+    # imports tardios para evitar ciclos
+    from importlib import import_module
+    auth_mod = import_module("backend.app.api.v1.routes.auth")
+    refresh_mod = import_module("backend.app.api.v1.routes.refresh")
+    users_mod = import_module("backend.app.api.v1.routes.users")
+    tx_mod = import_module("backend.app.api.v1.routes.transactions")
+    pix_mod = import_module("backend.app.api.v1.routes.pix")
+    from backend.app.api.v1.routes import pix_history
 
     app.include_router(auth_mod.router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(refresh_mod.router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(users_mod.router, prefix="/api/v1/users", tags=["users"])
     app.include_router(tx_mod.router, prefix="/api/v1/transactions", tags=["transactions"])
     app.include_router(pix_mod.router, prefix="/api/v1/pix", tags=["pix"])
+    app.include_router(pix_history.router)
 
 _include_routes()

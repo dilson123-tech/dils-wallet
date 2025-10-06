@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from backend.app.deps import get_db, get_current_user
 from backend.app.models.account import Account
-from ....models.transaction import Transaction
-from ....models.idempotency import IdempotencyKey
+from backend.app.models.pix_transaction import PixTransaction
+from backend.app.models import Transaction  # usa o Transaction de backend/app/models.py
 from backend.app.pix.schemas import PixMockIn, PixMockOut
-from ....core.crypto import stable_hash_payload
+from backend.app.core.crypto import stable_hash_payload
 import json
 
 router = APIRouter(prefix="/pix", tags=["pix"])
@@ -22,11 +23,14 @@ def pix_mock_transfer(
         raise HTTPException(400, "Idempotency-Key ausente")
 
     req_hash = stable_hash_payload(body.model_dump())
-    found = db.get(IdempotencyKey, idem)
+    found = db.execute(
+        text("SELECT response_body, request_hash FROM idempotency_keys WHERE key = :k"),
+        {"k": idem},
+    ).fetchone()
     if found:
-        if found.request_hash != req_hash:
+        if found[1] != req_hash:
             raise HTTPException(409, "Idempotency-Key reuse com payload diferente")
-        return json.loads(found.response_body)
+        return json.loads(found[0])
 
     if body.from_account_id == body.to_account_id:
         raise HTTPException(400, "Conta de origem e destino não podem ser iguais")
@@ -40,14 +44,16 @@ def pix_mock_transfer(
         raise HTTPException(422, "Saldo insuficiente")
 
     try:
-        debit = Transaction(account_id=a_from.id, amount=-body.amount, kind="PIX_MOCK_DEBIT")
-        credit= Transaction(account_id=a_to.id,   amount= body.amount, kind="PIX_MOCK_CREDIT")
+        # cria duas transações de acordo com teu modelo (user_id/tipo/valor/referencia)
+        debit  = Transaction(user_id=a_from.id, tipo="PIX_MOCK_DEBIT",  valor=float(body.amount), referencia=f"to:{a_to.id}")
+        credit = Transaction(user_id=a_to.id,   tipo="PIX_MOCK_CREDIT", valor=float(body.amount), referencia=f"from:{a_from.id}")
         db.add_all([debit, credit])
 
+        # aplica saldos
         a_from.balance -= body.amount
         a_to.balance   += body.amount
 
-        db.flush()
+        db.flush()  # gera IDs nas transações
 
         resp = PixMockOut(
             status="ok",
@@ -56,7 +62,24 @@ def pix_mock_transfer(
             balance_from=float(a_from.balance),
             balance_to=float(a_to.balance),
         )
-        db.add(IdempotencyKey(key=idem, request_hash=req_hash, response_body=json.dumps(resp.model_dump())))
+        # persiste idempotência via SQL textual (agora com text())
+        db.execute(
+            text("INSERT INTO idempotency_keys (key, request_hash, response_body) VALUES (:k, :h, :b)"),
+            {"k": idem, "h": req_hash, "b": json.dumps(resp.model_dump())},
+        )
+
+        # --- loga histórico PIX (mock) junto na mesma transação ---
+        try:
+            rec = PixTransaction(
+                from_account_id=body.from_account_id,
+                to_account_id=body.to_account_id,
+                amount=float(body.amount),
+            )
+            db.add(rec)
+        except Exception as _e:
+            # não quebra o fluxo do PIX mock; apenas segue sem histórico
+            pass
+
         db.commit()
         return resp
     except:
