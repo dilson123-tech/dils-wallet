@@ -1,45 +1,26 @@
-from __future__ import annotations
-from datetime import datetime, timedelta, timezone
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
-import jwt
+import os, time, typing as t
+from datetime import timedelta
+from jose import jwt
+from passlib.hash import bcrypt
 
-from . import models, database, config
+SECRET_KEY = os.getenv("JWT_SECRET", "change-me-aura")  # defina em prod
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MIN", "60"))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+def create_access_token(sub: str, extra: t.Optional[dict]=None) -> str:
+    now = int(time.time())
+    payload = {"sub": sub, "iat": now, "exp": now + ACCESS_TOKEN_EXPIRE_MINUTES*60}
+    if extra: payload.update(extra)
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str = Depends(oauth2_scheme),
-                     db: Session = Depends(database.get_db)) -> Any:
+def verify_password(plain: str, hashed: str) -> bool:
+    # aceita tanto hash bcrypt quanto senha em texto (para migração)
     try:
-        payload = jwt.decode(token, config.SECRET_KEY, algorithms=["HS256"])
-        email = payload.get("sub")
-        if not email:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido (sem sub)")
+        if hashed.startswith("$2b$") or hashed.startswith("$2a$"):
+            return bcrypt.verify(plain, hashed)
     except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+        pass
+    return plain == hashed  # fallback migração
 
-    user = db.query(UserORM).filter(UserORM.email == email).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
-    return user
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=30))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, config.SECRET_KEY, algorithm="HS256")
-
-from typing import Any, TYPE_CHECKING
-try:
-    from . import models  # pacote principal (pode não ter User)
-except Exception:
-    models = None
-
-# tenta importar User do pacote models; se falhar, cai para models_base
-try:
-    from .models import User as UserORM  # type: ignore
-except Exception:
-    try:
-        from .models_base import User as UserORM  # type: ignore
-    except Exception:
-        UserORM = None  # fallback duro: sem modelo de usuário
+def hash_password(plain: str) -> str:
+    return bcrypt.hash(plain)
