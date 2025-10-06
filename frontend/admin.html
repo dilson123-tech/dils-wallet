@@ -10,7 +10,11 @@
   <header class="topbar">
     <h1>Dashboard Admin — PIX Insights</h1>
     <div class="actions">
+      <span id="hc-badge" class="badge badge-warn" title="Status do backend">Verificando…</span>
+      <button id="btn-health" title="Ping no /health">Testar Conexão</button>
+      <button id="btn-export">Exportar CSV</button>
       <button id="btn-refresh">Atualizar</button>
+      <span id="tick" style="opacity:.7;font-size:12px;margin-left:8px">(auto 10s)</span>
     </div>
   </header>
 
@@ -47,6 +51,18 @@
       </details>
     </section>
   </main>
+    <section class="panel">
+      <div class="controls">
+        <label for="periodSel">Período:</label>
+        <select id="periodSel">
+          <option value="all" selected>Todos</option>
+          <option value="24h">Últimas 24h</option>
+          <option value="7d">Últimos 7 dias</option>
+        </select>
+      </div>
+      <h2>Volume diário (R$)</h2>
+      <canvas id="volumeChart" height="120"></canvas>
+    </section>
 
   <!-- Chart.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -95,3 +95,288 @@ els.refresh?.addEventListener("click", loadAll);
 
 // Auto-load
 loadAll();
+// === PATCH: auto-refresh + export CSV ===
+(function () {
+  const btnExport = document.getElementById("btn-export");
+
+  // Auto-refresh a cada 10s
+  setInterval(() => {
+    if (document.hasFocus()) {
+      loadAll();
+    }
+  }, 10000);
+
+  // Exporta CSV gerado no navegador
+  async function exportCSV() {
+    try {
+      const hist = await getJSON(`${BASE_PIX}/history?limit=200`);
+      if (!Array.isArray(hist) || hist.length === 0) {
+        alert("Sem dados para exportar.");
+        return;
+      }
+      const headers = ["id","from_account_id","to_account_id","amount","created_at"];
+      const rows = hist.map(x => [
+        x.id, x.from_account_id, x.to_account_id, x.amount, x.created_at
+      ]);
+
+      // Monta CSV (escapando separador por vírgula)
+      const toCSV = arr => arr.map(v => {
+        const s = (v===null||v===undefined) ? "" : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+      }).join(",");
+
+      const csv = [toCSV(headers), ...rows.map(toCSV)].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const ts = new Date().toISOString().replace(/[:.]/g,"-");
+      a.href = url;
+      a.download = `pix_history_${ts}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("Falha ao exportar CSV: " + e.message);
+      console.error(e);
+    }
+  }
+
+  btnExport?.addEventListener("click", exportCSV);
+})();
+
+// ====== PATCH: período + gráfico de volume diário ======
+const els2 = {
+  periodSel: document.getElementById("periodSel"),
+  volumeCanvas: document.getElementById("volumeChart"),
+};
+let chartVolumeRef = null;
+
+function cutoffFrom(period){
+  const now = new Date();
+  if(period === "24h"){ return new Date(now.getTime() - 24*60*60*1000); }
+  if(period === "7d"){  return new Date(now.getTime() - 7*24*60*60*1000); }
+  return null; // all
+}
+
+function toDateOnlyISO(d){
+  const z = new Date(d);
+  const y = z.getUTCFullYear();
+  const m = String(z.getUTCMonth()+1).padStart(2,"0");
+  const dd= String(z.getUTCDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
+function buildDaily(history, period){
+  const cut = cutoffFrom(period);
+  const daily = new Map();
+  (history||[]).forEach(tx=>{
+    const t = new Date(tx.created_at);
+    if(cut && t < cut) return; // filtra fora do período
+    const key = toDateOnlyISO(t);
+    const val = Number(tx.amount||0);
+    daily.set(key, (daily.get(key)||0) + val);
+  });
+  // ordenar por dia
+  return Array.from(daily.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
+}
+
+function drawVolumeChart(pairs){
+  const labels = pairs.map(p=>p[0]);
+  const values = pairs.map(p=>p[1]);
+
+  if(chartVolumeRef){ chartVolumeRef.destroy(); }
+  chartVolumeRef = new Chart(els2.volumeCanvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Volume diário (R$)",
+        data: values,
+        fill: false,
+        tension: 0.2
+      }]
+    },
+    options: {
+      responsive:true,
+      animation:false,
+      scales:{
+        y:{beginAtZero:true, ticks:{callback:(v)=>brl(v)}}
+      },
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+
+// Hook no seletor de período
+els2.periodSel?.addEventListener("change", loadAll);
+
+// ---- Patch em loadAll: incluir history e redesenhar volume ----
+const _loadAll_orig = loadAll;
+loadAll = async function(){
+  try{
+    const [stats, summary, history] = await Promise.all([
+      getJSON(`${BASE_PIX}/stats`),
+      getJSON(`${BASE_PIX}/summary`),
+      getJSON(`${BASE_PIX}/history?limit=200`),
+    ]);
+
+    // preencher cards (reuso do original)
+    els.totalCount.textContent = stats.total_count ?? "0";
+    els.totalAmount.textContent = brl(stats.total_amount ?? 0);
+    els.avgAmount.textContent = brl(stats.avg_amount ?? 0);
+    els.lastTx.textContent = stats.last_tx ?? "—";
+
+    // gráfico de saldo líquido por conta
+    drawChart(summary || []);
+
+    // gráfico de volume diário por período
+    const period = els2.periodSel?.value || "all";
+    const dailyPairs = buildDaily(history || [], period);
+    drawVolumeChart(dailyPairs);
+
+    // debug
+    els.debug.textContent = JSON.stringify({ stats, summary, history, period, dailyPairs }, null, 2);
+  }catch(err){
+    const msg = `Erro ao carregar dados: ${err.message}`;
+    console.error(msg);
+    els.debug.textContent = msg;
+  }
+}
+
+// ====== PATCH: Healthcheck em tempo real ======
+const BASE_API = (function(){
+  // BASE_PIX = https://.../api/v1/pix  => BASE_API = https://.../api/v1
+  try { return BASE_PIX.replace(/\/pix\/?$/,""); } catch { return ""; }
+})();
+
+const hc = {
+  badge: document.getElementById("hc-badge"),
+  btn: document.getElementById("btn-health"),
+  lastStatus: "warn",
+};
+
+function setBadge(state, msg){
+  if(!hc.badge) return;
+  hc.badge.classList.remove("badge-ok","badge-err","badge-warn");
+  hc.badge.classList.add(
+    state === "ok" ? "badge-ok" :
+    state === "err" ? "badge-err" : "badge-warn",
+    "badge"
+  );
+  hc.badge.textContent = msg;
+  hc.badge.title = `Backend: ${msg}`;
+  hc.lastStatus = state;
+}
+
+async function pingHealth(){
+  try{
+    const r = await fetch(`${BASE_API}/health`, { cache: "no-store" });
+    const ok = r.ok;
+    let txt = "";
+    try { txt = await r.text(); } catch {}
+    if(ok){
+      setBadge("ok", "Online");
+    } else {
+      setBadge("err", `Erro ${r.status}`);
+      console.error("Health NOK:", r.status, txt);
+    }
+  }catch(e){
+    setBadge("err", "Offline");
+    console.error("Health error:", e);
+  }
+}
+
+// botão manual
+hc.btn?.addEventListener("click", pingHealth);
+
+// roda ao carregar
+pingHealth();
+
+// auto-poll a cada 30s (só quando aba está ativa)
+setInterval(()=>{ if(document.hasFocus()) pingHealth(); }, 30000);
+
+// ===== PATCH: cards dinâmicos + export por período =====
+async function loadAll() {
+  try {
+    // dados brutos
+    const [statsRaw, summary, history] = await Promise.all([
+      getJSON(`${BASE_PIX}/stats`),
+      getJSON(`${BASE_PIX}/summary`),
+      getJSON(`${BASE_PIX}/history?limit=200`),
+    ]);
+
+    const period = els2.periodSel?.value || "all";
+    const cut = cutoffFrom(period);
+    // filtrar history pelo período
+    const histFiltered = (history||[]).filter(tx=>{
+      const t = new Date(tx.created_at);
+      return !(cut && t < cut);
+    });
+
+    // recalcular stats no período
+    const amounts = histFiltered.map(x=>Number(x.amount||0));
+    const total_count = amounts.length;
+    const total_amount = amounts.reduce((a,b)=>a+b,0);
+    const avg_amount = total_count ? (total_amount/total_count) : 0;
+    const last_tx = histFiltered.length ? histFiltered[0].created_at : "—";
+
+    // preencher cards
+    els.totalCount.textContent = total_count;
+    els.totalAmount.textContent = brl(total_amount);
+    els.avgAmount.textContent = brl(avg_amount);
+    els.lastTx.textContent = last_tx;
+
+    // gráfico de saldo líquido por conta (sempre total)
+    drawChart(summary || []);
+
+    // gráfico de volume diário filtrado
+    const dailyPairs = buildDaily(history || [], period);
+    drawVolumeChart(dailyPairs);
+
+    // debug
+    els.debug.textContent = JSON.stringify({ period, total_count, total_amount, avg_amount, last_tx, dailyPairs }, null, 2);
+  } catch (err) {
+    const msg = `Erro ao carregar dados: ${err.message}`;
+    console.error(msg);
+    els.debug.textContent = msg;
+  }
+}
+
+// substitui exportCSV para respeitar período
+async function exportCSV() {
+  try {
+    const period = els2.periodSel?.value || "all";
+    const cut = cutoffFrom(period);
+    const hist = await getJSON(`${BASE_PIX}/history?limit=200`);
+    const histFiltered = (hist||[]).filter(tx=>{
+      const t = new Date(tx.created_at);
+      return !(cut && t < cut);
+    });
+    if(histFiltered.length === 0){
+      alert("Sem dados para exportar nesse período.");
+      return;
+    }
+    const headers = ["id","from_account_id","to_account_id","amount","created_at"];
+    const rows = histFiltered.map(x => [
+      x.id, x.from_account_id, x.to_account_id, x.amount, x.created_at
+    ]);
+
+    const toCSV = arr => arr.map(v=>{
+      const s=(v===null||v===undefined)?"":String(v);
+      return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
+    }).join(",");
+    const csv = [toCSV(headers), ...rows.map(toCSV)].join("\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ts=new Date().toISOString().replace(/[:.]/g,"-");
+    a.href=url;
+    a.download=`pix_history_${period}_${ts}.csv`;
+    document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert("Falha ao exportar CSV: "+e.message);
+    console.error(e);
+  }
+}

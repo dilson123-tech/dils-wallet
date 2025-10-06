@@ -53,3 +53,16 @@ body{
   background:#0d1420; border:1px solid #142135; border-radius:12px; padding:10px 14px;
 }
 .raw pre{white-space:pre-wrap; word-break:break-word}
+.controls{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.controls select{background:#0d1420;color:#e6eefc;border:1px solid #1a2435;border-radius:10px;padding:6px 10px}
+.badge{
+  display:inline-block; margin-right:10px; padding:6px 10px; border-radius:999px;
+  border:1px solid #1a2435; background:#0d1420; color:#e6eefc; font-size:12px;
+}
+.badge-ok{ background:#0f2a1b; color:#06c167; border-color:#0f3d27 }
+.badge-warn{ background:#2a240f; color:#eab308; border-color:#3b2f0a }
+.badge-err{ background:#2a0f12; color:#ef4444; border-color:#3b0a11 }
+.topbar .actions button#btn-health{
+  background:#1f2937; color:#e6eefc; border:1px solid #334155; margin-left:6px;
+}
+.topbar .actions button#btn-health:hover{ filter:brightness(1.1) }
