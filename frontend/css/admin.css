@@ -1,0 +1,55 @@
+:root{
+  --bg:#0b0f14;
+  --card:#111722;
+  --ink:#e6eefc;
+  --muted:#93a1b3;
+  --ok:#06c167;
+  --warn:#eab308;
+  --err:#ef4444;
+  --accent:#3b82f6;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+}
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px; background:#0d1420; border-bottom:1px solid #0f1b2b;
+  position:sticky; top:0; z-index:10;
+}
+.topbar h1{font-size:18px; margin:0}
+.topbar .actions button{
+  background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; cursor:pointer;
+}
+.topbar .actions button:hover{filter:brightness(1.1)}
+
+.container{max-width:1100px; margin:24px auto; padding:0 16px}
+
+.cards{
+  display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+  gap:16px; margin-bottom:24px;
+}
+.card{
+  background:var(--card); padding:16px; border-radius:14px; border:1px solid #1a2435;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+.card h3{margin:0 0 8px 0; font-weight:600; color:var(--muted); font-size:14px}
+.card p{margin:0; font-size:22px}
+
+.panel{
+  background:var(--card); padding:16px; border-radius:14px; border:1px solid #1a2435;
+}
+.panel h2{margin:0 0 8px 0; font-size:18px}
+.hint{color:var(--muted)}
+
+.raw details{
+  margin-top:18px;
+  background:#0d1420; border:1px solid #142135; border-radius:12px; padding:10px 14px;
+}
+.raw pre{white-space:pre-wrap; word-break:break-word}

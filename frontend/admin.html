@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Dils Wallet — Dashboard Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./css/admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Dashboard Admin — PIX Insights</h1>
+    <div class="actions">
+      <button id="btn-refresh">Atualizar</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="cards">
+      <div class="card">
+        <h3>Total de Transações</h3>
+        <p id="totalCount">—</p>
+      </div>
+      <div class="card">
+        <h3>Valor Total Movimentado</h3>
+        <p id="totalAmount">—</p>
+      </div>
+      <div class="card">
+        <h3>Média por Transação</h3>
+        <p id="avgAmount">—</p>
+      </div>
+      <div class="card">
+        <h3>Última Transação (UTC)</h3>
+        <p id="lastTx">—</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Saldo Líquido por Conta</h2>
+      <canvas id="summaryChart" height="120"></canvas>
+      <small class="hint">Verde = saldo positivo · Vermelho = saldo negativo</small>
+    </section>
+
+    <section class="raw">
+      <details>
+        <summary>Ver JSON bruto (debug)</summary>
+        <pre id="debugArea">—</pre>
+      </details>
+    </section>
+  </main>
+
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- App -->
+  <script src="./js/admin.js"></script>
+</body>
+</html>
