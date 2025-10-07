@@ -1,4 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
+from decimal import Decimal
+from datetime import datetime
+
+def _coerce(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
+
+def _row_to_jsonable(row):
+    d = dict(row._mapping)
+    for k, v in list(d.items()):
+        d[k] = _coerce(v)
+    return d
+
+
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -106,3 +123,77 @@ def pix_mock_transfer(
     except:
         db.rollback()
         raise
+
+from decimal import Decimal
+from datetime import datetime
+
+# --- helpers de serialização seguros ---
+def _coerce(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
+
+def _row_to_jsonable(row):
+    # suporta RowMapping (.mappings()) e Row via ._mapping
+    if hasattr(row, "items"):
+        d = dict(row)
+    else:
+        d = dict(row._mapping)
+    for k, v in list(d.items()):
+        d[k] = _coerce(v)
+    return d
+
+# --- /summary: por conta (usa pix_transactions) ---
+@router.get("/summary", summary="Resumo PIX por conta")
+def pix_summary():
+    from backend.app.database import SessionLocal
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        q = db.execute(text("""
+            WITH t AS (
+                SELECT to_account_id    AS account_id,
+                       amount           AS received,
+                       0::numeric       AS sent
+                FROM pix_transactions
+                UNION ALL
+                SELECT from_account_id  AS account_id,
+                       0::numeric       AS received,
+                       amount           AS sent
+                FROM pix_transactions
+            )
+            SELECT account_id,
+                   SUM(received)            AS total_received,
+                   SUM(sent)                AS total_sent,
+                   SUM(received - sent)     AS net_balance
+            FROM t
+            GROUP BY account_id
+            ORDER BY account_id
+        """))
+        rows = q.mappings().all() if hasattr(q, "mappings") else q.fetchall()
+        return [_row_to_jsonable(r) for r in rows]
+    finally:
+        db.close()
+
+# --- /stats: agregados globais (usa pix_transactions) ---
+@router.get("/stats", summary="Estatisticas gerais de transacoes PIX")
+def pix_stats():
+    from backend.app.database import SessionLocal
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        q = db.execute(text("""
+            SELECT COUNT(*)        AS total_count,
+                   SUM(amount)     AS total_amount,
+                   AVG(amount)     AS avg_amount,
+                   MIN(amount)     AS min_amount,
+                   MAX(amount)     AS max_amount,
+                   MAX(created_at) AS last_tx
+            FROM pix_transactions
+        """))
+        row = q.mappings().one() if hasattr(q, "mappings") else q.fetchone()
+        return _row_to_jsonable(row)
+    finally:
+        db.close()

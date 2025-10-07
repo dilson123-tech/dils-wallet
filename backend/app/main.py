@@ -1,3 +1,4 @@
+from backend.app.api.v1 import router as api_v1_router
 import os
 import importlib
 from pathlib import Path
@@ -17,9 +18,11 @@ from .database import engine, Base, get_db  # mantém como está no projeto
 
 # App
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+app.include_router(api_v1_router)
 include_auth_routes(app)  # AURA auth routes
 include_daily_routes(app)  # PIX daily-summary
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+app.include_router(api_v1_router)
 include_daily_routes(app)  # PIX daily-summary routes
 
 # CORS
@@ -83,13 +86,5 @@ def _include_routes() -> None:
     from backend.app.api.v1.routes import pix_summary
     from backend.app.api.v1.routes import pix_stats
 
-    app.include_router(auth_mod.router, prefix="/api/v1/auth", tags=["auth"])
-    app.include_router(refresh_mod.router, prefix="/api/v1/auth", tags=["auth"])
-    app.include_router(users_mod.router, prefix="/api/v1/users", tags=["users"])
-    app.include_router(tx_mod.router, prefix="/api/v1/transactions", tags=["transactions"])
-    app.include_router(pix_mod.router, prefix="/api/v1/pix", tags=["pix"])
-    app.include_router(pix_history.router)
-    app.include_router(pix_summary.router)
-    app.include_router(pix_stats.router)
 
 _include_routes()
