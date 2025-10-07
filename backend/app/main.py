@@ -18,6 +18,16 @@ from .database import engine, Base, get_db  # mantém como está no projeto
 
 # App
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+from fastapi import Response
+
+@app.get("/")
+def root_ok():
+    return {"ok": True}
+
+@app.head("/")
+def root_head():
+    return Response(status_code=200)
+
 
 @app.get("/")
 def root_ok():
@@ -93,3 +103,8 @@ def _include_routes() -> None:
 
 
 _include_routes()
+
+@app.head("/api/v1/health")
+def health_head():
+    from fastapi import Response
+    return Response(status_code=200)
