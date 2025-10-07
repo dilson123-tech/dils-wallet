@@ -18,6 +18,11 @@ from .database import engine, Base, get_db  # mantém como está no projeto
 
 # App
 app = FastAPI(title="Dils Wallet API", version="0.1.0")
+
+@app.get("/")
+def root_ok():
+    return {"ok": True}
+
 app.include_router(api_v1_router)
 include_auth_routes(app)  # AURA auth routes
 include_daily_routes(app)  # PIX daily-summary
