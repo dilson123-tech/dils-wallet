@@ -14,3 +14,9 @@ build/
 !constraints-prod.txt
 .railpack
 railpack-plan.json
+.git
+.venv
+__pycache__/
+*.pyc
+node_modules/
+*.log
