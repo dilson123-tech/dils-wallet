@@ -1,18 +1,15 @@
 [phases.setup]
-# python e curl (para fallback get-pip.py)
 nixPkgs = ["python311", "curl"]
 
 [phases.install]
 cmds = [
   "python -m venv .venv",
-  # tenta ativar pip na venv
   ".venv/bin/python -m ensurepip --upgrade || true",
-  # se ainda não existir pip, baixa e instala na venv
+  # se ainda não tiver pip, bootstrap dentro da VENV (sem tocar sistema)
   "(.venv/bin/python -m pip -V >/dev/null 2>&1) || (curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && .venv/bin/python /tmp/get-pip.py)",
-  # atualiza ferramentas
   ".venv/bin/python -m pip install --upgrade pip setuptools wheel",
-  # instala deps do backend
-  ".venv/bin/pip install -r backend/requirements.txt"
+  # 👇 AGORA usamos o requirements.txt da RAIZ
+  ".venv/bin/pip install -r requirements.txt"
 ]
 
 [start]
