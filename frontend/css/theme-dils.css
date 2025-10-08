@@ -1,0 +1,32 @@
+:root{
+  --dils-bg: #0A0F1E;            /* fundo */
+  --dils-surface: #111727;       /* cartões */
+  --dils-primary: #007BFF;       /* primária (azul royal) */
+  --dils-accent: #6A00F4;        /* roxo destaque */
+  --dils-success: #00FF99;       /* verde neon (positivo) */
+  --dils-warn: #FF6B00;          /* laranja ação */
+  --dils-text: #E8EAF0;          /* texto principal */
+  --dils-muted: #9AA3B2;         /* texto secundário */
+  --dils-glow: rgba(0,255,153,.25);
+}
+
+/* aplica no painel */
+body{ background: var(--dils-bg); color: var(--dils-text); }
+.card{ background: var(--dils-surface); box-shadow: 0 8px 24px rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.04); }
+h1,h2,h3,strong{ color: var(--dils-text); }
+.badge-online{ background: linear-gradient(90deg, var(--dils-success), var(--dils-primary)); color:#031; border:none; }
+.btn{
+  background: linear-gradient(90deg, var(--dils-primary), var(--dils-accent));
+  color:#fff; border:0; padding:.55rem .9rem; border-radius:10px;
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+  transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+}
+.btn:hover{ transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 8px 24px rgba(106,0,244,.35); }
+.btn-secondary{ background: var(--dils-surface); color: var(--dils-text); border:1px solid rgba(255,255,255,.08); }
+.kpi .value{ color: var(--dils-success); }
+
+/* tooltips/labels */
+small, .muted{ color: var(--dils-muted); }
+
+/* charts canvas look nicer on dark */
+canvas{ background: transparent; }

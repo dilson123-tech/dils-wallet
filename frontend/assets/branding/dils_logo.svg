@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120">
+  <defs>
+    <linearGradient id="gradDils" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#007BFF"/>
+      <stop offset="100%" stop-color="#6A00F4"/>
+    </linearGradient>
+  </defs>
+  <rect width="420" height="120" rx="20" fill="#0A0F1E"/>
+  <text x="30" y="80" font-family="Poppins, sans-serif" font-size="58" font-weight="600" fill="url(#gradDils)">Dils</text>
+  <text x="180" y="80" font-family="Poppins, sans-serif" font-size="42" font-weight="400" fill="#00FF99">Wallet</text>
+</svg>

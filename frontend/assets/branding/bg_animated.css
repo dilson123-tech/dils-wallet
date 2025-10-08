@@ -1,0 +1,31 @@
+body {
+  background: linear-gradient(-45deg, #0A0F1E, #111833, #0D1427, #10182C);
+  background-size: 400% 400%;
+  animation: gradientMove 18s ease infinite;
+  color: #E8EAF0;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* efeito de brilho no header */
+header {
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(0, 255, 153, 0.15);
+  border-bottom: 1px solid rgba(0, 255, 153, 0.08);
+}
+
+/* cartões com contorno levemente neon */
+.card {
+  border: 1px solid rgba(0, 255, 153, 0.08);
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 15px rgba(106, 0, 244, 0.25);
+}

@@ -1,11 +1,42 @@
-from ....security import get_current_user
-from . import auth
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
-from .... import schemas, database, models
+import typing as t
+import jwt
 
-router = APIRouter()
+from backend.app import database
+from backend.app.security import SECRET_KEY, ALGORITHM  # mesmos usados no login
 
-@router.get("/me", response_model=schemas.UserResponse)
-def get_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+# tenta achar o modelo User
+try:
+    from backend.app.models.user import User
+except Exception:
+    from backend.app.models.users import User  # fallback
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+@router.get("/me", summary="Who am I")
+def me(authorization: t.Optional[str] = Header(None), db: Session = Depends(database.get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token ausente.")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas ou token expirado.")
+
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token sem 'sub'.")
+
+    # buscar usuário por ID (login gera sub=str(uid))
+    user = db.query(User).filter(getattr(User, "id") == int(sub)).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado.")
+
+    # montar resposta enxuta
+    return {
+        "id": getattr(user, "id", None),
+        "email": getattr(user, "email", None),
+        "username": getattr(user, "username", None),
+        "active": getattr(user, "is_active", True),
+    }

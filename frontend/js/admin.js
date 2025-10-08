@@ -380,3 +380,183 @@ async function exportCSV() {
     console.error(e);
   }
 }
+
+// ===== PATCH: usar /pix/daily-summary no gráfico de volume =====
+async function fetchDailySummary(period){
+  const cut = cutoffFrom(period); // já existe
+  let url = `${BASE_API}/pix/daily-summary`;
+  if (cut){
+    const y = cut.getUTCFullYear();
+    const m = String(cut.getUTCMonth()+1).padStart(2,"0");
+    const d = String(cut.getUTCDate()).padStart(2,"0");
+    url += `?start=${y}-${m}-${d}`;
+  }
+  return getJSON(url);
+}
+
+function pairsFromDailySummary(daily){
+  // daily = [{day_utc, total_amount, ...}]
+  const byDay = (daily||[]).map(row => {
+    const day = row.day_utc; // "YYYY-MM-DD"
+    const val = Number(row.total_amount); // vem como string do Postgres
+    return [day, val];
+  }).sort((a,b)=> a[0].localeCompare(b[0]));
+  return byDay;
+}
+
+// override de loadAll para usar daily-summary no volume
+const _loadAll_prev_for_daily = loadAll;
+loadAll = async function(){
+  try{
+    const [stats, summary] = await Promise.all([
+      getJSON(`${BASE_PIX}/stats`),
+      getJSON(`${BASE_PIX}/summary`),
+    ]);
+
+    // cards globais (mantém)
+    els.totalCount.textContent = stats.total_count ?? "0";
+    els.totalAmount.textContent = brl(stats.total_amount ?? 0);
+    els.avgAmount.textContent = brl(stats.avg_amount ?? 0);
+    els.lastTx.textContent = stats.last_tx ?? "—";
+
+    // gráfico de saldo líquido por conta
+    drawChart(summary || []);
+
+    // novo: volume diário via MV
+    const period = (els2?.periodSel?.value) || "all";
+    const daily = await fetchDailySummary(period);
+    const dailyPairs = pairsFromDailySummary(daily);
+    drawVolumeChart(dailyPairs);
+
+    // debug
+    els.debug.textContent = JSON.stringify({ stats, summary, dailyPairs }, null, 2);
+  }catch(err){
+    const msg = `Erro ao carregar dados (daily-summary): ${err.message}`;
+    console.error(msg);
+    els.debug.textContent = msg;
+  }
+};
+
+// === PATCH VISUAL: animação e estilo Nubank ===
+function drawVolumeChart(dataPairs){
+  const ctx = document.getElementById("volumeChart").getContext("2d");
+  if (window.volumeChartInstance) {
+    window.volumeChartInstance.destroy();
+  }
+
+  const labels = dataPairs.map(p => p[0]);
+  const values = dataPairs.map(p => p[1]);
+
+  window.volumeChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Volume diário (R$)",
+        data: values,
+        borderRadius: 6,
+        backgroundColor: (ctx) => {
+          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 400);
+          gradient.addColorStop(0, "#8A05BE");  // Nubank roxo
+          gradient.addColorStop(1, "#C86DD7");
+          return gradient;
+        },
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      animation: {
+        duration: 900,
+        easing: "easeOutQuart"
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Total do dia: R$ ${ctx.formattedValue}`
+          }
+        },
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          ticks: {
+            color: "#CCC",
+            callback: v => `R$ ${v.toFixed(2)}`
+          },
+          grid: { color: "#333" }
+        },
+        x: {
+          ticks: { color: "#AAA" },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// === Dils Wallet Theme Helpers ===
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const DILS = {
+  primary: cssVar('--dils-primary') || '#007BFF',
+  accent:  cssVar('--dils-accent')  || '#6A00F4',
+  success: cssVar('--dils-success') || '#00FF99',
+  warn:    cssVar('--dils-warn')    || '#FF6B00',
+  text:    cssVar('--dils-text')    || '#E8EAF0'
+};
+
+// --- Reestiliza "Saldo Líquido por Conta" (vermelho/verde -> nossa paleta)
+if (typeof drawChart === 'function') {
+  const _drawChart = drawChart;
+  drawChart = function(summary){
+    // delega cálculo ao original, mas sobrepõe cores se existir Chart instance global
+    try {
+      _drawChart(summary);
+      if (window.balanceChartInstance) {
+        const ds = window.balanceChartInstance.data.datasets?.[0];
+        if (ds){
+          // negativo = laranja (warn), positivo = verde (success)
+          ds.backgroundColor = (ctx)=> {
+            const v = ds.data[ctx.dataIndex] || 0;
+            const c = v < 0 ? DILS.warn : DILS.success;
+            return c;
+          };
+          window.balanceChartInstance.update('none');
+        }
+      }
+    } catch(e){ console.warn('drawChart override fallback:', e); _drawChart(summary); }
+  }
+}
+
+// --- Reestiliza "Volume diário (R$)" com gradiente Dils
+if (typeof drawVolumeChart === 'function') {
+  const _drawVolumeChart = drawVolumeChart;
+  drawVolumeChart = function(dataPairs){
+    const el = document.getElementById('volumeChart');
+    if (!el) return _drawVolumeChart(dataPairs);
+    const ctx = el.getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,0,300);
+    grad.addColorStop(0, DILS.accent);
+    grad.addColorStop(1, DILS.primary);
+
+    // cria gráfico com nossa estética
+    if (window.volumeChartInstance) window.volumeChartInstance.destroy();
+    const labels = dataPairs.map(p=>p[0]);
+    const values = dataPairs.map(p=>p[1]);
+
+    window.volumeChartInstance = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ data: values, backgroundColor: grad, borderRadius: 7 }] },
+      options: {
+        animation: { duration: 900, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: s => `Total do dia: R$ ${s.formattedValue}` } }
+        },
+        scales: {
+          y: { ticks: { color: DILS.text, callback: v => `R$ ${Number(v).toFixed(2)}` }, grid: { color: 'rgba(255,255,255,.07)' } },
+          x: { ticks: { color: '#B5BCD0' }, grid: { display: false } }
+        }
+      }
+    });
+  }
+}

@@ -1,0 +1,38 @@
+/* Fundo Aurora */
+body {
+  background: radial-gradient(circle at 20% 30%, #8A80FF22, #80FF9922),
+              radial-gradient(circle at 80% 70%, #80FF9922, #8A80FF22),
+              #0A0F1E;
+  background-size: 400% 400%;
+  animation: auroraMove 20s ease infinite;
+  color: #fff;
+}
+
+@keyframes auroraMove {
+  0% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+  100% {background-position: 0% 50%;}
+}
+
+/* Painéis glass */
+.card, .chart, .panel {
+  background: rgba(10, 15, 30, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  border: 1px solid rgba(138,128,255,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* Botões */
+button, .btn {
+  background: linear-gradient(90deg,#80FF99,#8A80FF);
+  color:#0A0F1E;
+  font-weight:600;
+  border-radius:8px;
+  padding:6px 14px;
+  transition:all .3s ease;
+}
+button:hover, .btn:hover {
+  filter:brightness(1.2);
+  transform:scale(1.02);
+}
