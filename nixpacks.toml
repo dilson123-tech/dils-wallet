@@ -1,10 +1,10 @@
 [phases.setup]
-nixPkgs = ["python311"]
+# adiciona pip/setuptools/wheel nativos do Nix
+nixPkgs = ["python311", "python311Packages.pip", "python311Packages.setuptools", "python311Packages.wheel"]
 
 [phases.install]
 cmds = [
-  "python -m ensurepip --upgrade || true",
-  "python -m pip install --upgrade pip setuptools wheel",
+  "python -m pip install --upgrade pip",
   "python -m pip install -r backend/requirements.txt"
 ]
 
