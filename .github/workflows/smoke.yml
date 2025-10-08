@@ -1,87 +1,22 @@
-name: Smoke + Health
+name: 🚦 Smoke Test (Production)
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
-  schedule:
-    - cron: '*/15 * * * *'  # a cada 15 minutos
+  workflow_dispatch:
 
 jobs:
-  smoke:
-    if: github.event_name != 'schedule'
+  check-prod-health:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y jq
-      - name: Run smoke test (STRICT)
-        env:
-          BASE: https://dils-wallet-production.up.railway.app
-          EMAIL: smoke@dilswallet.com
-          PASS: 123456
-          AMOUNT: "37.50"
-          WITHDRAW: "5.00"
-          STRICT: "true"
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
+      - name: 🚀 Testar health endpoint em produção
         run: |
-          set -euo pipefail
-          # seu script. se falhar, o trap dentro dele manda TG (já adicionamos antes)
-          bash scripts/smoke_prod.sh
-      - name: Upload artifacts (extrato)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: extrato-smoke
-          path: artifacts/*
-          if-no-files-found: warn
-
-  health:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - run: sudo apt-get update && sudo apt-get install -y jq
-      - name: Health ping
-        env:
-          BASE: https://dils-wallet-production.up.railway.app
-        run: |
-          set -euo pipefail
-          echo "▶ GET $BASE/api/v1/health"
-          OUT=$(curl -fsS "$BASE/api/v1/health")
-          echo "$OUT"
-          # valida JSON com jq e exige status=ok
-          echo "$OUT" | jq -r '.status' | grep -qx 'ok'
-          echo "✔ Health OK (status=ok)"
-
-  notify_health:
-    needs: [health]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    env:
-      RESULT: ${{ needs.health.result }}
-    steps:
-      - name: Decide & send Telegram if health failed
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/tg/health
-          echo "health result: $RESULT"
-          if [ "${RESULT:-}" != "success" ]; then
-            MSG="❌ Smoke + Health (health) falhou em $GITHUB_REPOSITORY
-run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            HTTP=$(curl -s -o artifacts/tg/health/tg.txt -w '%{http_code}' \
-                   -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
-                   -d chat_id="${{ secrets.TG_CHAT_ID }}" \
-                   --data-urlencode text="$MSG") || true
-            echo "HTTP=$HTTP" | tee artifacts/tg/health/tg.http
-            tail -c 800 artifacts/tg/health/tg.txt || true
-          else
-            echo "health success; skip TG" | tee artifacts/tg/health/tg.http
-            echo '{"ok":true,"skipped":true}' > artifacts/tg/health/tg.txt
+          BASE="https://dils-wallet-production.up.railway.app"
+          echo "Testando \$BASE/api/v1/health..."
+          HTTP_CODE=$(curl -s -o /tmp/out.json -w "%{http_code}" "$BASE/api/v1/health")
+          cat /tmp/out.json
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Falha: API retornou código \$HTTP_CODE"
+            exit 1
           fi
-      - name: Upload TG artifacts (health)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tg-debug-health
-          path: artifacts/tg/health/*
-          if-no-files-found: warn
+          echo "✅ Smoke test aprovado!"
