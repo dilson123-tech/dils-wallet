@@ -1,14 +1,12 @@
 [phases.setup]
-# inclui python e venv nativo
 nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
   "python -m venv .venv",
-  "source .venv/bin/activate",
-  "python -m ensurepip --upgrade || true",
-  "python -m pip install --upgrade pip setuptools wheel",
-  "python -m pip install -r backend/requirements.txt"
+  ".venv/bin/python -m ensurepip --upgrade || true",
+  ".venv/bin/python -m pip install --upgrade pip setuptools wheel",
+  ".venv/bin/pip install -r backend/requirements.txt"
 ]
 
 [start]
