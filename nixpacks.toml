@@ -1,14 +1,15 @@
 [phases.setup]
-# Precisamos de python e curl pra baixar o get-pip.py
-nixPkgs = ["python311", "curl"]
+# inclui python e venv nativo
+nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
-  "curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py",
-  "python /tmp/get-pip.py",
+  "python -m venv .venv",
+  "source .venv/bin/activate",
+  "python -m ensurepip --upgrade || true",
   "python -m pip install --upgrade pip setuptools wheel",
   "python -m pip install -r backend/requirements.txt"
 ]
 
 [start]
-cmd = "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*"
+cmd = ".venv/bin/python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*"
