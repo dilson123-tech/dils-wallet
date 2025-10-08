@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend.app import database, models
 from backend.app.auth import create_access_token_for_user
-from backend.app.security import verify_password  # se não existir, use: from backend.app.utils import verify_password
+from backend.app.utils import verify_password  # se não existir, use: from backend.app.utils import verify_password
 
 
 # Tenta achar o modelo User em caminhos comunstry:
