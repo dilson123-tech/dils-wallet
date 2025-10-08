@@ -11,3 +11,4 @@ build/
 
 !requirements.txt
 !backend/**
+!constraints-prod.txt
