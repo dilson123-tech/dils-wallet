@@ -43,3 +43,5 @@ uvicorn.out
 __pycache__/
 *.sqlite3
 placeholder.db
+.railpack
+railpack-plan.json

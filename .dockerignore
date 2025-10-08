@@ -12,3 +12,5 @@ build/
 !requirements.txt
 !backend/**
 !constraints-prod.txt
+.railpack
+railpack-plan.json
