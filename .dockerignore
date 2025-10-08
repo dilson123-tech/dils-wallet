@@ -1,18 +1,13 @@
-# coisas que atrapalham o build
 .git
 .venv
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
 .env
 .env.*
-artifacts/
 node_modules/
 dist/
 build/
-# ⚠️ NÃO ignore a pasta backend nem requirements!
-# Se tiver um ignore amplo em outro lugar, garanta a inclusão:
-!backend/
-!backend/** 
+/artifacts/
+
 !requirements.txt
+!backend/**
