@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-router = APIRouter(prefix="", tags=["auth"])
+router = APIRouter(tags=["refresh"])
 
-@router.post("/refresh")
+@router.post("/")
 def refresh_stub():
     # rota antiga desativada temporariamente
     return {"detail": "refresh disabled"}

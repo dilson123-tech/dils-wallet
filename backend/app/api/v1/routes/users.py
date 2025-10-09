@@ -12,7 +12,7 @@ try:
 except Exception:
     from backend.app.models.users import User  # fallback
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(tags=["users"])
 
 @router.get("/me", summary="Who am I")
 def me(authorization: t.Optional[str] = Header(None), db: Session = Depends(database.get_db)):

@@ -7,7 +7,7 @@ from backend.app import database, models
 from backend.app.auth import create_access_token
 from backend.app.utils import verify_password
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 class LoginRequest(BaseModel):
     username: Optional[str] = None

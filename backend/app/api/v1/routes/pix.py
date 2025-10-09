@@ -28,7 +28,7 @@ from backend.app.core.crypto import stable_hash_payload
 import json
 import os
 
-router = APIRouter(prefix="/pix", tags=["pix"])
+router = APIRouter(tags=["pix"])
 
 @router.post("/mock-transfer", response_model=PixMockOut)
 def pix_mock_transfer(
