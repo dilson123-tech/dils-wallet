@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app import database, models
-from backend.app.auth import create_access_token_for_user
+from backend.app.oauth2 import create_access_token
 from backend.app.utils import verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -38,3 +38,7 @@ def login(payload: LoginRequest, db: Session = Depends(database.get_db)):
 @router.get("/ping", summary="Auth ping")
 def ping():
     return {"ok": True}
+# --- compat: manter a call-site que usa create_access_token_for_user(user)
+def create_access_token_for_user(user):
+    username_claim = getattr(user, "username", None) or getattr(user, "email", None) or ""
+    return create_access_token({"sub": str(getattr(user, "id", "")), "username": username_claim})
