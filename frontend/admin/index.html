@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dils Wallet — Admin</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:2rem;max-width:900px}
+    .card{border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+    h1{margin:0 0 12px}
+    input,button{padding:10px;border-radius:10px;border:1px solid #d1d5db;margin-right:8px}
+    button{cursor:pointer}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+    .ok{color:#16a34a}.err{color:#dc2626}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <h1>Admin • Dils Wallet</h1>
+
+  <div class="card">
+    <h3>Login</h3>
+    <div class="row">
+      <input id="email" placeholder="admin@example.com" value="admin@example.com"/>
+      <input id="password" type="password" placeholder="Senha"/>
+      <button id="btnLogin">Entrar</button>
+    </div>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div class="card">
+    <h3>Usuário atual</h3>
+    <pre id="me">–</pre>
+  </div>
+
+  <div class="card">
+    <h3>Resumo PIX</h3>
+    <button id="btnSummary">Atualizar resumo</button>
+    <table>
+      <thead><tr><th>Conta</th><th>Recebido</th><th>Enviado</th><th>Saldo</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+<script>
+const BASE = "https://dils-wallet-production.up.railway.app";
+let token = null;
+
+function setMsg(el, msg, ok=true){ el.innerHTML = `<span class="${ok?'ok':'err'}">${msg}</span>` }
+
+async function doLogin(){
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const msg = document.getElementById('loginMsg');
+  setMsg(msg, "Autenticando...", true);
+  try{
+    const r = await fetch(`${BASE}/api/v1/auth/login`, {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await r.json();
+    if(!r.ok){ setMsg(msg, data?.detail || "Falha no login", false); return; }
+    token = data.access_token;
+    setMsg(msg, "Logado!", true);
+    await fetchMe();
+  }catch(e){ setMsg(msg, e.message, false); }
+}
+
+async function fetchMe(){
+  if(!token){ document.getElementById('me').textContent="–"; return; }
+  const r = await fetch(`${BASE}/api/v1/users/me`, { headers:{ Authorization:`Bearer ${token}` }});
+  const data = await r.json();
+  document.getElementById('me').textContent = JSON.stringify(data, null, 2);
+}
+
+async function fetchSummary(){
+  const r = await fetch(`${BASE}/api/v1/pix/summary`);
+  const data = await r.json();
+  const tb = document.getElementById('tbody'); tb.innerHTML = "";
+  (Array.isArray(data)?data:[]).forEach(row=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.account_id}</td><td>${row.total_received}</td><td>${row.total_sent}</td><td>${row.net_balance}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+document.getElementById('btnLogin').onclick = doLogin;
+document.getElementById('btnSummary').onclick = fetchSummary;
+</script>
+</body>
+</html>
