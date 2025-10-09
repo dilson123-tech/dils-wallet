@@ -38,3 +38,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+# --- JWT fallbacks (env/config) ---
+import os
+JWT_ALG = getattr(config, "ALGORITHM", getattr(config, "JWT_ALGORITHM", "HS256"))
+JWT_SECRET = getattr(config, "SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret"))
+JWT_EXPIRE_MINUTES = int(getattr(
+    config, "ACCESS_TOKEN_EXPIRE_MINUTES",
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+))
