@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.api.v1.routes import users, auth, refresh, pix
+from backend.app.api.v1.routes import users, auth, refresh
+from backend.app.api.v1.routes.pix import router as pix_router
 
 app = FastAPI(title="Dils Wallet", version="1.0.0")
 
@@ -17,7 +18,7 @@ app.add_middleware(
 app.include_router(users.router, prefix="/api/v1/users")
 app.include_router(auth.router, prefix="/api/v1/auth")
 app.include_router(refresh.router, prefix="/api/v1/refresh")
-app.include_router(pix.router, prefix="/api/v1/pix")
+app.include_router(pix_router, prefix="/api/v1/pix")
 
 # --- Root e Healthcheck (GET e HEAD) ---
 @app.get("/")
