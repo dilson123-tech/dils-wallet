@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Response
+from backend.app.api.v1.routes.whoami import router as whoami_router
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.api.v1.routes import users, auth, refresh
+from backend.app.api.v1.routes import users, auth, refresh, auth_extras
 from backend.app.api.v1.routes.pix import router as pix_router
 
 app = FastAPI(title="Dils Wallet", version="1.0.0")
-
+app.include_router(whoami_router, prefix='/api/v1')
+app.include_router(auth_extras.router, prefix='/api/v1')
 # Middleware CORS
 app.add_middleware(
     CORSMiddleware,
