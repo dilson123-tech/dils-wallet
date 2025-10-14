@@ -61,3 +61,15 @@ def health_head():
 @app.get('/api/v1/health')
 def api_health():
     return {'status':'ok'}
+
+@app.head('/api/v1/health')
+def api_health_head():
+    return Response(status_code=200)
+
+@app.get('/health')
+def health():
+    return {'status':'ok'}
+
+@app.head('/health')
+def health_head():
+    return Response(status_code=200)
