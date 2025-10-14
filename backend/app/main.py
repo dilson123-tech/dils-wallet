@@ -1,10 +1,85 @@
 from fastapi import FastAPI, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from starlette.responses import Response
+
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+
+    async def dispatch(self, request, call_next):
+
+        response: Response = await call_next(request)
+
+        response.headers["Content-Security-Policy"] = (
+
+            "default-src 'self'; "
+            "connect-src 'self' https://dils-wallet-production.up.railway.app; "
+            "img-src 'self' data: blob:; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "font-src 'self' data:; "
+            "frame-ancestors 'self'; "
+            "base-uri 'self';"
+
+        )
+
+        return response
+
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 from backend.app.api.v1.routes.whoami import router as whoami_router
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.v1.routes import users, auth, refresh, auth_extras
 from backend.app.api.v1.routes.pix import router as pix_router
 
 app = FastAPI(title="Dils Wallet", version="1.0.0")
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from starlette.responses import Response
+
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+
+    async def dispatch(self, request, call_next):
+
+        response: Response = await call_next(request)
+
+        response.headers["Content-Security-Policy"] = (
+
+            "default-src 'self'; "
+            "connect-src 'self' https://dils-wallet-production.up.railway.app; "
+            "img-src 'self' data: blob:; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "font-src 'self' data:; "
+            "frame-ancestors 'self'; "
+            "base-uri 'self';"
+
+        )
+
+        return response
+
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://stunning-magic-production.up.railway.app",
+        "http://localhost:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(whoami_router, prefix='/api/v1')
 app.include_router(auth_extras.router, prefix='/api/v1')
 # Middleware CORS
