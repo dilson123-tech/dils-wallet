@@ -28,7 +28,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 
-app.add_middleware(SecurityHeadersMiddleware)
+
 
 from backend.app.api.v1.routes.whoami import router as whoami_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +36,7 @@ from backend.app.api.v1.routes import users, auth, refresh, auth_extras
 from backend.app.api.v1.routes.pix import router as pix_router
 
 app = FastAPI(title="Dils Wallet", version="1.0.0")
+app.add_middleware(SecurityHeadersMiddleware)
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from starlette.responses import Response
