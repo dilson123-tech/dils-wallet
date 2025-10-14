@@ -73,3 +73,11 @@ def health():
 @app.head('/health')
 def health_head():
     return Response(status_code=200)
+
+@app.get('/')
+def root_ok():
+    return {'status':'ok','service':'dils-wallet'}
+
+@app.head('/')
+def root_head():
+    return Response(status_code=200)
