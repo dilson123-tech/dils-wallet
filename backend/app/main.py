@@ -57,3 +57,7 @@ def health():
 def health_head():
     from fastapi import Response
     return Response(status_code=200)
+
+@app.get('/api/v1/health')
+def api_health():
+    return {'status':'ok'}
