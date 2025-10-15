@@ -29,7 +29,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (!r.ok) throw new Error(await r.text().catch(()=>"Falha no login"));
     const data = await readJson(r);
     const t = data.access_token || data.token;
-    if (!t) throw new Error("Resposta sem token");
+    if (!t) throw new Error("Credenciais inválidas.");
     localStorage.setItem("aurea.token", t);
     setToken(t);
   };
