@@ -1,3 +1,4 @@
+import { login as loginApi } from "@/app/lib/auth";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type SessionCtx = {
@@ -46,4 +47,15 @@ export function useSession() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("useSession deve ser usado dentro de <SessionProvider>");
   return ctx;
+}
+
+// -- injected fallback login handler (idempotente) --
+async function login(email: string, password: string) {
+  const r = await loginApi(email, password);
+  if (r.token) {
+    localStorage.setItem("token", r.token);
+    // se você tiver setUser / setSession, chame aqui
+  } else {
+    throw new Error(r.raw || "Falha no login");
+  }
 }
