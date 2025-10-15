@@ -16,7 +16,7 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("http://127.0.0.1:8000/api/v1/accounts/2/balance");
+        const r = await fetch(`${BASE_API}/api/v1/accounts/2/balance`);
         const b: BalanceResp = await r.json();
         console.log(">>> backend respondeu:", b);
         console.log(">>> resposta bruta do backend:", b);

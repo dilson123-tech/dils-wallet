@@ -1,6 +1,6 @@
 import { useSession } from "../app/context/SessionContext";
 
-const BASE = (import.meta as any).env?.VITE_API_URL || "http://127.0.0.1:8000";
+const BASE = (import.meta as any).env?.VITE_API_BASE || `${BASE_API}`;
 
 export function useApi() {
   const { token } = useSession();

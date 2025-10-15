@@ -2,7 +2,7 @@ const BASE_API = String(import.meta.env.VITE_API_BASE);
 
 type Opts = { token?: string; body?: any; headers?: Record<string,string> };
 
-function h(token?: string, extra?: Record<string,string>){
+function h(token?: string, extra?: Record<string,string>) {
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
