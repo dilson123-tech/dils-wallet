@@ -27,7 +27,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ username: email, password }),
     });
     if (!r.ok) throw new Error(await r.text().catch(()=>"Falha no login"));
-    const data = await r.json();
+    const data = await readJson(r);
     const t = data.access_token || data.token;
     if (!t) throw new Error("Resposta sem token");
     localStorage.setItem("aurea.token", t);

@@ -17,7 +17,7 @@ export default function Dashboard() {
     (async () => {
       try {
         const r = await fetch(`${BASE_API}/api/v1/accounts/2/balance`);
-        const b: BalanceResp = await r.json();
+        const b: BalanceResp = await readJson(r);
         console.log(">>> backend respondeu:", b);
         console.log(">>> resposta bruta do backend:", b);
         console.log(">>> resposta bruta do backend:", b);
