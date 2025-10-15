@@ -1,20 +1,36 @@
-import axios from "axios";
+const BASE_API = String(import.meta.env.VITE_API_BASE);
 
-const BASE_API = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+type Opts = { token?: string; body?: any; headers?: Record<string,string> };
 
-export const api = axios.create({
-  baseURL: BASE_API,
-  headers: { "Content-Type": "application/json" }
-});
+function h(token?: string, extra?: Record<string,string>){
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(extra || {})
+  };
+}
 
-// injeta o token (se existir) em todas as requisições
-api.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    cfg.headers = cfg.headers ?? {};
-    (cfg.headers as any).Authorization = `Bearer ${token}`;
-  }
-  return cfg;
-});
+export async function apiGet(path: string, opts: Opts = {}) {
+  const r = await fetch(`${BASE_API}${path}`, {
+    method: 'GET',
+    headers: h(opts.token),
+    credentials: 'omit',   // sem cookies
+    mode: 'cors'
+  });
+  if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`);
+  return r.json();
+}
 
-export default api;
+export async function apiPost(path: string, opts: Opts = {}) {
+  const r = await fetch(`${BASE_API}${path}`, {
+    method: 'POST',
+    headers: h(opts.token),
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    credentials: 'omit',
+    mode: 'cors'
+  });
+  if (!r.ok) throw new Error(`POST ${path} -> ${r.status}`);
+  return r.json();
+}
+
+export { BASE_API };
