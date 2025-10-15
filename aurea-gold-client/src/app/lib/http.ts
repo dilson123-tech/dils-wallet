@@ -2,9 +2,8 @@ export async function readJson(res: Response): Promise<any> {
   if (res.status === 204) return null;
   const ct = res.headers.get('content-type') || '';
   const text = await res.text();
-
   if (!res.ok) {
-    const snippet = text?.slice(0, 300);
+    const snippet = text?.slice(0,300);
     throw new Error(`${res.status} ${res.statusText} :: ${snippet}`);
   }
   if (ct.includes('application/json')) {

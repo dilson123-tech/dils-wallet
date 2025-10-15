@@ -1,4 +1,5 @@
 import "@/shims/global-readjson";
+import "@/shims/global-readjson";
 import { readJson } from "@/app/lib/http";
 import React from "react";
 import ReactDOM from "react-dom/client";
