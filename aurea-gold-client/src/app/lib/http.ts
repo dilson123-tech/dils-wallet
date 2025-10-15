@@ -14,3 +14,9 @@ export async function readJson(res: Response): Promise<any> {
   }
   return { raw: text };
 }
+
+// deixa acessível globalmente para qualquer chamada solta
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  (window as any).readJson = readJson;
+}
