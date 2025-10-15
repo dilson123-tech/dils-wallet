@@ -14,7 +14,7 @@ export async function apiGet(path: string, opts: Opts = {}) {
   const r = await fetch(`${BASE_API}${path}`, {
     method: 'GET',
     headers: h(opts.token),
-    credentials: 'omit',   // sem cookies
+    credentials: 'omit',
     mode: 'cors'
   });
   if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`);
