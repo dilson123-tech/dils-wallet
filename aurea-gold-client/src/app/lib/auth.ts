@@ -7,19 +7,11 @@ export type LoginResult =
 
 export async function login(email: string, password: string): Promise<LoginResult> {
   try {
-    const data = await apiPost("/auth/login", {
-      body: { email, password },
-    }) as any;
-
+    const data = await apiPost("/auth/login", { body: { email, password } }) as any;
     const token = data?.token || data?.access_token || data?.accessToken;
-    if (token && typeof token === "string") {
-      return { ok: true, token };
-    }
-
-    const msg = data?.detail || data?.message || "Credenciais inválidas.";
-    return { ok: false, error: String(msg) };
+    if (typeof token === "string" && token.length > 0) return { ok: true, token };
+    return { ok: false, error: String(data?.detail || data?.message || "Credenciais inválidas.") };
   } catch (e: any) {
-    const msg = e?.message || "Falha ao autenticar.";
-    return { ok: false, error: String(msg) };
+    return { ok: false, error: String(e?.message || "Falha ao autenticar.") };
   }
 }
