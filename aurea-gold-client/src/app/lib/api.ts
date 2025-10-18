@@ -1,28 +1,29 @@
-import { readJson } from "@/app/lib/http";
-
-const BASE_API = String(import.meta.env.VITE_API_BASE); // ex: https://dils-wallet-production.up.railway.app/api/v1
+export const BASE_API = String(import.meta.env.VITE_API_BASE);
 
 type Opts = { token?: string; body?: any; headers?: Record<string,string> };
 
-function h(token?: string, extra?: Record<string,string>) {
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(extra || {}),
-  };
+function jsonHeaders(extra?: Record<string,string>) {
+  return { 'Content-Type': 'application/json', ...(extra||{}) };
 }
 
-async function req(method: "GET"|"POST", path: string, opts: Opts = {}) {
-  const res = await fetch(`${BASE_API}${path}`, {
-    method,
-    headers: h(opts.token, opts.headers),
-    body: method === "POST" && opts.body ? JSON.stringify(opts.body) : undefined,
-    mode: "cors",
-    credentials: "omit",
+export async function apiPost(path: string, opts: Opts = {}) {
+  const r = await fetch(`${BASE_API}${path}`, {
+    method: 'POST',
+    headers: jsonHeaders(opts.headers),
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    credentials: 'omit',
+    mode: 'cors',
   });
-  return readJson(res);
+  const text = await r.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!r.ok) throw new Error(data?.detail || `POST ${path} -> ${r.status}`);
+  return data;
 }
 
-export const apiGet  = (path: string, opts?: Opts) => req("GET",  path, opts);
-export const apiPost = (path: string, opts?: Opts) => req("POST", path, opts);
-export { BASE_API };
+export async function login(email: string, password: string) {
+  const data = await apiPost('/auth/login', { body: { email, password }});
+  const token = data?.token ?? data?.access_token ?? data?.accessToken ?? null;
+  if (!token) throw new Error('Login OK mas sem token na resposta.');
+  localStorage.setItem('token', token);
+  return token;
+}
