@@ -5,7 +5,7 @@ export async function apiGet(path: string) {
   const res = await fetch(url);
   if (res.status === 204) return null;
   const ct = res.headers.get('content-type') || '';
-  const text = await res.text();
-  if (!ct.includes('application/json')) return text || null;
-  try { return text ? JSON.parse(text) : null; } catch { return null; }
+  const txt = await res.text();
+  if (!ct.includes('application/json')) return txt || null;
+  try { return txt ? JSON.parse(txt) : null; } catch { return null; }
 }
