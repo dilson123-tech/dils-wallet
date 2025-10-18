@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --port 5174 --strictPort",
     "start": "vite preview --host --port ${PORT:-8080}",
-    "start:prod": "serve -s dist -l ${PORT:-8080}"
+    "start:prod": "serve -s dist -l ${PORT:-8080}",
+    "postinstall": "node -e \"try{require(\\\"esbuild\\\");process.exit(0)}catch(e){process.exit(1)}\" || npm rebuild esbuild"
   },
   "dependencies": {
     "axios": "^1.12.2",
@@ -28,6 +29,6 @@
     "vite": "^5.4.0"
   },
   "engines": {
-    "node": ">=20 <21"
+    "node": "20.x"
   }
 }
