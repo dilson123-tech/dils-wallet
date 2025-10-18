@@ -21,7 +21,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const r = await fetch(`${BASE}/api/v1/auth/login`, {
+    const r = await fetch(`${BASE_API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: email, password }),
