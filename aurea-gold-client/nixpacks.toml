@@ -1,20 +1,33 @@
+# Fica explícito que é Node e qual versão usar
 providers = ["node"]
 
+[phases.setup]
+# força Node 20 no Nixpacks
+nixPkgs = ["nodejs_20"]
+
 [variables]
+# <- o Vite lê isso no build
+VITE_API_BASE = "https://dils-wallet-production.up.railway.app/api/v1"
+
+# Deixa o npm mais resiliente a quedas de rede do builder do Railway
 NPM_CONFIG_AUDIT = "false"
 NPM_CONFIG_FUND = "false"
 NPM_CONFIG_FETCH_RETRIES = "5"
+NPM_CONFIG_FETCH_RETRY_FACTOR = "2"
 NPM_CONFIG_FETCH_RETRY_MINTIMEOUT = "20000"
 NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT = "120000"
 
 [phases.install]
+# usa npm ci para builds reprodutíveis
 cmds = [
-  "npm ci || npm install --no-audit --no-fund",
-  "npm rebuild esbuild || true"
+  "npm ci --no-audit --fund=false"
 ]
 
 [phases.build]
-cmds = ["npx vite build --debug"]
+cmds = [
+  "npm run build"
+]
 
+# Sobe a SPA. Se você já tiver 'preview' no package.json do Vite, use-o.
 [start]
 cmd = "npm run preview -- --host 0.0.0.0 --port $PORT"
