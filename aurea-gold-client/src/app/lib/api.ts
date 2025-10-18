@@ -1,4 +1,4 @@
-export const globalThis.BASE_API = String(import.meta.env.VITE_API_BASE);
+export const globalThis.globalThis.BASE_API = String(import.meta.env.VITE_API_BASE);
 
 type Opts = { token?: string; body?: any; headers?: Record<string,string> };
 
@@ -7,7 +7,7 @@ function jsonHeaders(extra?: Record<string,string>) {
 }
 
 export async function apiPost(path: string, opts: Opts = {}) {
-  const r = await fetch(`${globalThis.globalThis.BASE_API}${path}`, {
+  const r = await fetch(`${globalThis.globalThis.globalThis.BASE_API}${path}`, {
     method: 'POST',
     headers: jsonHeaders(opts.headers),
     body: opts.body ? JSON.stringify(opts.body) : undefined,

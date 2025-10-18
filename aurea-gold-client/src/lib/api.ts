@@ -1,6 +1,6 @@
 import { useSession } from "../app/context/SessionContext";
 
-const BASE = (import.meta as any).env?.VITE_API_BASE || `${globalThis.globalThis.BASE_API}`;
+const BASE = (import.meta as any).env?.VITE_API_BASE || `${globalThis.globalThis.globalThis.BASE_API}`;
 
 export function useApi() {
   const { token } = useSession();
