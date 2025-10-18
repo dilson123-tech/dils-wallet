@@ -1,9 +1,21 @@
 [phases.setup]
+# Node 20 (mesma versão que estamos usando)
 nixPkgs = ["nodejs_20"]
+
+[variables]
+# Faz o Vite e o Node mostrarem stack traces úteis
+NODE_OPTIONS="--trace-uncaught"
+# Evita que “warnings” virem erro em alguns ambientes CI
+CI=""
 
 [phases.build]
 cmds = [
-  "npm ci",
-  "npm rebuild esbuild",
-  "npm run build"
+  # instala deps (sem audit/fund pra reduzir ruído)
+  "npm install --no-audit --no-fund",
+  # garante binário do esbuild correto para o ambiente
+  "npm rebuild esbuild || true",
+  # imprime versões úteis no log
+  "node -e \"console.log('node', process.version); try{console.log('vite', require('vite/package.json').version)}catch{}\"",
+  # roda o build com debug verboso
+  "npx vite build --debug"
 ]
