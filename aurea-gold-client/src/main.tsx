@@ -1,3 +1,4 @@
+import "@/app/lib/fetch-login-patch";
 import "@/shims/global-readjson";
 import "@/shims/global-readjson";
 import { readJson } from "@/app/lib/http";
