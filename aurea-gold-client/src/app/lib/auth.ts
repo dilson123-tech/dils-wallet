@@ -1,10 +1,10 @@
-import { BASE_API } from "./api";
+import { globalThis.BASE_API } from "./api";
 
 export type LoginOk = { ok: true; token: string };
 export type LoginErr = { ok: false; message: string };
 
 export async function login(email: string, password: string): Promise<LoginOk | LoginErr> {
-  const res = await fetch(`${BASE_API}/auth/login`, {
+  const res = await fetch(`${globalThis.globalThis.BASE_API}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "omit",

@@ -10,7 +10,7 @@ type SessionCtx = {
 
 const Ctx = createContext<SessionCtx | null>(null);
 
-const BASE = (import.meta as any).env?.VITE_API_BASE || `${BASE_API}`;
+const BASE = (import.meta as any).env?.VITE_API_BASE || `${globalThis.globalThis.BASE_API}`;
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const r = await fetch(`${BASE_API}/auth/login`, {
+    const r = await fetch(`${globalThis.globalThis.BASE_API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: email, password }),

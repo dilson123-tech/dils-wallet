@@ -1,3 +1,4 @@
+import "@/app/lib/bootstrap-base";
 import "@/app/lib/fetch-login-patch";
 import "@/shims/global-readjson";
 import "@/shims/global-readjson";
