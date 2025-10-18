@@ -1,32 +1,25 @@
-import { globalThis.globalThis.BASE_API } from "./api";
+import { BASE_API } from "./api";
 
-export type LoginOk = { ok: true; token: string };
-export type LoginErr = { ok: false; message: string };
+export type PromiseLogin = { ok: boolean; token?: string; message?: string };
 
-export async function login(email: string, password: string): Promise<LoginOk | LoginErr> {
-  const res = await fetch(`${globalThis.globalThis.globalThis.BASE_API}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "omit",
-    body: JSON.stringify({ email, password })
-  });
+export async function login(email: string, password: string): PromiseLogin {
+  try {
+    const r = await fetch(`${BASE_API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const txt = await r.text();
+    const data = txt ? JSON.parse(txt) : {};
+    if (!r.ok) throw new Error(data?.detail || "Falha no login");
 
-  // tenta ler como JSON; se vier texto/HTML por erro, cai no catch
-  let data: any = null;
-  try { data = await res.json(); } catch { /* noop */ }
+    const token =
+      data?.access_token || data?.token || data?.jwt || data?.accessToken || null;
+    if (!token) throw new Error("Login OK mas sem token na resposta.");
 
-  if (res.ok) {
-    const token = data?.access_token || data?.token;
-    if (typeof token === "string" && token.length > 0) {
-      return { ok: true, token };
-    }
-    return { ok: false, message: "Login OK mas sem token na resposta." };
+    localStorage.setItem("aurea.token", String(token));
+    return { ok: true, token: String(token) };
+  } catch (err: any) {
+    return { ok: false, message: err?.message || "Erro ao autenticar." };
   }
-
-  // mensagens amigáveis
-  const msg =
-    data?.detail?.toString?.() ||
-    (typeof data === "string" ? data : "") ||
-    `HTTP ${res.status}`;
-  return { ok: false, message: msg };
 }
