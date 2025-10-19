@@ -1,9 +1,7 @@
+import "@/shims/global-readjson";
 import "./app/lib/env";
 import "./app/lib/bootstrap-base";
 import "@/app/lib/fetch-login-patch";
-import "@/shims/global-readjson";
-import "@/shims/global-readjson";
-import { readJson } from "@/app/lib/http";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { SessionProvider } from "./app/context/SessionContext";
