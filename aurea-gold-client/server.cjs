@@ -1,44 +1,23 @@
-/* Servidor estático para SPA (Vite build) + fallback de rotas */
-const path = require('path');
-const fs = require('fs');
 const express = require('express');
+const path = require('path');
 
 const app = express();
-const distDir = path.resolve(__dirname, 'dist');
-const port = process.env.PORT || 8080;
+const dist = path.resolve(__dirname, 'dist');
 
-/* healthcheck para o Railway */
-app.get('/healthz', (_, res) => res.type('text').send('ok'));
-
-/* estáticos com cache para assets fingerprintados */
-app.use(express.static(distDir, {
-  index: false,
-  extensions: ['html'],
-  setHeaders(res, filePath) {
-    // assets gerados pelo Vite têm hash → pode cachear forte
-    if (/\.(css|js|png|jpg|jpeg|svg|ico|webp|woff2?)$/.test(filePath) && filePath.includes('/assets/')) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    } else {
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-  }
+// Assets com cache longo
+app.use('/assets', express.static(path.join(dist, 'assets'), {
+  immutable: true,
+  maxAge: '1y',
 }));
 
-/* fallback do SPA: qualquer rota que não for arquivo/asset devolve index.html */
-app.get('*', (req, res, next) => {
-  const p = req.path;
-  // se parecer arquivo (tem extensão), deixa o static responder 404
-  if (path.extname(p)) return next();
-  const indexPath = path.join(distDir, 'index.html');
-  try {
-    const html = fs.readFileSync(indexPath, 'utf8');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.status(200).send(html);
-  } catch (e) {
-    return res.status(500).send('index.html not found');
-  }
+// Demais estáticos sem cache agressivo
+app.use(express.static(dist, { maxAge: 0 }));
+
+// SPA fallback — não cachear o index.html
+app.get(/.*/, (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(dist, 'index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`> SPA server on http://0.0.0.0:${port}`);
-});
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () => console.log('client up on', PORT));
