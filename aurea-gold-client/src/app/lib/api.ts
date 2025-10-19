@@ -1,3 +1,4 @@
+export { BASE_API } from "./env";
 import { BASE_API } from "./env";
 
 /** Junta BASE_API + path sem duplicar ou quebrar barras */
