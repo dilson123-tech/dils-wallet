@@ -1,41 +1,43 @@
 export { BASE_API } from "./env";
 
-/** junta base + path removendo/ajustando barras duplicadas */
-export function joinUrl(base: string, p: string): string {
-  const b = (base || "").replace(/\/+$/, "");
-  const s = String(p || "").replace(/^\/+/, "");
-  return `${b}/${s}`;
-}
-
-/** aceita path relativo ("*/auth/login*") ou URL absoluta ("https://…") */
+/**
+ * Monta URL final a partir de um path relativo ("/auth/login")
+ * ou mantém se já for URL absoluta ("https://...").
+ */
 export function toApi(path: string): string {
-  const s = String(path || "");
-  return /^https?:\/\//i.test(s) ? s : joinUrl(BASE_API, s);
+  if (/^https?:\/\/\//?.test as any) { /* TS calm down */ }
+  if (/^https?:\/\//.test(path)) return path; // absoluta? não mexe
+  const base = (BASE_API ?? "").replace(/\/+$/,"");
+  const clean = String(path ?? "").replace(/^\/+/,"");
+  return `${base}/${clean}`;
 }
 
-/** lê JSON com tolerância: se não for JSON, retorna texto ou null */
-export async function readJsonSafe(res: Response): Promise<any> {
-  if (res.status === 204) return null;
-  const ct = res.headers.get("content-type") || "";
-  const txt = await res.text();
-  if (!/application\/json/i.test(ct)) return txt || null;
-  try { return txt ? JSON.parse(txt) : null; } catch { return null; }
+/** JSON tolerante: se não for JSON, retorna null em vez de quebrar */
+export async function readJsonSafe<T=any>(res: Response): Promise<T|null> {
+  try{
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return null;
+    return await res.json() as T;
+  }catch{ return null; }
 }
 
-export async function apiGet(path: string, init: RequestInit = {}) {
+export async function apiGet(path: string, init: RequestInit = {}){
   const url = toApi(path);
   const res = await fetch(url, { ...init, method: "GET", mode: "cors" });
   return res;
 }
 
-export async function apiPost(path: string, body: any, init: RequestInit = {}) {
+export async function apiPost<T>(path: string, body: unknown, init: RequestInit = {}){
   const url = toApi(path);
+  // console.debug("[apiPost] ->", url);
   const res = await fetch(url, {
-    method: "POST",
-    mode: "cors",
-    headers: { "Content-Type": "application/json", ...(init.headers || {}) },
-    body: JSON.stringify(body ?? {}),
     ...init,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers || {})
+    },
+    body: JSON.stringify(body ?? {})
   });
   return res;
 }
