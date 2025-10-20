@@ -1,11 +1,14 @@
-import { apiPostJson } from "./api";
+import { apiPost, readJsonSafe } from "./api";
 
 export type PromiseLogin = { ok: boolean; token?: string; message?: string };
 
-export async function login(email: string, password: string): PromiseLogin {
-  const data = await apiPostJson("/auth/login", { email, password });
-  if (!data) return { ok: false, message: "Falha no login" };
-  if (typeof data === "string") return { ok: false, message: data };
-  if (!data.access_token) return { ok: false, message: "Sem token na resposta." };
-  return { ok: true, token: data.access_token };
+export async function login(email: string, password: string): Promise<PromiseLogin> {
+  const res = await apiPost("/auth/login", { email, password });
+  const data = await readJsonSafe(res);
+  if (!res.ok) {
+    const msg = (data && (data.message || data.detail)) || `Login falhou (${res.status})`;
+    return { ok: false, message: msg };
+  }
+  const token = (data && (data.access_token || data.token)) as string | undefined;
+  return token ? { ok: true, token } : { ok: false, message: "Token ausente na resposta." };
 }

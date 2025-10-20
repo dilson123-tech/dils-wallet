@@ -1,35 +1,41 @@
-import { BASE_API } from "./env";
+export { BASE_API } from "./env";
 
-export function joinApi(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path;           // já é absoluta
-  const p = path.startsWith("/") ? path : `/${path}`;    // garante uma barra
-  return `${BASE_API}${p}`;
+/** junta base + path removendo/ajustando barras duplicadas */
+export function joinUrl(base: string, p: string): string {
+  const b = (base || "").replace(/\/+$/, "");
+  const s = String(p || "").replace(/^\/+/, "");
+  return `${b}/${s}`;
 }
 
-// lê JSON com tolerância (string/204/HTML => null)
+/** aceita path relativo ("*/auth/login*") ou URL absoluta ("https://…") */
+export function toApi(path: string): string {
+  const s = String(path || "");
+  return /^https?:\/\//i.test(s) ? s : joinUrl(BASE_API, s);
+}
+
+/** lê JSON com tolerância: se não for JSON, retorna texto ou null */
 export async function readJsonSafe(res: Response): Promise<any> {
   if (res.status === 204) return null;
   const ct = res.headers.get("content-type") || "";
   const txt = await res.text();
-  if (!ct.includes("application/json")) return txt ? null : null;
+  if (!/application\/json/i.test(ct)) return txt || null;
   try { return txt ? JSON.parse(txt) : null; } catch { return null; }
 }
 
-export async function apiGet(path: string) {
-  const url = joinApi(path);
-  const r = await fetch(url, { mode: "cors" });
-  return readJsonSafe(r);
+export async function apiGet(path: string, init: RequestInit = {}) {
+  const url = toApi(path);
+  const res = await fetch(url, { ...init, method: "GET", mode: "cors" });
+  return res;
 }
 
-export async function apiPostJson(path: string, body: any) {
-  const url = joinApi(path);
-  const r = await fetch(url, {
+export async function apiPost(path: string, body: any, init: RequestInit = {}) {
+  const url = toApi(path);
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
     mode: "cors",
+    headers: { "Content-Type": "application/json", ...(init.headers || {}) },
+    body: JSON.stringify(body ?? {}),
+    ...init,
   });
-  return readJsonSafe(r);
+  return res;
 }
-
-export { BASE_API }; // re-export para quem precisar
