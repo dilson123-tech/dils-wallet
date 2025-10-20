@@ -41,3 +41,15 @@ export async function apiPost<T>(path: string, body: unknown, init: RequestInit 
   });
   return res;
 }
+
+
+/** Tenta vários paths em ordem e retorna o primeiro que não for 404. */
+export async function apiGetFirst(paths: string[], init: RequestInit = {}) {
+  let last: Response | null = null;
+  for (const p of paths) {
+    const res = await apiGet(p, init);
+    if (res.status !== 404) return res;
+    last = res;
+  }
+  return last!;
+}
