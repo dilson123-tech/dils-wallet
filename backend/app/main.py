@@ -1,5 +1,6 @@
 from backend.app.api.v1.routes.pix import router as pix_router
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
+from backend.app.api.v1.routes.agents import router as agents_router, Response
 from backend.app.api.healthz import router as healthz_router
 from starlette.middleware.base import BaseHTTPMiddleware
 
