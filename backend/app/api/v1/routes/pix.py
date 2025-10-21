@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from datetime import datetime
 
-router = APIRouter(prefix="/pix", tags=["PIX"])
+router = APIRouter(tags=["PIX"])
 
 @router.get("/balance")
 def get_balance(db: Session = Depends(get_db)):
