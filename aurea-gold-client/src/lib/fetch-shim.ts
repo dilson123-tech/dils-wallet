@@ -2,16 +2,11 @@ const RAW = (import.meta as any).env?.VITE_API_BASE || '';
 const API_BASE = (RAW ?? '').replace(/\/+$/,'');
 
 function rewrite(u: string): string {
-  // absoluto, mantém
   if (/^https?:\/\//i.test(u)) return u;
-
-  // normaliza começo
   const p = u.startsWith('/') ? u : `/${u}`;
 
-  // já é /api/..., só prefixa host
   if (p.startsWith('/api/')) return `${API_BASE}${p}`;
 
-  // compat: rotas antigas
   if (p === '/balance' || p.startsWith('/balance?')) {
     const qs = p.includes('?') ? p.slice(p.indexOf('?')) : '';
     return `${API_BASE}/api/v1/pix/balance${qs}`;
@@ -21,14 +16,10 @@ function rewrite(u: string): string {
     return `${API_BASE}/api/v1/pix/history${qs}`;
   }
 
-  // compat: /pix/... → /api/v1/pix/...
   if (p.startsWith('/pix/')) return `${API_BASE}${p.replace(/^\/pix\//, '/api/v1/pix/')}`;
-
-  // fallback: prefixa /api/v1
   return `${API_BASE}/api/v1${p}`;
 }
 
-// monkeypatch global
 const _fetch = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? rewrite(input) : rewrite(input.url);
