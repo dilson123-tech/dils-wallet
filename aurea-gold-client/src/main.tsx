@@ -1,3 +1,4 @@
+import "./lib/fetch-shim";
 import "@/shims/global-readjson";
 import "./app/lib/env";
 import "./app/lib/bootstrap-base";
