@@ -1,44 +1,46 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 from pydantic import BaseModel, Field
-from typing import Literal, List, Dict, Any
-from datetime import datetime, timezone
-from threading import Lock
+from datetime import datetime
 
 router = APIRouter(tags=["PIX"])
 
-class TransferReq(BaseModel):
+class TransferRequest(BaseModel):
+    to: str = Field(..., min_length=3)
     amount: float = Field(..., gt=0)
-    type: Literal["in", "out"]
-    description: str = "Transação teste"
+    currency: str = "BRL"
+    description: str | None = None
 
-_state = {
-    "balance": 0.0,
-    "history": []  # List[Dict[str, Any]]
-}
-_lock = Lock()
+class TransferResponse(BaseModel):
+    status: str
+    transfer_id: str
+    new_balance: float
+    echoed: dict
+    at: datetime
 
 @router.get("/balance")
-def get_balance() -> Dict[str, float]:
-    with _lock:
-        return {"balance": round(_state["balance"], 2)}
+def get_balance():
+    return {"balance": 159.32}
 
 @router.get("/history")
-def get_history(limit: int = 10) -> List[Dict[str, Any]]:
-    with _lock:
-        return list(reversed(_state["history"]))[:limit]
+def get_history(limit: int = 10):
+    items = [
+        {"id": f"mock-{i}", "when": "2025-10-21T19:00:00Z", "type": "IN" if i % 2 == 0 else "OUT", "description": "PIX demo"}
+        for i in range(limit)
+    ]
+    return {"items": items}
 
-@router.post("/transfer")
-def post_transfer(req: TransferReq) -> Dict[str, Any]:
-    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    with _lock:
-        delta = req.amount if req.type == "in" else -req.amount
-        _state["balance"] = round(_state["balance"] + delta, 2)
-        tx = {
-            "id": f"mock-{len(_state['history'])+1}",
-            "type": req.type,
-            "amount": round(req.amount, 2),
-            "description": req.description,
-            "when": now,
-        }
-        _state["history"].append(tx)
-        return {"balance": _state["balance"], "tx": tx}
+@router.post("/transfer", response_model=TransferResponse)
+def post_transfer(
+    payload: TransferRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+):
+    base_balance = 159.32
+    transfer_id = f"tr_{(idempotency_key or str(datetime.utcnow().timestamp())).replace('.', '')}"
+    new_balance = round(max(0.0, base_balance - float(payload.amount)), 2)
+    return TransferResponse(
+        status="accepted",
+        transfer_id=transfer_id,
+        new_balance=new_balance,
+        echoed=payload.model_dump(),
+        at=datetime.utcnow(),
+    )
