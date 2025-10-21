@@ -3,7 +3,7 @@
   const origFetch = window.fetch.bind(window);
 
   function isLoginUrl(u: string) {
-    try { const url = new URL(u, window.location.origin); return /\/auth\/login$/.test(url.pathname); }
+    try { const url = new URL(u, window.import.meta.env.VITE_API_BASE); return /\/auth\/login$/.test(url.pathname); }
     catch { return /\/auth\/login$/.test(String(u)); }
   }
 

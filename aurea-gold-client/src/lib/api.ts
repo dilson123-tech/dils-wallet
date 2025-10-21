@@ -1,18 +1,16 @@
-import { useSession } from "../app/context/SessionContext";
+// Centraliza a base de API vinda do Railway
+const RAW = (import.meta as any).env?.VITE_API_BASE || '';
+export const API_BASE = RAW.replace(/\/+$/,''); // sem barra final
 
-const BASE = (import.meta as any).env?.VITE_API_BASE || `${globalThis.globalThis.globalThis.BASE_API}`;
+export function toApi(path: string) {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE}${p}`;
+}
 
-export function useApi() {
-  const { token } = useSession();
-
-  async function get(url: string) {
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const abs = url.startsWith("http") ? url : `${BASE}${url}`;
-    const r = await fetch(abs, { headers });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return r.json();
-  }
-
-  return { get };
+// (Opcional) fetch wrapper com headers padrão
+export async function apiGet(path: string, token?: string) {
+  const r = await fetch(toApi(path), {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  return r;
 }
