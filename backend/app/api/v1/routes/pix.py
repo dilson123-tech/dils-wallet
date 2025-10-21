@@ -7,14 +7,24 @@ router = APIRouter(prefix="/pix", tags=["PIX"])
 
 @router.get("/balance")
 def get_balance(db: Session = Depends(get_db)):
-    return {"balance": 1500.75, "entradas": 3500.00, "saidas": 2000.25}
+    # mock temporário de saldo
+    return {
+        "balance": 1520.75,
+        "entradas": 3500.00,
+        "saidas": 1979.25,
+    }
 
 @router.get("/history")
 def get_history(limit: int = 10, db: Session = Depends(get_db)):
     now = datetime.utcnow().isoformat()
     items = [
-        {"id": f"tx-{i}", "when": now, "type": "IN" if i % 2 == 0 else "OUT",
-         "description": "Transferência de teste", "value": 150.50 if i % 2 == 0 else -80.30}
+        {
+            "id": f"tx-{i}",
+            "when": now,
+            "type": "IN" if i % 2 == 0 else "OUT",
+            "description": "PIX de teste automático",
+            "value": 100.0 if i % 2 == 0 else -50.0
+        }
         for i in range(limit)
     ]
     return {"items": items}
