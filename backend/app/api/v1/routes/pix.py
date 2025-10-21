@@ -1,30 +1,44 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from backend.app.database import get_db
-from datetime import datetime
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
+from typing import Literal, List, Dict, Any
+from datetime import datetime, timezone
+from threading import Lock
 
 router = APIRouter(tags=["PIX"])
 
+class TransferReq(BaseModel):
+    amount: float = Field(..., gt=0)
+    type: Literal["in", "out"]
+    description: str = "Transação teste"
+
+_state = {
+    "balance": 0.0,
+    "history": []  # List[Dict[str, Any]]
+}
+_lock = Lock()
+
 @router.get("/balance")
-def get_balance(db: Session = Depends(get_db)):
-    # mock temporário de saldo
-    return {
-        "balance": 1520.75,
-        "entradas": 3500.00,
-        "saidas": 1979.25,
-    }
+def get_balance() -> Dict[str, float]:
+    with _lock:
+        return {"balance": round(_state["balance"], 2)}
 
 @router.get("/history")
-def get_history(limit: int = 10, db: Session = Depends(get_db)):
-    now = datetime.utcnow().isoformat()
-    items = [
-        {
-            "id": f"tx-{i}",
+def get_history(limit: int = 10) -> List[Dict[str, Any]]:
+    with _lock:
+        return list(reversed(_state["history"]))[:limit]
+
+@router.post("/transfer")
+def post_transfer(req: TransferReq) -> Dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    with _lock:
+        delta = req.amount if req.type == "in" else -req.amount
+        _state["balance"] = round(_state["balance"] + delta, 2)
+        tx = {
+            "id": f"mock-{len(_state['history'])+1}",
+            "type": req.type,
+            "amount": round(req.amount, 2),
+            "description": req.description,
             "when": now,
-            "type": "IN" if i % 2 == 0 else "OUT",
-            "description": "PIX de teste automático",
-            "value": 100.0 if i % 2 == 0 else -50.0
         }
-        for i in range(limit)
-    ]
-    return {"items": items}
+        _state["history"].append(tx)
+        return {"balance": _state["balance"], "tx": tx}
