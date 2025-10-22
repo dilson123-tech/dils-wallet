@@ -1,33 +1,36 @@
-# ---------- build stage ----------
+# ---------- BUILD STAGE ----------
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Dependências primeiro (cache eficiente)
+# deps primeiro p/ cache
 COPY package*.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# Código
+# código
 COPY . .
 
-# Garante binário do esbuild correto p/ ambiente
+# garante binário correto do esbuild para o ambiente
 RUN npm rebuild esbuild
 
-# Build Vite
+# build do Vite (gera ./dist)
 RUN npm run build
 
-# ---------- runtime stage ----------
+# ---------- RUNTIME STAGE ----------
 FROM node:20-alpine
 WORKDIR /app
-
-# Evita EBUSY de cache
 ENV NODE_ENV=production
 ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
-# Copia tudo que o server precisa
-COPY --from=build /app ./
+# só o que precisamos em produção:
+# - bundle estático
+# - servidor node (server.cjs)
+# - package.json/package-lock (para instalar deps de runtime se houver)
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/server.cjs ./server.cjs
+COPY --from=build /app/package*.json ./
 
-# Railway usa PORT; expõe 8080 por padrão
+# instala **somente** deps de produção do server
+RUN npm ci --omit=dev --no-audit --no-fund
+
 EXPOSE 8080
-
-# Sobe o server que já existe no projeto
 CMD ["node", "server.cjs"]
