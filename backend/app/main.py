@@ -27,3 +27,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root_index():
+    return {"status": "ok", "service": "dils-wallet", "root": True}
