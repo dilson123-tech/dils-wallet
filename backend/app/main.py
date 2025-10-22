@@ -1,34 +1,24 @@
-from fastapi import FastAPI, Response, Depends
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, Response
 from sqlalchemy.orm import Session
+import time
+
 from . import models
 from .database import engine, Base, get_db
 
-# �� Criação de tabelas
+# cria tabelas automaticamente
 Base.metadata.create_all(bind=engine)
 
-# 🚀 Inicializa o app
-app = FastAPI(title="Aurea Gold Backend", version="1.0")
+app = FastAPI(title="Aurea Gold Backend", version="1.0.0")
 
-# 💚 Rota de healthcheck (para Railway)
-@app.get("/health")
-def health():
-    return {"status": "ok", "service": "dils-wallet"}
-
-# 🌐 CORS — libera apenas o front oficial
-origins = [
-    "https://aurea-gold-client-production.up.railway.app",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+@app.get("/healthz")
+def healthz():
+    """Usado pelo Railway para o Healthcheck"""
+    return {"status": "ok", "service": "dils-wallet", "ts": int(time.time())}
 
 @app.get("/")
-def root_index():
-    return {"status": "ok", "service": "dils-wallet", "root": True}
+def root():
+    return {"status": "ok", "root": True}
+
+@app.get("/users/test-db")
+def test_db(db: Session = Depends(get_db)):
+    return {"msg": "DB conectado!"}

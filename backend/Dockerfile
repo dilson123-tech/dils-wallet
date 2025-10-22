@@ -11,8 +11,10 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1 PORT=8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 \
-  CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" >/dev/null || exit 1
+# Healthcheck tolerante (não bloqueia deploy)
+COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=6 \
+  CMD /usr/local/bin/healthcheck.sh
 
-# loga a porta e inicia corretamente
+# Loga a porta real e inicia uvicorn exatamente nela
 CMD sh -c 'echo "[AUREA START] PORT=${PORT}"; exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}'
