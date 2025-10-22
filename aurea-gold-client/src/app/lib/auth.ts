@@ -3,7 +3,7 @@ import { apiPost, readJsonSafe } from "./api";
 export type PromiseLogin = { ok: boolean; token?: string; message?: string };
 
 export async function login(email: string, password: string): Promise<PromiseLogin> {
-  const res = await apiPost("/auth/login", { email, password });
+  const res = await apiPost("/api/v1/auth/login", { email, password });
   const data = await readJsonSafe(res);
   if (!res.ok) {
     const msg = (data && (data.message || data.detail)) || `Login falhou (${res.status})`;

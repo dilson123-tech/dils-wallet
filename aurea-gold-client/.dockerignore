@@ -1,8 +1,9 @@
-**/node_modules
-**/.git
-**/.github
-**/.DS_Store
-**/.env*
-**/artifacts
-**/backups
-*.log
+.git
+.gitignore
+node_modules
+dist
+.vscode
+.idea
+npm-debug.log*
+yarn-debug.log*
+pnpm-lock.yaml

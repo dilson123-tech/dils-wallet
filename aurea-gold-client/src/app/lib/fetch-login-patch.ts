@@ -1,4 +1,4 @@
-// Patch global para garantir login via /auth/login
+// Patch global para garantir login via /api/v1/auth/login
 (() => {
   const origFetch = window.fetch.bind(window);
 

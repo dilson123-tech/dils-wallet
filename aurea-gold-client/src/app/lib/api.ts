@@ -1,7 +1,7 @@
 export { BASE_API } from "./env";
 
 /**
- * Monta URL final a partir de um path relativo ("/auth/login")
+ * Monta URL final a partir de um path relativo ("/api/v1/auth/login")
  * ou mantém se já for URL absoluta ("https://...").
  */
 export function toApi(path: string): string {
