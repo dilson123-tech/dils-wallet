@@ -3,21 +3,22 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# dependências básicas
+# Dependências básicas
 RUN apt-get update && apt-get install -y gcc curl && rm -rf /var/lib/apt/lists/*
 
-# instala dependências do projeto
+# Instala requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# copia código do backend
+# Copia código do backend
 COPY . .
 
-# define variáveis padrão (Railway injeta DATABASE_URL, etc)
+# Porta padrão (Railway substitui $PORT automaticamente)
 ENV PYTHONUNBUFFERED=1 \
-    PORT=8080
+    PORT=8080 \
+    HOST=0.0.0.0
 
 EXPOSE 8080
 
-# executa FastAPI com uvicorn ouvindo na porta $PORT
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Executa FastAPI ouvindo na porta $PORT (não fixa 8080)
+CMD ["sh", "-c", "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
