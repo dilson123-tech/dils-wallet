@@ -54,3 +54,13 @@ try:
 except Exception as e:
     import sys
     print(f"[HEALTH-FIX] falhou ao registrar healthz: {e}", file=sys.stderr)
+
+# rota principal para healthcheck e infos gerais
+@app.get("/")
+def root_info():
+    return {
+        "app": "Aurea Gold API",
+        "docs": "/docs",
+        "status": "/healthz",
+        "message": "Welcome to Aurea Gold Premium Backend"
+    }
