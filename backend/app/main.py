@@ -66,3 +66,6 @@ def root_info():
         "status": "/healthz",
         "message": "Welcome to Aurea Gold Premium Backend"
     }
+
+from app.api.v1.routes import ai as ai_routes
+app.include_router(ai_routes.router, prefix="/api/v1/ai")
