@@ -1,5 +1,7 @@
 # from app.routers import health
 from fastapi import FastAPI, Depends, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from sqlalchemy.orm import Session
@@ -12,6 +14,12 @@ from .database import engine, Base, get_db
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Aurea Gold Backend", version="1.0.0")
+app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("backend/app/static/favicon.ico")
+
 
 @app.get("/healthz")
 def healthz():
