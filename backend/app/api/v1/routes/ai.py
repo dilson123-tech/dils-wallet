@@ -13,7 +13,7 @@ def _client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="IA desativada: defina OPENAI_API_KEY no Railway.")
-    return OpenAI(api_key=api_key)
+    return OpenAI(api_key=api_key)  # sem proxies/base/org/etc
 
 @router.get("/ping")
 def ai_ping():
