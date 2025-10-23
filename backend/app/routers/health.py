@@ -1,13 +1,7 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy import text
-from .database import get_db
+from fastapi import APIRouter
 
-router = APIRouter(tags=["health"])
+router = APIRouter()
 
-@router.get("/healthz")
-def healthz(db=Depends(get_db)):
-    try:
-        db.execute(text("SELECT 1"))
-        return {"ok": True, "db": "up"}
-    except Exception:
-        return {"ok": False, "db": "down"}
+@router.get("/healthz", include_in_schema=False)
+def healthz():
+    return {"status": "ok", "service": "dils-wallet"}
