@@ -27,5 +27,16 @@ app = Starlette(
 import sys
 print(f"[ENTRYPOINT/WRAPPER] mounted real app={type(_real)}", file=sys.stderr)
 
-from app.api.v1.routes import ai as ai_routes
-app.include_router(ai_routes.router, prefix="/api/v1/ai")
+
+# --- attach AI router defensively (works with wrapper) ---
+try:
+    from app.api.v1.routes import ai as ai_routes  # noqa: F401
+    if 'app' in globals() and hasattr(app, 'include_router'):
+        app.include_router(ai_routes.router, prefix="/api/v1/ai")
+    elif '_real' in globals() and hasattr(_real, 'include_router'):
+        _real.include_router(ai_routes.router, prefix="/api/v1/ai")
+    else:
+        print("[ENTRYPOINT/WRAPPER] AI router: app not ready, skipping")
+except Exception as e:
+    print(f"[ENTRYPOINT/WRAPPER] AI router attach skipped: {e}")
+# --- end attach ---
