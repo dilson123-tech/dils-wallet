@@ -8,7 +8,7 @@ def get_ai_text(prompt: str) -> str:
     if not api_key:
         return "IA desativada: defina OPENAI_API_KEY no Railway para habilitar."
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key)  # sem proxies
 
     resp = client.chat.completions.create(
         model=MODEL_DEFAULT,
