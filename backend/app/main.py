@@ -13,7 +13,9 @@ from .database import engine, Base, get_db
 # cria tabelas automaticamente
 Base.metadata.create_all(bind=engine)
 
+from backend.app.api.v1.routes import ai as ai_router
 app = FastAPI(title="Aurea Gold Backend", version="1.0.0")
+app.include_router(ai_router.router)
 app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
 
 @app.get("/favicon.ico", include_in_schema=False)
