@@ -3,13 +3,13 @@ builder = "NIXPACKS"
 buildCommand = "true"
 
 [deploy]
-startCommand = "bash backend/start.sh"
-healthcheckPath = "/livez"
+startCommand = "cd backend && bash start.sh"
+healthcheckPath = "/healthz"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 
 [service.dils-wallet2]
-root = "backend"
+root = "."
 envs = [
   "DATABASE_URL",
   "JWT_SECRET",
