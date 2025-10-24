@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter
-from backend.app.services.ai_client import chat as ai_chat
+from app.services.ai_client import chat as ai_chat
 
 router = APIRouter(prefix="/api/v1/ai", tags=["AI"])
 
@@ -20,4 +20,5 @@ def ai_process(payload: dict):
     if not prompt:
         return {"ok": False, "error": "missing_prompt"}
     out = ai_chat(prompt)
-    return {"ok": True, "result": out}
+    # compat: mantém "response" e adiciona "ok/result"
+    return {"ok": True, "result": out, "response": out}

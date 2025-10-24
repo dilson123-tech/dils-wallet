@@ -1,6 +1,6 @@
 import os
 from openai import OpenAI
-from backend.app.services.ai_guardrails import aurea_system_prompt
+from app.services.ai_guardrails import aurea_system_prompt
 
 _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 _OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
