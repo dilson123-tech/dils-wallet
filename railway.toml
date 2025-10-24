@@ -1,2 +1,20 @@
-[service.dils-wallet2]
-start = "uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
+[build]
+builder = "NIXPACKS"
+buildCommand = "true"
+
+[deploy]
+startCommand = "bash start.sh"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+
+[service.dils-wallet]
+root = "backend"
+startCommand = "uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"
+envs = ["DATABASE_URL", "OPENAI_API_KEY", "OPENAI_BASE_URL", "JWT_SECRET", "HEALTH_TOKEN"]
+
+[service.aurea-gold-client]
+root = "aurea-gold-client"
+buildCommand = "npm run build"
+startCommand = "npm run preview -- --host --port 5173"
+envs = ["VITE_API_BASE_URL"]
