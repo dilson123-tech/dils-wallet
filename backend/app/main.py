@@ -1,3 +1,4 @@
+from backend.app.api.livez import router as livez_router
 # from app.routers import health
 from fastapi import FastAPI, Depends, Response
 from fastapi.staticfiles import StaticFiles

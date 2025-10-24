@@ -4,7 +4,7 @@ buildCommand = "true"
 
 [deploy]
 startCommand = "bash backend/start.sh"
-healthcheckPath = "/healthz"
+healthcheckPath = "/livez"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 
