@@ -45,3 +45,10 @@ __pycache__/
 placeholder.db
 .railpack
 railpack-plan.json
+
+# artifacts e dados locais
+artifacts/
+*.db
+*.zip
+*.csv
+cookies.txt
