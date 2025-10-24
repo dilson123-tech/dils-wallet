@@ -69,3 +69,6 @@ def root_info():
 
 from app.api.v1.routes import ai as ai_routes
 app.include_router(ai_routes.router, prefix="/api/v1/ai")
+
+from backend.app.api.v1.ai.router import router as ai_router
+app.include_router(ai_router)
