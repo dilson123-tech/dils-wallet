@@ -1,75 +1,32 @@
-from backend.app.api.livez import router as livez_router
-# from app.routers import health
-from fastapi import FastAPI, Depends, Response
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
-from sqlalchemy.orm import Session
-import time
 
-from . import models
-from .database import engine, Base, get_db
-
-# cria tabelas automaticamente
-Base.metadata.create_all(bind=engine)
-
-from app.api.v1.routes import ai as ai_router
-app = FastAPI(title="Aurea Gold Backend", version="1.0.0")
-app.include_router(ai_router.router)
-app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
-
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    return FileResponse("backend/app/static/favicon.ico")
-
-
-@app.get("/healthz")
-def healthz():
-    """Usado pelo Railway para o Healthcheck"""
-    return {"status": "ok", "service": "dils-wallet", "ts": int(time.time())}
-
-@app.get("/")
-def root():
-    return {"status": "ok", "root": True}
-
-@app.get("/users/test-db")
-def test_db(db: Session = Depends(get_db)):
-    return {"msg": "DB conectado!"}
-
-# registra health SEM prefixo, após app final
-# app.include_router(health.router)
-@app.on_event("startup")
-async def _log_routes():
-    try:
-        from logging import getLogger
-        log = getLogger("uvicorn")
-        paths = [getattr(r, "path", str(r)) for r in app.router.routes]
-        log.info(f"[ROUTES] {paths}")
-    except Exception:
-        pass
-
-# --- FIX: Health real para Railway ---
+# imports corrigidos: agora tudo começa em app., não backend.app.
+from app.api.livez import router as livez_router
+# se você tiver rotas de API v1 agrupadas num router central, deixa isso:
 try:
-    @app.get("/healthz", include_in_schema=False)
-    def _final_health():
-        return {"status": "ok", "service": "dils-wallet", "health": True}
-except Exception as e:
-    import sys
-    print(f"[HEALTH-FIX] falhou ao registrar healthz: {e}", file=sys.stderr)
+    from app.api.v1.routes.router import router as api_v1_router
+except ImportError:
+    api_v1_router = None  # fallback pra não quebrar boot se ainda não existe
 
-# rota principal para healthcheck e infos gerais
-@app.get("/")
-def root_info():
-    return {
-        "app": "Aurea Gold API",
-        "docs": "/docs",
-        "status": "/healthz",
-        "message": "Welcome to Aurea Gold Premium Backend"
-    }
 
-from app.api.v1.routes import ai as ai_routes
-app.include_router(ai_routes.router, prefix="/api/v1/ai")
+app = FastAPI(
+    title="dils-wallet2",
+    version="1.0.0",
+)
 
-from app.api.v1.ai.router import router as ai_router
-app.include_router(ai_router)
+# CORS provisório (tá aberto geral; depois a gente fecha)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],          # TODO: travar pra frontend prod depois
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# health/livez
+app.include_router(livez_router, prefix="", tags=["livez/health"])
+
+# rotas de negócio
+if api_v1_router:
+    app.include_router(api_v1_router, prefix="/api/v1", tags=["api v1"])
