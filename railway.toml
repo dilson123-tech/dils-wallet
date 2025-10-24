@@ -3,6 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "true"
 
 [deploy]
+# entra no backend e roda start.sh
 startCommand = "cd backend && bash start.sh"
 healthcheckPath = "/healthz"
 healthcheckTimeout = 300
