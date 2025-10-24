@@ -19,8 +19,5 @@ def ai_process(payload: dict):
     prompt = (payload or {}).get("prompt", "").strip()
     if not prompt:
         return {"ok": False, "error": "missing_prompt"}
-    try:
-        out = ai_chat(prompt)
-        return {"ok": True, "result": out}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    out = ai_chat(prompt)
+    return {"ok": True, "result": out}
