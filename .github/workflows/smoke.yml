@@ -1,22 +1,23 @@
-name: 🚦 Smoke Test (Production)
+name: Smoke — Health e Auth check
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
-  check-prod-health:
+  smoke:
     runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ secrets.SMOKE_BASE_URL }}
+      HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
+      BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
     steps:
-      - name: 🚀 Testar health endpoint em produção
+      - name: Health check
         run: |
-          BASE="https://dils-wallet-production.up.railway.app"
-          echo "Testando \$BASE/api/v1/health..."
-          HTTP_CODE=$(curl -s -o /tmp/out.json -w "%{http_code}" "$BASE/api/v1/health")
-          cat /tmp/out.json
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Falha: API retornou código \$HTTP_CODE"
-            exit 1
-          fi
-          echo "✅ Smoke test aprovado!"
+          echo ">> Checking /healthz"
+          curl -fsS -H "X-Health-Token: ${HEALTH_TOKEN}" "${BASE_URL}/healthz" | jq .
+      - name: Auth check
+        run: |
+          echo ">> Checking /api/v1/transactions/balance"
+          curl -fsS -H "Authorization: Bearer ${BEARER_TOKEN}" "${BASE_URL}/api/v1/transactions/balance" | jq .
