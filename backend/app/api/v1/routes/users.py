@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 import typing as t
 import jwt
 
-from backend.app import database
-from backend.app.security import SECRET_KEY, ALGORITHM  # mesmos usados no login
+from app import database
+from app.security import SECRET_KEY, ALGORITHM  # mesmos usados no login
 
 # tenta achar o modelo User
 try:
-    from backend.app.models.user import User
+    from app.models.user import User
 except Exception:
-    from backend.app.models.users import User  # fallback
+    from app.models.users import User  # fallback
 
 router = APIRouter(tags=["users"])
 

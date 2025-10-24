@@ -28,9 +28,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from jose.exceptions import JWTError
-from backend.app.database import get_db
+from app.database import get_db
 from sqlalchemy.orm import Session
-from backend.app import models
+from app import models
 import os
 
 # Secret e algoritmo

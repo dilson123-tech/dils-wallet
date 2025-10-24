@@ -5,8 +5,8 @@ from fastapi import Request
 from jose import jwt
 from sqlalchemy.orm import Session
 
-from backend.app.security.token_hash import refresh_hash
-from backend.app.models.refresh_token import RefreshToken
+from app.security.token_hash import refresh_hash
+from app.models.refresh_token import RefreshToken
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
 ALGO = os.getenv("JWT_ALGO", "HS256")

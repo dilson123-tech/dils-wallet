@@ -1,5 +1,5 @@
 # Compatibilidade retroativa para código legado que fazia:
-# from backend.app.security.jwt_core import SECRET_KEY (ou ALGORITHM)
+# from app.security.jwt_core import SECRET_KEY (ou ALGORITHM)
 try:
     from .jwt_core import SECRET_KEY  # variável usada pelo jwt_core
 except Exception:  # fallback seguro para dev

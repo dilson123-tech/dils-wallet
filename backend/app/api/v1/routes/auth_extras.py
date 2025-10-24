@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status, Body
 from sqlalchemy.orm import Session
-from backend.app.database import get_db
-from backend.app.security.jwt_core import decode_access_token, issue_refresh_token
+from app.database import get_db
+from app.security.jwt_core import decode_access_token, issue_refresh_token
 import os
 from jose import jwt, JWTError
 
@@ -17,7 +17,7 @@ def link_refresh_body(
     if not access_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_access_token")
 
-    from backend.app.security.jwt_core import decode_access_token, issue_refresh_token, SECRET_KEY, ALGO
+    from app.security.jwt_core import decode_access_token, issue_refresh_token, SECRET_KEY, ALGO
 
     # 1) tenta decode verificado
     payload = decode_access_token(access_token)

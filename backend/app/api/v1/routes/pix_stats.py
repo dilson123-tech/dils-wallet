@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from backend.app.deps import get_db
-from backend.app.models.pix_transaction import PixTransaction
+from app.deps import get_db
+from app.models.pix_transaction import PixTransaction
 
 router = APIRouter(prefix="/api/v1/pix", tags=["pix-stats"])
 

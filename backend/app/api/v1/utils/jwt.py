@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import jwt  # PyJWT
-from backend.app import config  # usa SECRET_KEY já definida
+from app import config  # usa SECRET_KEY já definida
 
 ALGO = "HS256"
 

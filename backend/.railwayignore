@@ -1,0 +1,11 @@
+.venv
+env
+venv
+.git
+**/__pycache__
+*.pyc
+node_modules
+dist
+build
+aurea-gold-client
+**/.DS_Store

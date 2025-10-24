@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Header, HTTPException
 from typing import Optional
 from jose import jwt, JWTError
-from backend.app.database import SessionLocal
-from backend.app.models.user import User
-from backend.app.auth import JWT_SECRET, JWT_ALG  # <- usa o MESMO segredo/algoritmo do emissor
+from app.database import SessionLocal
+from app.models.user import User
+from app.auth import JWT_SECRET, JWT_ALG  # <- usa o MESMO segredo/algoritmo do emissor
 import re, time
 
 router = APIRouter(tags=["Auth"])

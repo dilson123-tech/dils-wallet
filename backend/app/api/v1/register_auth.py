@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from backend.app.api.v1.routes.auth import router as auth_router
+from app.api.v1.routes.auth import router as auth_router
 
 def include_auth_routes(app: FastAPI):
     # O router já tem prefix="/auth", então aqui usamos só "/api/v1"

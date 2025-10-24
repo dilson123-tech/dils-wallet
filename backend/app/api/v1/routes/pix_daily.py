@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from datetime import date
-from backend.app import database as database  # usa database.get_db
+from app import database as database  # usa database.get_db
 
 router = APIRouter(prefix="/pix", tags=["PIX"])
 

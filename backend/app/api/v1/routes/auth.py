@@ -1,15 +1,15 @@
 from fastapi import Body
 import os
-from backend.app.security.jwt_core import create_access_token, issue_refresh_token, verify_and_rotate_refresh, revoke_refresh, decode_access_token
-from backend.app.database import get_db
+from app.security.jwt_core import create_access_token, issue_refresh_token, verify_and_rotate_refresh, revoke_refresh, decode_access_token
+from app.database import get_db
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 
-from backend.app import database, models
-from backend.app.auth import create_access_token
-from backend.app.utils import verify_password
+from app import database, models
+from app.auth import create_access_token
+from app.utils import verify_password
 
 router = APIRouter(tags=["auth"])
 
@@ -70,8 +70,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     raw = request.cookies.get("aurea_refresh")
     if not raw:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no_refresh_cookie")
-    from backend.app.security.token_hash import refresh_hash
-    from backend.app.models.refresh_token import RefreshToken
+    from app.security.token_hash import refresh_hash
+    from app.models.refresh_token import RefreshToken
     h = refresh_hash(raw)
     rt = db.query(RefreshToken).filter(RefreshToken.token_hash == h, RefreshToken.active == True).first()
     if not rt:
@@ -116,7 +116,7 @@ def link_refresh_body(
 ):
     if not access_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_access_token")
-    from backend.app.security.jwt_core import decode_access_token, issue_refresh_token
+    from app.security.jwt_core import decode_access_token, issue_refresh_token
     payload = decode_access_token(access_token)
     user_id = payload.get("sub")
     if not user_id:

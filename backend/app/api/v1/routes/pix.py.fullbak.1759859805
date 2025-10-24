@@ -19,12 +19,12 @@ def _row_to_jsonable(row):
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from backend.app.deps import get_db, get_current_user
-from backend.app.models.account import Account
-from backend.app.models.pix_transaction import PixTransaction
-from backend.app.models import Transaction  # usa o Transaction de backend/app/models.py
-from backend.app.pix.schemas import PixMockIn, PixMockOut
-from backend.app.core.crypto import stable_hash_payload
+from app.deps import get_db, get_current_user
+from app.models.account import Account
+from app.models.pix_transaction import PixTransaction
+from app.models import Transaction  # usa o Transaction de backend/app/models.py
+from app.pix.schemas import PixMockIn, PixMockOut
+from app.core.crypto import stable_hash_payload
 import json
 import os
 
@@ -170,7 +170,7 @@ def _row_to_jsonable(row):
 # --- /summary ---
 
 def pix_summary():
-    from backend.app.database import SessionLocal
+    from app.database import SessionLocal
     db = SessionLocal()
     try:
         q = db.execute(text("""
@@ -190,7 +190,7 @@ def pix_summary():
 # --- /stats ---
 
 def pix_stats():
-    from backend.app.database import SessionLocal
+    from app.database import SessionLocal
     db = SessionLocal()
     try:
         q = db.execute(text("""
@@ -209,7 +209,7 @@ def pix_stats():
 
 
 def pix_summary():
-    from backend.app.database import SessionLocal
+    from app.database import SessionLocal
     db = SessionLocal()
     try:
         q = db.execute(text("""
@@ -239,7 +239,7 @@ def pix_summary():
 
 
 def pix_stats():
-    from backend.app.database import SessionLocal
+    from app.database import SessionLocal
     db = SessionLocal()
     try:
         q = db.execute(text("""
