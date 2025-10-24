@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")"   # entra na pasta backend
-export PYTHONPATH="$(pwd)"   # força o Python a enxergar app.main
+# Força cwd = /app/backend dentro do container Railway
+cd "$(dirname "$0")"
+
+# Força o Python a enxergar o pacote "app" aqui dentro
+export PYTHONPATH="$(pwd)"
 
 PORT="${PORT:-8000}"
 
