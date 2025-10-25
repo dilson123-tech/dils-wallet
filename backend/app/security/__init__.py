@@ -1,13 +1,9 @@
-# Compatibilidade retroativa para código legado que fazia:
-# from app.security.jwt_core import SECRET_KEY (ou ALGORITHM)
-try:
-    from .jwt_core import SECRET_KEY  # variável usada pelo jwt_core
-except Exception:  # fallback seguro para dev
-    SECRET_KEY = "dev-secret-change-me"
+# Ponte de compatibilidade.
+# Motivo: nossas rotas fazem `from app.security import get_current_user`,
+# mas em runtime o Python resolve `app/security/__init__.py` (este arquivo)
+# antes de olhar `app/security.py`.
+#
+# Então aqui a gente reexporta a função real do módulo security.py
+# pra não quebrar import durante o boot.
 
-# Alguns trechos legados podem esperar "ALGORITHM" (nome antigo).
-# No jwt_core, usamos ALGO. Reexportamos com ambos os nomes.
-try:
-    from .jwt_core import ALGO as ALGORITHM
-except Exception:
-    ALGORITHM = "HS256"
+from app.security import get_current_user as get_current_user  # type: ignore
