@@ -22,10 +22,19 @@ app.mount("/ui", StaticFiles(directory="ui", html=True), name="ui")
 def favicon():
     return Response(status_code=204)
 
-# CORS (vamos afinar depois)
+# -------------------------------------------------
+# CORS
+# depois que o front estiver no Railway, troque
+# "http://localhost:5173" pelo domínio público do front,
+# ex: "https://aurea-gold-client.up.railway.app"
+# -------------------------------------------------
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # depois restringe pro domínio do teu front
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
