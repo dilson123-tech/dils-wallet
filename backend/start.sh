@@ -1,71 +1,26 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 echo "[AUREA] Boot de produção iniciando..."
 
 cd "$(dirname "$0")"
-
-# vamos fixar pra mesma porta exposta na Networking do Railway
-PORT="8888"  # <<< TROCA esse valor pro número que aparece no Railway
-
 export PYTHONPATH="$(pwd)"
 
-echo "[AUREA] criando/atualizando schema..."
-python - <<'PY'
-from decimal import Decimal
-from datetime import datetime, timezone
-from app.database import SessionLocal, engine
-from app.models import Base, User, Transaction
-from app.utils.security import hash_password
+# detecta porta real
+if [ -z "${PORT:-}" ] || [ "${PORT}" = "0" ]; then
+  echo "[AUREA][WARN] PORT vazio. Tentando RAILWAY_TCP_PROXY_PORT..."
+  PORT="${RAILWAY_TCP_PROXY_PORT:-8080}"
+fi
 
-Base.metadata.create_all(bind=engine)
+echo "[AUREA] Porta final detectada: ${PORT}"
 
-db = SessionLocal()
+# inicia uvicorn em background na 8080
+/opt/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080 &
 
-admin = db.query(User).filter_by(username="admin").first()
-if not admin:
-    admin = User(
-        username="admin",
-        hashed_password=hash_password("admin"),
-        role="admin"
-    )
-    db.add(admin)
-    db.commit()
-    db.refresh(admin)
+# se PORT != 8080, cria proxy
+if [ "${PORT}" != "8080" ]; then
+  echo "[AUREA] Criando proxy de ${PORT} → 8080 (socat)..."
+  socat TCP-LISTEN:${PORT},reuseaddr,fork TCP:127.0.0.1:8080 &
+fi
 
-cliente = db.query(User).filter_by(username="cliente1").first()
-if not cliente:
-    cliente = User(
-        username="cliente1",
-        hashed_password=hash_password("123456"),
-        role="customer"
-    )
-    db.add(cliente)
-    db.commit()
-    db.refresh(cliente)
-
-    txs = [
-        Transaction(
-            user_id=cliente.id,
-            kind="credit",
-            description="Depósito inicial Aurea",
-            amount=Decimal("500.00"),
-            created_at=datetime.now(timezone.utc),
-        ),
-        Transaction(
-            user_id=cliente.id,
-            kind="debit",
-            description="Pagamento QR Code Mercado",
-            amount=Decimal("75.40"),
-            created_at=datetime.now(timezone.utc),
-        ),
-    ]
-    db.add_all(txs)
-    db.commit()
-
-db.close()
-print("[AUREA] schema e seed OK")
-PY
-
-echo "[AUREA] subindo uvicorn na porta $PORT..."
-exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+wait -n
