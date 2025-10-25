@@ -1,21 +1,9 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "true"
+builder = "Nixpacks"
 
 [deploy]
-startCommand = "cd backend && bash start.sh"
+startCommand = "./backend/start.sh"
 healthcheckPath = "/healthz"
-healthcheckTimeout = 300
-restartPolicyType = "ON_FAILURE"
-
-[service.dils-wallet2]
-root = "."
-envs = [
-  "DATABASE_URL",
-  "JWT_SECRET",
-  "HEALTH_TOKEN",
-  "OPENAI_API_KEY",
-  "OPENAI_BASE_URL",
-  "OPENAI_MODEL",
-  "IA2_ENABLED"
-]
+healthcheckTimeout = 1200
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
