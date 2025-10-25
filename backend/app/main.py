@@ -1,3 +1,4 @@
+import importlib
 from fastapi import Response, FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,3 +44,10 @@ def test_db(db: Session = Depends(get_db)):
 
 # importante: NÃO importa routers de auth/users/etc aqui.
 # versão mínima só pra subir saudável em produção.
+
+# --- attach /api/v1/users router ---
+_users = importlib.import_module("app.api.v1.routes.users")
+app.include_router(
+    _users.router,
+    tags=["users"],
+)
