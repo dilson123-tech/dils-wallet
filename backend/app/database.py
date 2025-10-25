@@ -1,14 +1,27 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
+from app.models import Base  # Base unificada
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///placeholder.db")
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# Tenta Postgres primeiro (produção), cai pra SQLite (dev)
+POSTGRES_URL = os.getenv("POSTGRES_URL")  # ex: postgres://user:pass@host/db
+if POSTGRES_URL:
+    SQLALCHEMY_DATABASE_URL = POSTGRES_URL
+    connect_args = {}  # Postgres não usa connect_args especial
+else:
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./app.db"
+    connect_args = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-Base = declarative_base()
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args
+)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
 
 def get_db():
     db = SessionLocal()
