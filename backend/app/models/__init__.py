@@ -1,5 +1,7 @@
-from ..database import Base
-from .user import User
-from .transaction import Transaction  # se existir no projeto
+from sqlalchemy.orm import declarative_base
 
-from app.models.refresh_token import RefreshToken
+Base = declarative_base()
+
+from .user_main import User
+from .refresh_token import RefreshToken
+from .transaction import Transaction

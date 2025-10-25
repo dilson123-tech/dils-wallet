@@ -1,22 +1,18 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Index
-from app.database import Base
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
+from . import Base  # usa o mesmo Base central
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(64), nullable=False, index=True)
-    jti = Column(String(64), nullable=False, unique=True, index=True)
-    token_hash = Column(String(128), nullable=False, unique=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
 
-    ip = Column(String(64), nullable=True)
-    user_agent = Column(String(255), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(128), nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False)
-    revoked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    active = Column(Boolean, nullable=False, default=True, index=True)
-
-Index("ix_refresh_active_user", RefreshToken.active, RefreshToken.user_id)
+    # relacionamento reverso
+    user = relationship("User", backref="refresh_tokens")
