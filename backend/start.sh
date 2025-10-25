@@ -3,14 +3,12 @@ set -e
 
 echo "[AUREA] Boot de produção iniciando..."
 
-# garante diretório certo
 cd "$(dirname "$0")"
 
-# exporta PYTHONPATH pro backend
-export PYTHONPATH="$(pwd)"
+# vamos fixar pra mesma porta exposta na Networking do Railway
+PORT="8888"  # <<< TROCA esse valor pro número que aparece no Railway
 
-# se PORT não existir (local dev), usa 8084
-export PORT="${PORT:-8084}"
+export PYTHONPATH="$(pwd)"
 
 echo "[AUREA] criando/atualizando schema..."
 python - <<'PY'
@@ -24,7 +22,6 @@ Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
-# garante admin
 admin = db.query(User).filter_by(username="admin").first()
 if not admin:
     admin = User(
@@ -36,7 +33,6 @@ if not admin:
     db.commit()
     db.refresh(admin)
 
-# garante um cliente demo pra vitrine
 cliente = db.query(User).filter_by(username="cliente1").first()
 if not cliente:
     cliente = User(
@@ -48,7 +44,6 @@ if not cliente:
     db.commit()
     db.refresh(cliente)
 
-    # crédito e débito iniciais, só se era novo
     txs = [
         Transaction(
             user_id=cliente.id,
