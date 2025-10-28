@@ -1,18 +1,10 @@
-import "./lib/fetch-shim";
-import "@/shims/global-readjson";
-import "./app/lib/env";
-import "./app/lib/bootstrap-base";
-import "@/app/lib/fetch-login-patch";
+import "./index.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { SessionProvider } from "./app/context/SessionContext";
-import Home from "./app/routes/Home";
-import "./styles/aurea-gold.css";
+import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SessionProvider>
-      <Home />
-    </SessionProvider>
+    <App />
   </React.StrictMode>
 );

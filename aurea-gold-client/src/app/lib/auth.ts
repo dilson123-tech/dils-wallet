@@ -1,14 +1,28 @@
-import { apiPost, readJsonSafe } from "./api";
+import { apiPost } from "./api";
 
-export type PromiseLogin = { ok: boolean; token?: string; message?: string };
+export interface PromiseLogin {
+  ok: boolean;
+  token?: string;
+  raw?: string;
+}
 
-export async function login(email: string, password: string): Promise<PromiseLogin> {
-  const res = await apiPost("/api/v1/auth/login", { email, password });
-  const data = await readJsonSafe(res);
-  if (!res.ok) {
-    const msg = (data && (data.message || data.detail)) || `Login falhou (${res.status})`;
-    return { ok: false, message: msg };
-  }
-  const token = (data && (data.access_token || data.token)) as string | undefined;
-  return token ? { ok: true, token } : { ok: false, message: "Token ausente na resposta." };
+export async function login(username: string, password: string): Promise<PromiseLogin> {
+  // chama FastAPI em /api/v1/auth/login
+  const data = await apiPost("/api/v1/auth/login", {
+    username,
+    password,
+  });
+
+  // tentamos pegar o token que vier
+  const token =
+    data?.access_token ??
+    data?.token ??
+    data?.jwt ??
+    "";
+
+  return {
+    ok: true,
+    token,
+    raw: JSON.stringify(data),
+  };
 }

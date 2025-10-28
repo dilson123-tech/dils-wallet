@@ -1,82 +1,76 @@
 import React, { useState } from "react";
 
-export default function LoginModal({ onSuccess }: { onSuccess: () => void }) {
-  const [email, setEmail] = useState("");
+export default function LoginModal() {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const apiBase = import.meta.env.VITE_API_BASE;
+  const apiBase = import.meta.env.VITE_API_URL;
 
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setErr(null);
     setLoading(true);
+    console.log("[AUREA] tentando login em", apiBase);
 
     try {
       const res = await fetch(`${apiBase}/api/v1/auth/login`, {
         method: "POST",
+        mode: "cors",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!res.ok) {
-        let msg = "Falha ao autenticar. Verifique suas credenciais.";
-        try {
-          const err = await res.json();
-          if (err?.detail) msg = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
-        } catch {}
-        setError(msg);
+        const txt = await res.text().catch(() => "");
+        console.warn("[AUREA] falha ao autenticar", res.status, txt);
+        setErr(res.status === 401 ? "Credenciais inválidas." : "Falha no login");
         setLoading(false);
         return;
       }
 
-      const data = await res.json();
-      if (data?.access_token) {
-        localStorage.setItem("access_token", data.access_token);
+      const data = await res.json().catch(() => ({}));
+      console.log("[AUREA] login OK", data);
+
+      if (data.access_token || data.token) {
+        localStorage.setItem("access_token", data.access_token || data.token);
       }
-      setLoading(false);
-      onSuccess();
-    } catch {
-      setError("Erro de conexão com o servidor.");
+
+      alert("Login bem-sucedido 🚀");
+      setErr(null);
+    } catch (err) {
+      console.error("[AUREA] erro de conexão", err);
+      setErr("Erro de conexão com o servidor.");
+    } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="bg-neutral-900 text-white p-6 rounded-xl shadow-lg w-[380px]">
-      <h2 className="text-xl font-semibold mb-4 text-center">
-        Acesse sua conta Aurea Gold.
-      </h2>
-      {error && (
-        <div className="bg-red-600/20 border border-red-400 text-red-300 p-2 rounded-md text-sm mb-3 text-center">
-          {error}
+    <div>
+      {err && (
+        <div style={{ color: "red", marginBottom: "0.5rem" }}>
+          {err}
         </div>
       )}
-      <form onSubmit={handleLogin} className="flex flex-col gap-3">
+
+      <form onSubmit={handleLogin} style={{ display: "flex", gap: "0.5rem" }}>
         <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="p-2 rounded-md bg-neutral-800 text-white border border-neutral-700 focus:outline-none"
+          type="text"
+          placeholder="usuário"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           required
         />
         <input
           type="password"
-          placeholder="Senha"
+          placeholder="senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="p-2 rounded-md bg-neutral-800 text-white border border-neutral-700 focus:outline-none"
           required
         />
-        <button
-          type="submit"
-          disabled={loading}
-          className={`mt-3 p-2 rounded-md bg-gradient-to-r from-yellow-600 to-yellow-400 text-black font-semibold hover:opacity-90 transition ${
-            loading ? "opacity-70 cursor-wait" : ""
-          }`}
-        >
+        <button type="submit" disabled={loading}>
           {loading ? "Entrando..." : "Entrar"}
         </button>
       </form>

@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Aurea Gold theme baseline */
+:root {
+  --gold: #d4af37;
+  --carbon: #0a0a0a;
+  --carbon-light: #1a1a1a;
+}
+
+html, body {
+  background-color: var(--carbon);
+  color: white;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Roboto, "Helvetica Neue", sans-serif;
+}
