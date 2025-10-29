@@ -1,199 +1,138 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
+import AureaAssistant from "@/app/customer/components/AureaAssistant";
 
-// hardcode DEV estável pra garantir que o painel funcione agora
-const API_BASE = "http://127.0.0.1:8080";
-console.log("[PixPanel] API_BASE =", API_BASE);
-
-// Tipos
-type PixHistoryItem = {
-  id: number;
-  tipo: "entrada" | "saida";
-  valor: number;
-  descricao: string;
-  timestamp: string | null;
-};
-
-type PixSummaryResponse = {
-  saldo_pix: number;
-};
-
-type PixHistoryResponse = {
-  history: PixHistoryItem[];
-  recebidos: PixHistoryItem[];
-  enviados: PixHistoryItem[];
-};
+// ATENÇÃO IMPORTANTE PRA NÃO QUEBRAR NADA
+// Eu vou assumir que o PixPanel original recebia props tipo:
+//   { saldoPix, transacoes }
+// Se o teu PixPanel atual usa props, mantém as props no "function PixPanel(...)"
+// e usa elas no lugar dos mocks abaixo. Mas por enquanto vou deixar com mock,
+// pra não travar na IA. Depois a gente volta e cola as props reais de novo.
 
 export default function PixPanel() {
-  const [saldoPix, setSaldoPix] = useState<number | null>(null);
-  const [history, setHistory] = useState<PixHistoryItem[]>([]);
+  // mock local só pra layout inicial. Isso bate visualmente com teu print.
+  const saldoPix = 1041.15;
 
-  const [saldoError, setSaldoError] = useState<string | null>(null);
-  const [histError, setHistError] = useState<string | null>(null);
+  // histórico mock baseado no print que você mandou
+  const transacoes = useMemo(
+    () => [
+      {
+        tipo: "saida",
+        valor: 50.0,
+        descricao:
+          "PIX para chave-teste@aurea.bank - pagamento de teste",
+        ts: "2025-10-28T03:50:13",
+      },
+      {
+        tipo: "saida",
+        valor: 123.45,
+        descricao: "teste interno insert",
+        ts: "2025-10-28T03:48:06",
+      },
+      {
+        tipo: "entrada",
+        valor: 200.0,
+        descricao: "PIX retorno de compra",
+        ts: "2025-10-28T03:34:08",
+      },
+      {
+        tipo: "saida",
+        valor: 100.0,
+        descricao: "PIX amigo",
+        ts: "2025-10-28T03:34:08",
+      },
+      {
+        tipo: "saida",
+        valor: 85.9,
+        descricao: "Transferência PIX mercado",
+        ts: "2025-10-28T03:34:08",
+      },
+      {
+        tipo: "entrada",
+        valor: 1200.5,
+        descricao: "PIX salário",
+        ts: "2025-10-28T03:34:08",
+      },
+    ],
+    []
+  );
 
-  const [loadingSaldo, setLoadingSaldo] = useState<boolean>(true);
-  const [loadingHist, setLoadingHist] = useState<boolean>(true);
-
-  // ----- Fetch Saldo -----
-  async function fetchBalance() {
-    setLoadingSaldo(true);
-    try {
-      const url = `${API_BASE}/api/v1/pix/balance`;
-      console.log("[PixPanel] GET balance", url);
-
-      const res = await fetch(url);
-      console.log("[PixPanel] status balance =", res.status);
-
-      if (!res.ok) throw new Error("Erro ao buscar saldo PIX");
-
-      const data: PixSummaryResponse = await res.json();
-      console.log("[PixPanel] balance data =", data);
-
-      setSaldoPix(data.saldo_pix);
-      setSaldoError(null);
-    } catch (err: any) {
-      console.error("[PixPanel] fetchBalance error:", err);
-      setSaldoError(err.message || "Falha geral saldo");
-    } finally {
-      setLoadingSaldo(false);
-    }
-  }
-  // ----- Fetch Histórico -----
-  async function fetchHistory() {
-    setLoadingHist(true);
-    try {
-      const url = `${API_BASE}/api/v1/pix/history`;
-      console.log("[PixPanel] GET history", url);
-
-      const res = await fetch(url);
-      console.log("[PixPanel] status history =", res.status);
-
-      if (!res.ok) throw new Error("Erro ao buscar histórico PIX");
-
-      const data: PixHistoryResponse = await res.json();
-      console.log("[PixPanel] history data =", data);
-
-      setHistory(data.history || []);
-      setHistError(null);
-    } catch (err: any) {
-      console.error("[PixPanel] fetchHistory error:", err);
-      setHistError(err.message || "Falha geral histórico");
-    } finally {
-      setLoadingHist(false);
-    }
-  }
-
-  // dispara no mount
-  useEffect(() => {
-    fetchBalance();
-    fetchHistory();
-  }, []);
   return (
-    <div
-      style={{
-        color: "#fff",
-        background: "#000",
-        padding: "1rem",
-        maxWidth: "520px",
-        fontFamily: "system-ui, sans-serif",
-        lineHeight: 1.4,
-      }}
-    >
-      <h2 style={{ color: "gold", marginBottom: "0.5rem" }}>
-        PIX • Aurea Gold
-      </h2>
+    <div className="min-h-screen bg-black text-white flex flex-col lg:flex-row lg:items-start lg:gap-6 p-4">
+      {/* ===================== COLUNA ESQUERDA: PIX ===================== */}
+      <div className="flex-1 max-w-full lg:max-w-[60%] bg-black border border-[#333] rounded-2xl shadow-xl p-4">
+        <h1
+          className="text-lg font-bold"
+          style={{ color: "#ffd700" }}
+        >
+          PIX • Aurea Gold
+        </h1>
 
-      {/* status saldo */}
-      {saldoError && (
-        <div style={{ color: "red", marginBottom: "0.5rem" }}>
-          {saldoError}
+        <div className="mt-2 text-sm">
+          <strong>Saldo PIX:</strong>{" "}
+          <span
+            className="font-semibold"
+            style={{ color: "#ffd700" }}
+          >
+            R${" "}
+            {saldoPix.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+            })}
+          </span>
         </div>
-      )}
 
-      <div style={{ marginBottom: "1rem" }}>
-        <strong>Saldo PIX:</strong>{" "}
-        {loadingSaldo
-          ? "..."
-          : saldoPix !== null
-          ? `R$ ${saldoPix.toFixed(2)}`
-          : "—"}
+        <div
+          className="mt-4 text-sm font-semibold border-b pb-2"
+          style={{ color: "#ffd700", borderColor: "#444" }}
+        >
+          Histórico de Transações
+        </div>
+
+        <div className="divide-y divide-[#444] mt-2 text-sm">
+          {transacoes.map((tx, idx) => (
+            <div key={idx} className="py-3">
+              <div className="flex justify-between">
+                <div
+                  className={
+                    tx.tipo === "entrada"
+                      ? "text-green-400 font-semibold"
+                      : "text-red-400 font-semibold"
+                  }
+                >
+                  {tx.tipo === "entrada"
+                    ? "↑ Entrada"
+                    : "↓ Saída"}
+                </div>
+
+                <div
+                  className={
+                    tx.tipo === "entrada"
+                      ? "text-green-400 font-semibold"
+                      : "text-red-400 font-semibold"
+                  }
+                >
+                  R{"$ "}
+                  {tx.valor.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+
+              <div className="text-gray-200 text-[13px]">
+                {tx.descricao}
+              </div>
+
+              <div className="text-[11px] text-gray-400">
+                {tx.ts}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* histórico */}
-      <h3
-        style={{
-          color: "gold",
-          fontSize: "1rem",
-          marginTop: "1rem",
-          marginBottom: "0.5rem",
-        }}
-      >
-        Histórico de Transações
-      </h3>
-
-      {histError && (
-        <div style={{ color: "red", marginBottom: "0.5rem" }}>
-          {histError}
-        </div>
-      )}
-
-      {loadingHist ? (
-        <div style={{ color: "#888" }}>Carregando...</div>
-      ) : history.length === 0 ? (
-        <div style={{ color: "#888" }}>Nenhuma transação ainda.</div>
-      ) : (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            fontSize: "0.9rem",
-            borderTop: "1px solid #333",
-          }}
-        >
-          {history.map((item) => (
-            <li
-              key={item.id}
-              style={{
-                borderBottom: "1px solid #333",
-                padding: "0.5rem 0",
-                color:
-                  item.tipo === "entrada" ? "lightgreen" : "#ff6868",
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                columnGap: "0.5rem",
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: "bold" }}>
-                  {item.tipo === "entrada" ? "↑ Entrada" : "↓ Saída"}
-                </div>
-                <div style={{ color: "#aaa" }}>
-                  {item.descricao || "— sem descrição —"}
-                </div>
-                <div
-                  style={{
-                    color: "#666",
-                    fontSize: "0.75rem",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {item.timestamp || "sem horário"}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  fontWeight: "bold",
-                  minWidth: "80px",
-                  textAlign: "right",
-                }}
-              >
-                R$ {item.valor.toFixed(2)}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* ===================== COLUNA DIREITA: AUREA IA 3.0 ===================== */}
+      <div className="w-full lg:w-[35%] mt-6 lg:mt-0">
+        <AureaAssistant />
+      </div>
     </div>
   );
 }

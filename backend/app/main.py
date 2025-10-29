@@ -56,3 +56,5 @@ app.include_router(pix_router, prefix="/api/v1/pix", tags=["pix"])
 
 # IA 3.0 (concierge Aurea)
 app.include_router(ai_router.router, prefix="/api/v1", tags=["ai"])
+from app.routers import ai
+app.include_router(ai.router)

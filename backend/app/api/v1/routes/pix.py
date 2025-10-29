@@ -1,46 +1,56 @@
-from fastapi import APIRouter, Header
-from pydantic import BaseModel, Field
-from datetime import datetime
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["PIX"])
+from app.database import get_db
+from app.models.pix_transaction import PixTransaction
 
-class TransferRequest(BaseModel):
-    to: str = Field(..., min_length=3)
-    amount: float = Field(..., gt=0)
-    currency: str = "BRL"
-    description: str | None = None
+router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
-class TransferResponse(BaseModel):
-    status: str
-    transfer_id: str
-    new_balance: float
-    echoed: dict
-    at: datetime
+USER_FIXO_ID = 1  # TODO: depois ligar com auth/jwt
 
 @router.get("/balance")
-def get_balance():
-    return {"balance": 159.32}
+def get_balance(db: Session = Depends(get_db)):
+    """
+    Retorna o saldo PIX calculado:
+    entradas somam, saídas subtraem.
+    """
+    rows = (
+        db.query(PixTransaction)
+        .filter(PixTransaction.user_id == USER_FIXO_ID)
+        .all()
+    )
+
+    saldo = 0.0
+    for t in rows:
+        if t.tipo == "entrada":
+            saldo += float(t.valor)
+        else:
+            saldo -= float(t.valor)
+
+    return {"saldo": saldo}
+
 
 @router.get("/history")
-def get_history(limit: int = 10):
-    items = [
-        {"id": f"mock-{i}", "when": "2025-10-21T19:00:00Z", "type": "IN" if i % 2 == 0 else "OUT", "description": "PIX demo"}
-        for i in range(limit)
-    ]
-    return {"items": items}
-
-@router.post("/transfer", response_model=TransferResponse)
-def post_transfer(
-    payload: TransferRequest,
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
-):
-    base_balance = 159.32
-    transfer_id = f"tr_{(idempotency_key or str(datetime.utcnow().timestamp())).replace('.', '')}"
-    new_balance = round(max(0.0, base_balance - float(payload.amount)), 2)
-    return TransferResponse(
-        status="accepted",
-        transfer_id=transfer_id,
-        new_balance=new_balance,
-        echoed=payload.model_dump(),
-        at=datetime.utcnow(),
+def get_history(db: Session = Depends(get_db)):
+    """
+    Retorna as últimas transações do usuário.
+    """
+    txs = (
+        db.query(PixTransaction)
+        .filter(PixTransaction.user_id == USER_FIXO_ID)
+        .order_by(PixTransaction.id.desc())
+        .limit(20)
+        .all()
     )
+
+    result = [
+        {
+            "id": t.id,
+            "tipo": t.tipo,
+            "valor": float(t.valor),
+            "descricao": t.descricao or "",
+        }
+        for t in txs
+    ]
+
+    return result

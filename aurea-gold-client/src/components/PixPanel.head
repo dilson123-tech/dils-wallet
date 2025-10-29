@@ -29,7 +29,7 @@ export default function PixPanel() {
 
   // depois vamos trocar pra variável de ambiente .env.prod
   const API_BASE =
-    import.meta.env.VITE_API_URL || "http://localhost:8080";
+    import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
   async function fetchPix() {
     try {

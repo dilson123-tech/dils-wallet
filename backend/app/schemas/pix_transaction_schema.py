@@ -1,14 +1,12 @@
 from pydantic import BaseModel
-from datetime import datetime
 
-class PixTransactionBase(BaseModel):
-    from_account_id: int
-    to_account_id: int
-    amount: float
+class PixItem(BaseModel):
+    tipo: str            # "entrada" | "saida"
+    descricao: str
+    valor: str           # string pra não dar imprecisão float no front
+    timestamp: str | None
 
-class PixTransactionResponse(PixTransactionBase):
-    id: int
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
+class PixHistoryResponse(BaseModel):
+    conta: dict
+    saldo_pix: str
+    historico: list[PixItem]

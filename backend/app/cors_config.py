@@ -1,11 +1,6 @@
 from fastapi.middleware.cors import CORSMiddleware
 
 def setup_cors(app):
-    """
-    Configura CORS pra permitir que o frontend local (5173)
-    fale com o backend local (8080) e também permitir o domínio
-    já publicado no Railway.
-    """
     origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

@@ -1,49 +1,65 @@
 from fastapi import APIRouter, Header, HTTPException
 from typing import Optional
-from jose import jwt, JWTError
-from app.database import SessionLocal
-from app.models.user import User
-from app.auth import JWT_SECRET, JWT_ALG  # <- usa o MESMO segredo/algoritmo do emissor
-import re, time
+from sqlalchemy.orm import Session
+import jwt
+import time
 
-router = APIRouter(tags=["Auth"])
+from app.database import get_db
+from app.models import User  # User vem de app/models/__init__.py
+from app.auth import JWT_SECRET, JWT_ALG  # segredo e algoritmo do token
 
-def _get_user_from_claims(claims):
-    db = SessionLocal()
+router = APIRouter(tags=["auth"])
+
+def get_user_from_claims(claims: dict, db: Session) -> Optional[User]:
+    ident = claims.get("sub") or claims.get("username") or claims.get("email")
+
+    if not ident:
+        return None
+
+    # tenta identificar por id ou email
     try:
-        ident = claims.get("sub") or claims.get("username") or claims.get("email")
-        if not ident:
-            return None
-        if isinstance(ident, str) and re.fullmatch(r"\d+", ident):
+        # se ident é número -> tenta id
+        if isinstance(ident, str) and ident.isdigit():
             return db.query(User).filter(User.id == int(ident)).first()
-        if isinstance(ident, str) and "@" in ident:
-            return db.query(User).filter(User.email == ident).first()
-        try:
-            return db.query(User).filter(User.id == int(str(ident))).first()
-        except:
-            return None
-    finally:
-        db.close()
+        # senão tenta por email
+        return db.query(User).filter(User.email == ident).first()
+    except Exception:
+        return None
 
-@router.get("/auth/whoami")
-def whoami(authorization: Optional[str] = Header(None)):
+@router.get("/api/v1/whoami")
+def whoami(
+    authorization: Optional[str] = Header(None)
+    # ex: "Authorization: Bearer <token>"
+):
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="missing_bearer_token")
+        raise HTTPException(
+            status_code=401,
+            detail="missing_bearer_token"
+        )
+
     token = authorization.split(" ", 1)[1].strip()
 
+    # valida token JWT
     try:
         claims = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="token_expired")
+    except Exception:
         raise HTTPException(status_code=401, detail="invalid_token")
 
+    # checa exp
     exp = claims.get("exp")
     if exp and time.time() > float(exp):
         raise HTTPException(status_code=401, detail="token_expired")
 
-    user = _get_user_from_claims(claims)
+    # abre sessão no banco e resolve usuário
+    db = next(get_db())
+    user = get_user_from_claims(claims, db)
+
     if not user:
         raise HTTPException(status_code=401, detail="user_not_found_for_token")
 
+    # checa status do usuário (ativos, verificados, etc.)
     if hasattr(user, "is_active") and not getattr(user, "is_active"):
         raise HTTPException(status_code=401, detail="user_inactive")
     if hasattr(user, "is_verified") and not getattr(user, "is_verified"):
@@ -56,7 +72,8 @@ def whoami(authorization: Optional[str] = Header(None)):
             "email": getattr(user, "email", None),
             "full_name": getattr(user, "full_name", None),
             "type": getattr(user, "type", None),
+            "role": getattr(user, "role", None),
         },
-        "claims": {k: v for k, v in claims.items() if k not in {"exp", "iat"}},
+        "claims": {k: v for k, v in claims.items() if k not in ("exp", "iat")},
         "algo": JWT_ALG,
     }

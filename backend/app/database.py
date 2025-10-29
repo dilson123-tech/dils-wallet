@@ -1,30 +1,43 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models import Base  # Base unificada
+from sqlalchemy.orm import Session
+from sqlalchemy.ext.declarative import declarative_base
+import os
 
-# Tenta Postgres primeiro (produção), cai pra SQLite (dev)
-POSTGRES_URL = os.getenv("POSTGRES_URL")  # ex: postgres://user:pass@host/db
-if POSTGRES_URL:
-    SQLALCHEMY_DATABASE_URL = POSTGRES_URL
-    connect_args = {}  # Postgres não usa connect_args especial
+# ------------------------------------------------------------------------------
+# CONFIGURAÇÃO DO BANCO
+# ------------------------------------------------------------------------------
+# prioridade:
+# 1. variável de ambiente DATABASE_URL (Railway/Postgres em produção)
+# 2. fallback local sqlite (dev local)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    # Exemplo esperado Railway:
+    # postgres://user:pass@host:port/dbname
+    engine = create_engine(DATABASE_URL)
 else:
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./app.db"
-    connect_args = {"check_same_thread": False}
+    # ambiente local/dev
+    SQLITE_URL = "sqlite:///./app.db"
+    engine = create_engine(
+        SQLITE_URL,
+        connect_args={"check_same_thread": False}  # só pro sqlite
+    )
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args=connect_args
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+# Base declarativa global para os models
+Base = declarative_base()
 
+# ------------------------------------------------------------------------------
+# DEPENDÊNCIA FASTAPI
+# ------------------------------------------------------------------------------
 def get_db():
-    db = SessionLocal()
+    """
+    Dependency de FastAPI:
+    abre sessão do banco pro request e fecha no final.
+    """
+    db: Session = SessionLocal()
     try:
         yield db
     finally:

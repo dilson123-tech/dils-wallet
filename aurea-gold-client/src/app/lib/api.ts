@@ -1,7 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 if (!API_BASE) {
-  console.warn("[AUREA FRONT] VITE_API_URL não definido. Usando fallback http://localhost:8000");
+  console.warn("[AUREA FRONT] VITE_API_BASE não definido. Usando fallback http://localhost:8000");
 }
 
 export function toApi(path: string): string {
