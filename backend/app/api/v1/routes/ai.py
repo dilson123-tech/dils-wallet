@@ -1,22 +1,51 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.services.ai_service import get_ai_text
+import os
+from openai import AsyncOpenAI
 
-router = APIRouter(tags=["AI 2.0"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
-class PromptIn(BaseModel):
-    prompt: str
+# ============ Configuração OpenAI ============
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
 
-@router.get("/ping")
-def ping():
+# ============ Schemas ============
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    reply: str
+
+# ============ Função principal ============
+async def call_openai(message: str) -> str:
+    """Chama o modelo GPT real (IA 3.0 do Aurea Bank)"""
     try:
-        return {"ok": True, "message": "AI 2.0 up"}
+        completion = await client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Você é a Aurea IA 3.0, assistente bancária premium do Aurea Bank. "
+                        "Responda de forma clara, cordial e profissional, com foco em finanças, PIX e suporte ao cliente. "
+                        "Não use emojis. Seja concisa e empática, estilo concierge de banco de luxo."
+                    ),
+                },
+                {"role": "user", "content": message},
+            ],
+            temperature=0.4,
+            max_tokens=400,
+        )
+        return completion.choices[0].message.content.strip()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI ping error: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao chamar OpenAI: {e}")
 
-@router.post("/process")
-def process(body: PromptIn):
+# ============ Endpoint ============
+@router.post("/chat", response_model=ChatResponse)
+async def chat_ai(body: ChatRequest):
+    """Endpoint público usado pelo front AureaAssistant"""
     try:
-        return {"response": get_ai_text(body.prompt)}
+        resposta = await call_openai(body.message)
+        return ChatResponse(reply=resposta)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,77 +1,58 @@
-import time
-from fastapi import Response, FastAPI, Depends
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-
-from app.database import get_db, engine
+from fastapi.staticfiles import StaticFiles
+from app.database import engine
 from app.models import Base
+import importlib
 
-# garante tabelas no banco ao subir
+# importa nosso router de IA 3.0
+from app.api.v1.routes import ai as ai_router
+
+# -----------------------------------------------------------------------------
+# APP CORE
+# -----------------------------------------------------------------------------
+app = FastAPI(title="Dils Wallet API", version="0.3.0")
+
+# -----------------------------------------------------------------------------
+# BANCO
+# -----------------------------------------------------------------------------
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="Dils Wallet API",
-    version="0.3.0",
-)
-
-# servir /ui se existir
-app.mount("/ui", StaticFiles(directory="ui", html=True), name="ui")
-
-@app.get("/favicon.ico")
-def favicon():
-    return Response(status_code=204)
-
-# -------------------------------------------------
-# CORS
-# depois que o front estiver no Railway, troque
-# "http://localhost:5173" pelo domínio público do front,
-# ex: "https://aurea-gold-client.up.railway.app"
-# -------------------------------------------------
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
+# -----------------------------------------------------------------------------
+# CORS GLOBAL
+# -----------------------------------------------------------------------------
+origins = ["*"]  # dev livre; depois a gente fecha pra produção
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# -----------------------------------------------------------------------------
+# STATIC FILES (opcional)
+# -----------------------------------------------------------------------------
+try:
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+except Exception:
+    pass
+
+# -----------------------------------------------------------------------------
+# HEALTHCHECK
+# -----------------------------------------------------------------------------
 @app.get("/healthz")
 def healthz():
-    return {"status": "ok", "ts": int(time.time())}
+    return {"ok": True, "service": "dils-wallet"}
 
-@app.get("/users/test-db")
-def test_db(db: Session = Depends(get_db)):
-    return {"msg": "DB conectado!"}
+# -----------------------------------------------------------------------------
+# ROUTERS
+# -----------------------------------------------------------------------------
 
-# ==== Routers ====
+# PIX (painel financeiro, histórico e saldo)
+pix_router = importlib.import_module("app.routers.pix").router
+app.include_router(pix_router, prefix="/api/v1/pix", tags=["pix"])
 
-from app.api.v1.routes import auth as _auth
-app.include_router(
-    _auth.router,
-    prefix="/api/v1/auth",
-    tags=["auth"],
-)
-
-from app.api.v1.routes import refresh as _refresh
-app.include_router(
-    _refresh.router,
-    prefix="/api/v1/auth",
-    tags=["auth"],
-)
-
-from app.api.v1.routes import users as _users
-app.include_router(
-    _users.router,
-    tags=["users"],
-)
-
-from app.api.v1.routes import wallet as _wallet
-app.include_router(
-    _wallet.router,
-    tags=["wallet"],
-)
+# IA 3.0 (concierge Aurea)
+app.include_router(ai_router.router, prefix="/api/v1", tags=["ai"])
