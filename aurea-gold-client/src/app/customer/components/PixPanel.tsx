@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import clickSound from "../../../assets/sounds/aurea-click-gold.mp3";
 import successSound from "../../../assets/sounds/aurea-success-chime.mp3";
 import enterSound from "../../../assets/sounds/aurea-whoosh-enter.mp3";
+import errorSound from "../../../assets/sounds/aurea-error.mp3";
 import PixModal, { PixForm } from "./PixModal";
 import Toast from "./Toast";
 
@@ -46,6 +47,13 @@ function playSomEnter(){
   audio.play().catch(()=>{});
 }
 
+function playSomError(){
+  if (localStorage.getItem("aurea:som")==="off") return;
+  const audio=new Audio(errorSound);
+  audio.volume=Math.min(1, getVol()*0.8);
+  audio.play().catch(()=>{});
+}
+
 export default function PixPanel() {
   const [saldo, setSaldo] = useState<number | null>(null);
   const [hist, setHist] = useState<PixTx[]>([]);
@@ -65,6 +73,9 @@ export default function PixPanel() {
       const h = await getJSON<HistoryResp>(`${API_BASE}/api/v1/pix/history`);
       setHist(h.history || []);
     } catch (e: any) {
+      playSomError();
+      setToast({kind:"error", msg: (e?.message||"Falha ao carregar dados do PIX")});
+      setTimeout(()=>setToast(null), 2000);
       setErr(e?.message || "Falha ao carregar dados do PIX");
     } finally {
       setLoading(false);
@@ -104,6 +115,9 @@ useEffect(() => { playSom(); }, []);
         setTimeout(() => el?.classList.remove("flash"), 1500);
       }, 200);
     } catch (e: any) {
+    playSomError();
+    setToast({kind:"error", msg: (e?.message||"Falha no envio do PIX")});
+    setTimeout(()=>setToast(null), 2000);
       setToast({ kind: "error", msg: e?.message || "Erro ao enviar PIX" });
     } finally {
       setSending(false);
@@ -140,6 +154,42 @@ useEffect(() => { playSom(); }, []);
           <input type="range" min={0} max={1} step={0.05} value={vol} onChange={e => setVol(Number((e.target as HTMLInputElement).value))} style={{width:140}} />
           <span style={{opacity:.75,fontSize:12}}>{Math.round(vol*100)}%</span>
         </div>
+        {toast && (
+          <div className="ai-answer" style={{ marginTop: 10 }}>
+            <div className="ai-title">{toast.kind === "error" ? "Erro" : "OK"}</div>
+            <div>{toast.msg}</div>
+          </div>
+        )}
+        {toast && (
+          <div role="status" aria-live="polite" style={{position:"fixed",right:16,bottom:16,background:"rgba(20,20,20,.95)",border:"1px solid #FFD166",color:"#fff",padding:"10px 14px",borderRadius:12,boxShadow:"0 8px 28px rgba(0,0,0,.45)"}}>
+            <div style={{fontWeight:700,color: toast.kind === "error" ? "#ff6b6b" : "#06d6a0"}}>{toast.kind === "error" ? "Erro" : "OK"}</div>
+            <div>{toast.msg}</div>
+          </div>
+        )}
+        {toast && (
+          <div role="status" aria-live="polite"
+               style={{position:"fixed",right:16,bottom:16,zIndex:9999,
+                       background:"rgba(20,20,20,.96)",color:"#fff",
+                       border:"1px solid #FFD166",padding:"10px 14px",
+                       borderRadius:12,boxShadow:"0 8px 28px rgba(0,0,0,.45)"}}>
+            <div style={{fontWeight:700,color: toast.kind === "error" ? "#ff6b6b" : "#06d6a0"}}>
+              {toast.kind === "error" ? "Erro" : "OK"}
+            </div>
+            <div>{toast.msg}</div>
+          </div>
+        )}
+        {toast && (
+          <div role="status" aria-live="polite"
+               style={{position:"fixed",right:16,bottom:16,zIndex:9999,
+                       background:"rgba(20,20,20,.96)",color:"#fff",
+                       border:"1px solid #FFD166",padding:"10px 14px",
+                       borderRadius:12,boxShadow:"0 8px 28px rgba(0,0,0,.45)"}}>
+            <div style={{fontWeight:700,color: toast.kind === "error" ? "#ff6b6b" : "#06d6a0"}}>
+              {toast.kind === "error" ? "Erro" : "OK"}
+            </div>
+            <div>{toast.msg}</div>
+          </div>
+        )}
         {err && (
           <div className="ai-answer" style={{ marginTop: 10 }}>
             <div className="ai-title">Erro</div>
