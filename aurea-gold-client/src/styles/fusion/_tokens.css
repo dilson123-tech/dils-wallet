@@ -1,0 +1,19 @@
+:root {
+  /* === CORE TOKENS === */
+  --gold: #d4af37;
+  --gold-dark: #a17c1a;
+  --carbon: #0e1013;
+  --carbon-light: #1a1c21;
+  --text-light: #f8f8f8;
+  --text-muted: #aaa;
+  --radius: 12px;
+  --transition: 0.15s ease;
+
+  /* === TYPOGRAPHY === */
+  --font-main: 'Inter', system-ui, sans-serif;
+  --font-title: 'Poppins', var(--font-main);
+
+  /* === ELEVATION === */
+  --shadow-soft: 0 6px 14px rgba(0,0,0,.25);
+  --shadow-gold: 0 10px 26px rgba(212,175,55,.2);
+}

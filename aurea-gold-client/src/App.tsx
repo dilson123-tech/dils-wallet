@@ -1,9 +1,39 @@
-import PixPanel from "./components/PixPanel";
+import "./styles/aurea.css";
+import "./styles/aurea.css";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import Home from "./pages/Home";
+import Pix from "./app/customer/pages/Pix";
+
+function isSomAtivo() { return localStorage.getItem("aurea:som") !== "off"; }
+function setSomAtivo(v: boolean) { localStorage.setItem("aurea:som", v ? "on" : "off"); }
 
 export default function App() {
+  const [som, setSom] = useState<boolean>(isSomAtivo());
+  useEffect(() => { setSom(isSomAtivo()); }, []);
+  const toggleSom = () => { const nv = !som; setSom(nv); setSomAtivo(nv); };
+
   return (
-    <div style={{ backgroundColor: "black", minHeight: "100vh", padding: "16px", color: "gold" }}>
-      <PixPanel />
-    </div>
+    <BrowserRouter>
+      <header className="aurea-header" style={{display:"flex",gap:12,alignItems:"center",padding:"8px 12px"}}>
+        <div className="brand" style={{fontWeight:700}}>AUREA GOLD • PREMIUM</div>
+        <nav style={{display:"flex",gap:8}}>
+          <Link to="/">Home</Link>
+          <Link to="/pix">PIX</Link>
+        </nav>
+        <button onClick={toggleSom} aria-label="Som" title={som ? "Som: ligado" : "Som: desligado"} style={{marginLeft:"auto"}}>
+          {som ? "🔊" : "🔇"}
+        </button>
+      </header>
+
+      <main className="aurea-main" style={{padding:"12px"}}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/pix" element={<Pix />} />
+        </Routes>
+      </main>
+
+      <footer className="aurea-footer" style={{opacity:.7,padding:"6px 12px"}}>v1.0 beta</footer>
+    </BrowserRouter>
   );
 }

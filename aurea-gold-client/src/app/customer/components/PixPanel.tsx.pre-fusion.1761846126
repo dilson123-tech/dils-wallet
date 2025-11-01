@@ -1,0 +1,24 @@
+import React from "react";
+
+export default function PixPanel() {
+  return (
+    <main className="page pix-panel">
+      <h1>PIX · Aurea Gold</h1>
+      <section className="card section">
+        <h2>Saldo PIX</h2>
+        <div className="balance">
+          <span className="amount">R$ 0,00</span>
+          <span className="currency">simulado</span>
+        </div>
+        <div className="actions" style={{ marginTop: 10 }}>
+          <button className="btn">Atualizar</button>
+        </div>
+      </section>
+
+      <section className="card section">
+        <h2>Histórico</h2>
+        <p>Sem lançamentos.</p>
+      </section>
+    </main>
+  );
+}

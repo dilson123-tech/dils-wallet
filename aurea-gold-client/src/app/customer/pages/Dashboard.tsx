@@ -1,32 +1,37 @@
-import React from "react";
-import BalanceLive from "@/app/customer/components/BalanceLive";
-import TxHistoryLive from "@/app/customer/components/TxHistoryLive";
-import AureaAssistant from "@/app/customer/components/AureaAssistant";
+import React, { useState } from "react";
+import "../../../styles/aurea.css";
+import AIChatModal from "../components/AIChatModal";
 
 export default function Dashboard() {
+  const [openAI, setOpenAI] = useState(false);
+
   return (
-    <div className="p-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6 bg-[#000] min-h-screen text-white">
-      <div className="flex-1 flex flex-col gap-4">
-        <div
-          className="rounded-2xl border border-[#2a2a2a] bg-[#0a0a0a] shadow-xl p-4"
-          style={{
-            background:
-              "linear-gradient(160deg, rgba(15,15,15,1) 60%, rgba(45,35,10,0.35) 100%)",
-          }}
-        >
-          <BalanceLive />
-        </div>
-        <div
-          className="rounded-2xl border border-[#2a2a2a] bg-[#0a0a0a] shadow-xl p-4 overflow-x-auto"
-          style={{
-            background:
-              "linear-gradient(170deg, rgba(15,15,15,1) 60%, rgba(45,35,10,0.22) 100%)",
-          }}
-        >
-          <TxHistoryLive />
-        </div>
-      </div>
-      <AureaAssistant />
+    <div className="dashboard-container">
+      <header className="dashboard-header">
+        <h1 className="gold-title">Aurea Gold Premium</h1>
+        <span className="user-welcome">Bem-vindo(a), Cliente!</span>
+      </header>
+
+      <section className="dashboard-balance">
+        <h2>Saldo Atual</h2>
+        <div className="balance-card">R$ 10.432,00</div>
+      </section>
+
+      <section className="dashboard-actions">
+        <button className="gold-btn">Enviar PIX</button>
+        <button className="gold-btn">Extrato</button>
+        <button className="gold-btn" onClick={() => setOpenAI(true)}>IA Financeira</button>
+      </section>
+
+      <footer className="dashboard-footer">
+        <small>© 2025 Aurea Gold Bank • IA 3.0</small>
+      </footer>
+
+      {/* Botão flutuante IA */}
+      <button className="ia-float" onClick={() => setOpenAI(true)} aria-label="Abrir IA">🤖</button>
+
+      {/* Modal IA */}
+      <AIChatModal open={openAI} onClose={() => setOpenAI(false)} />
     </div>
   );
 }

@@ -1,12 +1,10 @@
 import React from "react";
-import PixPanel from "../components/PixPanel";
-
+import { Link } from "react-router-dom";
 export default function Home() {
   return (
-    <main className="min-h-screen w-full bg-gradient-to-b from-black via-[#0a0a0a] to-[#1a1200] text-white flex justify-center p-4">
-      <div className="w-full max-w-md">
-        <PixPanel />
-      </div>
-    </main>
+    <div>
+      <h1>Dashboard Aurea Gold</h1>
+      <p><Link to="/pix">Ir para PIX</Link></p>
+    </div>
   );
 }

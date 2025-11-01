@@ -21,7 +21,12 @@ Base.metadata.create_all(bind=engine)
 # -----------------------------------------------------------------------------
 # CORS GLOBAL
 # -----------------------------------------------------------------------------
-origins = ["*"]  # dev livre; depois a gente fecha pra produção
+origins = [
+    "http://localhost:5173","http://127.0.0.1:5173",
+    "http://localhost:5174","http://127.0.0.1:5174",
+    "http://localhost:5175","http://127.0.0.1:5175",
+    "http://localhost:8080","http://127.0.0.1:8080"
+]  # dev livre; depois a gente fecha pra produção
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,13 +53,14 @@ def healthz():
 
 # -----------------------------------------------------------------------------
 # ROUTERS
-# -----------------------------------------------------------------------------
 
 # PIX (painel financeiro, histórico e saldo)
-pix_router = importlib.import_module("app.routers.pix").router
-app.include_router(pix_router, prefix="/api/v1/pix", tags=["pix"])
+from app.routers import pix
 
 # IA 3.0 (concierge Aurea)
-app.include_router(ai_router.router, prefix="/api/v1", tags=["ai"])
-from app.routers import ai
-app.include_router(ai.router)
+from app.routers.ai import router as ai_router
+from app.routers import summary
+
+app.include_router(pix.router, prefix="/api/v1/pix", tags=["pix"])
+app.include_router(summary.router)
+app.include_router(ai_router)

@@ -1,0 +1,96 @@
+import React, { useEffect, useState } from "react";
+
+type PixHistoryItem = {
+  id: number;
+  tipo: "entrada" | "saida";
+  valor: number;
+  descricao: string;
+  timestamp: string | null;
+};
+
+type PixSummaryResponse = { saldo_pix: number; };
+type PixHistoryResponse = {
+  history: PixHistoryItem[];
+  recebidos?: PixHistoryItem[];
+  enviados?: PixHistoryItem[];
+};
+
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8080";
+
+export default function PixPanel() {
+  const [saldo, setSaldo] = useState<number>(0);
+  const [hist, setHist] = useState<PixHistoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string>("");
+
+  async function load() {
+    setLoading(true); setErr("");
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(`${API_BASE}/api/v1/pix/balance`),
+        fetch(`${API_BASE}/api/v1/pix/history`),
+      ]);
+      const b1: PixSummaryResponse = await r1.json();
+      const b2: PixHistoryResponse = await r2.json();
+      setSaldo(b1?.saldo_pix ?? 0);
+      setHist(b2?.history ?? []);
+    } catch (e:any) {
+      setErr(e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  return (
+  <div className="page pix-panel">
+    <div className="dashboard-container">
+      <header className="dashboard-header">
+        <h1 className="gold-title">PIX • Aurea Gold</h1>
+        <span className="user-welcome">Histórico de Transações</span>
+      </header>
+
+      <section className="dashboard-balance">
+        <h2>Saldo PIX</h2>
+        <div className="balance-card">R$ {saldo.toFixed(2)}</div>
+      </section>
+
+      <section className="dashboard-actions" style={{ marginTop: 12 }}>
+        <button className="gold-btn" onClick={load} disabled={loading}>
+          {loading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </section>
+
+      {err && (
+        <div className="ai-answer" style={{ marginTop: 12, borderColor: "rgba(255,99,99,.35)", background:"rgba(255,99,99,.12)" }}>
+          Erro ao carregar PIX: {err}
+        </div>
+      )}
+
+      <section className="ai-answer" style={{ marginTop: 14 }}>
+        <div className="ai-title">Histórico</div>
+        {hist.length === 0 ? (
+          <p>Sem lançamentos.</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {hist.map((t) => (
+              <li key={t.id} style={{ padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div>
+                    <b>{t.tipo === "entrada" ? "↑ Entrada" : "↓ Saída"}</b>
+                    <div style={{ color: "var(--muted)" }}>{t.descricao}</div>
+                    {t.timestamp && <small style={{ color: "var(--muted)" }}>{t.timestamp}</small>}
+                  </div>
+                  <div style={{ minWidth: 120, textAlign: "right", fontWeight: 700 }}>
+                    R$ {Number(t.valor).toFixed(2)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}

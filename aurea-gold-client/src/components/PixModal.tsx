@@ -1,56 +1,109 @@
+</div>
 import React, { useState } from "react";
+</div>
 
+</div>
 type PixModalProps = {
+</div>
   onClose: () => void;
+</div>
   onConfirm: (data: {
+</div>
     chave: string;
+</div>
     valor: number;
+</div>
     descricao: string;
+</div>
   }) => void;
+</div>
 };
+</div>
 
+</div>
 export default function PixModal({ onClose, onConfirm }: PixModalProps) {
+</div>
   const [chave, setChave] = useState("");
+</div>
   const [valor, setValor] = useState("");
+</div>
   const [descricao, setDescricao] = useState("");
+</div>
   const [erroLocal, setErroLocal] = useState<string | null>(null);
+</div>
 
+</div>
   function tentarEnviar() {
+</div>
     // validação básica antes de chamar backend
+</div>
     const vNum = parseFloat(
+</div>
       valor.replace(",", ".").trim()
+</div>
     );
+</div>
 
+</div>
     if (!chave.trim()) {
+</div>
       setErroLocal("Informe a chave PIX de destino.");
+</div>
       return;
+</div>
     }
+</div>
     if (isNaN(vNum) || vNum <= 0) {
+</div>
       setErroLocal("Informe um valor válido (> 0).");
+</div>
       return;
+</div>
     }
+</div>
     if (!descricao.trim()) {
+</div>
       setErroLocal("Descreva o motivo/pagamento.");
+</div>
       return;
+</div>
     }
+</div>
 
+</div>
     setErroLocal(null);
+</div>
 
+</div>
     onConfirm({
+</div>
       chave: chave.trim(),
+</div>
       valor: vNum,
+</div>
       descricao: descricao.trim(),
+</div>
     });
+</div>
   }
+</div>
 
+</div>
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+</div>
+    <div className="page">
+</div>
       <div className="w-full max-w-sm rounded-xl border border-yellow-600/40 bg-black/90 p-4 shadow-[0_0_30px_rgba(212,175,55,0.4)] text-yellow-200">
+</div>
         <div className="text-yellow-400 text-xs uppercase tracking-wide">
+</div>
           Aurea Gold Premium
+</div>
         </div>
+</div>
         <div className="text-xl font-bold text-yellow-300">
-          Enviar PIX
+</div>
+          <div className="actions">Enviar PIX
         </div>
         <div className="text-[0.8rem] text-yellow-500/80 mb-4">
           Pagamento instantâneo entre contas

@@ -1,0 +1,486 @@
+/* ===== Typography & Links ===== */
+h1,h2,h3 { font-family: var(--font-title); margin: 8px 0 12px }
+h1 { font-size: 34px; letter-spacing:.3px }
+h2 { font-size: 22px; color: var(--text-light) }
+a { color: var(--gold); text-decoration: none }
+a:hover { text-decoration: underline }
+
+/* ===== Containers ===== */
+.page { width:100%; max-width: 980px; margin: 0 auto; }
+.section { margin: 16px 0 24px }
+
+/* ===== Cards ===== */
+.card {
+  background: linear-gradient(180deg, var(--carbon-light), #0b0d10);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+}
+.card + .card { margin-top: 12px; }
+
+/* ===== Balance Highlight ===== */
+.balance {
+  display:flex; align-items:flex-end; gap:10px;
+  font-family: var(--font-title);
+}
+.balance .amount {
+  font-size: 36px; font-weight: 700; color: #fff;
+  text-shadow: 0 1px 0 #000;
+}
+.balance .currency { color: var(--text-muted); font-size: 14px }
+
+/* ===== Actions ===== */
+.actions { display:flex; gap:10px; flex-wrap: wrap; margin-top: 10px }
+.btn {
+  display:inline-flex; align-items:center; gap:8px;
+  background: var(--gold); color:#000;
+  border: none; border-radius: var(--radius);
+  padding: 8px 14px; font-weight: 700; cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold) }
+.btn-outline {
+  background: transparent; color:#f1e7c4;
+  border:1px solid rgba(212,175,55,.35);
+}
+.btn-outline:hover { box-shadow: var(--shadow-gold) }
+
+/* ===== Existing hooks (mantidos) ===== */
+.gold-primary{ background: linear-gradient(180deg,#1e2127,#181b20); color:#f8f8f8;
+  border:1px solid rgba(255,255,255,.12); border-radius: var(--radius); padding:10px 14px;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition); }
+.gold-primary:hover{ transform:translateY(-1px); border-color: rgba(212,175,55,.35); box-shadow: var(--shadow-gold) }
+
+.ai-answer{ margin-top:10px; padding:12px 14px; border-radius:14px; background: linear-gradient(180deg,#191c22,#14171c); border:1px solid rgba(255,255,255,.08) }
+.ai-title{ font-size:13px; color:var(--text-muted); margin-bottom:6px }
+.ai-chip{ display:inline-block; margin-top:8px; padding:6px 10px; border-radius:999px;
+  background: rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.35); color:#f9f7ec; font-size:12px }
+.ai-details summary{ cursor:pointer; color:#eaeaea; margin-top:8px }
+.ai-details pre{ overflow:auto; background:#0e1013; padding:10px; border-radius:10px }
+
+/* ===== Footer polish ===== */
+footer { backdrop-filter: blur(2px) }
+
+/* ===== Inputs com cara de botão ===== */
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+input[type="button"]:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-gold);
+}
+
+/* Variante outline */
+.input-outline[type="button"],
+.input-outline[type="submit"],
+.input-outline[type="reset"] {
+  background: transparent;
+  color: #f1e7c4;
+  border: 1px solid rgba(212,175,55,.35);
+}
+.input-outline[type="button"]:hover,
+.input-outline[type="submit"]:hover,
+.input-outline[type="reset"]:hover {
+  box-shadow: var(--shadow-gold);
+}
+
+/* ===== PIX Panel polish ===== */
+.pix-panel h1, .pix-panel h2 { margin-left: 2px }
+.pix-panel .section { margin: 14px 0 18px }
+.pix-panel .card {
+  background: linear-gradient(180deg, var(--carbon-light), #0b0d10);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* tenta transformar blocos comuns em "card" sem JSX */
+.pix-panel :is(#saldo, #historico, .saldo, .historico) {
+  display: block;
+  background: linear-gradient(180deg, var(--carbon-light), #0b0d10);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* ===== Aurea Nav refinado ===== */
+.aurea-nav{
+  display:flex; gap:12px; align-items:center;
+  padding: 10px 16px; border-bottom:1px solid rgba(255,255,255,.08);
+  background: linear-gradient(90deg, var(--carbon-light), #000);
+  position: sticky; top:0; z-index: 50;
+}
+.nav-link{ color: #e9e3cf; padding:6px 10px; border-radius: 10px; }
+.nav-link:hover{ background: rgba(212,175,55,.12); color: #fff; }
+
+/* ===== Títulos do módulo ===== */
+.pix-panel h1{ font-size: 28px; margin: 8px 0 16px }
+.pix-panel h2{ font-size: 18px; margin: 4px 0 10px; color:#f2f2f2 }
+
+/* ===== Cards melhorados ===== */
+.pix-panel .card{
+  background: linear-gradient(180deg, var(--carbon-light), #0a0c0f);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+}
+.pix-panel .card + .card{ margin-top: 14px }
+
+/* ===== Balance ===== */
+.pix-panel .balance .amount{ letter-spacing:.2px }
+.pix-panel .currency{ color: var(--text-muted); font-size: 12px }
+
+/* ===== Lista de histórico ===== */
+.pix-panel ul{ list-style: none; margin: 0; padding: 0 }
+.pix-panel ul li{
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display: flex; justify-content: space-between; gap: 12px;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.pix-panel ul li:hover{
+  transform: translateY(-1px);
+  border-color: rgba(212,175,55,.35);
+  box-shadow: var(--shadow-gold);
+}
+
+/* bloco esquerdo do item */
+.pix-panel ul li > div:first-child div{ color:#f1f1f1 }
+.pix-panel ul li > div:first-child small{ color: var(--text-muted) }
+
+/* valor à direita */
+.pix-panel ul li > div:last-child{ min-width: 120px; text-align: right; font-weight: 700 }
+
+/* ===== Botões ===== */
+.pix-panel .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px }
+
+/* ===== Rodapé mais discreto ===== */
+footer{ opacity:.9 }
+
+/* ===== Aurea Nav refinado ===== */
+.aurea-nav{
+  display:flex; gap:12px; align-items:center;
+  padding: 10px 16px; border-bottom:1px solid rgba(255,255,255,.08);
+  background: linear-gradient(90deg, var(--carbon-light), #000);
+  position: sticky; top:0; z-index: 50;
+}
+.nav-link{ color: #e9e3cf; padding:6px 10px; border-radius: 10px; }
+.nav-link:hover{ background: rgba(212,175,55,.12); color: #fff; }
+
+/* ===== Títulos do módulo ===== */
+.pix-panel h1{ font-size: 28px; margin: 8px 0 16px }
+.pix-panel h2{ font-size: 18px; margin: 4px 0 10px; color:#f2f2f2 }
+
+/* ===== Cards melhorados ===== */
+.pix-panel .card{
+  background: linear-gradient(180deg, var(--carbon-light), #0a0c0f);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+}
+.pix-panel .card + .card{ margin-top: 14px }
+
+/* ===== Balance ===== */
+.pix-panel .balance .amount{ letter-spacing:.2px }
+.pix-panel .currency{ color: var(--text-muted); font-size: 12px }
+
+/* ===== Lista de histórico ===== */
+.pix-panel ul{ list-style: none; margin: 0; padding: 0 }
+.pix-panel ul li{
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display: flex; justify-content: space-between; gap: 12px;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.pix-panel ul li:hover{
+  transform: translateY(-1px);
+  border-color: rgba(212,175,55,.35);
+  box-shadow: var(--shadow-gold);
+}
+
+/* bloco esquerdo do item */
+.pix-panel ul li > div:first-child div{ color:#f1f1f1 }
+.pix-panel ul li > div:first-child small{ color: var(--text-muted) }
+
+/* valor à direita */
+.pix-panel ul li > div:last-child{ min-width: 120px; text-align: right; font-weight: 700 }
+
+/* ===== Botões ===== */
+.pix-panel .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px }
+
+/* ===== Rodapé mais discreto ===== */
+footer{ opacity:.9 }
+
+/* ===== PIX History (sem inline) ===== */
+.pix-list{ list-style:none; margin:0; padding:0 }
+.pix-item{
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display:flex; justify-content:space-between; gap:12px;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.pix-item:hover{ transform:translateY(-1px); border-color: rgba(212,175,55,.35); box-shadow: var(--shadow-gold) }
+
+.pix-left .pix-desc{ color:#f1f1f1 }
+.pix-left .pix-meta{ color: var(--text-muted) }
+
+.pix-amount{ min-width:120px; text-align:right; font-weight:700 }
+.pix-item.entrada .pix-amount{ color:#9be29b } /* verde sutil */
+.pix-item.saida   .pix-amount{ color:#f3b0b0 } /* vermelho sutil */
+
+/* ===== PIX History ===== */
+.pix-list{ list-style:none; margin:0; padding:0 }
+.pix-item{
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display:flex; justify-content:space-between; gap:12px;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.pix-item:hover{ transform:translateY(-1px); border-color: rgba(212,175,55,.35); box-shadow: var(--shadow-gold) }
+
+.pix-left .pix-desc{ color:#f1f1f1 }
+.pix-left .pix-meta{ color: var(--text-muted) }
+
+.pix-amount{ min-width:120px; text-align:right; font-weight:700 }
+.pix-item.entrada .pix-amount{ color:#9be29b } /* verde sutil */
+.pix-item.saida   .pix-amount{ color:#f3b0b0 } /* vermelho sutil */
+/* DEBUG: marcar visivelmente quando o CSS está carregado */
+.pix-panel h1::after{ content:"  • CSS OK"; font-size:12px; color:#d4af37; margin-left:6px }
+.pix-panel .pix-list{ outline:1px dashed rgba(212,175,55,.35) }
+/* DEBUG TEMP */
+.pix-panel h1::after{ content:" • CSS OK"; font-size:12px; color:#d4af37; margin-left:6px }
+/* DEBUG TEMP — remover depois */
+.pix-panel h1::after{ content:" • CSS OK"; font-size:12px; color:var(--gold); margin-left:6px }
+.pix-list{ outline:1px dashed rgba(212,175,55,.35) }
+
+/* ==== AUREA GOLD VISUAL POLISH v1 ==== */
+
+/* Fundo e texto base */
+body {
+  background: linear-gradient(180deg, #000, var(--carbon-light));
+  color: var(--text-muted);
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* Cabeçalho Aurea */
+.aurea-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  background: linear-gradient(90deg, #111, #000);
+  box-shadow: 0 2px 10px rgba(212,175,55,0.1);
+  border-bottom: 1px solid rgba(212,175,55,0.2);
+}
+.nav-link {
+  color: var(--gold);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.nav-link:hover {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* Botões */
+button, .btn {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+button:hover, .btn:hover {
+  box-shadow: var(--shadow-gold);
+  transform: translateY(-2px);
+}
+
+/* Card e saldo */
+.card {
+  background: rgba(255,255,255,0.05);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(212,175,55,0.15);
+}
+
+/* PIX Painel refinado */
+.pix-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+}
+.pix-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow-soft);
+}
+.pix-item.entrada { border-left: 4px solid #2ecc71; }
+.pix-item.saida { border-left: 4px solid #e74c3c; }
+
+
+/* ===== Modal Aurea ===== */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:flex; align-items:center; justify-content:center; z-index:1000;
+  backdrop-filter: blur(2px);
+}
+.modal-card{
+  width:min(480px, 92vw);
+  background: linear-gradient(180deg, #171a20, #0e1116);
+  border:1px solid rgba(212,175,55,.25);
+  border-radius:16px; padding:18px;
+  box-shadow: var(--shadow-gold);
+}
+.modal-card h3{ color:#f6f4ea; margin:0 0 10px 0 }
+.field{ display:flex; flex-direction:column; gap:6px; margin:10px 0 }
+.field span{ color: var(--text-muted); font-size:13px }
+.field input{
+  background:#0c0f13; color:#eaeaea; border:1px solid rgba(255,255,255,.12);
+  border-radius:10px; padding:10px 12px; outline:none;
+}
+.field input:focus{ border-color: rgba(212,175,55,.45); box-shadow: 0 0 0 3px rgba(212,175,55,.15) }
+.actions-row{ display:flex; justify-content:flex-end; gap:10px; margin-top:8px }
+.btn-outline{
+  background:transparent; color:#eaeaea; border:1px solid rgba(255,255,255,.18);
+  padding:8px 12px; border-radius:10px; cursor:pointer;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.btn-outline:hover{ transform:translateY(-1px); border-color:rgba(212,175,55,.35); box-shadow:var(--shadow-gold) }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed; top: 16px; right: 16px; z-index: 1200;
+  display: flex; gap: 10px; align-items: center;
+  background: rgba(15, 18, 24, .95);
+  border: 1px solid rgba(212,175,55,.35);
+  color: #f5f5f5;
+  padding: 10px 14px; border-radius: 12px;
+  box-shadow: var(--shadow-gold);
+  animation: toastIn .18s ease-out;
+}
+.toast .toast-dot{
+  width:10px; height:10px; border-radius:50%;
+  background: #21d07a; display:inline-block;
+}
+.toast.error { border-color: rgba(255,80,80,.45); }
+.toast.error .toast-dot{ background:#ff6b6b; }
+.toast .toast-msg{ font-weight:600; letter-spacing:.2px }
+
+@keyframes toastIn { from { transform: translateY(-8px); opacity: .0 } to { transform: translateY(0); opacity: 1 } }
+
+/* ===== Modal micro-anim ===== */
+.modal-overlay{ animation: overlayIn .12s ease-out }
+@keyframes overlayIn { from { background: rgba(0,0,0,.0) } to { background: rgba(0,0,0,.55) } }
+.modal-card{ transform: translateY(6px); animation: cardIn .16s ease-out forwards }
+@keyframes cardIn { to { transform: translateY(0) } }
+
+/* ===== Aurea Gold Premium Enhancements ===== */
+
+/* Toast fade in/out */
+.toast {
+  animation: toastIn .25s ease-out, toastOut .3s ease-in forwards;
+}
+@keyframes toastOut {
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Botão Enviar PIX com brilho dinâmico */
+button.btn {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #d4af37, #bfa032, #d4af37);
+  background-size: 200%;
+  transition: all 0.2s ease;
+}
+button.btn:hover {
+  background-position: right;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(212,175,55,0.6);
+}
+button.btn:active {
+  transform: scale(0.98);
+}
+
+/* Animação quando enviando */
+button.btn.sending {
+  animation: aureaPulse 1.2s infinite alternate;
+}
+@keyframes aureaPulse {
+  from { box-shadow: 0 0 6px rgba(212,175,55,0.3); }
+  to { box-shadow: 0 0 14px rgba(212,175,55,0.8); }
+}
+
+/* Destaque temporário do PIX mais recente */
+.pix-item.flash {
+  border: 1px solid rgba(212,175,55,.75);
+  animation: flashBorder 1.5s ease-out forwards;
+}
+@keyframes flashBorder {
+  0% { background: rgba(212,175,55,0.15); }
+  100% { background: transparent; border-color: rgba(255,255,255,0.1); }
+}
+
+/* Resumo do topo */
+.pix-summary {
+  display: flex; justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--carbon-light);
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+.pix-summary strong { color: var(--gold); }
+
+/* Botão de som Aurea */
+.nav-sound {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-size: 22px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.nav-sound:hover {
+  transform: scale(1.2);
+}

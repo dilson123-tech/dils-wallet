@@ -1,4 +1,6 @@
+import CardsPanel from "./components/CardsPanel";
 import React from "react";
+      <CardsPanel />
 import AureaAssistant from "./components/AureaAssistant";
 
 export default function CustomerHome() {
