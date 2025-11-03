@@ -1,14 +1,13 @@
-const BASE = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8080";
 import React, { useEffect, useState } from "react";
 import PixModal from "../../../components/PixModal";
 import Toast from "../../components/Toast";
-import { playClick, playError, playSuccess } from "../../lib/som";
+import { playClick, playError, playSuccess } from "@/app/lib/som";
 
 type HistItem = { id:number; tipo:"entrada"|"saida"; valor:number; descricao:string; timestamp?:string|null };
 type PixHistoryResponse = { history: HistItem[] };
 type BalanceResp = { saldo_pix:number };
 
-const PIX_BASE = `${BASE}/api/v1/pix`;
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8080";
 
 export default function PixPanel() {
   const [hist, setHist] = useState<HistItem[]>([]);
@@ -24,8 +23,8 @@ export default function PixPanel() {
     setLoading(true);
     try {
       const [h,b] = await Promise.all([
-        fetch(`${PIX_BASE}/history`).then(r=>r.json() as Promise<PixHistoryResponse>),
-        fetch(`${PIX_BASE}/balance`).then(r=>r.json() as Promise<BalanceResp>)
+        fetch(`${API_BASE}/api/v1/pix/history`).then(r=>r.json() as Promise<PixHistoryResponse>),
+        fetch(`${API_BASE}/api/v1/pix/balance`).then(r=>r.json() as Promise<BalanceResp>)
       ]);
       setHist(h.history ?? []);
       setSaldo(b.saldo_pix ?? 0);
@@ -39,7 +38,7 @@ export default function PixPanel() {
 
   async function loadAISummary() {
     try {
-      const r = await fetch(`${BASE}/api/v1/ai/summary`);
+      const r = await fetch(`${API_BASE}/api/v1/ai/summary`);
       const j = await r.json();
       const txt = [
         `Saldo: ${fmtBR(j.saldo_atual ?? saldo)}`,
@@ -56,7 +55,7 @@ export default function PixPanel() {
 
   async function onConfirmPix(data:{chave:string; valor:number; descricao:string}) {
     try {
-      const r = await fetch(`${PIX_BASE}/send`, {
+      const r = await fetch(`${API_BASE}/api/v1/pix/send`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
         body: JSON.stringify(data)

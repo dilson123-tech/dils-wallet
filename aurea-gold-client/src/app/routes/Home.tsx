@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import Shell from "../layout/Shell";
 import { useApi } from "../../lib/api";

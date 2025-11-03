@@ -1,7 +1,12 @@
 import "./styles/aurea.css";
 import AureaTopbar from "@/app/customer/components/AureaTopbar";
+import AureaTopbar from "@/app/customer/components/AureaTopbar";
 import "./styles/aurea.css";
+import AureaTopbar from "@/app/customer/components/AureaTopbar";
+import AureaTopbar from "@/app/customer/components/AureaTopbar";
 import "./styles/aurea.css";
+import AureaTopbar from "@/app/customer/components/AureaTopbar";
+import AureaTopbar from "@/app/customer/components/AureaTopbar";
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";

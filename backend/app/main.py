@@ -1,3 +1,4 @@
+from app.routers import ai
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -64,3 +65,4 @@ from app.routers import summary
 app.include_router(pix.router, prefix="/api/v1/pix", tags=["pix"])
 app.include_router(summary.router)
 app.include_router(ai_router)
+app.include_router(ai.router)

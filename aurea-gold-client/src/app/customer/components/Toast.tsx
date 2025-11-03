@@ -13,7 +13,7 @@ export default function Toast({
   ttl?: number;
 }) {
   useEffect(() => {
-    playSom(kind);
+    playSom();
     const t = setTimeout(onDone, ttl);
     return () => clearTimeout(t);
   }, [kind, onDone, ttl]);

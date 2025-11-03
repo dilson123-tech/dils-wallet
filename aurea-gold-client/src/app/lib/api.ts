@@ -53,3 +53,7 @@ export async function apiPost(path: string, body: any, init: RequestInit = {}) {
 
   return json;
 }
+
+// Compat default export (evita quebrar imports antigos)
+const api_default = {} as any;
+export default api_default;

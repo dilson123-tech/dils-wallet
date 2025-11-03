@@ -1,0 +1,143 @@
+import React, { useEffect, useState } from "react";
+import Toast from "../../components/Toast";
+import PixModal from "../../../components/PixModal";
+import PixAISummary from "./PixAISummary";
+
+type HistItem = { id:number; tipo:"entrada"|"saida"; valor:number; descricao:string; timestamp?:string|null };
+type HistoryResp = { history: HistItem[] };
+type BalanceResp = { saldo_pix: number };
+
+const API_BASE: string = (import.meta as any)?.env?.VITE_API_BASE || "http://127.0.0.1:8080";
+const PIX = `${API_BASE}/api/v1/pix`;
+
+// --- sons leves via WebAudio (isolados aqui, sem deps)
+function tone(freq:number, ms=180){
+  try{
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AC();
+    const osc = ctx.createOscillator(); const g = ctx.createGain();
+    osc.type = "sine"; osc.frequency.value = freq;
+    osc.connect(g); g.connect(ctx.destination);
+    const now = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + ms/1000);
+    osc.start(now); osc.stop(now + ms/1000 + 0.02);
+  }catch{}
+}
+const ping = () => tone(660,150);
+const click = () => tone(880,120);
+const error = () => tone(220,250);
+const pong = () => tone(523,160);
+const buzz = () => tone(220,260);
+
+export default function PixPanel(){
+  const [hist, setHist] = useState<HistItem[]>([]);
+  const [saldo, setSaldo] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{kind:"success"|"error"|"info"; msg:string}|null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  async function loadAll(){
+    setLoading(true);
+    try{
+      const [h,b] = await Promise.all([
+        fetch(`${PIX}/history`).then(r => r.json()) as Promise<HistoryResp>,
+        fetch(`${PIX}/balance`).then(r => r.json()) as Promise<BalanceResp>,
+      ]);
+      setHist(h?.history ?? []);
+      setSaldo(b?.saldo_pix ?? 0);
+      ping();
+    }catch(e:any){
+      setToast({kind:"error", msg:"Falha ao carregar PIX"});
+      error();
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadAll(); }, []);
+
+  function fmtBR(v:number){
+    return v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+  }
+
+  async function onConfirmPix(data: any){
+    try{
+      const r = await fetch(`${PIX}/send`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(data || { valor: 10, chave: "teste@aurea" })
+      });
+      const j = await r.json();
+      if(!r.ok){ throw new Error(j?.detail || "Erro ao enviar PIX"); }
+      setToast({kind:"success", msg:"PIX enviado!"});
+      pong();
+      loadAll();
+    }catch(err:any){
+      setToast({kind:"error", msg: String(err?.message || err) });
+      error();
+    }finally{
+      setShowModal(false);
+    }
+  }
+
+  return (
+    <div className="pix-panel">
+      {/* Banner IA 3.0 */}
+      <div className="mb-2">
+        <PixAISummary apiBase={API_BASE} />
+      </div>
+
+      {/* Header saldo + ações */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm">
+          <span className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700">
+            <b>Saldo PIX:</b> {fmtBR(saldo)}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="btn btn-gold"
+            onClick={() => { setShowModal(true); ping(); }}
+            disabled={loading}
+          >
+            ▶ Enviar PIX
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={() => loadAll()}
+            disabled={loading}
+          >
+            Atualizar
+          </button>
+        </div>
+      </div>
+
+      {/* Lista */}
+      {hist.length === 0 ? (
+        <p className="text-sm text-neutral-300">Nenhuma movimentação.</p>
+      ) : (
+        <div className="pix-list">
+          {hist.map((it) => (
+            <div key={it.id} className={"pix-item " + it.tipo}>
+              <span className="tag">{it.tipo}</span>
+              <span className="val">{fmtBR(it.valor)}</span>
+              <span className="desc">{it.descricao}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal + Toast */}
+      {showModal && (
+        <PixModal onClose={() => setShowModal(false)} onConfirm={onConfirmPix} />
+      )}
+      {toast && (
+        <Toast kind={toast.kind} onClose={() => setToast(null)}>
+          {toast.msg}
+        </Toast>
+      )}
+    </div>
+  );
+}

@@ -1,42 +1,42 @@
-export function isSomAtivo(): boolean {
-  return localStorage.getItem("aurea_som") !== "off";
+let audioCtx: AudioContext | null = null;
+
+function ensureCtx() {
+  if (typeof window === "undefined") return null;
+  // @ts-ignore - webkit fallback em alguns navegadores
+  const AC: typeof AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+  if (!AC) return null;
+  if (!audioCtx) audioCtx = new AC();
+  return audioCtx;
 }
-export function toggleSom(): boolean {
-  const atual = isSomAtivo();
-  localStorage.setItem("aurea_som", atual ? "off" : "on");
-  return !atual;
+
+function beep(freq: number, ms: number, type: OscillatorType = "sine", vol = 0.05) {
+  const ctx = ensureCtx();
+  if (!ctx) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.005);         // ataque rápido
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + ms/1000); // release
+  o.connect(g).connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + ms/1000 + 0.01);
 }
-export function playSom(tipo: "success" | "error") {
-  if (!isSomAtivo()) return;
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const now = ctx.currentTime;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
 
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const osc3 = ctx.createOscillator();
+/** Clique curto pra UI */
+export function playClick() {
+  beep(320, 60, "square", 0.03);
+}
 
-    if (tipo === "success") {
-      osc1.frequency.setValueAtTime(1046.5, now);
-      osc2.frequency.setValueAtTime(1568, now);
-      osc3.frequency.setValueAtTime(2093, now);
-      osc1.type = "sine"; osc2.type = "triangle"; osc3.type = "square";
-    } else {
-      osc1.frequency.setValueAtTime(220, now);
-      osc1.frequency.exponentialRampToValueAtTime(110, now + 0.4);
-      osc1.type = "sawtooth";
-      osc2.frequency.setValueAtTime(330, now);
-      osc2.exponentialRampToValueAtTime(165, now + 0.4);
-      osc2.type = "triangle";
-    }
+/** Sucesso com arpejo rapidinho */
+export function playSuccess() {
+  beep(880, 90, "triangle", 0.04);
+  setTimeout(() => beep(1320, 120, "triangle", 0.035), 80);
+}
 
-    osc1.connect(gain); osc2.connect(gain); osc3.connect(gain);
-    gain.connect(ctx.destination);
-    osc1.start(now); osc2.start(now); osc3.start(now);
-    osc1.stop(now + 0.8); osc2.stop(now + 0.8); osc3.stop(now + 0.8);
-  } catch {}
+/** Erro grave em dois tons */
+export function playError() {
+  beep(200, 120, "sawtooth", 0.05);
+  setTimeout(() => beep(140, 160, "sawtooth", 0.05), 90);
 }
