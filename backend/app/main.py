@@ -80,11 +80,22 @@ def _aurea_import_all_models():
         print("[AUREA DB] models importados")
     except Exception as e:
         print("[AUREA DB] falha ao importar models:", e)
-@app.on_event("startup")
-def on_startup_create_tables():
-    try:
-            _aurea_import_all_models()
-        Base.metadata.create_all(bind=engine)
+
         print("[AUREA DB] create_all OK")
     except Exception as e:
         print("[AUREA DB] create_all falhou:", e)
+
+@app.on_event("startup")
+def on_startup_create_tables():
+    try:
+        import importlib, pkgutil
+        import app.models as _models_pkg
+        for m in [m.name for m in pkgutil.iter_modules(_models_pkg.__path__)]:
+            importlib.import_module(f"app.models.{m}")
+        print("[AUREA DB] models importados")
+        from app.database import Base, engine
+        Base.metadata.create_all(bind=engine)
+        print("[AUREA DB] create_all OK")
+    except Exception as e:
+        print("[AUREA DB] erro ao criar tabelas:", e)
+
