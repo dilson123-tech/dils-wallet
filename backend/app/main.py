@@ -66,3 +66,11 @@ app.include_router(pix.router, prefix="/api/v1/pix", tags=["pix"])
 app.include_router(summary.router)
 app.include_router(ai_router)
 app.include_router(ai.router)
+
+@app.on_event("startup")
+def on_startup_create_tables():
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("[AUREA DB] create_all OK")
+    except Exception as e:
+        print("[AUREA DB] create_all falhou:", e)
