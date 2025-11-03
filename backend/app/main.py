@@ -1,4 +1,8 @@
 from app.routers import ai
+
+import importlib, pkgutil
+from app.database import Base, engine
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -67,9 +71,19 @@ app.include_router(summary.router)
 app.include_router(ai_router)
 app.include_router(ai.router)
 
+
+def _aurea_import_all_models():
+    try:
+        import app.models as _models_pkg
+        for m in [m.name for m in pkgutil.iter_modules(_models_pkg.__path__)]:
+            importlib.import_module(f"app.models.{m}")
+        print("[AUREA DB] models importados")
+    except Exception as e:
+        print("[AUREA DB] falha ao importar models:", e)
 @app.on_event("startup")
 def on_startup_create_tables():
     try:
+            _aurea_import_all_models()
         Base.metadata.create_all(bind=engine)
         print("[AUREA DB] create_all OK")
     except Exception as e:
