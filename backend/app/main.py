@@ -4,7 +4,7 @@ time.sleep(10)
 print("[AUREA STARTUP] iniciando FastAPI normalmente")
 from app.utils import db_wait
 
-db_wait.main()
+db_wait.wait_and_create_all(Base)
 
 print("[AUREA DB] inicializado com sucesso!")
 
