@@ -63,10 +63,26 @@ def on_startup_create_tables():
         print("[AUREA DB] erro no create_all(Base):", e)
 
 # Routers
+from app.utils.db_wait import wait_and_create_all
+import threading
+
 app.include_router(pix.router, prefix="/api/v1/pix", tags=["pix"])
 app.include_router(summary.router)
 app.include_router(ai_router_legacy)
 app.include_router(ai_router_v1.router)
+# --- AUREA DB: inicialização assíncrona para não travar healthcheck ---
+
+try:
+
+    threading.Thread(target=wait_and_create_all, args=(Base,), daemon=True).start()
+
+    print("[AUREA DB] wait_and_create_all disparado em background")
+
+except Exception as e:
+
+    print("[AUREA DB] erro ao iniciar thread de init:", e)
+
+# --- END AUREA DB ---
 
 from app.utils.db_wait import wait_and_create_all
 print('[AUREA DB] iniciando wait_and_create_all...')
