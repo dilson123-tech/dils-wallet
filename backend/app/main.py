@@ -47,7 +47,6 @@ def on_startup_create_tables():
         print("[AUREA DB] models importados (base)")
 
         from app.database import Base, engine
-        # SQLAlchemy 2.x aceita engine direto (sem bind=)
         Base.metadata.create_all(engine)
         print("[AUREA DB] create_all(Base) OK")
     except Exception as e:
