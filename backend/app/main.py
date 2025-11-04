@@ -2,6 +2,11 @@ import time
 print("[AUREA STARTUP] aguardando serviços subirem...")
 time.sleep(10)
 print("[AUREA STARTUP] iniciando FastAPI normalmente")
+from app.utils import db_wait
+
+db_wait.main()
+
+print("[AUREA DB] inicializado com sucesso!")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
