@@ -55,3 +55,11 @@ def get_history(db: Session = Depends(get_db)):
     ]
 
     return result
+
+    except Exception as e:
+        print("[AUREA PIX] fallback:", e)
+        # saldo
+        if isinstance(locals().get("saldo_pix", None), (int,float)) or "balance" in (locals().get("__name__", "")):
+            return JSONResponse(content=jsonable_encoder({"saldo_pix": 0.0}, custom_encoder={Decimal: float}))
+        # history
+        return JSONResponse(content=jsonable_encoder({"history": []}, custom_encoder={Decimal: float}))

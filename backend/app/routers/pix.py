@@ -11,7 +11,7 @@ router = APIRouter()
 
 # helper seguro pra montar dict de transação
 def tx_to_dict(t: PixTransaction):
-    return {
+       return JSONResponse(content=jsonable_encoder({
         "id": t.id,
         "tipo": t.tipo,
         "valor": float(t.valor),
@@ -19,7 +19,7 @@ def tx_to_dict(t: PixTransaction):
         "timestamp": (
             t.timestamp.isoformat() if getattr(t, "timestamp", None) else None
         ),
-    }
+    }, custom_encoder={Decimal: float}))
 
 def calcular_saldo(db: Session, user_id: int):
     entradas = (
@@ -97,3 +97,11 @@ def send_pix(payload: dict, db: Session = Depends(get_db)):
         "saldo_pix": saldo_pix,
         "registro": tx_to_dict(nova),
     }, custom_encoder={Decimal: float}))
+
+    except Exception as e:
+        print("[AUREA PIX] fallback:", e)
+        # saldo
+        if isinstance(locals().get("saldo_pix", None), (int,float)) or "balance" in (locals().get("__name__", "")):
+            return JSONResponse(content=jsonable_encoder({"saldo_pix": 0.0}, custom_encoder={Decimal: float}))
+        # history
+        return JSONResponse(content=jsonable_encoder({"history": []}, custom_encoder={Decimal: float}))
