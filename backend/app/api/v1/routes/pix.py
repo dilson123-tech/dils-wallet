@@ -1,3 +1,6 @@
+from decimal import Decimal
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -27,9 +30,7 @@ def get_balance(db: Session = Depends(get_db)):
         else:
             saldo -= float(t.valor)
 
-    return {"saldo": saldo}
-
-
+    return JSONResponse(content=jsonable_encoder({"saldo": saldo}, custom_encoder={Decimal: float}))
 @router.get("/history")
 def get_history(db: Session = Depends(get_db)):
     """

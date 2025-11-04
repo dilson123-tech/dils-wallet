@@ -144,3 +144,17 @@ def on_startup_create_tables():
     except Exception as e:
         print("[AUREA DB] erro geral no startup:", e)
 
+@app.on_event("startup")
+def on_startup_create_tables():
+    try:
+        import importlib, pkgutil
+        import app.models as _models_pkg
+        for m in [m.name for m in pkgutil.iter_modules(_models_pkg.__path__)]:
+            importlib.import_module(f"app.models.{m}")
+        print("[AUREA DB] models importados (base)")
+        from app.database import Base, engine
+        Base.metadata.create_all(engine)
+        print("[AUREA DB] create_all(Base) OK")
+    except Exception as e:
+        print("[AUREA DB] erro no create_all(Base):", e)
+

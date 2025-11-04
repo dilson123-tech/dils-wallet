@@ -1,3 +1,6 @@
+from decimal import Decimal
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -37,8 +40,7 @@ def calcular_saldo(db: Session, user_id: int):
 def get_balance(db: Session = Depends(get_db)):
     user_id = 1  # TODO auth real depois
     saldo_pix = calcular_saldo(db, user_id)
-    return {"saldo_pix": saldo_pix}
-
+    return JSONResponse(content=jsonable_encoder({"saldo_pix": saldo_pix}, custom_encoder={Decimal: float}))
 @router.get("/history")
 def get_history(db: Session = Depends(get_db)):
     user_id = 1  # TODO auth real depois
@@ -53,12 +55,11 @@ def get_history(db: Session = Depends(get_db)):
     recebidos = [tx_to_dict(t) for t in rows if t.tipo == "entrada"]
     enviados = [tx_to_dict(t) for t in rows if t.tipo == "saida"]
 
-    return {
+    return JSONResponse(content=jsonable_encoder({
         "history": history,
         "recebidos": recebidos,
         "enviados": enviados,
-    }
-
+    }, custom_encoder={Decimal: float}))
 @router.post("/send")
 def send_pix(payload: dict, db: Session = Depends(get_db)):
     user_id = 1  # TODO auth real depois
@@ -90,9 +91,9 @@ def send_pix(payload: dict, db: Session = Depends(get_db)):
 
     saldo_pix = calcular_saldo(db, user_id)
 
-    return {
+    return JSONResponse(content=jsonable_encoder({
         "ok": True,
         "pix_id": nova.id,
         "saldo_pix": saldo_pix,
         "registro": tx_to_dict(nova),
-    }
+    }, custom_encoder={Decimal: float}))
