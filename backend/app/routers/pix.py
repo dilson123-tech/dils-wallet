@@ -3,25 +3,22 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
-# Dependência de DB (se existir; caso não, o import falha silencioso)
 try:
     from sqlalchemy.orm import Session
-    from app.deps import get_db  # sua dependência padrão
-except Exception:  # fallback se deps/SQLAlchemy não estiverem prontos
-    Session = object  # dummy
-    def get_db():
-        return None
+    from app.deps import get_db
+    from app.services.pix_service import calcular_saldo, listar_historico
+except Exception:
+    Session = object
+    def get_db(): return None
+    def calcular_saldo(db, user_id): return Decimal(0)
+    def listar_historico(db, user_id, limit=50): return []
 
 router = APIRouter()
 
 @router.get("/balance")
 def get_balance(db: Session = Depends(get_db), user_id: int = 1):
-    """
-    Endpoint resiliente: em qualquer erro, retorna saldo 0.0 (200).
-    """
     try:
-        # TODO: substituir por cálculo real usando o DB quando quisermos
-        saldo_pix: Decimal | float = Decimal("0")
+        saldo_pix: Decimal = calcular_saldo(db, user_id)
         return JSONResponse(
             content=jsonable_encoder({"saldo_pix": saldo_pix}, custom_encoder={Decimal: float})
         )
@@ -33,12 +30,8 @@ def get_balance(db: Session = Depends(get_db), user_id: int = 1):
 
 @router.get("/history")
 def get_history(db: Session = Depends(get_db), user_id: int = 1, limit: int = 50):
-    """
-    Endpoint resiliente: em qualquer erro, retorna lista vazia (200).
-    """
     try:
-        # TODO: substituir por query real quando os models/DB estiverem redondos
-        history = []
+        history = listar_historico(db, user_id, limit)
         return JSONResponse(
             content=jsonable_encoder({"history": history}, custom_encoder={Decimal: float})
         )
