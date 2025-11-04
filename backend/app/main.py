@@ -85,8 +85,6 @@ def _aurea_import_all_models():
     except Exception as e:
         print("[AUREA DB] create_all falhou:", e)
 
-@app.on_event("startup")
-def on_startup_create_tables():
     try:
         import importlib, pkgutil
         import app.models as _models_pkg
@@ -98,4 +96,51 @@ def on_startup_create_tables():
         print("[AUREA DB] create_all OK")
     except Exception as e:
         print("[AUREA DB] erro ao criar tabelas:", e)
+
+@app.on_event("startup")
+def on_startup_create_tables():
+    import importlib, pkgutil, sys
+    from sqlalchemy.orm import DeclarativeMeta
+    from app.database import engine
+
+    try:
+        # 1) importa todos submódulos de app.models
+        try:
+            import app.models as _models_pkg
+            for m in [m.name for m in pkgutil.iter_modules(_models_pkg.__path__)]:
+                importlib.import_module(f"app.models.{m}")
+            print("[AUREA DB] models importados")
+        except Exception as e:
+            print("[AUREA DB] falha ao importar models:", e)
+
+        # 2) coleta TODOS os metadados expostos pelos módulos importados
+        metadatas = set()
+        for name, mod in list(sys.modules.items()):
+            if not name.startswith("app.models."):
+                continue
+            try:
+                for attr_name, obj in vars(mod).items():
+                    md = getattr(obj, "metadata", None)
+                    if md is not None and hasattr(md, "create_all"):
+                        metadatas.add(md)
+            except Exception:
+                pass
+
+        # fallback: tenta também o Base padrão
+        try:
+            from app.database import Base as DefaultBase
+            metadatas.add(DefaultBase.metadata)
+        except Exception:
+            pass
+
+        # 3) executa create_all em cada metadata única
+        for md in metadatas:
+            try:
+                md.create_all(bind=engine)
+            except Exception as e:
+                print("[AUREA DB] erro em create_all(metadata):", e)
+
+        print(f"[AUREA DB] create_all concluído em {len(metadatas)} metadata(s)")
+    except Exception as e:
+        print("[AUREA DB] erro geral no startup:", e)
 
