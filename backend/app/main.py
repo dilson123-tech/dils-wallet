@@ -57,3 +57,16 @@ app.include_router(pix.router, prefix="/api/v1/pix", tags=["pix"])
 app.include_router(summary.router)
 app.include_router(ai_router_legacy)
 app.include_router(ai_router_v1.router)
+
+from app.utils.db_wait import wait_and_create_all
+print('[AUREA DB] iniciando wait_and_create_all...')
+wait_and_create_all(Base)
+
+# --- AUREA PATCH: registrar rota de dev para inserir PIX ---
+try:
+    from app.routers.pix_dev import router as pix_dev_router
+    app.include_router(pix_dev_router)
+    print("[AUREA DEV] rota /api/v1/pix/_dev_insert registrada")
+except Exception as e:
+    print("[AUREA DEV] falha ao registrar rota dev:", e)
+# --- END PATCH ---
