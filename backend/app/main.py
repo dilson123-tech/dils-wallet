@@ -1,19 +1,12 @@
-import time
-print("[AUREA STARTUP] aguardando serviços subirem...")
-time.sleep(10)
-print("[AUREA STARTUP] iniciando FastAPI normalmente")
 from app.utils import db_wait
-
-db_wait.wait_and_create_all(Base)
-
-print("[AUREA DB] inicializado com sucesso!")
-
-from fastapi import FastAPI
+from app import models
+from app.database import Base, engine
+from app.routers import ai
+from app.routers import summary
+from app.routers import pix
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-
-# Routers
-from app.routers import pix, summary
+from fastapi import FastAPI
 from app.routers.ai import router as ai_router_legacy
 from app.api.v1.routes import ai as ai_router_v1
 
@@ -86,7 +79,7 @@ except Exception as e:
 
 from app.utils.db_wait import wait_and_create_all
 print('[AUREA DB] iniciando wait_and_create_all...')
-wait_and_create_all(Base)
+db_wait.wait_and_create_all(Base)
 
 # --- AUREA PATCH: registrar rota de dev para inserir PIX ---
 try:

@@ -1,2 +1,2 @@
-from ..database import Base  # reusa a Base única do projeto
+from ..database import Base  # usa a Base única do projeto
 __all__ = ["Base"]
