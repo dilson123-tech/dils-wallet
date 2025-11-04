@@ -8,6 +8,11 @@ def wait_and_create_all(Base, tries=60, delay=2.0):
     Evita erro 'connection refused' no boot quando o Postgres demora pra subir.
     """
     url = os.environ.get("DATABASE_URL")
+    # Force sslmode=disable for internal Railway host
+
+    if url and "postgres.railway.internal" in url and "sslmode" not in url:
+
+        url = url + "?sslmode=disable"
     if not url:
         raise RuntimeError("DATABASE_URL não encontrado.")
     print(f"[AUREA DB] conectando em {url}")
