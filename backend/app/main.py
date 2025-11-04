@@ -1,3 +1,8 @@
+import time
+print("[AUREA STARTUP] aguardando serviços subirem...")
+time.sleep(10)
+print("[AUREA STARTUP] iniciando FastAPI normalmente")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
