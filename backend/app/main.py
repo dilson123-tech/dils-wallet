@@ -89,3 +89,8 @@ try:
 except Exception as e:
     print("[AUREA DEV] falha ao registrar rota dev:", e)
 # --- END PATCH ---
+
+# --- healthcheck leve para o Railway ---
+@app.get("/__alive", include_in_schema=False)
+def __alive():
+    return {"ok": True}
