@@ -94,3 +94,23 @@ except Exception as e:
 @app.get("/__alive", include_in_schema=False)
 def __alive():
     return {"ok": True}
+
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, DBAPIError
+
+# Fallback: se a rota /api/v1/ai/summary explodir por erro de DB, responde 200 com resumo degradado
+@app.exception_handler((OperationalError, DBAPIError, SQLAlchemyError))
+async def _db_error_handler(request, exc):
+    try:
+        path = str(request.url.path)
+    except Exception:
+        path = ""
+    if path.endswith("/api/v1/ai/summary"):
+        return JSONResponse(status_code=200, content={
+            "saldo_atual": 0.0,
+            "entradas_total": 0.0,
+            "saidas_total": 0.0,
+            "ultimas_24h": {"entradas": 0, "saidas": 0, "qtd": 0},
+            "status": "degraded"
+        })
+    return JSONResponse(status_code=503, content={"error": "db_unavailable"})
