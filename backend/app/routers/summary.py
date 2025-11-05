@@ -21,9 +21,27 @@ def safe_dt(value):
 
 @router.get("/summary")
 def resumo_pix(db: Session = Depends(get_db)):
+    try:
     txs = db.query(PixTransaction).order_by(PixTransaction.id.desc()).all()
     if not txs:
         return {"mensagem": "Sem transações registradas."}
+    except Exception as e:
+
+        print(f"[AUREA AI SUMMARY FALLBACK] {e}")
+
+        return {
+
+            "saldo_atual": 0.0,
+
+            "entradas_total": 0.0,
+
+            "saidas_total": 0.0,
+
+            "ultimas_24h": {"entradas": 0, "saidas": 0, "qtd": 0},
+
+            "status": "degraded"
+
+        }
 
     saldo = sum(float(t.valor) if t.tipo == "entrada" else -float(t.valor) for t in txs)
     entradas_total = sum(float(t.valor) for t in txs if t.tipo == "entrada")
