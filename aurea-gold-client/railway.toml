@@ -5,5 +5,5 @@ builder = "NIXPACKS"
 providers = ["node"]
 
 [deploy]
-rootDirectory = "/workspace"
-startCommand = "npm start"
+# roda sem depender de package.json
+startCommand = "npx --yes serve@14 -s dist -l $PORT"
