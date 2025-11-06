@@ -1,23 +1,18 @@
-name: Smoke — Health e Auth check
+name: Smoke — PIX Idempotency
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    env:
-      BASE_URL: ${{ secrets.SMOKE_BASE_URL }}
-      HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
-      BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
     steps:
-      - name: Health check
-        run: |
-          echo ">> Checking /healthz"
-          curl -fsS -H "X-Health-Token: ${HEALTH_TOKEN}" "${BASE_URL}/healthz" | jq .
-      - name: Auth check
-        run: |
-          echo ">> Checking /api/v1/transactions/balance"
-          curl -fsS -H "Authorization: Bearer ${BEARER_TOKEN}" "${BASE_URL}/api/v1/transactions/balance" | jq .
+      - uses: actions/checkout@v4
+      - name: Dependências do runner (jq/uuidgen)
+        run: sudo apt-get update -y && sudo apt-get install -y jq uuid-runtime
+      - name: Rodar smoke contra API
+        env:
+          API_BASE: ${{ secrets.AUREA_API_BASE }}
+        run: bash backend/scripts/smoke_pix_idempotency.sh
