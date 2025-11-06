@@ -4,6 +4,6 @@ builder = "NIXPACKS"
 [nixpacks]
 providers = ["node"]
 
+# Deixe o Railway chamar "npm start"
 [deploy]
-# roda sem depender de package.json
-startCommand = "npx --yes serve@14 -s dist -l $PORT"
+startCommand = "npm start"
