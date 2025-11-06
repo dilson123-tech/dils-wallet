@@ -15,7 +15,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     # Exemplo esperado Railway:
     # postgres://user:pass@host:port/dbname
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=1800)
 else:
     # ambiente local/dev
     SQLITE_URL = "sqlite:///./app.db"
