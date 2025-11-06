@@ -5,4 +5,5 @@ builder = "NIXPACKS"
 providers = ["node"]
 
 [deploy]
+rootDirectory = "/workspace"
 startCommand = "npm start"
