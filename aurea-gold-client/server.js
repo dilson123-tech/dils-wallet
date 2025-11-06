@@ -1,6 +1,5 @@
-import express from "express";
-const app = express();
+const serve = require('serve');
 const port = process.env.PORT || 8080;
-app.use(express.static("dist"));
-app.get("*", (_, res) => res.sendFile("index.html", { root: "dist" }));
-app.listen(port, () => console.log(`[Aurea Gold] produção rodando na porta ${port}`));
+
+// single: true -> SPA (histórico do Vite) cai para index.html
+serve('dist', { port, single: true });
