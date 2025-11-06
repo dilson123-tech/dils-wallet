@@ -1,10 +1,11 @@
-from sqlalchemy import Column, String, DateTime, Text
-from sqlalchemy.sql import func
-from ..database import Base
+from sqlalchemy import Column, Integer, String, Text, DateTime, func
+from app.database import Base
 
 class IdempotencyKey(Base):
     __tablename__ = "idempotency_keys"
-    key = Column(String(64), primary_key=True)
-    request_hash = Column(String(128), nullable=False)
-    response_body = Column(Text, nullable=False)
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(128), unique=True, nullable=False, index=True)
+    status_code = Column(Integer, nullable=True)
+    response_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

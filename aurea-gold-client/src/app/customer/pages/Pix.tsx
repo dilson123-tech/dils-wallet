@@ -1,16 +1,12 @@
-import React from "react";
+import PixAISummary from "@/app/customer/components/PixAISummary";
 import PixPanel from "@/app/customer/components/PixPanel";
-import AureaAssistantPanel from "@/app/customer/components/AureaAssistantPanel";
 
 export default function Pix() {
   return (
     <>
-      <div className="with-assistant-right">
-        <div className="pix-container">
-  <PixPanel />
-</div>
-      </div>
-      <AureaAssistantPanel />
+      <PixAISummary hours={24} />
+      <div style={{ height: 12 }} />
+      <PixPanel />
     </>
   );
 }

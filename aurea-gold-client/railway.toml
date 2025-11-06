@@ -4,6 +4,5 @@ builder = "NIXPACKS"
 [nixpacks]
 providers = ["node"]
 
-# Deixe o Railway chamar "npm start"
 [deploy]
 startCommand = "npm start"
