@@ -1,79 +1,119 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from sqlalchemy import func, case
+
 from app.database import get_db
-from app.models.pix_transaction import PixTransaction
+from app.models.pix_transaction import PixTransaction  # seu modelo
 
-router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
+router = APIRouter(prefix="/api/v1/ai", tags=["summary"])
 
-def safe_dt(value):
-    """Converte timestamp em datetime UTC ou retorna None."""
-    if not value:
-        return None
-    if isinstance(value, datetime):
-        return value.replace(tzinfo=None)
-    if isinstance(value, str):
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
-        except Exception:
-            return None
+# Tentativas de nomes por campo
+_AMOUNT_CANDS = ["amount", "valor,amount", "valor", "value", "quantia", "ammount"]
+_DIR_CANDS    = ["direction", "tipo", "kind", "type", "direcao"]
+_TIME_CANDS   = ["created_at", "timestamp", "data_hora", "data", "created", "dt"]
+
+def _first_attr_or_none(model, names):
+    for name in names:
+        # permitir fallback "a,b" para compat com migrações (ex.: "valor,amount")
+        for n in map(str.strip, name.split(",")):
+            if hasattr(model, n):
+                return getattr(model, n)
     return None
 
 @router.get("/summary")
-def resumo_pix(db: Session = Depends(get_db)):
+def get_ai_summary(db: Session = Depends(get_db)):
     try:
-    txs = db.query(PixTransaction).order_by(PixTransaction.id.desc()).all()
-    if not txs:
-        return {"mensagem": "Sem transações registradas."}
-    except Exception as e:
+        cols = PixTransaction.__table__.columns.keys()
+        amount_col = _first_attr_or_none(PixTransaction, _AMOUNT_CANDS)
+        dir_col    = _first_attr_or_none(PixTransaction, _DIR_CANDS)
+        time_col   = _first_attr_or_none(PixTransaction, _TIME_CANDS)
 
-        print(f"[AUREA AI SUMMARY FALLBACK] {e}")
+        if amount_col is None:
+            raise HTTPException(
+                status_code=500,
+                detail=f"summary_error: campo de valor não encontrado. "
+                       f"Tente renomear para um de { _AMOUNT_CANDS } "
+                       f"(colunas existentes: {list(cols)})"
+            )
+
+        # janela de 24h (UTC)
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(hours=24)
+
+        # saldo total
+        saldo_total = db.query(func.coalesce(func.sum(amount_col), 0)).scalar() or 0
+
+        # filtro de tempo, se houver coluna temporal
+        time_filter = []
+        if time_col is not None:
+            time_filter = [time_col >= since]
+
+        # Estratégia:
+        # - Se tiver coluna de direção, usamos ("IN"/"OUT", etc.)
+        # - Senão, tratamos entradas como amount > 0 e saídas como amount < 0 (módulo)
+        if dir_col is not None:
+            entradas_24h = (
+                db.query(func.coalesce(func.sum(amount_col), 0))
+                  .filter(dir_col.in_(["IN", "in", "entrada", "ENTRADA", "credit", "CREDIT"]))
+                  .filter(*time_filter)
+                  .scalar() or 0
+            )
+            saidas_24h = (
+                db.query(func.coalesce(func.sum(amount_col), 0))
+                  .filter(dir_col.in_(["OUT", "out", "saida", "SAIDA", "debit", "DEBIT"]))
+                  .filter(*time_filter)
+                  .scalar() or 0
+            )
+            # quantidade total no período
+            qtd_24h = (
+                db.query(func.count(PixTransaction.__table__.c[list(cols)[0]]))
+                  .filter(*time_filter)
+                  .scalar() or 0
+            )
+            # se saídas forem negativas no seu esquema, normalizamos para positivo
+            try:
+                saidas_24h = abs(float(saidas_24h))
+            except Exception:
+                pass
+        else:
+            # Sem direção: separa por sinal do amount
+            entradas_24h = (
+                db.query(func.coalesce(func.sum(amount_col), 0))
+                  .filter(amount_col > 0)
+                  .filter(*time_filter)
+                  .scalar() or 0
+            )
+            saidas_brutas = (
+                db.query(func.coalesce(func.sum(amount_col), 0))
+                  .filter(amount_col < 0)
+                  .filter(*time_filter)
+                  .scalar() or 0
+            )
+            saidas_24h = abs(float(saidas_brutas))
+            qtd_24h = (
+                db.query(func.count(PixTransaction.__table__.c[list(cols)[0]]))
+                  .filter(*time_filter)
+                  .scalar() or 0
+            )
 
         return {
-
-            "saldo_atual": 0.0,
-
-            "entradas_total": 0.0,
-
-            "saidas_total": 0.0,
-
-            "ultimas_24h": {"entradas": 0, "saidas": 0, "qtd": 0},
-
-            "status": "degraded"
-
+            "saldo_atual": float(saldo_total),
+            "ultimas_24h": {
+                "entradas": float(entradas_24h),
+                "saidas": float(saidas_24h),
+                "qtd": int(qtd_24h),
+            },
+            "meta": {
+                "amount_col": getattr(amount_col, "key", str(amount_col)),
+                "dir_col": getattr(dir_col, "key", None),
+                "time_col": getattr(time_col, "key", None),
+            },
         }
-
-    saldo = sum(float(t.valor) if t.tipo == "entrada" else -float(t.valor) for t in txs)
-    entradas_total = sum(float(t.valor) for t in txs if t.tipo == "entrada")
-    saidas_total = sum(float(t.valor) for t in txs if t.tipo == "saida")
-
-    now = datetime.utcnow()
-    ult24h, ult7d = [], []
-
-    for t in txs:
-        dt = safe_dt(getattr(t, "timestamp", None))
-        if dt:
-            if now - dt <= timedelta(hours=24):
-                ult24h.append(t)
-            if now - dt <= timedelta(days=7):
-                ult7d.append(t)
-
-    def soma(lista, tipo): return sum(float(t.valor) for t in lista if t.tipo == tipo)
-    ult_entradas = soma(ult24h, "entrada")
-    ult_saidas   = soma(ult24h, "saida")
-    ult7_entradas = soma(ult7d, "entrada")
-    ult7_saidas   = soma(ult7d, "saida")
-
-    return {
-        "saldo_atual": round(saldo, 2),
-        "entradas_total": round(entradas_total, 2),
-        "saidas_total": round(saidas_total, 2),
-        "ultimas_24h": {"entradas": round(ult_entradas, 2), "saidas": round(ult_saidas, 2), "qtd": len(ult24h)},
-        "ultimos_7d": {"entradas": round(ult7_entradas, 2), "saidas": round(ult7_saidas, 2), "qtd": len(ult7d)},
-        "qtd_transacoes": len(txs),
-        "mensagem": (
-            f"Saldo atual R$ {saldo:,.2f}. Entradas totais R$ {entradas_total:,.2f}, saídas totais R$ {saidas_total:,.2f}. "
-            f"Últimas 24h: +R$ {ult_entradas:,.2f} / -R$ {ult_saidas:,.2f} ({len(ult24h)} transações). "
-            f"Últimos 7d: +R$ {ult7_entradas:,.2f} / -R$ {ult7_saidas:,.2f} ({len(ult7d)} transações)."
-        )
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Expõe colunas para facilitar debug
+        cols = getattr(PixTransaction.__table__, "columns", None)
+        keys = list(cols.keys()) if cols is not None else []
+        raise HTTPException(status_code=500, detail=f"summary_error: {e}; cols={keys}")
