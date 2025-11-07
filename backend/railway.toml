@@ -1,16 +1,4 @@
 [build]
 builder = "Nixpacks"
-
-[deploy]
-start = "PYTHONPATH=/app uvicorn app.main:app --host 0.0.0.0 --port 8080"
-
-[env]
-PYTHONUNBUFFERED = "1"
-PYTHONPATH = "/app"
-RAILWAY_HEALTHCHECK_DISABLED = "false"
-
-[healthcheck]
-path = "/healthz"
-interval = 10000
-timeout = 5000
-retries = 5
+buildCommand = "pip install -r requirements.txt"
+startCommand = "python -m app.main"
