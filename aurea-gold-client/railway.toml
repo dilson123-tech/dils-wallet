@@ -1,8 +1,4 @@
 [build]
-builder = "NIXPACKS"
-
-[nixpacks]
-providers = ["node"]
-
-[deploy]
-startCommand = "npm start"
+builder = "Nixpacks"
+buildCommand = "npm ci && npm run build"
+startCommand = "npm run preview"
