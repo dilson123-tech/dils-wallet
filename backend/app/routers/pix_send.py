@@ -25,7 +25,10 @@ class PixSendIn(BaseModel):
 def pix_send(request: Request, payload: PixSendIn, db: Session = Depends(get_db)):
     from fastapi import Request
     sender_email = request.headers.get("X-User-Email") or "dilsonpereira231@gmail.com"
-    sender = get_or_create_user(db, email=sender_email, name="Cliente Aurea Gold")
+    try:
+        sender = get_or_create_user(db, email=sender_email, name="Cliente Aurea Gold")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"user_bootstrap_failed: {e}")
     """
     Cria uma transação PIX de saída (tipo='OUT').
     **Idempotência**: se houver `Idempotency-Key`, retorna a mesma resposta do primeiro POST.
