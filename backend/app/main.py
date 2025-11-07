@@ -12,4 +12,9 @@ from app.routers import pix
 from app.routers.pix_send import router as pix_send_router
 
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "service": "dils-wallet"}
+
 app.include_router(admin_seed.router, prefix="/admin")
