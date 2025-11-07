@@ -120,7 +120,12 @@ def get_or_create_user(db: Session, email: str, name: Optional[str] = None):
         try:
             db.flush()
         except Exception:
-            raise
+            db.rollback()
+            existing = db.query(UserModel).first()
+            if existing is None:
+                # sem fallback possível, propaga
+                raise
+            u = existing
 
     # carteira opcional
     if WalletModel and USER_FK_COL:
