@@ -36,7 +36,7 @@ export default function PixPanel() {
       setLoading(true);
       setErro(null);
 
-      const res = await fetch(`${API_BASE}/api/v1/pix/history`);
+      const res = await fetch(`${API_BASE}/api/v1/pix/list`);
       if (!res.ok) {
         throw new Error("Falha ao buscar PIX no backend");
       }

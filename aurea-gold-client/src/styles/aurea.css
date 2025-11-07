@@ -276,3 +276,32 @@ body:not(.aurea-ia-open) .aurea-assistant {
 
 .aurea-metric{transition:transform .12s ease, box-shadow .12s ease}
 .aurea-metric:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(255,204,51,.08)}
+
+/* ===== Aurea Gold: reset & layout base (Série Ouro) ===== */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: #0b0b0b; /* preto premium */
+}
+* { box-sizing: border-box; }
+
+/* Garante que nada "centraliza" ou cria colunas fantasmas */
+#root > * { width: 100%; }
+
+/* Shell grid full-bleed */
+.aurea-shell {
+  width: 100vw;
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: linear-gradient(180deg,#0b0b0b 0%, #0e0e0e 60%, #0a0a0a 100%);
+  color: #eee;
+}
+
+/* Ajustes utilitários */
+.aurea-content {
+  padding: 16px 18px;
+}

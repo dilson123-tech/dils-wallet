@@ -23,8 +23,8 @@ export default function PixPanel() {
     setLoading(true);
     try {
       const [h,b] = await Promise.all([
-        fetch(`${API_BASE}/api/v1/pix/history`).then(r=>r.json() as Promise<PixHistoryResponse>),
-        fetch(`${API_BASE}/api/v1/pix/balance`).then(r=>r.json() as Promise<BalanceResp>)
+        fetch(`${API_BASE}/api/v1/pix/list`).then(r=>r.json() as Promise<PixHistoryResponse>),
+        fetch(`${API_BASE}/balance`).then(r=>r.json() as Promise<BalanceResp>)
       ]);
       setHist(h.history ?? []);
       setSaldo(b.saldo_pix ?? 0);

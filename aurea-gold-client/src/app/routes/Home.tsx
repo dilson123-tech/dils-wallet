@@ -29,13 +29,13 @@ export default function Home(){
     let alive = true;
     (async ()=>{
       try{
-        const b = await api.get("/api/v1/pix/balance");
+        const b = await api.get("/balance");
         if(!alive) return;
         setBalance((b as BalanceResp)?.balance ?? Number((b as any)?.value ?? 0));
       }catch(e){ console.warn("balance err:", e); }
 
       try{
-        const raw = await api.get("/api/v1/pix/history?limit=10");
+        const raw = await api.get("/api/v1/pix/list?limit=10");
         if(!alive) return;
         const arr = normalizeHistory(raw);
         setHistory(arr);

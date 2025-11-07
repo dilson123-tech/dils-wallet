@@ -7,7 +7,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const active = (p: string) => pathname === p;
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0b0b0b 0%, #0e0e0e 60%, #0a0a0a 100%)", color:"#eee", display:"grid", gridTemplateColumns:"260px 1fr" }}>
+    <div className="aurea-shell">
       {/* Sidebar */}
       <aside style={{
         position:"sticky", top:0, height:"100vh",
@@ -29,7 +29,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Área principal */}
-      <div style={{ display:"grid", gridTemplateRows:"64px 1fr" }}>
+      <div style={{ display:"grid", gridTemplateRows:"64px 1fr", minWidth: 0 }}>
         {/* Topbar */}
         <header style={{
           position:"sticky", top:0, zIndex:10,
@@ -43,7 +43,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Conteúdo */}
-        <main style={{ padding:"16px 18px" }}>
+        <main className="aurea-content">
           {children}
         </main>
       </div>

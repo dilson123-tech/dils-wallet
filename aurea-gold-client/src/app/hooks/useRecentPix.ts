@@ -18,7 +18,7 @@ export default function useRecentPix(limit: number = 10) {
     let mounted = true;
     (async () => {
       try {
-        const r = await api.get(`/api/v1/pix/history`, { params: { limit } });
+        const r = await api.get(`/api/v1/pix/list`, { params: { limit } });
         if (!mounted) return;
         setItems(r.data?.items ?? r.data ?? []);
       } catch (e: any) {
