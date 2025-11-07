@@ -1,45 +1,33 @@
 import "./styles/aurea.css";
-import AureaTopbar from "@/app/customer/components/AureaTopbar";
-import "./styles/aurea.css";
-import "./styles/aurea.css";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import Home from "./pages/Home";
+
+import AureaTopbar from "@/app/customer/components/AureaTopbar";
+import Dashboard from "./app/customer/pages/Dashboard";
 import Pix from "./app/customer/pages/Pix";
 
-function isSomAtivo() { return localStorage.getItem("aurea:som") !== "off"; }
-function setSomAtivo(v: boolean) { localStorage.setItem("aurea:som", v ? "on" : "off"); }
-
 export default function App() {
-  const [som, setSom] = useState<boolean>(isSomAtivo());
-  useEffect(() => { setSom(isSomAtivo()); }, []);
-  const toggleSom = () => { const nv = !som; setSom(nv); setSomAtivo(nv); };
-
   return (
     <BrowserRouter>
-    <AureaTopbar />
-     <div style={{ paddingTop: "80px" }}></div>
-    <AureaTopbar />
-     <div style={{ paddingTop: "80px" }}></div>
-      <header className="aurea-header" style={{display:"flex",gap:12,alignItems:"center",padding:"8px 12px"}}>
-        <div className="brand" style={{fontWeight:700}}>AUREA GOLD • PREMIUM</div>
-        <nav style={{display:"flex",gap:8}}>
+      <AureaTopbar />
+      {/* espaçamento para não sobrepor o conteúdo */}
+      <div style={{ paddingTop: 72 }} />
+
+      <main className="aurea-main" style={{ padding: 12 }}>
+        <nav style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <Link to="/">Home</Link>
           <Link to="/pix">PIX</Link>
         </nav>
-        <button onClick={toggleSom} aria-label="Som" title={som ? "Som: ligado" : "Som: desligado"} style={{marginLeft:"auto"}}>
-          {som ? "🔊" : "🔇"}
-        </button>
-      </header>
 
-      <main className="aurea-main" style={{padding:"12px"}}>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/pix" element={<Pix />} />
         </Routes>
       </main>
 
-      <footer className="aurea-footer" style={{opacity:.7,padding:"6px 12px"}}>v1.0 beta</footer>
+      <footer className="aurea-footer" style={{ opacity: 0.7, padding: "6px 12px" }}>
+        v1.0 beta
+      </footer>
     </BrowserRouter>
   );
 }
