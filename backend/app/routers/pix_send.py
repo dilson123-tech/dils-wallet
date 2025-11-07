@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -23,6 +23,9 @@ class PixSendIn(BaseModel):
 
 @router.post("/send")
 def pix_send(request: Request, payload: PixSendIn, db: Session = Depends(get_db)):
+    from fastapi import Request
+    sender_email = request.headers.get("X-User-Email") or "dilsonpereira231@gmail.com"
+    sender = get_or_create_user(db, email=sender_email, name="Cliente Aurea Gold")
     """
     Cria uma transação PIX de saída (tipo='OUT').
     **Idempotência**: se houver `Idempotency-Key`, retorna a mesma resposta do primeiro POST.
@@ -104,3 +107,4 @@ def pix_list(limit: int = 10, db: Session = Depends(get_db)):
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"pix_list_error: {e}")
+from app.utils.users import get_or_create_user
