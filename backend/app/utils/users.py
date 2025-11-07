@@ -2,13 +2,11 @@ from __future__ import annotations
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from app.database import Base
-from app import models  # noqa: F401  (garante registro dos mappers)
+from app import models  # noqa: F401
 
-# preferências de nomes de colunas
-IDENT_CANDIDATES = ["email", "cpf", "documento", "username", "login"]
-NAME_CANDIDATES  = ["name", "nome", "full_name"]
-USER_FK_CANDS    = ["user_id", "cliente_id", "account_id", "usuario_id", "owner_id", "userId"]
-SALDO_CANDS      = ["saldo_pix", "saldo", "balance_pix", "balance"]
+IDENT_CANDS = ["email", "cpf", "documento", "username", "login"]
+NAME_CANDS  = ["name", "nome", "full_name"]
+SALDO_CANDS = ["saldo_pix", "saldo", "balance_pix", "balance", "saldo_total", "saldo_atual", "amount", "valor"]
 
 _UserModel = None
 _WalletModel = None
@@ -16,85 +14,99 @@ _IDENT_COL = None
 _USER_FK_COL = None
 _SALDO_COL = None
 
-def _init_models() -> Tuple[type, type, str, str, str]:
+def _pick_ident(cols:set[str]) -> Optional[str]:
+    for k in IDENT_CANDS:
+        if k in cols: return k
+    return None
+
+def _pick_saldo(cols:set[str]) -> Optional[str]:
+    for k in SALDO_CANDS:
+        if k in cols: return k
+    # fallback heurístico por nome
+    for c in cols:
+        lc=c.lower()
+        if any(k in lc for k in ["saldo","balance","amount","valor"]):
+            return c
+    return None
+
+def _init_models() -> Tuple[object, Optional[object], str, Optional[str], Optional[str]]:
     global _UserModel, _WalletModel, _IDENT_COL, _USER_FK_COL, _SALDO_COL
-    if _UserModel and _WalletModel:
+    if _UserModel:
         return _UserModel, _WalletModel, _IDENT_COL, _USER_FK_COL, _SALDO_COL
 
-    # 1) descobrir modelo de usuário pelo identificador
-    user_candidates: list[tuple[type, set[str]]] = []
+    # 1) User: por coluna identificadora, senão por nome da tabela
+    user_candidates = []
     for m in Base.registry.mappers:
         cls = m.class_
-        try:
-            cols = set(cls.__table__.c.keys())
-        except Exception:
-            continue
-        if any(c in cols for c in IDENT_CANDIDATES):
-            user_candidates.append((cls, cols))
-
+        try: cols = set(cls.__table__.c.keys())
+        except Exception: continue
+        ident = _pick_ident(cols)
+        score = 0 if ident=="email" else (1 if ident else 5)
+        tname = cls.__table__.name.lower()
+        if any(x in tname for x in ["user","users","usuario","clientes","pessoa","account","conta"]):
+            score -= 1
+        user_candidates.append((score, cls, cols, ident))
     if not user_candidates:
-        raise RuntimeError("Não há modelo de usuário com colunas identificadoras (email/cpf/documento/username/login).")
+        raise RuntimeError("nenhum modelo SQLAlchemy registrado")
+    user_candidates.sort(key=lambda t:t[0])
+    _UserModel = user_candidates[0][1]
+    _IDENT_COL = user_candidates[0][3] or list(_UserModel.__table__.c.keys())[0]  # usa 1ª se não houver
 
-    # escolhe o que tiver 'email' > 'cpf' > ...
-    def ident_of(cols: set[str]) -> Optional[str]:
-        for k in IDENT_CANDIDATES:
-            if k in cols: return k
-        return None
-
-    user_candidates.sort(key=lambda t: IDENT_CANDIDATES.index(ident_of(t[1])) if ident_of(t[1]) in IDENT_CANDIDATES else 99)
-    _UserModel, ucols = user_candidates[0]
-    _IDENT_COL = ident_of(ucols)  # type: ignore
-
-    # 2) descobrir carteira: precisa ter alguma FK de usuário e coluna de saldo
-    wallet_candidates: list[tuple[type, set[str], str, str]] = []
+    # 2) Wallet: por FK real para User + coluna de saldo (se existir)
+    user_table = _UserModel.__table__.name
+    best = None
     for m in Base.registry.mappers:
         cls = m.class_
-        try:
-            cols = set(cls.__table__.c.keys())
-        except Exception:
+        try: table = cls.__table__
+        except Exception: continue
+        cols = set(table.c.keys())
+        # acha FK que aponta para a tabela do usuário
+        fk_col_name = None
+        for col in table.columns:
+            for fk in getattr(col, "foreign_keys", []):
+                try:
+                    if fk.column.table.name == user_table:
+                        fk_col_name = col.name
+                        break
+                except Exception:
+                    continue
+            if fk_col_name: break
+        if not fk_col_name:
             continue
-        fk_match = next((fk for fk in USER_FK_CANDS if fk in cols), None)
-        saldo_match = next((sc for sc in SALDO_CANDS if sc in cols), None)
-        if fk_match and saldo_match:
-            wallet_candidates.append((cls, cols, fk_match, saldo_match))
+        saldo_col = _pick_saldo(cols)
+        # score: com saldo preferido é melhor
+        score = 0 if saldo_col in ("saldo_pix","saldo") else (1 if saldo_col else 3)
+        best = (score, cls, fk_col_name, saldo_col) if (best is None or score < best[0]) else best
 
-    if not wallet_candidates:
-        raise RuntimeError("Não há modelo de carteira com FK para usuário e coluna de saldo.")
+    if best:
+        _WalletModel = best[1]; _USER_FK_COL = best[2]; _SALDO_COL = best[3]
+    else:
+        _WalletModel = None; _USER_FK_COL = None; _SALDO_COL = None
 
-    # preferência: saldo_pix > saldo > balance_pix > balance
-    def saldo_rank(c: str) -> int:
-        order = {k:i for i,k in enumerate(SALDO_CANDS)}
-        return order.get(c, 99)
-
-    wallet_candidates.sort(key=lambda t: saldo_rank(t[3]))
-    _WalletModel, wcols, _USER_FK_COL, _SALDO_COL = wallet_candidates[0]
-
-    return _UserModel, _WalletModel, _IDENT_COL, _USER_FK_COL, _SALDO_COL  # type: ignore
+    return _UserModel, _WalletModel, _IDENT_COL, _USER_FK_COL, _SALDO_COL
 
 def get_or_create_user(db: Session, email: str, name: Optional[str] = None):
     UserModel, WalletModel, IDENT_COL, USER_FK_COL, SALDO_COL = _init_models()
 
-    # localizar por identificador (se o ident não for email, usamos o email como valor do ident por ora)
-    ident_value = email
+    ident_value = email  # usamos email como identificador universal (ou o que a tabela tiver)
     u = db.query(UserModel).filter(getattr(UserModel, IDENT_COL) == ident_value).first()
     if not u:
         kwargs = {IDENT_COL: ident_value}
-        # setar nome, se existir
-        for nc in NAME_CANDIDATES:
+        for nc in NAME_CANDS:
             if hasattr(UserModel, nc):
-                kwargs[nc] = name or email.split("@")[0]
-                break
-        u = UserModel(**kwargs)  # type: ignore
+                kwargs[nc] = name or email.split("@")[0]; break
+        u = UserModel(**kwargs)
         db.add(u)
         db.flush()
 
-    # garantir carteira
-    fk_col = getattr(WalletModel, USER_FK_COL)
-    uid = getattr(u, "id")
-    w = db.query(WalletModel).filter(fk_col == uid).first()
-    if not w:
-        w_kwargs = {USER_FK_COL: uid, SALDO_COL: 0}
-        db.add(WalletModel(**w_kwargs))  # type: ignore
+    # carteira é opcional: só cria se modelo existir
+    if WalletModel and USER_FK_COL:
+        fk_col = getattr(WalletModel, USER_FK_COL)
+        w = db.query(WalletModel).filter(fk_col == getattr(u, "id")).first()
+        if not w:
+            w_kwargs = {USER_FK_COL: getattr(u, "id")}
+            if SALDO_COL: w_kwargs[SALDO_COL] = 0
+            db.add(WalletModel(**w_kwargs))
 
     db.commit()
     db.refresh(u)
