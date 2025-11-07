@@ -1,3 +1,4 @@
+from app.utils.pix_tx import create_pix_tx
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, HTTPException
 from fastapi.responses import JSONResponse
@@ -27,6 +28,18 @@ def pix_send(request: Request, payload: PixSendIn, db: Session = Depends(get_db)
     sender_email = request.headers.get("X-User-Email") or "dilsonpereira231@gmail.com"
     try:
         sender = get_or_create_user(db, email=sender_email, name="Cliente Aurea Gold")
+    # --- PIX fast-path: defaults e retorno imediato ---
+    _valor = float(getattr(payload, "valor", 0) or 0)
+    if _valor <= 0:
+        raise HTTPException(status_code=400, detail="valor_invalido")
+    _descricao = getattr(payload, "msg", None)
+    try:
+        _tx_id = create_pix_tx(db, user_id=getattr(sender, "id"), valor=_valor, descricao=_descricao, tipo="envio")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"pix_tx_failed: {e}")
+    return {"status":"ok","pix_id": _tx_id, "valor": _valor, "descricao": _descricao, "tipo":"envio"}
+    # --- fim fast-path ---
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"user_bootstrap_failed: {e}")
     """
