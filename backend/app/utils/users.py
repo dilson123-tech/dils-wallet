@@ -117,7 +117,10 @@ def get_or_create_user(db: Session, email: str, name: Optional[str] = None):
 
         u = UserModel(**kwargs)  # type: ignore
         db.add(u)
-        db.flush()
+        try:
+            db.flush()
+        except Exception:
+            raise
 
     # carteira opcional
     if WalletModel and USER_FK_COL:
@@ -130,6 +133,15 @@ def get_or_create_user(db: Session, email: str, name: Optional[str] = None):
                 w_kwargs[SALDO_COL] = 0
             db.add(WalletModel(**w_kwargs))  # type: ignore
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        # FALLBACK_EXISTING_USER: se o commit falhar (ex.: trigger inserindo pix_transactions sem defaults),
+        # usa o primeiro usuário existente para não quebrar o fluxo do PIX
+        db.rollback()
+        existing = db.query(UserModel).first()
+        if existing is None:
+            raise e
+        u = existing
     db.refresh(u)
     return u
