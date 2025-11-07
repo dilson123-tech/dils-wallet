@@ -17,6 +17,8 @@ class PixSendIn(BaseModel):
 
 @router.post("/send")
 def pix_send(request: Request, payload: PixSendIn, db: Session = Depends(get_db)):
+    if not payload.get("descricao"):
+        payload["descricao"] = payload.get("msg", "") or "PIX sem descrição"
     # Identidade do remetente (fallback padrão)
     sender_email = request.headers.get("X-User-Email") or "dilsonpereira231@gmail.com"
 
