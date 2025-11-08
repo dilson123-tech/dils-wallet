@@ -2,15 +2,23 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+import hashlib, json
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
 
-# Modelo de usuário (pode variar por projeto)
+# Modelo de usuário pode variar
 try:
     from app.models.user_main import User as UserMain
 except Exception:
     UserMain = None
+
+# Idempotência (tabela precisa ter UNIQUE(key))
+try:
+    from app.models.idempotency import IdempotencyKey
+except Exception:
+    IdempotencyKey = None
 
 router = APIRouter()
 
@@ -32,25 +40,20 @@ def _get_user_email(request: Request, x_user_email: str | None) -> str | None:
 def _ensure_user_id(db: Session, email_hint: str | None) -> int:
     """
     Retorna um user_id válido para satisfazer o FK, sem assumir nomes de colunas.
-    Estratégia:
-      1) Se existir qualquer usuário, usa o primeiro (estáveis/livres de schema).
-      2) Se a tabela estiver vazia, tenta criar um usuário mínimo preenchendo
-         apenas colunas disponíveis (name/username/user_email/email se existirem).
+    Usa o primeiro usuário existente; se tabela estiver vazia, cria um seed mínimo.
     """
     if not UserMain:
         raise HTTPException(status_code=400, detail="user_table_missing: tabela de usuários indisponível")
 
-    # 1) Há usuário? Usa o primeiro.
     u = db.query(UserMain).first()
     if u:
         return int(getattr(u, "id"))
 
-    # 2) Tabela vazia: criar usuário mínimo, preenchendo só o que existir.
+    # seed mínimo
     cols = {c.name for c in UserMain.__table__.columns}
-    data = {}
     alias_email = email_hint or "seed@aurea.local"
     alias_name = (alias_email.split("@")[0] if "@" in alias_email else alias_email)
-
+    data = {}
     for candidate, value in [
         ("email", alias_email),
         ("user_email", alias_email),
@@ -62,7 +65,7 @@ def _ensure_user_id(db: Session, email_hint: str | None) -> int:
             data[candidate] = value
 
     try:
-        u = UserMain(**data)  # se o modelo não tiver esses campos, data fica vazio
+        u = UserMain(**data)
         db.add(u)
         db.commit()
         db.refresh(u)
@@ -80,12 +83,37 @@ def pix_send(
     request: Request,
     db: Session = Depends(get_db),
     x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
+    idem_key: str | None = Header(None, alias="X-Idempotency-Key", convert_underscores=False),
 ):
     desc = (payload.msg or payload.descricao or "").strip() or "PIX"
     try:
         user_email = _get_user_email(request, x_user_email)
         uid = _ensure_user_id(db, user_email)
-        tx = PixTransaction(user_id=uid, tipo="envio", valor=float(payload.valor), descricao=desc)
+
+        # --- Idempotência (opcional, se tabela existir) ---
+        if IdempotencyKey and idem_key:
+            fp_data = {
+                "k": idem_key,
+                "u": uid,
+                "path": "/api/v1/pix/send",
+                "payload": {"dest": payload.dest, "valor": float(payload.valor), "msg": desc},
+            }
+            fp = hashlib.sha256(json.dumps(fp_data, sort_keys=True).encode()).hexdigest()
+            try:
+                rec = IdempotencyKey(key=fp)  # coluna 'key' deve ser UNIQUE
+                db.add(rec)
+                db.commit()
+                db.refresh(rec)
+            except IntegrityError:
+                db.rollback()
+                return JSONResponse({"ok": True, "idem": True, "detail": "duplicate_suppressed"})
+
+        tx = PixTransaction(
+            user_id=uid,
+            tipo="envio",
+            valor=float(payload.valor),
+            descricao=desc
+        )
         db.add(tx)
         db.commit()
         db.refresh(tx)
