@@ -193,3 +193,59 @@ def pix_balance_alias(
     x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
 ):
     return pix_saldo(request, db, x_user_email)
+
+@router.post("/pix/receive")
+def pix_receive(
+    payload: PixPayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
+):
+    """
+    Cria uma transação de recebimento e credita no ledger.
+    """
+    try:
+        user_email = _get_user_email(request, x_user_email)
+        uid = _ensure_user_id(db, user_email)
+        desc = (payload.msg or "").strip() or "PIX recebido"
+
+        # Transação PIX (recebimento)
+        tx = PixTransaction(
+            user_id=uid,
+            tipo="recebimento",
+            valor=float(payload.valor),
+            descricao=desc
+        )
+        db.add(tx)
+        db.flush()  # garante tx.id sem precisar commit agora
+
+        # Crédito no ledger
+        from app.models.pix_ledger import PixLedger
+        led = PixLedger(
+            user_id=uid,
+            kind="credit",
+            amount=float(payload.valor),
+            ref_tx_id=tx.id,
+            description=desc
+        )
+        db.add(led)
+        db.commit()
+
+        # Saldo atual
+        saldo = db.query(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (PixLedger.kind == "credit", cast(PixLedger.amount, Numeric(14,2))),
+                        else_=-cast(PixLedger.amount, Numeric(14,2))
+                    )
+                ), 0
+            )
+        ).filter(PixLedger.user_id == uid).scalar() or 0
+
+        return JSONResponse({"ok": True, "id": tx.id, "saldo": float(saldo), "descricao": desc})
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"pix_receive_failed: {e}")
