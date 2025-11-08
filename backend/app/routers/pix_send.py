@@ -1,3 +1,15 @@
+from pydantic import BaseModel, Field
+
+
+
+class PixPayload(BaseModel):
+
+    dest: str
+
+    valor: float
+
+    msg: str | None = None
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
