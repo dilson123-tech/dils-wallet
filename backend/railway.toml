@@ -1,4 +1,7 @@
 [build]
-builder = "Nixpacks"
-buildCommand = "pip install -r requirements.txt"
+builder = "NIXPACKS"
+buildCommand = "pip install -r backend/requirements.txt || pip install -r requirements.txt"
+
+[deploy]
 startCommand = "python -m app.main"
+
