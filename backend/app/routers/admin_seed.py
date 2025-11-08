@@ -1,20 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-from app.database import get_db
+from fastapi import APIRouter
+from app.utils.ledger_seed import seed_ledger_from_users
 
 router = APIRouter()
 
-@router.post("/seed_user")
-def seed_user(db: Session = Depends(get_db)):
+@router.post("/admin/seed-ledger")
+def run_seed():
     try:
-        db.execute(text(
-            "INSERT INTO users (username, hashed_password, role) "
-            "VALUES ('admin@aurea.local','seed-placeholder','admin') "
-            "ON CONFLICT DO NOTHING"
-        ))
-        db.commit()
-        return {"ok": True, "seeded": "admin@aurea.local"}
+        seed_ledger_from_users()
+        return {"ok": True, "msg": "Ledger seed executado com sucesso"}
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"seed_failed: {e}")
+        return {"ok": False, "erro": str(e)}
