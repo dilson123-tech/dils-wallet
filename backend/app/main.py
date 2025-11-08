@@ -1,5 +1,4 @@
 from app.routers import admin_dbfix
-from app.routers import admin_seed
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -33,7 +32,6 @@ app.add_middleware(
 )
 app.include_router(admin_dbfix.router, prefix="/admin")
 app.include_router(pix_send_router, prefix="/api/v1")
-app.include_router(admin_seed.router, prefix="/api/v1")
 
 @app.get("/healthz")
 def healthz():
