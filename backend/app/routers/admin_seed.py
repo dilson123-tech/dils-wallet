@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case, cast, Numeric
 
 from app.database import get_db
-from app.utils.user_helpers import _ensure_user_id  # garante user e retorna ID
+from app.utils.users import _ensure_user_id  # garante user e retorna ID
 from app.models.pix_ledger import PixLedger
 
 router = APIRouter()
