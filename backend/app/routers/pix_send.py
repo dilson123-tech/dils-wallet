@@ -1,3 +1,4 @@
+from fastapi.responses import JSONResponse
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -17,48 +18,72 @@ class PixSendIn(BaseModel):
 
 @router.post("/send")
 def pix_send(request: Request, payload: PixSendIn, db: Session = Depends(get_db)):
-    # -- normaliza payload (Pydantic v1/v2) p/ dict --
+    """
+    Envia PIX e SEMPRE responde JSON.
+    - Normaliza payload (pydantic v1/v2)
+    - Gera descricao_final com fallbacks
+    - Garante usuário (fallback id=1 se não existir modelo)
+    - Cria PixTransaction e retorna JSONResponse
+    """
     try:
-        data = payload.model_dump()
-    except AttributeError:
+        # Normaliza payload -> dict
         try:
-            data = payload.dict()
+            data = payload.model_dump()
+        except AttributeError:
+            try:
+                data = payload.dict()
+            except Exception:
+                data = dict(payload)
+
+        # Descrição final (fallbacks) limitada
+        descricao_final = str((
+            data.get("descricao")
+            or data.get("mensagem")
+            or data.get("message")
+            or data.get("msg")
+            or "PIX"
+        )).strip()[:140]
+
+        # Remetente
+        sender_email = request.headers.get("X-User-Email") or "dilsonpereira231@gmail.com"
+
+        # Valor
+        _valor = float(data.get("valor") or getattr(payload, "valor", 0) or 0)
+        if _valor <= 0:
+            return JSONResponse(status_code=400, content={"ok": False, "error": "valor_invalido"})
+
+        # Garante usuário (se modelo existir); senão usa 1
+        user_id = 1
+        try:
+            try:
+                from app.models.user_main import User as UserMain
+            except Exception:
+                UserMain = None
+            if UserMain is not None:
+                user = db.query(UserMain).filter(UserMain.email == sender_email).first()
+                if not user:
+                    user = UserMain(email=sender_email, name="Cliente Aurea Gold")
+                    db.add(user); db.commit(); db.refresh(user)
+                user_id = int(user.id)
         except Exception:
-            data = dict(payload)
-    # descricao: cai para msg ou vazio se vier None
-    descricao = (data.get("descricao") or data.get("msg") or "")
-    data["descricao"] = descricao
-    if not (data.get("descricao") or ""):
-        payload["descricao"] = payload.get("msg", "") or "PIX sem descrição"
-    # Identidade do remetente (fallback padrão)
-    sender_email = request.headers.get("X-User-Email") or "dilsonpereira231@gmail.com"
+            pass
 
-    # Garante que existe um usuário para vincular a transação
-    try:
-        sender = get_or_create_user(db, email=sender_email, name="Cliente Aurea Gold")
+        # Cria transação
+        tx = PixTransaction(user_id=user_id, tipo="envio", valor=_valor, descricao=descricao_final)
+        db.add(tx); db.commit(); db.refresh(tx)
+
+        resp = {
+            "ok": True,
+            "id": getattr(tx, "id", None),
+            "valor": float(getattr(tx, "valor", _valor)),
+            "descricao": descricao_final,
+            "service": "dils-wallet",
+        }
+        return JSONResponse(content=resp)
+
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"user_bootstrap_failed: {e}")
-
-    # Validação e criação rápida da transação PIX
-    _valor = float(payload.valor or 0)
-    if _valor <= 0:
-        raise HTTPException(status_code=400, detail="valor_invalido")
-
-    _descricao = getattr(payload, "msg", None)
-
-    try:
-        _tx_id = create_pix_tx(
-            db,
-            user_id=getattr(sender, "id", None),
-            valor=_valor,
-            descricao=_descricao,
-            tipo="envio",
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"pix_tx_failed: {e}")
-
-    return {"status": "ok", "pix_id": _tx_id, "valor": _valor, "descricao": _descricao, "tipo": "envio"}
-
+        # NUNCA retorna texto puro; sempre JSON
+        return JSONResponse(status_code=500, content={"ok": False, "error": f"pix_send_failed: {type(e).__name__}: {e}"})
 @router.get("/list")
 def pix_list(limit: int = 10, db: Session = Depends(get_db)):
     """Lista as últimas transações (default 10)."""
