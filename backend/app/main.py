@@ -21,3 +21,11 @@ def healthz():
     return {"ok": True, "service": "dils-wallet"}
 
 app.include_router(admin_seed.router, prefix="/admin")
+
+# --- FIX HEALTHCHECK PORT BIND ---
+import os, uvicorn
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
+# --- END FIX ---
