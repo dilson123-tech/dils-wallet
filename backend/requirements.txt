@@ -6,3 +6,4 @@ python-dotenv
 requests
 alembic
 psycopg2-binary
+psycopg2-binary
