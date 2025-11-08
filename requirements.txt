@@ -1,1 +1,7 @@
--r backend/requirements.txt
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+python-dotenv
+requests
+alembic
