@@ -37,7 +37,6 @@ app.include_router(pix_send_router, prefix="/api/v1")
 def healthz():
     return {"ok": True, "service": "dils-wallet"}
 
-app.include_router(admin_seed.router, prefix="/admin")
 
 # --- FIX HEALTHCHECK PORT BIND ---
 import os, uvicorn
