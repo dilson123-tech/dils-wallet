@@ -13,6 +13,8 @@ from app.routers import pix
 from app.routers.pix_send import router as pix_send_router
 
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
+from app.utils.ddl_bootstrap import ensure_pix_ledger
+ensure_pix_ledger()
 
 # --- CORS robusto ---
 _default_dev = [

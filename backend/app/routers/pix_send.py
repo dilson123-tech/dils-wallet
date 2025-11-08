@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import func, case, cast, Numeric
 from sqlalchemy.exc import IntegrityError
 import hashlib, json
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.models.pix_ledger import PixLedger
 
 # Modelo de usuário pode variar
 try:
@@ -117,6 +119,12 @@ def pix_send(
         db.add(tx)
         db.commit()
         db.refresh(tx)
+        try:
+            led = PixLedger(user_id=uid, kind="debit", amount=float(payload.valor), ref_tx_id=tx.id, description=desc or "PIX")
+            db.add(led)
+            db.commit()
+        except Exception:
+            db.rollback()
         return JSONResponse({"ok": True, "id": tx.id, "descricao": tx.descricao})
     except HTTPException:
         raise
@@ -148,3 +156,32 @@ def pix_list(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"pix_list_failed: {e}")
+
+@router.get("/pix/saldo")
+def pix_saldo(
+    request: Request,
+    db: Session = Depends(get_db),
+    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
+):
+    """
+    Saldo contábil por usuário a partir do ledger (credit - debit).
+    """
+    try:
+        user_email = _get_user_email(request, x_user_email)
+        uid = _ensure_user_id(db, user_email)
+        from app.models.pix_ledger import PixLedger
+        saldo = db.query(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (PixLedger.kind == "credit", cast(PixLedger.amount, Numeric(14,2))),
+                        else_=-cast(PixLedger.amount, Numeric(14,2))
+                    )
+                ), 0
+            )
+        ).filter(PixLedger.user_id == uid).scalar() or 0
+        return {"ok": True, "saldo": float(saldo)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"pix_saldo_failed: {e}")
