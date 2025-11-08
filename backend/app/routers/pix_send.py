@@ -185,3 +185,11 @@ def pix_saldo(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"pix_saldo_failed: {e}")
+
+@router.get("/pix/balance")
+def pix_balance_alias(
+    request: Request,
+    db: Session = Depends(get_db),
+    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
+):
+    return pix_saldo(request, db, x_user_email)
