@@ -122,10 +122,22 @@ def pix_send(
                 db.rollback()
                 return JSONResponse({"ok": True, "idem": True, "detail": "duplicate_suppressed"})
 
+        # blindagem: descricao default e normalização de tipo
+
+
+        descricao = (descricao if 'descricao' in locals() else None) or 'PIX'
+
+
+        if 'tipo' in locals() and tipo in ('OUT','saida'):
+
+
+            tipo = 'envio'
+
+
         tx = PixTransaction(
             user_id=uid,
             tipo="envio",
-            valor=float(payload.valor),
+            valor=float(payload.valor,
             descricao=desc
         )
         db.add(tx)
