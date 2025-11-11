@@ -1,3 +1,4 @@
+from app.api.v1.routes import assist as assist_router_v1
 from app.routers import pix_send
 from app.api.v1.routes.ai import router as __ai_router_v1__
 from app.routers import admin_dbfix
@@ -15,6 +16,7 @@ from app.routers.pix_send import router as pix_send_router
 
 from app.api.v1.routes import ai as ai_router_v1
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
+app.include_router(assist_router_v1.router)
 app.include_router(pix_send.router)
 app.include_router(ai_router_v1.router)
 from app.utils.ddl_bootstrap import ensure_pix_ledger
