@@ -1,35 +1,51 @@
-import { useEffect, useState } from "react";
-import { fetchSummary, SummaryRes } from "@/services/summary";
-
-function fmt(v:number){ return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+import React from "react";
+import { fetchSummary } from "@/services/summary";
+import PixChart from "./PixChart";
 
 export default function SummaryKpis() {
-  const [data, setData] = useState<SummaryRes|null>(null);
-  const [err, setErr]   = useState<string>("");
+  const [s, setS] = React.useState<any>(null);
 
-  useEffect(() => {
-    fetchSummary().then(setData).catch(e=>setErr(String(e)));
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const data = await fetchSummary();
+        setS(data || {});
+      } catch (e) {
+        console.error("SummaryKpis fail", e);
+        setS({});
+      }
+    })();
   }, []);
 
-  if (err) return <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">Erro: {err}</div>;
-  if (!data) return <div className="p-4 rounded-xl bg-gray-50 border text-gray-600 animate-pulse">Carregando resumo…</div>;
+  const totalEnvios     = Number(s?.total_envios ?? 0);
+  const totalTransacoes = Number(s?.total_transacoes ?? 0);
+  const recebimentos    = Number(s?.recebimentos ?? 0);
+  const entradas        = Number(s?.entradas ?? 0);
+  const saldoEstimado   = Number(s?.saldo_estimado ?? 0);
 
-  const m = data.metrics;
-
-  const kpi = (label:string, value:string, extra?:string, pos?:boolean) => (
-    <div className="p-4 rounded-2xl shadow-sm bg-white border">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className="text-2xl font-semibold">{value}</div>
-      {extra && <div className={`text-sm ${pos ? "text-emerald-600":"text-gray-500"}`}>{extra}</div>}
-    </div>
-  );
+  const brl = (v:number=0) =>
+    new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL" }).format(v);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {kpi("Envios", fmt(m.total_envios), `${m.qtd_envios} transações`)}
-      {kpi("Recebimentos", fmt(m.total_recebimentos), `${m.qtd_recebimentos} entradas`)}
-      {kpi("Saldo estimado", fmt(m.saldo_estimado), (m.saldo_estimado>=0?"positivo":"negativo"), m.saldo_estimado>=0)}
-      {kpi("Saldo (modelo)", m.saldo_model!=null?fmt(m.saldo_model):"—")}
+    <div className="grid gap-3" style={{gridTemplateColumns:"repeat(2, minmax(0,1fr))"}}>
+      
+      <div className="p-3 rounded-lg" style={{border:"1px solid rgba(255,215,0,.25)"}}>
+        <div className="text-xs opacity-70">Envios</div>
+        <div className="text-lg font-semibold">{brl(totalEnvios)}</div>
+        <div className="text-xs opacity-60">{totalTransacoes} transações</div>
+      </div>
+
+      <div className="p-3 rounded-lg" style={{border:"1px solid rgba(255,215,0,.25)"}}>
+        <div className="text-xs opacity-70">Recebimentos</div>
+        <div className="text-lg font-semibold">{brl(recebimentos)}</div>
+        <div className="text-xs opacity-60">{entradas} entradas</div>
+      </div>
+
+      <div className="p-3 rounded-lg col-span-2" style={{border:"1px solid rgba(255,215,0,.25)"}}>
+        <div className="text-xs opacity-70 mb-1">Histórico PIX</div>
+        <PixChart txs={s?.txs ?? []} />
+      </div>
+
     </div>
   );
 }

@@ -56,7 +56,7 @@ export default function AureaFloatingReport() {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <StatCard title="Saldo atual" value={`R$ ${data.saldo_atual.toFixed(2)}`} />
               <StatCard title="Movtos (24h)" value={data.ultimas_janela.qtd} />
-              <StatCard title="Entradas (24h)" value={`R$ ${Number(data.ultimas_janela.entradas||0).toFixed(2)}`} />
+              <StatCard title="Entradas (24h)" value={`R$ ${Number(data.(ultimas_janela?.entradas ?? 0)||0).toFixed(2)}`} />
               <StatCard title="Saídas (24h)" value={`R$ ${Number(data.ultimas_janela.saidas||0).toFixed(2)}`} />
             </div>
             <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center"}}>

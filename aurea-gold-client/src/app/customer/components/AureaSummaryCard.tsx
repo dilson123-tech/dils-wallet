@@ -122,7 +122,7 @@ export default function AureaSummaryCard() {
           }}>
             <div style={{ background: "#141414", border: "1px solid #262626", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 12, opacity: .7 }}>Entradas (7d)</div>
-              <div style={{ fontWeight: 700, color: "#06d6a0" }}>{fmtBR(data.ultimos_7d.entradas)}</div>
+              <div style={{ fontWeight: 700, color: "#06d6a0" }}>{fmtBR(data.(ultimos_7d?.entradas ?? 0))}</div>
             </div>
             <div style={{ background: "#141414", border: "1px solid #262626", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 12, opacity: .7 }}>Saídas (7d)</div>

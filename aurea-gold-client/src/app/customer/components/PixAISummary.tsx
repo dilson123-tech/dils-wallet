@@ -33,7 +33,7 @@ export default function PixAISummary({ hours = 24 }: { hours?: number }) {
         <Metric label="Saídas (histórico)" value={br(data.saidas_total)} />
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:12 }}>
-        <Metric label="Entradas (janela)" value={br(data.ultimas_janela.entradas)} />
+        <Metric label="Entradas (janela)" value={br(data.(ultimas_janela?.entradas ?? 0))} />
         <Metric label="Saídas (janela)" value={br(data.ultimas_janela.saidas)} />
         <Metric label="Transações (janela)" value={String(data.ultimas_janela.qtd)} />
       </div>

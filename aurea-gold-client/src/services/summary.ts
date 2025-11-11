@@ -8,7 +8,14 @@ export type SummaryTx = {
   created_at?: string;
 };
 
-export type SummaryRes = { txs: SummaryTx[] };
+export type SummaryRes = {
+  txs: SummaryTx[];
+  total_envios: number;
+  total_transacoes: number;
+  recebimentos: number;
+  entradas: number;
+  saldo_estimado: number;
+};
 
 const mapTx = (t: any): SummaryTx => ({
   id: t?.id ?? t?.tx_id ?? t?.uuid ?? undefined,
@@ -24,23 +31,41 @@ async function getJSON(path: string): Promise<any> {
   return r.json();
 }
 
-/**
- * Busca o summary e normaliza diversos formatos.
- * Se vier vazio, cai para /api/v1/pix/list.
- * Nunca lança erro para não quebrar a UI.
- */
 export async function fetchSummary(): Promise<SummaryRes> {
-  try {
-    const s: any = await getJSON("/api/v1/ai/summary").catch(() => ({}));
-    const pick = (...c: any[]) => c.find(a => Array.isArray(a)) || [];
-    let txs: any[] = pick(s?.txs, s?.recent, s?.items, s?.transactions, s?.ultimas, s?.rows);
+  // tenta summary v1
+  const s: any = await getJSON("/api/v1/ai/summary").catch(() => ({}));
 
-    if (!Array.isArray(txs) || txs.length === 0) {
-      const list: any[] = await getJSON("/api/v1/pix/list").catch(() => []);
-      txs = Array.isArray(list) ? list.slice(0, 10) : [];
-    }
-    return { txs: (txs || []).map(mapTx) };
-  } catch {
-    return { txs: [] };
+  const pick = (...c: any[]) => c.find(a => Array.isArray(a)) || [];
+  let txsRaw: any[] = pick(s?.txs, s?.recent, s?.items, s?.transactions, s?.ultimas, s?.rows);
+
+  // fallback: lista crua
+  if (!Array.isArray(txsRaw) || txsRaw.length === 0) {
+    const list: any[] = await getJSON("/api/v1/pix/list").catch(() => []);
+    txsRaw = Array.isArray(list) ? list.slice(0, 10) : [];
   }
+
+  const txs = (txsRaw || []).map(mapTx);
+
+  // agrega se vierem do backend…
+  let total_envios       = Number(s?.total_envios ?? s?.envios ?? 0);
+  let total_transacoes   = Number(s?.total_transacoes ?? s?.transacoes ?? 0);
+  let recebimentos       = Number(s?.recebimentos ?? 0);
+  let entradas           = Number(s?.entradas ?? 0);
+  let saldo_estimado     = Number(s?.saldo_estimado ?? s?.saldo ?? 0);
+
+  // …ou calcula se não vier nada
+  if (!total_transacoes) total_transacoes = txs.length;
+  if (!total_envios)     total_envios     = txs.filter(t => String(t.tipo).toLowerCase()==="envio").reduce((a,b)=>a+(b.valor||0),0);
+  if (!recebimentos)     recebimentos     = txs.filter(t => {
+                              const tt = String(t.tipo||"").toLowerCase();
+                              return ["pix","recebimento","credito","entrada","in"].includes(tt);
+                            }).reduce((a,b)=>a+(b.valor||0),0);
+  if (!entradas)         entradas         = txs.filter(t => {
+                              const tt = String(t.tipo||"").toLowerCase();
+                              return ["pix","recebimento","credito","entrada","in"].includes(tt);
+                            }).length;
+  if (!saldo_estimado && (recebimentos || total_envios))
+                          saldo_estimado   = recebimentos - total_envios;
+
+  return { txs, total_envios, total_transacoes, recebimentos, entradas, saldo_estimado };
 }
