@@ -12,7 +12,7 @@ export default function BalanceLive(){
   const alive = () => document.visibilityState === "visible";
 
   async function fetchBalance(){
-    const r = await apiGet("/balance");
+    const r = await apiGet("/balance","dilsonpereira231@gmail.com");
     const j = await r.json();
     setBalance(j?.balance ?? 0);
   }

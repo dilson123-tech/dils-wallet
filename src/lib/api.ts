@@ -1,15 +1,14 @@
-import { useSession } from "../app/context/SessionContext";
+export const API_BASE = ((import.meta || {}).env && (import.meta as any).env.VITE_API_BASE) || "http://127.0.0.1:8080";
 
-export function useApi() {
-  const { token } = useSession();
+export async function apiGet(path, email) {
+  const headers = {}; if (email) headers["X-User-Email"] = email;
+  const r = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r;
+}
 
-  async function get(url: string) {
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const r = await fetch(url, { headers });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return r.json();
-  }
-
-  return { get };
+export async function getPixSummary(hours = 24) {
+  const r = await fetch(`${API_BASE}/api/v1/ai/summary?hours=${hours}`, { method: "GET" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
 }

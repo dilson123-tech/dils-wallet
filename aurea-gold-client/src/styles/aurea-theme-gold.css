@@ -1,0 +1,183 @@
+:root{
+  --gold:#f2c94c;
+  --gold-2:#ffd66b;
+  --carbon-900:#0b0b0b;
+  --carbon-800:#121212;
+  --carbon-700:#1a1a1a;
+  --line:#2a2a2a;
+  --text:#e6e6e6;
+  --muted:#bdbdbd;
+}
+
+/* fundo carbono com leve vinheta */
+html,body{ background: radial-gradient(1200px 600px at 20% -10%, rgba(242,201,76,0.06), transparent 60%),
+                     radial-gradient(1000px 500px at 100% 0%, rgba(242,201,76,0.04), transparent 65%),
+                     linear-gradient(180deg, var(--carbon-900), var(--carbon-800) 40%, var(--carbon-900)); color: var(--text); }
+
+/* título gold com glow */
+h1,h2,.aurea-title{ 
+  color: var(--gold);
+  letter-spacing: .8px;
+  text-shadow: 0 0 6px rgba(242,201,76,.25), 0 0 18px rgba(242,201,76,.15);
+  font-weight: 800;
+}
+
+/* linhas padrão dos “quadros” */
+hr, .line, .box { border-color: var(--line) !important; }
+
+/* cards premium genéricos (pode aplicar class="card") */
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+  border: 1px solid rgba(242,201,76,.18);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
+  padding: 14px 16px;
+}
+
+/* cabeçalho dourado suave (aplicável em títulos de seção) */
+.section-title{
+  color: var(--gold-2);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* tabela das últimas PIX — sem mudar teu HTML */
+table, .table{
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255,255,255,0.01);
+}
+table tr{ border-bottom: 1px solid var(--line); }
+table tr:hover{ background: rgba(255,255,255,0.02); }
+table th, table td{ padding: 8px 10px; }
+table th{ color: var(--muted); font-weight: 600; text-align: left; }
+.table-right, td.amount{ text-align: right; color: var(--gold-2); }
+
+/* chart-box já existe; deixamos premium */
+.chart-box{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,.35);
+  padding: 6px;
+}
+
+/* Grid do Recharts mais clean */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line { stroke: #999 !important; opacity: .12 !important; }
+
+/* Tooltip do Recharts no tema */
+.recharts-default-tooltip{
+  background: #111 !important;
+  border: 1px solid rgba(242,201,76,.25) !important;
+  color: var(--text) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.45) !important;
+}
+
+/* subtítulos e labels */
+.muted{ color: var(--muted); font-size: .92rem; }
+
+/* ===== Aurea Gold — PIX Table (flat-premium) ===== */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* cabeçalho e células */
+table thead th,
+table tbody td {
+  padding: 10px 12px;
+}
+
+/* listrado leve + hover dourado sutil */
+table tbody tr:nth-child(odd) { background: rgba(255,255,255,0.01); }
+table tbody tr:hover { background: rgba(242,201,76,0.06); transition: background .15s ease; }
+
+/* primeira coluna (descrição) e última (valor) */
+table tbody td:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+table tbody td:last-child,
+td.amount {
+  text-align: right;
+  color: var(--gold-2);
+  font-variant-numeric: tabular-nums; /* números alinhados */
+}
+
+/* bordas de linhas mais discretas */
+table tr { border-bottom: 1px solid rgba(255,255,255,0.06); }
+table tr:last-child { border-bottom: 0; }
+
+/* título da seção, se usar <th> como header */
+table th {
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+/* scrollbar mais clean dentro de contêiner de lista (se existir) */
+.pix-list::-webkit-scrollbar { height: 8px; }
+.pix-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 6px; }
+
+/* ===== FORCE PIX TABLE ===== */
+:where(main, .aurea-panel) table{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  background:rgba(255,255,255,0.015) !important;
+  border:1px solid rgba(255,255,255,0.06) !important;
+  border-radius:12px !important;
+  overflow:hidden !important;
+}
+:where(main, .aurea-panel) table tr{
+  border-bottom:1px solid rgba(255,255,255,0.06) !important;
+}
+:where(main, .aurea-panel) table tr:last-child{
+  border-bottom:0 !important;
+}
+:where(main, .aurea-panel) table th,
+:where(main, .aurea-panel) table td{
+  padding:10px 12px !important;
+}
+:where(main, .aurea-panel) table tbody tr:nth-child(odd){
+  background:rgba(255,255,255,0.01) !important;
+}
+:where(main, .aurea-panel) table tbody tr:hover{
+  background:rgba(242,201,76,0.06) !important;
+  transition:background .15s ease !important;
+}
+:where(main, .aurea-panel) table tbody td:first-child{
+  color:var(--text) !important; font-weight:500 !important;
+}
+:where(main, .aurea-panel) table tbody td:last-child,
+:where(main, .aurea-panel) td.amount{
+  text-align:right !important; color:var(--gold-2) !important;
+  font-variant-numeric:tabular-nums !important;
+}
+
+/* ===== FALLBACK para listas estilo tabela (não-table) ===== */
+.pix-list, .pix-lines, .pix-rows{
+  display:block;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:12px; overflow:hidden;
+  background:rgba(255,255,255,0.015);
+}
+.pix-list > * , .pix-lines > * , .pix-rows > * {
+  display:grid; grid-template-columns: 1fr auto;
+  gap:8px 12px; padding:10px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.pix-list > *:last-child,
+.pix-lines > *:last-child,
+.pix-rows > *:last-child{ border-bottom:0; }
+.pix-list > *:hover,
+.pix-lines > *:hover,
+.pix-rows > *:hover{ background:rgba(242,201,76,0.06); }
+.pix-list .amount, .pix-lines .amount, .pix-rows .amount{ text-align:right; color:var(--gold-2); }
+body{outline:3px dashed #f2c94c44 !important;}
+body{outline:3px dashed #f2c94c44 !important;}

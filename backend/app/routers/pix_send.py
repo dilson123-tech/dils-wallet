@@ -1,275 +1,118 @@
-from pydantic import BaseModel, Field
-
-
-
-class PixPayload(BaseModel):
-
-    dest: str
-
-    valor: float
-
-    msg: str | None = None
-
+from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, cast, Numeric
-from sqlalchemy.exc import IntegrityError
-import hashlib, json
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
-from app.models.pix_ledger import PixLedger
+from app.models.idempotency import IdempotencyKey
 
-# Modelo de usuário pode variar
+# tentamos importar o usuário principal; se não existir, tratamos
 try:
     from app.models.user_main import User as UserMain
-except Exception:
-    UserMain = None
+except Exception:  # pragma: no cover
+    UserMain = None  # fallback p/ ambientes antigos
 
-# Idempotência (tabela precisa ter UNIQUE(key))
-try:
-    from app.models.idempotency import IdempotencyKey
-except Exception:
-    IdempotencyKey = None
+router = APIRouter(prefix="/api/v1", tags=["pix-v1"])
 
-router = APIRouter()
+class PixSendPayload(BaseModel):
+    dest: str = Field(..., description="Email/Chave destino")
+    valor: float = Field(..., gt=0, description="Valor em reais")
+    msg: Optional[str] = Field(default="", description="Descrição/memo da transação")
+    idem_key: Optional[str] = Field(default=None, description="Idempotency-Key opcional")
 
-class PixSendIn(BaseModel):
-    dest: str = Field(..., description="destinatário (email/chave pix)")
-    valor: float = Field(..., gt=0, description="valor do pix (R$)")
-    msg: str | None = None
-    descricao: str | None = None
+def _get_user_by_email(db: Session, email: Optional[str]):
+    """Tenta buscar por e-mail apenas se o modelo tiver o atributo .email"""
+    if not email or UserMain is None:
+        return None
+    email_attr = getattr(UserMain, "email", None)
+    if email_attr is None:
+        # modelo não tem coluna email
+        return None
+    return db.query(UserMain).filter(email_attr == email).first()
 
-def _get_user_email(request: Request, x_user_email: str | None) -> str | None:
-    if x_user_email:
-        return x_user_email
-    for k in ("x-user-email", "X-User-Email", "x_user_email", "X_User_Email"):
-        v = request.headers.get(k)
-        if v:
-            return v
-    return None
-
-def _ensure_user_id(db: Session, email_hint: str | None) -> int:
-    """
-    Retorna um user_id válido para satisfazer o FK, sem assumir nomes de colunas.
-    Usa o primeiro usuário existente; se tabela estiver vazia, cria um seed mínimo.
-    """
-    if not UserMain:
-        raise HTTPException(status_code=400, detail="user_table_missing: tabela de usuários indisponível")
-
-    u = db.query(UserMain).first()
-    if u:
-        return int(getattr(u, "id"))
-
-    # seed mínimo
-    cols = {c.name for c in UserMain.__table__.columns}
-    alias_email = email_hint or "seed@aurea.local"
-    alias_name = (alias_email.split("@")[0] if "@" in alias_email else alias_email)
-    data = {}
-    for candidate, value in [
-        ("email", alias_email),
-        ("user_email", alias_email),
-        ("username", alias_name),
-        ("name", alias_name),
-        ("login", alias_name),
-    ]:
-        if candidate in cols:
-            data[candidate] = value
-
+def _get_user_fallback_id1(db: Session):
+    """Busca user id=1 se existir; retorna None se não existir ou se UserMain não estiver disponível."""
+    if UserMain is None:
+        return None
     try:
-        u = UserMain(**data)
-        db.add(u)
-        db.commit()
-        db.refresh(u)
-        return int(getattr(u, "id"))
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail=f"user_seed_required: não foi possível criar usuário mínimo ({e}). Crie um usuário na tabela e tente novamente."
-        )
+        return db.get(UserMain, 1)  # SQLAlchemy 2.x-style
+    except Exception:
+        # compat c/ SQLAlchemy 1.x
+        try:
+            return db.query(UserMain).get(1)
+        except Exception:
+            return None
 
-@router.post("/pix/send")
+@router.post("/pix/send", summary="Pix Send")
 def pix_send(
-    payload: PixSendIn,
+    payload: PixSendPayload,
     request: Request,
     db: Session = Depends(get_db),
-    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
-    idem_key: str | None = Header(None, alias="X-Idempotency-Key", convert_underscores=False),
+    x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
+    x_idem_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
-    desc = (payload.msg or payload.descricao or "").strip() or "PIX"
     try:
-        user_email = _get_user_email(request, x_user_email)
-        uid = _ensure_user_id(db, user_email)
+        # idempotência (header ganha do body)
+        idem_key = x_idem_key or payload.idem_key
+        if idem_key:
+            existing = db.query(IdempotencyKey).filter(IdempotencyKey.key == idem_key).first()
+            if existing:
+                return JSONResponse({"status": "duplicate", "idem_key": idem_key}, status_code=200)
 
-        # --- Idempotência (opcional, se tabela existir) ---
-        if IdempotencyKey and idem_key:
-            fp_data = {
-                "k": idem_key,
-                "u": uid,
-                "path": "/api/v1/pix/send",
-                "payload": {"dest": payload.dest, "valor": float(payload.valor), "msg": desc},
-            }
-            fp = hashlib.sha256(json.dumps(fp_data, sort_keys=True).encode()).hexdigest()
-            try:
-                rec = IdempotencyKey(key=fp)  # coluna 'key' deve ser UNIQUE
-                db.add(rec)
-                db.commit()
-                db.refresh(rec)
-            except IntegrityError:
-                db.rollback()
-                return JSONResponse({"ok": True, "idem": True, "detail": "duplicate_suppressed"})
+        # Resolve usuário:
+        # 1) tenta por e-mail SE o modelo tiver .email
+        user = _get_user_by_email(db, x_user_email)
+        # 2) fallback: id=1
+        if not user:
+            user = _get_user_fallback_id1(db)
 
-        # blindagem: descricao default e normalização de tipo
+        if not user:
+            return JSONResponse(
+                {
+                    "error": "sender_not_found",
+                    "detail": "Modelo de usuário não tem coluna 'email' ou usuário id=1 não existe. Crie um usuário id=1 ou ajuste a resolução.",
+                    "hint_seed": "crie um usuário com id=1 no seu UserMain",
+                },
+                status_code=400,
+            )
 
-
-        descricao = (descricao if 'descricao' in locals() else None) or 'PIX'
-
-
-        if 'tipo' in locals() and tipo in ('OUT','saida'):
-
-
-            tipo = 'envio'
-
-
+        # cria transação (garante descricao != NULL)
         tx = PixTransaction(
-            user_id=uid,
+            user_id=user.id,
             tipo="envio",
-            valor=float(payload.valor,
-            descricao=desc
+            valor=float(payload.valor),
+            descricao=(payload.msg or "").strip(),
         )
         db.add(tx)
+
+        if idem_key:
+            db.add(IdempotencyKey(key=idem_key))
+
         db.commit()
         db.refresh(tx)
-        try:
-            led = PixLedger(user_id=uid, kind="debit", amount=float(payload.valor), ref_tx_id=tx.id, description=desc or "PIX")
-            db.add(led)
-            db.commit()
-        except Exception:
-            db.rollback()
-        return JSONResponse({"ok": True, "id": tx.id, "descricao": tx.descricao})
+
+        return {
+            "ok": True,
+            "tx": {
+                "id": tx.id,
+                "user_id": tx.user_id,
+                "tipo": tx.tipo,
+                "valor": tx.valor,
+                "descricao": tx.descricao,
+            },
+        }
+
     except HTTPException:
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"pix_tx_failed: {e}")
-
-@router.get("/pix/list")
-def pix_list(
-    request: Request,
-    db: Session = Depends(get_db),
-    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
-):
-    try:
-        user_email = _get_user_email(request, x_user_email)
-        uid = _ensure_user_id(db, user_email)
-        q = db.query(PixTransaction).filter(PixTransaction.user_id == uid).order_by(PixTransaction.id.desc()).all()
-        return [
-            {
-                "id": t.id,
-                "tipo": t.tipo,
-                "valor": float(t.valor),
-                "descricao": t.descricao,
-                "timestamp": getattr(t, "timestamp", None),
-            }
-            for t in q
-        ]
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"pix_list_failed: {e}")
-
-@router.get("/pix/saldo")
-def pix_saldo(
-    request: Request,
-    db: Session = Depends(get_db),
-    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
-):
-    """
-    Saldo contábil por usuário a partir do ledger (credit - debit).
-    """
-    try:
-        user_email = _get_user_email(request, x_user_email)
-        uid = _ensure_user_id(db, user_email)
-        from app.models.pix_ledger import PixLedger
-        saldo = db.query(
-            func.coalesce(
-                func.sum(
-                    case(
-                        (PixLedger.kind == "credit", cast(PixLedger.amount, Numeric(14,2))),
-                        else_=-cast(PixLedger.amount, Numeric(14,2))
-                    )
-                ), 0
-            )
-        ).filter(PixLedger.user_id == uid).scalar() or 0
-        return {"ok": True, "saldo": float(saldo)}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"pix_saldo_failed: {e}")
-
-@router.get("/pix/balance")
-def pix_balance_alias(
-    request: Request,
-    db: Session = Depends(get_db),
-    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
-):
-    return pix_saldo(request, db, x_user_email)
-
-@router.post("/pix/receive")
-def pix_receive(
-    payload: PixPayload,
-    request: Request,
-    db: Session = Depends(get_db),
-    x_user_email: str | None = Header(None, alias="X-User-Email", convert_underscores=False),
-):
-    """
-    Cria uma transação de recebimento e credita no ledger.
-    """
-    try:
-        user_email = _get_user_email(request, x_user_email)
-        uid = _ensure_user_id(db, user_email)
-        desc = (payload.msg or "").strip() or "PIX recebido"
-
-        # Transação PIX (recebimento)
-        tx = PixTransaction(
-            user_id=uid,
-            tipo="recebimento",
-            valor=float(payload.valor),
-            descricao=desc
+        return JSONResponse(
+            {"error": "sql_error", "detail": str(e.__cause__ or e)}, status_code=500
         )
-        db.add(tx)
-        db.flush()  # garante tx.id sem precisar commit agora
-
-        # Crédito no ledger
-        from app.models.pix_ledger import PixLedger
-        led = PixLedger(
-            user_id=uid,
-            kind="credit",
-            amount=float(payload.valor),
-            ref_tx_id=tx.id,
-            description=desc
-        )
-        db.add(led)
-        db.commit()
-
-        # Saldo atual
-        saldo = db.query(
-            func.coalesce(
-                func.sum(
-                    case(
-                        (PixLedger.kind == "credit", cast(PixLedger.amount, Numeric(14,2))),
-                        else_=-cast(PixLedger.amount, Numeric(14,2))
-                    )
-                ), 0
-            )
-        ).filter(PixLedger.user_id == uid).scalar() or 0
-
-        return JSONResponse({"ok": True, "id": tx.id, "saldo": float(saldo), "descricao": desc})
-    except HTTPException:
-        raise
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"pix_receive_failed: {e}")
+        return JSONResponse(
+            {"error": "internal_error", "detail": str(e)}, status_code=500
+        )

@@ -328,3 +328,27 @@ html, body, #root {
   color:#111; font-weight:700; letter-spacing:.02em;
   box-shadow: 0 0 10px rgba(255,204,51,.25);
 }
+
+/* ===== Recent PIX List ===== */
+.pix-list{
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,215,0,.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.aurea-table{
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.aurea-table.compact td{
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  vertical-align: middle;
+}
+.aurea-table tr:hover td{
+  background: rgba(255,215,0,.06);
+}
+.amount{ font-variant-numeric: tabular-nums; }
+.amount.pos{ color: #a3e635; }  /* verde */
+.amount.neg{ color: #ff6b6b; }  /* vermelho */

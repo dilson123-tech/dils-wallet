@@ -1,3 +1,5 @@
+from app.routers import pix_send
+from app.api.v1.routes.ai import router as __ai_router_v1__
 from app.routers import admin_dbfix
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +13,10 @@ from app.routers import summary
 from app.routers import pix
 from app.routers.pix_send import router as pix_send_router
 
+from app.api.v1.routes import ai as ai_router_v1
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
+app.include_router(pix_send.router)
+app.include_router(ai_router_v1.router)
 from app.utils.ddl_bootstrap import ensure_pix_ledger
 ensure_pix_ledger()
 
@@ -51,3 +56,4 @@ if __name__ == "__main__":
 @app.options("/{full_path:path}")
 def options_any(full_path: str, request: Request):
     return Response(status_code=204)
+app.include_router(__ai_router_v1__)

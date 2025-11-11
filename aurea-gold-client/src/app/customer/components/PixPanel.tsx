@@ -1,121 +1,55 @@
-const BASE = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8080";
-import React, { useEffect, useState } from "react";
-import PixModal from "../../../components/PixModal";
-import Toast from "../../components/Toast";
-import { playClick, playError, playSuccess } from "../../lib/som";
-
-type HistItem = { id:number; tipo:"entrada"|"saida"; valor:number; descricao:string; timestamp?:string|null };
-type PixHistoryResponse = { history: HistItem[] };
-type BalanceResp = { saldo_pix:number };
-
-const PIX_BASE = `${BASE}/api/v1/pix`;
+import React from "react";
+import { fetchSummary } from "@/services/summary";
 
 export default function PixPanel() {
-  const [hist, setHist] = useState<HistItem[]>([]);
-  const [saldo, setSaldo] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [showModal, setShowModal] = useState(false);
-  const [toast, setToast] = useState<{kind:"success"|"error"|"info"; msg:string} | null>(null);
-  const [ai, setAi] = useState<string>("");
+  const [s, setS] = React.useState<any>(null);
 
-  const fmtBR = (v:number) => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const data = await fetchSummary();
+        setS(data || {});
+      } catch (e) {
+        console.error("PixPanel summary fail", e);
+        setS({});
+      }
+    })();
+  }, []);
 
-  async function loadAll() {
-    setLoading(true);
-    try {
-      const [h,b] = await Promise.all([
-        fetch(`${PIX_BASE}/history`).then(r=>r.json() as Promise<PixHistoryResponse>),
-        fetch(`${PIX_BASE}/balance`).then(r=>r.json() as Promise<BalanceResp>)
-      ]);
-      setHist(h.history ?? []);
-      setSaldo(b.saldo_pix ?? 0);
-    } catch (e:any) {
-      setToast({kind:"error", msg:"Falha ao carregar PIX"});
-      playError();
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Fallbacks seguros
+  const total_envios = Number(s?.total_envios ?? s?.envios ?? 0);
+  const total_transacoes = Number(s?.total_transacoes ?? s?.transacoes ?? 0);
+  const recebimentos = Number(s?.recebimentos ?? 0);
+  const entradas = Number(s?.entradas ?? 0);
+  const saldo_estimado = Number(s?.saldo_estimado ?? s?.saldo ?? 0);
 
-  async function loadAISummary() {
-    try {
-      const r = await fetch(`${BASE}/api/v1/ai/summary`);
-      const j = await r.json();
-      const txt = [
-        `Saldo: ${fmtBR(j.saldo_atual ?? saldo)}`,
-        `Entradas: ${fmtBR(j.entradas_total ?? 0)}`,
-        `Saídas: ${fmtBR(j.saidas_total ?? 0)}`
-      ].join(" • ");
-      setAi(txt);
-    } catch {
-      // silencioso
-    }
-  }
-
-  useEffect(() => { loadAll().then(loadAISummary); }, []);
-
-  async function onConfirmPix(data:{chave:string; valor:number; descricao:string}) {
-    try {
-      const r = await fetch(`${PIX_BASE}/send`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-      setToast({kind:"success", msg:`PIX enviado: ${fmtBR(j.saldo_pix)} saldo`});
-      playSuccess();
-      setShowModal(false);
-      await loadAll();
-      await loadAISummary();
-    } catch (e:any) {
-      setToast({kind:"error", msg:"Não foi possível enviar PIX"});
-      playError();
-    }
-  }
+  const brl = (v: number = 0) =>
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    }).format(v);
 
   return (
-    <div className="pix-panel space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-yellow-300 text-sm font-semibold">
-          Saldo PIX: <span className={saldo>=0 ? "text-green-300" : "text-red-300"}>{fmtBR(saldo)}</span>
-        </h2>
-        <div className="flex gap-2">
-          <button
-            onClick={()=>{ playClick(); setShowModal(true); }}
-            className="px-3 py-2 text-xs rounded-lg bg-yellow-600 hover:bg-yellow-500 text-black font-semibold"
-          >➤ Enviar PIX</button>
-          <button
-            onClick={()=>{ playClick(); loadAll().then(loadAISummary); }}
-            className="px-3 py-2 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700"
-            disabled={loading}
-          >Atualizar</button>
-        </div>
+    <div style={{ color: "white", padding: "12px" }}>
+      <h2 className="text-xl font-bold mb-2">Resumo PIX</h2>
+
+      <div style={{
+        border: "1px solid rgba(255,215,0,.3)",
+        padding: "8px",
+        borderRadius: 8,
+        marginBottom: 16
+      }}>
+        <div>Envios</div>
+        <div>{brl(total_envios)}</div>
+        <div>{total_transacoes} transações</div>
+
+        <div style={{ marginTop: 8 }}>Recebimentos</div>
+        <div>{brl(recebimentos)}</div>
+        <div>{entradas} entradas</div>
+
+        <div style={{ marginTop: 8 }}>Saldo estimado</div>
+        <div>{brl(saldo_estimado)}</div>
       </div>
-
-      {ai && (
-        <div className="mt-2 mb-1 text-[13px] text-yellow-200 bg-gradient-to-r from-yellow-900/30 to-neutral-900/40 border border-yellow-600/30 rounded-lg px-3 py-2 shadow-inner">
-          IA 3.0 · {ai}
-        </div>
-      )}
-
-      <div className="rounded-xl border border-neutral-800 divide-y divide-neutral-800 overflow-hidden">
-        {hist.length ? hist.map(it=>(
-          <div key={it.id} className="grid grid-cols-3 items-center px-3 py-2 bg-neutral-900/40">
-            <span className={`text-xs px-2 py-1 rounded-full border ${
-              it.tipo==="entrada" ? "border-green-500/40 text-green-300" : "border-red-500/40 text-red-300"
-            }`}>{it.tipo}</span>
-            <span className="text-sm text-neutral-100">{fmtBR(it.valor)}</span>
-            <span className="text-xs text-neutral-300 truncate">{it.descricao}</span>
-          </div>
-        )) : (
-          <div className="px-3 py-6 text-sm text-neutral-400">Nenhuma movimentação.</div>
-        )}
-      </div>
-
-      {showModal && <PixModal onClose={()=>setShowModal(false)} onConfirm={onConfirmPix} />}
-
-      {toast && <Toast kind={toast.kind} onClose={()=>setToast(null)}>{toast.msg}</Toast>}
     </div>
   );
 }

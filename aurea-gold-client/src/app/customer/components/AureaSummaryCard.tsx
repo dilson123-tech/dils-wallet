@@ -31,7 +31,7 @@ export default function AureaSummaryCard() {
     try {
       setLoading(true);
       setErr(null);
-      const r = await fetch(`${API}/api/v1/ai/summary`, { headers: { "Accept": "application/json" } });
+      const r = await fetch(`${API}/api/v1/ai/summary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hours: 24 }) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = (await r.json()) as AISummary;
       setData(j);
