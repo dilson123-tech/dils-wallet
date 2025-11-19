@@ -65,3 +65,7 @@ app.include_router(pix_balance_get.router)
 # --- AUREA GOLD: rota GET /api/v1/pix/balance (super2) ---
 from app.api.v1.routes import pix_balance_get
 app.include_router(pix_balance_get.router)
+
+# --- AUREA GOLD: rota PIX /api/v1/pix/7d (todas transações últimos 7 dias) ---
+from app.api.v1.routes import pix_7d
+app.include_router(pix_7d.router)

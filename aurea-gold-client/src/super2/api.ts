@@ -32,3 +32,9 @@ export async function fetchPixBalance(): Promise<PixBalancePayload> {
   const j = (await r.json()) as PixBalancePayload | null;
   return j ?? {};
 }
+
+export async function fetchPix7d(): Promise<any> {
+  const r = await fetch("/api/v1/pix/7d");
+  if (!r.ok) throw new Error("Erro ao carregar /pix/7d");
+  return r.json();
+}

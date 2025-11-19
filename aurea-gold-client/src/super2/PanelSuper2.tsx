@@ -1,6 +1,7 @@
-import AureaAISummary from "./AureaAISummary";
+import AureaPixChart from "./AureaPixChart";
 import React, { useEffect, useState } from "react";
-import { fetchPixBalance, PixBalancePayload } from "./api";
+import { fetchPixBalance, PixBalancePayload, fetchPix7d } from "./api";
+import AureaAISummary from "./AureaAISummary";
 
 function fmtBRL(v: number | undefined): string {
   const n = typeof v === "number" && !Number.isNaN(v) ? v : 0;
@@ -13,7 +14,8 @@ function fmtBRL(v: number | undefined): string {
 }
 
 export default function PanelSuper2() {
-  const [data, setData] = useState<PixBalancePayload | null>(null);
+   const [data, setData] = useState<PixBalancePayload | null>(null);
+  const [graf7d, setGraf7d] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -73,7 +75,11 @@ export default function PanelSuper2() {
           )}
         </header>
 
-        <section className="text-[11px] space-y-1 mb-4">
+        {/* Bloco único de IA 3.0 */}
+        <AureaAISummary />
+
+        {/* Resumo numérico simples */}
+        <section className="text-[11px] space-y-1 mb-4 mt-4">
           <div className="flex justify-between border-b border-[#2b2b2b] pb-1 hover:border-[#d4af37]/40 transition">
             <span>Saldo</span>
             <span className="font-semibold">{fmtBRL(saldo)}</span>
@@ -94,15 +100,14 @@ export default function PanelSuper2() {
               Resumo — últimos 7 dias
             </div>
             <div className="text-[11px] opacity-60">
-              Gráfico — plugaremos /api/v1/ai/summary
+        <AureaPixChart summary={graf7d} />
             </div>
           </div>
         </section>
 
+        {/* Ações rápidas */}
         <section className="mt-2">
           <div className="text-[10px] uppercase tracking-wide opacity-70 mb-1">
-        <AureaAISummary />
-
             Ações rápidas
           </div>
           <div className="flex flex-col gap-2">
