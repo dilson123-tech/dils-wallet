@@ -1,4 +1,5 @@
-import { toApi } from "./api";
+import { API_BASE } from "./api";
+import { apiGet } from "./api";
 
 const KEY = "aurea.jwt";
 
@@ -13,7 +14,7 @@ export function clearToken() {
 }
 
 export async function login(email: string, password: string) {
-  const r = await fetch(toApi("/api/v1/api/v1/auth/login"), {
+  const r = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),

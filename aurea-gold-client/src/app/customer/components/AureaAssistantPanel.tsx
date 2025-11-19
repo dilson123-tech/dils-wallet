@@ -120,7 +120,6 @@ export default function AureaAssistantPanel() {
       }}>
         <span>Aurea IA 3.0</span>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={clearChat} className="btn" style={{ padding: "4px 10px", fontSize: 12 }}>Limpar</button>
           <button onClick={() => setOpen(o => !o)} className="btn" style={{ padding: "4px 10px", fontSize: 12 }}>
             {open ? "Minimizar" : "Abrir"}
           </button>

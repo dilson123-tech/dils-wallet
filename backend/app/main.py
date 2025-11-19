@@ -38,7 +38,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 app.include_router(admin_dbfix.router, prefix="/admin")
-app.include_router(pix_send_router, prefix="/api/v1")
 
 @app.get("/healthz")
 def healthz():
@@ -58,4 +57,11 @@ if __name__ == "__main__":
 @app.options("/{full_path:path}")
 def options_any(full_path: str, request: Request):
     return Response(status_code=204)
-app.include_router(__ai_router_v1__)
+
+# --- AUREA GOLD: rota GET /api/v1/pix/balance (super2) ---
+from app.api.v1.routes import pix_balance_get
+app.include_router(pix_balance_get.router)
+
+# --- AUREA GOLD: rota GET /api/v1/pix/balance (super2) ---
+from app.api.v1.routes import pix_balance_get
+app.include_router(pix_balance_get.router)

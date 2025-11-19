@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { playSom } from "../../lib/som";
+
 
 export default function Toast({
   kind = "success",
@@ -13,7 +13,7 @@ export default function Toast({
   ttl?: number;
 }) {
   useEffect(() => {
-    playSom();
+    somClick();
     const t = setTimeout(onDone, ttl);
     return () => clearTimeout(t);
   }, [kind, onDone, ttl]);

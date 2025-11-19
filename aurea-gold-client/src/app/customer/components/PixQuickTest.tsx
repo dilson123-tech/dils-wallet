@@ -23,7 +23,6 @@ export default function PixQuickTest() {
         padding:"10px 14px", borderRadius:12, border:"1px solid #444",
         background:"#111", color:"#ffd166", boxShadow:"0 6px 16px rgba(0,0,0,.3)"
       }}
-      title="Enviar PIX de teste (R$1,23)"
     >
       ⚡ PIX Test
     </button>

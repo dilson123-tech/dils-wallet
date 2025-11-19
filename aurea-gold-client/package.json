@@ -13,10 +13,12 @@
     "prebuild": "bash scripts/pix_ui_guard.sh"
   },
   "dependencies": {
+    "apexcharts": "^5.3.6",
     "axios": "^1.12.2",
     "compression": "^1.8.1",
     "express": "^4.21.2",
     "react": "^18.3.1",
+    "react-apexcharts": "^1.8.0",
     "react-dom": "^18.3.1",
     "recharts": "^3.4.1",
     "serve": "^14.2.5",

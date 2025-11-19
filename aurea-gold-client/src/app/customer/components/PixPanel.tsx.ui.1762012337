@@ -83,7 +83,6 @@ export default function PixPanel() {
           <button
             onClick={()=>{ playClick(); setShowModal(true); }}
             className="px-3 py-2 text-xs rounded-lg bg-yellow-600 hover:bg-yellow-500 text-black font-semibold"
-          >➤ Enviar PIX</button>
           <button
             onClick={()=>{ playClick(); loadAll().then(loadAISummary); }}
             className="px-3 py-2 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700"

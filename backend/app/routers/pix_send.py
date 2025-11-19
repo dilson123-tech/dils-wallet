@@ -15,7 +15,7 @@ try:
 except Exception:  # pragma: no cover
     UserMain = None  # fallback p/ ambientes antigos
 
-router = APIRouter(prefix="/api/v1", tags=["pix-v1"])
+router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
 class PixSendPayload(BaseModel):
     dest: str = Field(..., description="Email/Chave destino")
@@ -46,7 +46,7 @@ def _get_user_fallback_id1(db: Session):
         except Exception:
             return None
 
-@router.post("/pix/send", summary="Pix Send")
+@router.post("/send", summary="Pix Send")
 def pix_send(
     payload: PixSendPayload,
     request: Request,
@@ -116,3 +116,32 @@ def pix_send(
         return JSONResponse(
             {"error": "internal_error", "detail": str(e)}, status_code=500
         )
+
+# --- list endpoint (fix) ---
+@router.get("/list")
+def pix_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    x_user_email: str | None = Header(default=None, alias="X-User-Email"),
+    limit: int = 50,
+):
+    q = db.query(PixTransaction)
+    if UserMain and x_user_email:
+        u = None
+    if UserMain:
+        try:
+            col = getattr(UserMain, "email")
+            u = db.query(UserMain).filter(col == x_user_email).first()
+        except AttributeError:
+            # tenta campos comuns caso "email" não exista
+            for attr in ("user_email","mail","username","login"):
+                if hasattr(UserMain, attr):
+                    u = db.query(UserMain).filter(getattr(UserMain, attr) == x_user_email).first()
+                    break
+        if u:
+            q = q.filter(PixTransaction.user_id == u.id)
+    txs = q.order_by(PixTransaction.id.desc()).limit(min(max(limit,1),100)).all()
+    return [
+        {"id": t.id, "tipo": t.tipo, "valor": float(t.valor or 0), "descricao": t.descricao or "PIX"}
+        for t in txs
+    ]

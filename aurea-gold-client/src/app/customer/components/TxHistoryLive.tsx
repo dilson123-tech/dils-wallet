@@ -12,7 +12,7 @@ export default function TxHistoryLive(){
 
   async function fetchHistory(){
     const r = await apiGet("/api/v1/pix/list?limit=10");
-    const j = await r.json();
+    const j: any = await (r as any).json();
     setItems(Array.isArray(j) ? j : (j?.items ?? []));
   }
 

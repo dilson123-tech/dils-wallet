@@ -24,7 +24,6 @@ export default function PixModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3>Enviar PIX</h3>
 
         <label className="field">
           <span>Chave PIX</span>
@@ -44,7 +43,6 @@ export default function PixModal({
         <div className="actions-row">
           <button className="btn-outline" onClick={onClose} disabled={loading}>Cancelar</button>
           <button className="btn" onClick={submit} disabled={!canSend || !!loading}>
-            {loading ? "Enviando..." : "Enviar PIX"}
           </button>
         </div>
       </div>

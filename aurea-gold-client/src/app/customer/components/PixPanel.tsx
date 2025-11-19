@@ -1,18 +1,17 @@
-import React from "react";
+import AureaSuperPanelMount from "./AureaSuperPanelMount";
+import PixActions from "./PixActions";
+import QuickPixButtons from "./QuickPixButtons";
+
+import React, { useState } from "react";
+import "./pix-panel.css";
+import SkeletonGold from "./SkeletonGold";
 import SummaryKpis from "./SummaryKpis";
 import RecentPixList from "./RecentPixList";
 
 export default function PixPanel() {
-  return (
-    <div style={{ padding: 12 }}>
-      {/* KPIs + Gráfico */}
-      <SummaryKpis />
+  const [loadingPix] = useState(false);
 
-      {/* Lista das últimas PIX */}
-      <div className="mt-4">
-        <div className="text-sm text-gray-500 mb-2">Últimas PIX (10)</div>
-        <RecentPixList />
-      </div>
-    </div>
-  );
+  return (
+  <AureaSuperPanelMount />
+);
 }
