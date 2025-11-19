@@ -1,3 +1,4 @@
+import AureaAISummary from "./AureaAISummary";
 import React, { useEffect, useState } from "react";
 import { fetchPixBalance, PixBalancePayload } from "./api";
 
@@ -45,14 +46,14 @@ export default function PanelSuper2() {
   const saidasMes = data?.saidas_mes;
 
   return (
-    <div className="aurea-wrap min-h-screen flex items-start justify-center pt-8 pb-24">
+    <div className="aurea-wrap min-h-screen flex items-start justify-center pt-10 pb-28 bg-gradient-to-b from-black via-[#0d0d0d] to-black">
       <main
-        className="aurea-panel w-[360px] max-w-full rounded-xl border border-[#d4af37] bg-black/80 text-[#f5f5f5] shadow-xl px-4 py-4"
+        className="aurea-panel w-[360px] max-w-full rounded-2xl border border-[#d4af37]/40 bg-[#000000d0] backdrop-blur-xl text-[#f5f5f5] shadow-[0_0_25px_#d4af3720] px-5 py-5"
         role="region"
         aria-label="Aurea Gold / Painel PIX"
       >
         <header className="mb-4">
-          <h1 className="text-sm font-bold tracking-wide text-[#d4af37]">
+          <h1 className="text-sm font-bold tracking-wide text-[#d4af37] drop-shadow-[0_0_4px_#d4af37]">
             AUREA GOLD • PREMIUM{" "}
             <span className="text-[10px] font-normal opacity-70 align-middle">
               v1.0 beta
@@ -73,17 +74,17 @@ export default function PanelSuper2() {
         </header>
 
         <section className="text-[11px] space-y-1 mb-4">
-          <div className="flex justify-between border-b border-[#333] pb-1">
+          <div className="flex justify-between border-b border-[#2b2b2b] pb-1 hover:border-[#d4af37]/40 transition">
             <span>Saldo</span>
             <span className="font-semibold">{fmtBRL(saldo)}</span>
           </div>
 
-          <div className="flex justify-between border-b border-[#333] pb-1">
+          <div className="flex justify-between border-b border-[#2b2b2b] pb-1 hover:border-[#d4af37]/40 transition">
             <span>Entradas (Mês)</span>
             <span className="font-semibold">{fmtBRL(entradasMes)}</span>
           </div>
 
-          <div className="flex justify-between border-b border-[#333] pb-1">
+          <div className="flex justify-between border-b border-[#2b2b2b] pb-1 hover:border-[#d4af37]/40 transition">
             <span>Saídas (Mês)</span>
             <span className="font-semibold">{fmtBRL(saidasMes)}</span>
           </div>
@@ -100,6 +101,8 @@ export default function PanelSuper2() {
 
         <section className="mt-2">
           <div className="text-[10px] uppercase tracking-wide opacity-70 mb-1">
+        <AureaAISummary />
+
             Ações rápidas
           </div>
           <div className="flex flex-col gap-2">
