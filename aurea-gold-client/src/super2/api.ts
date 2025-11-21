@@ -1,40 +1,80 @@
-import { API_BASE, USER_EMAIL } from "../lib/api";
+// -----------------------------------------------------
+// API Super2 – Aurea Gold
+// -----------------------------------------------------
 
-export interface PixBalancePayload {
-  saldo_atual?: number;
-  entradas_mes?: number;
-  saidas_mes?: number;
+export interface PixHistoryDay {
+  dia: string;
+  entradas: number;
+  saidas: number;
 }
 
-function buildHeaders(): HeadersInit {
-  const headers: Record<string, string> = {};
-  if (USER_EMAIL) {
-    headers["X-User-Email"] = USER_EMAIL;
-  }
-  return headers;
+export interface PixHistory7Payload {
+  dias: PixHistoryDay[];
 }
 
-/**
- * Busca dados agregados do PIX no backend.
- * - Usa GET /api/v1/pix/balance
- * - Envia X-User-Email se estiver definido
- */
-export async function fetchPixBalance(): Promise<PixBalancePayload> {
-  const url = `${API_BASE}/api/v1/pix/balance`;
-  const headers = buildHeaders();
+export const API_BASE = import.meta.env.VITE_API_BASE || "";
+export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || "";
 
-  const r = await fetch(url, { method: "GET", headers });
+// ---------------- Histórico 7 dias ----------------
+export async function fetchPix7d(): Promise<PixHistory7Payload> {
+  const r = await fetch(`${API_BASE}/api/v1/pix/history?days=7`, {
+    headers: {
+      "X-User-Email": USER_EMAIL,
+    },
+  });
 
   if (!r.ok) {
-    throw new Error(`pix/balance HTTP ${r.status}`);
+    throw new Error(`Erro ao carregar histórico PIX 7d (HTTP ${r.status})`);
   }
 
-  const j = (await r.json()) as PixBalancePayload | null;
-  return j ?? {};
+  return r.json() as Promise<PixHistory7Payload>;
 }
 
-export async function fetchPix7d(): Promise<any> {
-  const r = await fetch("/api/v1/pix/7d");
-  if (!r.ok) throw new Error("Erro ao carregar /pix/7d");
+// ---------------- Saldo PIX ----------------
+export interface PixBalancePayload {
+  saldo: number;
+}
+
+export async function fetchPixBalance(): Promise<PixBalancePayload> {
+  const r = await fetch(`${API_BASE}/api/v1/pix/balance`, {
+    headers: {
+      "X-User-Email": USER_EMAIL,
+    },
+  });
+
+  if (!r.ok) {
+    throw new Error(`Erro ao carregar saldo PIX (HTTP ${r.status})`);
+  }
+
+  return r.json() as Promise<PixBalancePayload>;
+}
+
+// ---------------- Envio PIX ----------------
+export async function sendPix(
+  dest: string,
+  valor: number,
+  desc: string = "PIX",
+  ngfi?: string
+): Promise<any> {
+  const r = await fetch(`${API_BASE}/api/v1/pix/send`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Email": USER_EMAIL,
+      ...(ngfi ? { "X-NGFI": ngfi } : {}),
+    },
+    body: JSON.stringify({
+      dest,
+      valor,
+      descricao: desc,
+    }),
+  });
+
+  if (!r.ok) {
+    throw new Error(`Erro no envio PIX (HTTP ${r.status})`);
+  }
+
   return r.json();
 }
+
+export const fetchPixHistory7d = fetchPix7d;
