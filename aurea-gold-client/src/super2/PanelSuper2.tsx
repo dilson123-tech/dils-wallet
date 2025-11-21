@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  fetchPixBalance,
-  PixBalancePayload,
-} from "./api";
+import { fetchPixBalance, PixBalancePayload } from "./api";
 import AureaPixSendModal from "./AureaPixSendModal";
 import ChartSuper2 from "./ChartSuper2";
 
@@ -45,12 +42,10 @@ export default function PanelSuper2() {
 
   function handlePixSent() {
     setShowSendModal(false);
-    // Recarrega os dados após envio de PIX
     load();
   }
 
   function handleShowHistory() {
-    // placeholder – aqui depois podemos abrir um modal de histórico
     console.log("Histórico PIX (Super2) ainda não implementado.");
   }
 
