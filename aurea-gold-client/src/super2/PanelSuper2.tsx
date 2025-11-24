@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { fetchPixBalance, PixBalancePayload } from "./api";
+import {
+  fetchPixBalance,
+  fetchPixHistory,
+  PixBalancePayload,
+  PixHistoryDay,
+} from "./api";
 import AureaPixSendModal from "./AureaPixSendModal";
 import ChartSuper2 from "./ChartSuper2";
 
@@ -18,6 +23,8 @@ export default function PanelSuper2() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   async function load() {
     try {
@@ -36,7 +43,7 @@ export default function PanelSuper2() {
     load();
   }, []);
 
-  const saldo = balance?.saldo ?? 0;
+  const saldo = balance?.saldo_atual ?? 0;
   const entradasMes = (balance as any)?.entradas_mes ?? 0;
   const saidasMes = (balance as any)?.saidas_mes ?? 0;
 
@@ -45,11 +52,29 @@ export default function PanelSuper2() {
     load();
   }
 
-  function handleShowHistory() {
-    console.log("Histórico PIX (Super2) ainda não implementado.");
+  async function handleShowHistory() {
+    try {
+      setErr(null);
+      const hist = await fetchPixHistory();
+      console.log("SUPER2 history raw =>", hist);
+
+      const arr = Array.isArray((hist as any)?.dias)
+        ? (hist as any).dias
+        : Array.isArray(hist as any)
+        ? (hist as any)
+        : Array.isArray((hist as any)?.history)
+        ? (hist as any).history
+        : [];
+
+      setHistory(arr);
+      setShowHistory((prev) => !prev);
+    } catch (e: any) {
+      setErr(e?.message ?? "Falha ao carregar histórico PIX.");
+    }
   }
 
   function handleClear() {
+    // placeholder para futuros filtros/limpeza
     console.log("Limpar filtros/estado (Super2) – placeholder.");
   }
 
@@ -127,6 +152,55 @@ export default function PanelSuper2() {
             </button>
           </div>
         </section>
+
+        {/* Histórico diário (entradas/saídas) */}
+        {showHistory && (
+          <section className="mt-4 text-[11px]">
+            <div className="super2-section-title mb-1">
+              Histórico recente (resumo diário)
+            </div>
+            {history.length === 0 ? (
+              <div className="text-[10px] text-zinc-400">
+                Nenhum dado de PIX encontrado para este usuário.
+              </div>
+            ) : (
+              <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                {history.map((d: any) => {
+                  const label = new Date(
+                    `${d.dia}T00:00:00`
+                  ).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  });
+                  const net = (d.entradas || 0) - (d.saidas || 0);
+                  return (
+                    <div
+                      key={d.dia}
+                      className="flex items-center justify-between rounded-md border border-[#d4af37]/30 bg-black/70 px-2 py-1"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-[10px] opacity-70">
+                          {label}
+                        </span>
+                        <span className="text-[10px] text-zinc-300">
+                          Entradas: {fmtBRL(d.entradas)} • Saídas:{" "}
+                          {fmtBRL(d.saidas)}
+                        </span>
+                      </div>
+                      <div
+                        className={`text-[11px] font-semibold ${
+                          net >= 0 ? "text-emerald-400" : "text-red-400"
+                        }`}
+                      >
+                        {fmtBRL(net)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         <footer className="mt-4 flex justify-end">
           <span className="text-[9px] px-2 py-0.5 rounded-full border border-[#d4af37]/60 bg-black/60 text-[#d4af37]">
