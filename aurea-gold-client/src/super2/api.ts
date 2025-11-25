@@ -1,5 +1,7 @@
 export const API_BASE = import.meta.env.VITE_API_BASE || "";
 export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || "";
+console.log("SUPER2 API_BASE =>", API_BASE, "USER_EMAIL =>", USER_EMAIL);
+
 
 // Dia agregado (gráfico + resumos)
 export type PixDayPoint = {
@@ -96,15 +98,15 @@ export async function fetchPixHistory(): Promise<any> {
 
 // 🔹 envio de PIX
 export type PixSendPayload = {
-  chave: string;
+  dest: string;
   valor: number;
   descricao?: string | null;
 };
 
-// overload: aceita payload OU (chave, valor, descricao)
+// overload: aceita payload OU (dest, valor, descricao)
 export function sendPix(payload: PixSendPayload): Promise<any>;
 export function sendPix(
-  chave: string,
+  dest: string,
   valor: number,
   descricao?: string | null
 ): Promise<any>;
@@ -117,7 +119,7 @@ export function sendPix(
 
   if (typeof arg1 === "string") {
     payload = {
-      chave: arg1,
+      dest: arg1,
       valor: typeof arg2 === "number" ? arg2 : 0,
       descricao: arg3 ?? null,
     };

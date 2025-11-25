@@ -73,9 +73,12 @@ export default function PanelSuper2() {
     }
   }
 
-  function handleClear() {
-    // placeholder para futuros filtros/limpeza
-    console.log("Limpar filtros/estado (Super2) – placeholder.");
+    function handleClear() {
+    // limpar histórico e mensagens de erro locais do painel Super2
+    setShowHistory(false);
+    setErr(null);
+    setHistory([]);
+    console.log("Super2: estado local limpo (histórico/erros).");
   }
 
   return (

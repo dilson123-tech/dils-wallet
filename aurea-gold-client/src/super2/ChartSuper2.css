@@ -1,0 +1,13 @@
+.chart-super2-container {
+  width: 100%;
+  padding: 12px 0;
+  min-height: 150px;
+}
+
+.chart-super2-bars {
+  display: flex;
+  gap: 10px;
+  height: 120px;  /* <--- altura real do gráfico */
+  align-items: flex-end;
+  justify-content: space-between;
+}

@@ -1,191 +1,102 @@
-import React, { useEffect, useState } from "react";
-import {
-  fetchPixBalance,
-  fetchPixHistory,
-  PixDayPoint,
-} from "./api";
+import React, { useState } from "react";
+import { fetchPixHistory, sendPix } from "./api";
 
-// Lab isolado para testar histórico do PIX (Super2)
+type PixHistoryAny = any;
+
 export default function SuperHistoryLab() {
-  const [dias, setDias] = useState<PixDayPoint[]>([]);
-  // aqui usamos any mesmo, só para o lab não depender de tipo exportado
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [history, setHistory] = useState<PixHistoryAny[]>([]);
+  const [status, setStatus] = useState<string>("Aguardando ação...");
+  const [sending, setSending] = useState(false);
+  const [loadingHist, setLoadingHist] = useState(false);
 
-  async function load() {
+  async function reloadHistory() {
     try {
-      setLoading(true);
-      setErr(null);
-
-      // usa MESMA API do painel Super2
-      const [balance, hist] = await Promise.all([
-        fetchPixBalance(),
-        fetchPixHistory(), // sem parâmetro, assinatura atual da função
-      ]);
-      console.log("LAB balance raw =>", balance);
+      setLoadingHist(true);
+      setStatus("Carregando histórico via /api/v1/pix/history...");
+      const hist: any = await fetchPixHistory();
       console.log("LAB history raw =>", hist);
 
-      setDias(balance.ultimos_7d || []);
-      // normaliza histórico (API pode vir como array OU objeto {dias/history/items/results})
-        const arr = Array.isArray(hist?.history)
-          ? hist.history
-          : Array.isArray(hist?.dias)
-          ? hist.dias
-          : Array.isArray(hist)
-          ? hist
-          : Array.isArray(hist?.items)
-          ? hist.items
-          : Array.isArray(hist?.results)
-          ? hist.results
-          : [];
-        setHistory(arr);
+      const arr = Array.isArray(hist)
+        ? hist
+        : Array.isArray(hist?.dias)
+        ? hist.dias
+        : Array.isArray(hist?.history)
+        ? hist.history
+        : Array.isArray(hist?.items)
+        ? hist.items
+        : Array.isArray(hist?.results)
+        ? hist.results
+        : [];
+
+      setHistory(arr);
+      setStatus(`Histórico normalizado com ${arr.length} registros.`);
     } catch (e: any) {
-      setErr(e?.message ?? "Falha ao carregar histórico.");
+      console.error(e);
+      setStatus(`Erro ao carregar histórico: ${e?.message ?? String(e)}`);
     } finally {
-      setLoading(false);
+      setLoadingHist(false);
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
-
-
-  const rows = Array.isArray(history) ? history : [];
-
+  async function doTestSend() {
+    try {
+      setSending(true);
+      setStatus("Enviando PIX de teste (LAB) R$ 1,23...");
+      const resp = await sendPix({
+        dest: "dilsonpereira231@gmail.com",
+        valor: 1.23,
+        descricao: "LAB Super2",
+      });
+      console.log("LAB sendPix resp =>", resp);
+      setStatus(
+        resp && (resp as any).ok
+          ? `PIX de teste OK, id ${(resp as any).tx?.id ?? "?"}.`
+          : "Resposta recebida, ver console."
+      );
+    } catch (e: any) {
+      console.error(e);
+      setStatus(`Erro no sendPix (LAB): ${e?.message ?? String(e)}`);
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-[#f5f5f5] flex flex-col items-center pt-6 px-3">
       <div className="text-sm font-semibold text-[#d4af37] mb-2">
-        <div className="mb-2 text-[10px] text-zinc-400">
-          debug: dias={dias.length} | rows={rows.length} | historyType={Array.isArray(history) ? "array" : typeof history}
-        </div>
-
-        SUPER2 • LAB de histórico
+        Super2 LAB • PIX
       </div>
 
-      <button
-        onClick={load}
-        className="mb-3 px-3 py-1.5 rounded-md border border-[#d4af37]/70 bg-black/40 text-[11px] hover:bg-black/70 active:scale-[0.98]"
-      >
-        Recarregar histórico
-      </button>
+      <div className="flex gap-2 mb-3">
+        <button
+          onClick={reloadHistory}
+          className="px-3 py-1 rounded-md bg-zinc-900 border border-[#d4af37]/60 text-[11px] hover:bg-zinc-800 disabled:opacity-60"
+          disabled={loadingHist}
+        >
+          {loadingHist ? "Carregando histórico..." : "Recarregar histórico"}
+        </button>
+        <button
+          onClick={doTestSend}
+          className="px-3 py-1 rounded-md bg-emerald-600 border border-emerald-400 text-[11px] hover:bg-emerald-500 disabled:opacity-60"
+          disabled={sending}
+        >
+          {sending ? "Enviando..." : "Enviar PIX teste"}
+        </button>
+      </div>
 
-      {err && (
-        <div className="mb-2 text-[11px] text-red-400">
-          Erro ao carregar: {err}
-        </div>
-      )}
+      <div className="text-[11px] text-zinc-300 mb-3 max-w-md text-center whitespace-pre-wrap">
+        {status}
+      </div>
 
-      {loading && (
-        <div className="mb-2 text-[11px] text-[#d4af37]">
-          Carregando dados do PIX...
-        </div>
-      )}
-
-      {/* Resumo diário (entradas/saídas) */}
-      <section className="w-full max-w-md mb-4 text-[11px]">
-        <div className="mb-1 text-[#d4af37]">Resumo diário (últimos 7 dias)</div>
-
-        {dias.length === 0 ? (
-          <div className="text-[10px] text-zinc-400">
-            Nenhum dado retornado pela API.
+      <div className="w-full max-w-md border border-zinc-700 rounded-md bg-zinc-950/70 p-2 text-[10px] leading-tight overflow-auto max-h-[60vh]">
+        {history.length === 0 ? (
+          <div className="text-zinc-500">
+            Nenhum registro em memória. Clique em &quot;Recarregar histórico&quot;.
           </div>
         ) : (
-          <div className="space-y-1">
-            {dias.map((d) => {
-              const label = new Date(d.dia + "T00:00:00").toLocaleDateString(
-                "pt-BR",
-                { day: "2-digit", month: "2-digit" }
-              );
-              return (
-                <div
-                  key={d.dia}
-                  className="flex items-center justify-between rounded-md border border-[#d4af37]/30 bg-black/70 px-2 py-1"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-[10px] opacity-70">{label}</span>
-                    <span className="text-[10px]">
-                      Entradas: R$ {d.entradas.toFixed(2).replace(".", ",")}
-                    </span>
-                    <span className="text-[10px]">
-                      Saídas: R$ {d.saidas.toFixed(2).replace(".", ",")}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-semibold">
-                    R$ {(d.entradas - d.saidas).toFixed(2).replace(".", ",")}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <pre>{JSON.stringify(history.slice(0, 20), null, 2)}</pre>
         )}
-      </section>
-
-      {/* Histórico de registros (tabela simples) */}
-      <section className="w-full max-w-md text-[11px]">
-        <div className="mb-1 text-[#d4af37]">Histórico recente de PIX</div>
-
-        {rows.length === 0 ? (
-          <div className="text-[10px] text-zinc-400">
-            Nenhum PIX encontrado para este usuário.
-          </div>
-        ) : (
-          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
-            {rows.map((h: any, idx: number) => {
-                const isDia = typeof h?.dia === "string" && typeof h?.entradas === "number";
-                if (isDia) {
-                  const label = new Date(h.dia + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-                  const net = (h.entradas || 0) - (h.saidas || 0);
-                  return (
-                    <div
-                      key={h.dia || idx}
-                      className="flex items-center justify-between rounded-md border border-[#d4af37]/30 bg-black/70 px-2 py-1"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-[10px] opacity-70">{label}</span>
-                        <span className="text-[10px]">Entradas: R$ {h.entradas.toFixed(2).replace(".", ",")}</span>
-                        <span className="text-[10px]">Saídas: R$ {h.saidas.toFixed(2).replace(".", ",")}</span>
-                      </div>
-                      <div className={`text-[11px] font-semibold ${net >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        R$ {net.toFixed(2).replace(".", ",")}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // fallback antigo (quando vier transações cruas)
-                return (
-                  <div
-                    key={h.id || idx}
-                    className="flex items-center justify-between rounded-md border border-[#d4af37]/30 bg-black/70 px-2 py-1"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-[10px] opacity-70">
-                        {h.tipo === "envio" ? "Enviado" : "Recebido"}
-                      </span>
-                      {h.descricao && (
-                        <span className="text-[10px] text-zinc-300 max-w-[180px] truncate">
-                          {h.descricao}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`text-[11px] font-semibold ${
-                        h.tipo === "envio" ? "text-red-400" : "text-emerald-400"
-                      }`}
-                    >
-                      {`${h.tipo === "envio" ? "-" : "+"} R$ ${Number(h.valor || 0)
-                        .toFixed(2)
-                        .replace(".", ",")}`}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        )}
-      </section>
+      </div>
     </div>
   );
 }
