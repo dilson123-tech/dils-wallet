@@ -184,6 +184,31 @@ async def ai_chat(
     """
 
     raw_msg = payload.message.strip()
+    _ia3_m = payload.message.lower()  # IA 3.0 – resumo do mês no PIX
+    if any(
+        frase in _ia3_m
+        for frase in [
+            "resumo do mês",
+            "resumo do mes",
+            "fechamento do mês",
+            "fechamento do mes",
+            "balanço do mês",
+            "balanco do mes",
+            "como foi meu mês",
+            "como foi meu mes no pix",
+        ]
+    ):
+        if not x_user_email:
+            return {
+                "reply": (
+                    "✨ IA 3.0 Premium – Resumo do mês no PIX\n\n"
+                    "Para montar o resumo do mês, preciso que o app envie o header "
+                    "X-User-Email com o seu e-mail Aurea Gold."
+                )
+            }
+        _resumo = _ia3_get_pix_month_summary(x_user_email)
+        _reply = _ia3_build_monthly_summary_reply(_resumo)
+        return {"reply": _reply}
     norm_msg = _normalize(raw_msg)
 
     user_hint = (
@@ -290,3 +315,290 @@ async def ai_chat(
     )
 
     return ChatResponse(reply=final_reply)
+
+
+"""
+Bloco de apoio para IA 3.0 – Resumo do mês no PIX
+
+Este código não altera nenhuma rota existente.
+Ele só acrescenta funções helper que podem ser chamadas
+de dentro do endpoint de IA quando quisermos ativar
+o "resumo do mês".
+"""
+
+
+def _ia3_get_month_range_now():
+    """
+    Retorna (início_do_mês, início_próximo_mês) em UTC
+    para filtrar transações do mês atual.
+    """
+    from datetime import datetime
+
+    hoje = datetime.utcnow()
+    inicio_mes = hoje.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    if hoje.month == 12:
+        inicio_prox = hoje.replace(
+            year=hoje.year + 1,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+    else:
+        inicio_prox = hoje.replace(
+            month=hoje.month + 1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+    return inicio_mes, inicio_prox
+
+
+def _ia3_get_pix_month_summary(user_email: str) -> dict:
+    """
+    Calcula o resumo do mês atual para o usuário:
+    - entradas_mes
+    - saidas_mes
+    - net_mes
+    - qtd_transacoes
+
+    IMPORTANTE:
+    - Ajustar o model e os campos conforme o seu projeto real.
+    - Por padrão estou assumindo um model PixTransaction com:
+      user_email, kind ("entrada"/"saida"), amount, created_at.
+    """
+    from sqlalchemy.orm import Session
+    from sqlalchemy import func
+
+    from app.db.session import SessionLocal
+    from app.models.pix_transaction import PixTransaction  # ajuste se o nome for outro
+
+    inicio_mes, inicio_prox = _ia3_get_month_range_now()
+
+    db: Session = SessionLocal()
+    try:
+        base_query = (
+            db.query(
+                PixTransaction.kind,
+                func.sum(PixTransaction.amount).label("total"),
+                func.count().label("qtd"),
+            )
+            .filter(
+                PixTransaction.user_email == user_email,
+                PixTransaction.created_at >= inicio_mes,
+                PixTransaction.created_at < inicio_prox,
+            )
+            .group_by(PixTransaction.kind)
+        )
+
+        entradas = 0.0
+        saidas = 0.0
+        total_qtd = 0
+
+        for row in base_query:
+            if row.kind == "entrada":
+                entradas = float(row.total or 0)
+            elif row.kind == "saida":
+                saidas = float(row.total or 0)
+            total_qtd += row.qtd or 0
+
+        net = entradas - saidas
+
+        return {
+            "entradas_mes": entradas,
+            "saidas_mes": saidas,
+            "net_mes": net,
+            "qtd_transacoes": total_qtd,
+        }
+    finally:
+        db.close()
+
+
+def _ia3_build_monthly_summary_reply(resumo: dict) -> str:
+    """
+    Monta a resposta de texto da IA 3.0
+    para o 'Resumo do mês no PIX'.
+    """
+    entradas = resumo.get("entradas_mes", 0.0)
+    saidas = resumo.get("saidas_mes", 0.0)
+    net = resumo.get("net_mes", 0.0)
+    qtd = resumo.get("qtd_transacoes", 0)
+
+    def _fmt_brl(v: float) -> str:
+        return "R$ " + f"{v:.2f}".replace(".", ",")
+
+    direcao = "superávit" if net >= 0 else "déficit"
+    emoji = "📈" if net >= 0 else "📉"
+
+    return (
+        "✨ IA 3.0 Premium – Resumo do mês no PIX\n\n"
+        f"{emoji} Entradas do mês: {_fmt_brl(entradas)}\n"
+        f"💸 Saídas do mês: {_fmt_brl(saidas)}\n"
+        f"🧮 Resultado do mês: {_fmt_brl(net)} ({direcao})\n"
+        f"🧾 Quantidade de transações: {qtd}\n\n"
+        "Visão da IA 3.0:\n"
+        "- Se as entradas estão fortes, você pode planejar reservas ou investimentos.\n"
+        "- Se as saídas estão altas, vale revisar onde está indo o dinheiro.\n"
+        "- Use esse resumo junto com o painel Aurea Gold para decidir os próximos passos."
+    )
+
+def _ia3_get_pix_month_summary(user_email: str) -> dict:
+    """
+    Versão robusta que evita quebrar a API caso o model ou a query
+    não estejam exatamente como esperado.
+
+    Retorna um dicionário com:
+    - entradas_mes
+    - saidas_mes
+    - net_mes
+    - qtd_transacoes
+    """
+    from sqlalchemy.orm import Session
+    from sqlalchemy import func
+    from app.db.session import SessionLocal
+
+    zeros = {
+        "entradas_mes": 0.0,
+        "saidas_mes": 0.0,
+        "net_mes": 0.0,
+        "qtd_transacoes": 0,
+    }
+
+    # Tentativa flexível de importar o model
+    try:
+        try:
+            from app.models.pix_transaction import PixTransaction  # caminho 1
+        except Exception:
+            from app.models.pix import PixTransaction  # caminho 2 (ajuste se precisar)
+    except Exception as e:
+        print("IA3 resumo_mes: não consegui importar PixTransaction:", e)
+        return zeros
+
+    inicio_mes, inicio_prox = _ia3_get_month_range_now()
+    db: Session = SessionLocal()
+    try:
+        base_query = (
+            db.query(
+                PixTransaction.kind,
+                func.sum(PixTransaction.amount).label("total"),
+                func.count().label("qtd"),
+            )
+            .filter(
+                PixTransaction.user_email == user_email,
+                PixTransaction.created_at >= inicio_mes,
+                PixTransaction.created_at < inicio_prox,
+            )
+            .group_by(PixTransaction.kind)
+        )
+
+        entradas = 0.0
+        saidas = 0.0
+        total_qtd = 0
+
+        for row in base_query:
+            if row.kind == "entrada":
+                entradas = float(row.total or 0)
+            elif row.kind == "saida":
+                saidas = float(row.total or 0)
+            total_qtd += row.qtd or 0
+
+        net = entradas - saidas
+
+        return {
+            "entradas_mes": entradas,
+            "saidas_mes": saidas,
+            "net_mes": net,
+            "qtd_transacoes": total_qtd,
+        }
+    except Exception as e:
+        print("IA3 resumo_mes: erro ao consultar transações:", e)
+        return zeros
+    finally:
+        db.close()
+
+def _ia3_get_pix_month_summary(user_email: str) -> dict:
+    """
+    Versão definitiva e robusta do resumo do mês.
+
+    Nunca deve derrubar a API:
+    - Se não conseguir importar SessionLocal ou PixTransaction → retorna tudo 0.
+    - Se a query der erro → retorna tudo 0.
+    """
+    from sqlalchemy.orm import Session
+    from sqlalchemy import func
+
+    zeros = {
+        "entradas_mes": 0.0,
+        "saidas_mes": 0.0,
+        "net_mes": 0.0,
+        "qtd_transacoes": 0,
+    }
+
+    # Tenta importar SessionLocal em caminhos diferentes
+    try:
+        try:
+            from app.db.session import SessionLocal  # se existir app/db/session.py
+        except Exception:
+            from app.database.session import SessionLocal  # fallback comum (ajuste se seu projeto usar outro)
+    except Exception as e:
+        print("IA3 resumo_mes: não consegui importar SessionLocal:", e)
+        return zeros
+
+    # Tenta importar PixTransaction em caminhos diferentes
+    try:
+        try:
+            from app.models.pix_transaction import PixTransaction
+        except Exception:
+            from app.models.pix import PixTransaction
+    except Exception as e:
+        print("IA3 resumo_mes: não consegui importar PixTransaction:", e)
+        return zeros
+
+    inicio_mes, inicio_prox = _ia3_get_month_range_now()
+    db: Session = SessionLocal()
+    try:
+        base_query = (
+            db.query(
+                PixTransaction.kind,
+                func.sum(PixTransaction.amount).label("total"),
+                func.count().label("qtd"),
+            )
+            .filter(
+                PixTransaction.user_email == user_email,
+                PixTransaction.created_at >= inicio_mes,
+                PixTransaction.created_at < inicio_prox,
+            )
+            .group_by(PixTransaction.kind)
+        )
+
+        entradas = 0.0
+        saidas = 0.0
+        total_qtd = 0
+
+        for row in base_query:
+            if row.kind == "entrada":
+                entradas = float(row.total or 0)
+            elif row.kind == "saida":
+                saidas = float(row.total or 0)
+            total_qtd += row.qtd or 0
+
+        net = entradas - saidas
+
+        return {
+            "entradas_mes": entradas,
+            "saidas_mes": saidas,
+            "net_mes": net,
+            "qtd_transacoes": total_qtd,
+        }
+    except Exception as e:
+        print("IA3 resumo_mes: erro ao consultar transações:", e)
+        return zeros
+    finally:
+        db.close()
+

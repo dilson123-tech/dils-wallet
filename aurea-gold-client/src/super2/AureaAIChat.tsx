@@ -46,7 +46,7 @@ export default function AureaAIChat() {
     setLoading(true);
 
     try {
-      const resp = await fetch(`${API_BASE}/api/v1/ai/chat_lab`, {
+      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +127,7 @@ export default function AureaAIChat() {
               <span className="block text-[9px] opacity-60 mb-0.5">
                 {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
               </span>
-                <div className="whitespace-pre-line">{m.text}</div>
+              <div className="whitespace-pre-line">{m.text}</div>
             </div>
           ))}
         </div>
@@ -154,6 +154,14 @@ export default function AureaAIChat() {
             className="h-7 px-3 rounded-md border border-[#d4af37]/70 bg-gradient-to-r from-[#3f7b00] to-[#47a51b] text-[10px] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition"
           >
             {loading ? "Enviando..." : "Perguntar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setInput("faz um resumo do mês no pix")}
+            disabled={loading}
+            className="h-7 px-3 rounded-md border border-[#d4af37]/40 bg-[#111]/80 text-[10px] hover:border-[#d4af37]/80 active:scale-[0.97] transition"
+          >
+            Resumo do mês
           </button>
           <button
             type="button"
