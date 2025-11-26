@@ -23,6 +23,8 @@ app.include_router(pix_send_router)
 app.include_router(ai_router_v1)
 app.include_router(admin_dbfix.router, prefix="/admin")
 
+from app.api.v1.ai import chat_lab_router
+app.include_router(chat_lab_router, prefix="/api/v1/ai")
 # --- CORS ---
 _default_dev = [
     "http://localhost:5173", "http://127.0.0.1:5173",
@@ -62,3 +64,7 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8080))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port)
+
+# --- AUREA GOLD: IA 3.0 cliente (/api/v1/ai/chat) ---
+from app.api.v1.routes import ai_chat
+app.include_router(ai_chat.router)
