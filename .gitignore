@@ -52,3 +52,4 @@ artifacts/
 *.zip
 *.csv
 cookies.txt
+backend/app.db
