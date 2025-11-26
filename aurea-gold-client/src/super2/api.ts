@@ -1,5 +1,8 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "";
-export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || "";
+const DEFAULT_API_BASE = "http://127.0.0.1:8080";
+const DEFAULT_USER_EMAIL = "dilsonpereira231@gmail.com";
+
+export const API_BASE = import.meta.env.VITE_API_BASE || DEFAULT_API_BASE;
+export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || DEFAULT_USER_EMAIL;
 console.log("SUPER2 API_BASE =>", API_BASE, "USER_EMAIL =>", USER_EMAIL);
 
 
@@ -72,8 +75,9 @@ async function apiPost<T>(path: string, body: any): Promise<T> {
 }
 
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
+// Por enquanto apontando para a rota estável com days=7
 export function fetchPixBalance(): Promise<PixBalancePayload> {
-  return apiGet<PixBalancePayload>("/api/v1/pix/balance/super2");
+  return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");
 }
 
 // 🔹 histórico de PIX — backend pode devolver vários formatos, tratamos no front

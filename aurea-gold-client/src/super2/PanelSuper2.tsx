@@ -7,6 +7,7 @@ import {
 } from "./api";
 import AureaPixSendModal from "./AureaPixSendModal";
 import ChartSuper2 from "./ChartSuper2";
+import AureaAIChat from "./AureaAIChat";
 
 function fmtBRL(v: number | undefined | null): string {
   const n = typeof v === "number" && !Number.isNaN(v) ? v : 0;
@@ -205,7 +206,9 @@ export default function PanelSuper2() {
           </section>
         )}
 
-        <footer className="mt-4 flex justify-end">
+        <AureaAIChat />
+
+          <footer className="mt-4 flex justify-end">
           <span className="text-[9px] px-2 py-0.5 rounded-full border border-[#d4af37]/60 bg-black/60 text-[#d4af37]">
             SUPER2 • mobile
           </span>

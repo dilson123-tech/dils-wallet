@@ -75,7 +75,7 @@ export default function AureaPixSendModal({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="w-[360px] max-w-full rounded-2xl border border-[#d4af37]/60 bg-black/90 px-4 py-3 text-[#f5f5f5]">
         <header className="flex items-center justify-between mb-2">
           <div className="text-sm font-semibold text-[#d4af37]">
