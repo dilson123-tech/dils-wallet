@@ -105,6 +105,11 @@ export default function AureaAIChat() {
     setMessages((prev) => (prev.length > 0 ? [prev[0]] : []));
   }
 
+  function handleQuick(message: string) {
+    if (loading) return;
+    setInput(message);
+  }
+
   return (
     <section className="mt-4 text-[11px]">
       <div className="super2-section-title mb-1">IA 3.0 — Assistente do Cliente</div>
@@ -138,6 +143,34 @@ export default function AureaAIChat() {
             {err}
           </div>
         )}
+
+        {/* Sugestões rápidas */}
+        <div className="flex flex-wrap gap-1 text-[9px]">
+          <button
+            type="button"
+            onClick={() => handleQuick("meu saldo hoje")}
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Saldo hoje
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuick("quais foram minhas entradas do mês no pix?")}
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Entradas do mês
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuick("me mostra o histórico do mês no pix")}
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Histórico do mês
+          </button>
+        </div>
 
         {/* Input + botões */}
         <form onSubmit={handleSend} className="flex gap-1 items-center">
