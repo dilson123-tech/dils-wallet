@@ -117,7 +117,7 @@ export default function AureaAIChatLab() {
               <span className="block text-[9px] opacity-60 mb-0.5">
                 {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
               </span>
-              <span>{m.text}</span>
+                <div className="whitespace-pre-line">{m.text}</div>
             </div>
           ))
         )}
