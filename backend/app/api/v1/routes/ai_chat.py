@@ -206,7 +206,7 @@ async def ai_chat(
                     "X-User-Email com o seu e-mail Aurea Gold."
                 )
             }
-        _resumo = _ia3_get_pix_month_summary(x_user_email)
+            resumo = _ia3_get_pix_month_summary(x_user_email)
         _reply = _ia3_build_monthly_summary_reply(_resumo)
         return {"reply": _reply}
     norm_msg = _normalize(raw_msg)
@@ -275,6 +275,23 @@ async def ai_chat(
         history = await _get_pix_history(x_user_email)
         tema_reply = _build_history_reply(history or [])
 
+    # IA 3.0 – Modo consultor financeiro focado em PIX (usa resumo do mês)
+    elif any(
+        p in norm_msg
+        for p in [
+            "o que voce me recomenda fazer com meu pix",
+            "o que voce recomenda fazer com meu pix",
+            "o que me recomenda fazer com meu pix",
+            "recomenda fazer com meu pix",
+            "gastando muito no pix",
+            "to gastando muito",
+            "tô gastando muito",
+        ]
+    ):
+        tema_label = "modo consultor financeiro"
+        resumo = _ia3_get_pix_month_summary(x_user_email)
+        tema_reply = _ia3_build_consulting_reply(resumo)
+
     elif "pix" in norm_msg:
         tema_label = "PIX"
         tema_reply = (
@@ -294,6 +311,25 @@ async def ai_chat(
             "Por enquanto, posso te ajudar principalmente com saldo, entradas, saídas, histórico "
             "e uso do PIX dentro do painel."
         )
+
+    # IA 3.0 – modo consultor financeiro no PIX (usa resumo do mês)
+    elif any(
+        p in norm_msg
+        for p in [
+            "recomenda fazer com meu pix",
+            "recomenda fazer com meu pix esse mes",
+            "o que recomendas fazer com meu pix",
+            "to gastando muito",
+            "to gastando muito no pix",
+            "estou gastando muito",
+            "estou gastando muito no pix",
+            "planejar meu pix esse mes",
+            "organizar meu pix esse mes",
+        ]
+    ):
+        tema_label = "modo consultor financeiro"
+        resumo = _ia3_get_pix_month_summary(x_user_email)
+        tema_reply = _ia3_build_consulting_reply(resumo)
 
     else:
         tema_reply = (
@@ -362,168 +398,6 @@ def _ia3_get_month_range_now():
 
 def _ia3_get_pix_month_summary(user_email: str) -> dict:
     """
-    Calcula o resumo do mês atual para o usuário:
-    - entradas_mes
-    - saidas_mes
-    - net_mes
-    - qtd_transacoes
-
-    IMPORTANTE:
-    - Ajustar o model e os campos conforme o seu projeto real.
-    - Por padrão estou assumindo um model PixTransaction com:
-      user_email, kind ("entrada"/"saida"), amount, created_at.
-    """
-    from sqlalchemy.orm import Session
-    from sqlalchemy import func
-
-    from app.db.session import SessionLocal
-    from app.models.pix_transaction import PixTransaction  # ajuste se o nome for outro
-
-    inicio_mes, inicio_prox = _ia3_get_month_range_now()
-
-    db: Session = SessionLocal()
-    try:
-        base_query = (
-            db.query(
-                PixTransaction.kind,
-                func.sum(PixTransaction.amount).label("total"),
-                func.count().label("qtd"),
-            )
-            .filter(
-                PixTransaction.user_email == user_email,
-                PixTransaction.created_at >= inicio_mes,
-                PixTransaction.created_at < inicio_prox,
-            )
-            .group_by(PixTransaction.kind)
-        )
-
-        entradas = 0.0
-        saidas = 0.0
-        total_qtd = 0
-
-        for row in base_query:
-            if row.kind == "entrada":
-                entradas = float(row.total or 0)
-            elif row.kind == "saida":
-                saidas = float(row.total or 0)
-            total_qtd += row.qtd or 0
-
-        net = entradas - saidas
-
-        return {
-            "entradas_mes": entradas,
-            "saidas_mes": saidas,
-            "net_mes": net,
-            "qtd_transacoes": total_qtd,
-        }
-    finally:
-        db.close()
-
-
-def _ia3_build_monthly_summary_reply(resumo: dict) -> str:
-    """
-    Monta a resposta de texto da IA 3.0
-    para o 'Resumo do mês no PIX'.
-    """
-    entradas = resumo.get("entradas_mes", 0.0)
-    saidas = resumo.get("saidas_mes", 0.0)
-    net = resumo.get("net_mes", 0.0)
-    qtd = resumo.get("qtd_transacoes", 0)
-
-    def _fmt_brl(v: float) -> str:
-        return "R$ " + f"{v:.2f}".replace(".", ",")
-
-    direcao = "superávit" if net >= 0 else "déficit"
-    emoji = "📈" if net >= 0 else "📉"
-
-    return (
-        "✨ IA 3.0 Premium – Resumo do mês no PIX\n\n"
-        f"{emoji} Entradas do mês: {_fmt_brl(entradas)}\n"
-        f"💸 Saídas do mês: {_fmt_brl(saidas)}\n"
-        f"🧮 Resultado do mês: {_fmt_brl(net)} ({direcao})\n"
-        f"🧾 Quantidade de transações: {qtd}\n\n"
-        "Visão da IA 3.0:\n"
-        "- Se as entradas estão fortes, você pode planejar reservas ou investimentos.\n"
-        "- Se as saídas estão altas, vale revisar onde está indo o dinheiro.\n"
-        "- Use esse resumo junto com o painel Aurea Gold para decidir os próximos passos."
-    )
-
-def _ia3_get_pix_month_summary(user_email: str) -> dict:
-    """
-    Versão robusta que evita quebrar a API caso o model ou a query
-    não estejam exatamente como esperado.
-
-    Retorna um dicionário com:
-    - entradas_mes
-    - saidas_mes
-    - net_mes
-    - qtd_transacoes
-    """
-    from sqlalchemy.orm import Session
-    from sqlalchemy import func
-    from app.db.session import SessionLocal
-
-    zeros = {
-        "entradas_mes": 0.0,
-        "saidas_mes": 0.0,
-        "net_mes": 0.0,
-        "qtd_transacoes": 0,
-    }
-
-    # Tentativa flexível de importar o model
-    try:
-        try:
-            from app.models.pix_transaction import PixTransaction  # caminho 1
-        except Exception:
-            from app.models.pix import PixTransaction  # caminho 2 (ajuste se precisar)
-    except Exception as e:
-        print("IA3 resumo_mes: não consegui importar PixTransaction:", e)
-        return zeros
-
-    inicio_mes, inicio_prox = _ia3_get_month_range_now()
-    db: Session = SessionLocal()
-    try:
-        base_query = (
-            db.query(
-                PixTransaction.kind,
-                func.sum(PixTransaction.amount).label("total"),
-                func.count().label("qtd"),
-            )
-            .filter(
-                PixTransaction.user_email == user_email,
-                PixTransaction.created_at >= inicio_mes,
-                PixTransaction.created_at < inicio_prox,
-            )
-            .group_by(PixTransaction.kind)
-        )
-
-        entradas = 0.0
-        saidas = 0.0
-        total_qtd = 0
-
-        for row in base_query:
-            if row.kind == "entrada":
-                entradas = float(row.total or 0)
-            elif row.kind == "saida":
-                saidas = float(row.total or 0)
-            total_qtd += row.qtd or 0
-
-        net = entradas - saidas
-
-        return {
-            "entradas_mes": entradas,
-            "saidas_mes": saidas,
-            "net_mes": net,
-            "qtd_transacoes": total_qtd,
-        }
-    except Exception as e:
-        print("IA3 resumo_mes: erro ao consultar transações:", e)
-        return zeros
-    finally:
-        db.close()
-
-def _ia3_get_pix_month_summary(user_email: str) -> dict:
-    """
     Versão definitiva e robusta do resumo do mês.
 
     Nunca deve derrubar a API:
@@ -545,7 +419,7 @@ def _ia3_get_pix_month_summary(user_email: str) -> dict:
         try:
             from app.db.session import SessionLocal  # se existir app/db/session.py
         except Exception:
-            from app.database.session import SessionLocal  # fallback comum (ajuste se seu projeto usar outro)
+            from app.database.session import SessionLocal  # fallback comum
     except Exception as e:
         print("IA3 resumo_mes: não consegui importar SessionLocal:", e)
         return zeros
@@ -582,23 +456,87 @@ def _ia3_get_pix_month_summary(user_email: str) -> dict:
         total_qtd = 0
 
         for row in base_query:
-            if row.kind == "entrada":
-                entradas = float(row.total or 0)
-            elif row.kind == "saida":
-                saidas = float(row.total or 0)
-            total_qtd += row.qtd or 0
+            kind = (row.kind or "").lower()
+            valor = float(row.total or 0)
+            qtd = int(row.qtd or 0)
+            total_qtd += qtd
+
+            if kind == "entrada":
+                entradas += valor
+            elif kind == "saida":
+                saidas += valor
 
         net = entradas - saidas
 
         return {
-            "entradas_mes": entradas,
-            "saidas_mes": saidas,
-            "net_mes": net,
-            "qtd_transacoes": total_qtd,
+            "entradas_mes": float(entradas),
+            "saidas_mes": float(saidas),
+            "net_mes": float(net),
+            "qtd_transacoes": int(total_qtd),
         }
     except Exception as e:
         print("IA3 resumo_mes: erro ao consultar transações:", e)
         return zeros
     finally:
         db.close()
+
+
+
+def _ia3_build_consulting_reply(resumo: dict) -> str:
+    """Monta o texto de consultoria financeira usando o resumo do mês."""
+    def _fmt_brl(v) -> str:
+        try:
+            n = float(v or 0.0)
+        except Exception:
+            n = 0.0
+        return "R$ " + f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    entradas = float(resumo.get("entradas_mes", 0.0) or 0.0)
+    saidas = float(resumo.get("saidas_mes", 0.0) or 0.0)
+    net = float(resumo.get("net_mes", 0.0) or 0.0)
+    qtd = int(resumo.get("qtd_transacoes", 0) or 0)
+
+    linhas = []
+    linhas.append("Visão do mês no PIX:")
+    linhas.append(f"- Entradas do mês: {_fmt_brl(entradas)}.")
+    linhas.append(f"- Saídas do mês: {_fmt_brl(saidas)}.")
+    linhas.append(f"- Resultado do mês: {_fmt_brl(net)}.")
+    linhas.append(f"- Quantidade de transações: {qtd}.")
+
+    linhas.append("\nRecomendações básicas para este mês:")
+
+    if qtd == 0:
+        linhas.append(
+            "- Ainda não há movimentações registradas. "
+            "Use o Aurea Gold normalmente e volte aqui depois de alguns PIX."
+        )
+    else:
+        if saidas > entradas:
+            linhas.append(
+                "- Você está gastando mais do que entra. "
+                "Tente revisar gastos variáveis e evitar PIX grandes até equilibrar."
+            )
+        elif saidas > entradas * 0.9:
+            linhas.append(
+                "- Suas saídas estão quase no mesmo nível das entradas. "
+                "Vale segurar um pouco os gastos até o fim do mês."
+            )
+
+        if entradas > 0 and saidas < entradas * 0.7:
+            linhas.append(
+                "- Suas entradas estão em nível saudável. "
+                "Considere separar uma parte fixa para reserva ou objetivos de curto prazo."
+            )
+
+        if not any("Você está gastando mais" in l or "quase no mesmo nível" in l for l in linhas):
+            linhas.append(
+                "- Seus números estão em faixa neutra. "
+                "Acompanhe pelo painel Super2 e evite aumentar os gastos sem necessidade."
+            )
+
+    linhas.append(
+        "\nUse essas orientações junto com o painel Aurea Gold para decidir os próximos passos."
+    )
+
+    return "\n".join(linhas)
 
