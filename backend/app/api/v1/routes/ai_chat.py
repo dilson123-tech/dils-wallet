@@ -184,9 +184,11 @@ async def ai_chat(
     """
 
     raw_msg = payload.message.strip()
-    _ia3_m = payload.message.lower()  # IA 3.0 – resumo do mês no PIX
+    norm_msg = _normalize(raw_msg)
+
+    # IA 3.0 – resumo do mês no PIX / consultor financeiro
     if any(
-        frase in _ia3_m
+        frase in norm_msg
         for frase in [
             "resumo do mês",
             "resumo do mes",
@@ -202,14 +204,15 @@ async def ai_chat(
             return {
                 "reply": (
                     "✨ IA 3.0 Premium – Resumo do mês no PIX\n\n"
+
                     "Para montar o resumo do mês, preciso que o app envie o header "
                     "X-User-Email com o seu e-mail Aurea Gold."
                 )
             }
-            resumo = _ia3_get_pix_month_summary(x_user_email)
-        _reply = _ia3_build_monthly_summary_reply(_resumo)
+
+        resumo = _ia3_get_pix_month_summary(x_user_email)
+        _reply = _ia3_build_consulting_reply(resumo)
         return {"reply": _reply}
-    norm_msg = _normalize(raw_msg)
 
     user_hint = (
         f"\n\nAtendo você usando o cadastro: {x_user_email}."
@@ -224,6 +227,9 @@ async def ai_chat(
     )
 
     tema_reply: str
+    tema_reply: str
+
+
     tema_label: str = "sua dúvida"
 
     # tenta carregar dados de PIX só quando for relevante
@@ -325,6 +331,9 @@ async def ai_chat(
             "estou gastando muito no pix",
             "planejar meu pix esse mes",
             "organizar meu pix esse mes",
+            "resumo do mes no pix",
+            "resumo do mês no pix",
+            "me mostra um resumo do mes no pix",
         ]
     ):
         tema_label = "modo consultor financeiro"
