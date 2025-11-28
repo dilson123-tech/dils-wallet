@@ -181,48 +181,56 @@ export default function PanelSuper2() {
           {/* Histórico diário (entradas/saídas) */}
           {showHistory && (
             <section className="mt-4 text-[11px]">
-              <div className="super2-section-title mb-1 flex items-center justify-between">
-                <span>Histórico recente</span>
-                <span className="text-[9px] text-zinc-400">últimos dias de PIX</span>
-              </div>
-
-              {history.length === 0 ? (
-                <div className="rounded-lg border border-zinc-800 bg-black/70 px-3 py-2 text-[10px] text-zinc-400">
-                  Nenhum dado de PIX encontrado para este usuário.
+              <div className="rounded-lg border border-[#d4af37]/35 bg-black/80 px-2 py-2 space-y-2 shadow-[0_0_14px_rgba(0,0,0,0.85)]">
+                <div className="flex items-center justify-between">
+                  <div className="super2-section-title">
+                    Histórico recente
+                  </div>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full border border-[#d4af37]/60 bg-black/60 text-[#d4af37]">
+                    últimos dias de PIX
+                  </span>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-[#d4af37]/30 bg-black/80 px-2 py-2 shadow-[0_0_12px_rgba(0,0,0,0.6)] max-h-36 overflow-y-auto space-y-1">
-                  {history.map((d: any) => {
-                    const label = new Date(
-                      `${d.dia}T00:00:00`
-                    ).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                    });
-                    const net = (d.entradas || 0) - (d.saidas || 0);
-                    return (
-                      <div
-                        key={d.dia}
-                        className="flex items-center justify-between rounded-md border border-[#d4af37]/25 bg-black/70 px-2 py-1"
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-[10px] opacity-70">{label}</span>
-                          <span className="text-[10px] text-zinc-300">
-                            Entradas: {fmtBRL(d.entradas)} • Saídas: {fmtBRL(d.saidas)}
-                          </span>
-                        </div>
+                {history.length === 0 ? (
+                  <div className="text-[10px] text-zinc-400">
+                    Nenhum dado de PIX encontrado para este usuário.
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                    {history.map((d: any) => {
+                      const label = new Date(
+                        `${d.dia}T00:00:00`
+                      ).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      });
+                      const net = (d.entradas || 0) - (d.saidas || 0);
+                      return (
                         <div
-                          className={`text-[11px] font-semibold ${
-                            net >= 0 ? "text-emerald-400" : "text-red-400"
-                          }`}
+                          key={d.dia}
+                          className="flex items-center justify-between rounded-md border border-[#d4af37]/30 bg-black/70 px-2 py-1"
                         >
-                          {fmtBRL(net)}
+                          <div className="flex flex-col">
+                            <span className="text-[10px] opacity-70">
+                              {label}
+                            </span>
+                            <span className="text-[10px] text-zinc-300">
+                              Entradas: {fmtBRL(d.entradas)} • Saídas:{" "}
+                              {fmtBRL(d.saidas)}
+                            </span>
+                          </div>
+                          <div
+                            className={`text-[11px] font-semibold ${
+                              net >= 0 ? "text-emerald-400" : "text-red-400"
+                            }`}
+                          >
+                            {fmtBRL(net)}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
