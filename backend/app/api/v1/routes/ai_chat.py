@@ -290,9 +290,21 @@ async def ai_chat(
             "o que voce recomenda fazer com meu pix",
             "o que me recomenda fazer com meu pix",
             "recomenda fazer com meu pix",
-            "gastando muito no pix",
+            "recomenda fazer com meu pix esse mes",
             "to gastando muito",
+            "to gastando muito no pix",
             "tô gastando muito",
+            "estou gastando muito",
+            "estou gastando muito no pix",
+            "planejar meu pix esse mes",
+            "organizar meu pix esse mes",
+            "resumo do mes no pix",
+            "resumo do meu pix",
+            "me mostra um resumo do mes no pix",
+            "faz um resumo do meu pix",
+            "faz um resumo do mes no pix",
+            "faz um resumo do mes do pix",
+            "faz um resumo dos pix deste mes",
         ]
     ):
         tema_label = "modo consultor financeiro"
@@ -701,3 +713,114 @@ def _ia3_build_consulting_reply(resumo):
 
     # status fica só interno por enquanto (não expomos como JSON aqui)
     return "\n".join(linhas)
+def _ia3_build_consulting_reply(balance):
+    """Gera uma resposta em modo consultor financeiro usando o resumo do mês no PIX.
+
+    `balance` pode ser um dict ou um objeto com atributos como:
+    - saldo_atual / saldo / saldo_disponivel
+    - entradas_mes / entradas_30d / entradas
+    - saidas_mes / saidas_30d / saidas
+    - net_mes (resultado do mês)
+    """
+
+    if not balance:
+        return (
+            "✨ IA 3.0 – Consultor financeiro PIX\n"
+            "Ainda não consegui carregar o resumo do seu mês no PIX.\n\n"
+            "Mesmo assim, algumas orientações gerais ajudam bastante:\n"
+            "- Tente separar uma parte fixa de tudo o que entra como reserva.\n"
+            "- Evite PIX por impulso: compras rápidas, lanches, pequenos gastos que somam muito no mês.\n"
+            "- Sempre que possível, concentre as contas em poucos dias do mês pra ter mais previsibilidade.\n\n"
+            "Quando o painel Super2 estiver com os dados carregados, posso analisar melhor seu comportamento "
+            "de entradas e saídas ao longo do mês."
+        )
+
+    # Acessa tanto dict quanto objeto simples
+    def _get(b, *keys):
+        if isinstance(b, dict):
+            for k in keys:
+                if k in b and b[k] is not None:
+                    return b[k]
+        else:
+            for k in keys:
+                v = getattr(b, k, None)
+                if v is not None:
+                    return v
+        return None
+
+    def fmt_brl(v):
+        try:
+            v_float = float(v)
+        except (TypeError, ValueError):
+            return "—"
+        s = f"{v_float:,.2f}"
+        # Formata no padrão brasileiro: 1.234,56
+        return "R$ " + s.replace(",", "X").replace(".", ",").replace("X", ".")
+
+    saldo_atual = _get(balance, "saldo_atual", "saldo", "saldo_disponivel")
+    entradas_mes = _get(balance, "entradas_mes", "entradas_30d", "entradas")
+    saidas_mes = _get(balance, "saidas_mes", "saidas_30d", "saidas")
+    net_mes = _get(balance, "net_mes")
+
+    if net_mes is None and entradas_mes is not None and saidas_mes is not None:
+        try:
+            net_mes = float(entradas_mes) - float(saidas_mes)
+        except (TypeError, ValueError):
+            net_mes = None
+
+    saldo_txt = fmt_brl(saldo_atual) if saldo_atual is not None else "—"
+    entradas_txt = fmt_brl(entradas_mes) if entradas_mes is not None else "—"
+    saidas_txt = fmt_brl(saidas_mes) if saidas_mes is not None else "—"
+    net_txt = fmt_brl(net_mes) if net_mes is not None else "—"
+
+    orientacao = []
+
+    if net_mes is None:
+        orientacao.append(
+            "Não consegui calcular exatamente se você fechou o mês no positivo ou negativo, "
+            "mas já vale olhar se as saídas não estão crescendo mais rápido do que as entradas."
+        )
+    else:
+        try:
+            nm = float(net_mes)
+        except (TypeError, ValueError):
+            nm = 0.0
+
+        if nm < 0:
+            orientacao.append(
+                "Você fechou o mês **no negativo**: saiu mais dinheiro do que entrou nos seus PIX."
+            )
+            orientacao.append(
+                "O ideal agora é reduzir gastos por impulso, revisar assinaturas e priorizar contas essenciais."
+            )
+        elif nm > 0:
+            orientacao.append(
+                "Você fechou o mês **no positivo**: entrou mais dinheiro do que saiu nos seus PIX."
+            )
+            orientacao.append(
+                "Aproveite para separar uma parte desse resultado para reserva, investimentos ou metas importantes."
+            )
+        else:
+            orientacao.append(
+                "Seu mês ficou praticamente **no zero a zero** entre entradas e saídas no PIX."
+            )
+            orientacao.append(
+                "Qualquer aumento de gasto sem aumento de entrada pode te levar para o negativo no próximo mês, "
+                "então vale acompanhar de perto."
+            )
+
+    texto_orientacao = " ".join(orientacao)
+
+    return (
+        "✨ IA 3.0 – Consultor financeiro PIX\n"
+        "Olhei o resumo do seu mês no PIX e montei uma visão geral:\n\n"
+        f"- Saldo atual (aprox.): {saldo_txt}\n"
+        f"- Entradas no mês via PIX: {entradas_txt}\n"
+        f"- Saídas no mês via PIX: {saidas_txt}\n"
+        f"- Resultado do mês (Entradas - Saídas): {net_txt}\n\n"
+        "O que isso significa na prática:\n"
+        f"{texto_orientacao}\n\n"
+        "Se quiser, pode perguntar também por 'entradas do mês', 'saídas do mês' ou 'histórico do PIX' "
+        "que eu trago mais detalhes."
+    )
+
