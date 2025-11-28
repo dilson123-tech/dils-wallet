@@ -8,6 +8,15 @@ type Point = {
   net: number;
 };
 
+function fmtBRL(v: number | undefined | null): string {
+  const n = typeof v === "number" && !Number.isNaN(v) ? v : 0;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
 export default function ChartSuper2() {
   const [points, setPoints] = useState<Point[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,8 +48,7 @@ export default function ChartSuper2() {
         if (!hasNonZero) {
           const dias = serie.length || 7;
           const magnitude =
-            Math.abs(data.entradas_mes || 0) +
-              Math.abs(data.saidas_mes || 0) || 100;
+            Math.abs(data.entradas_mes || 0) + Math.abs(data.saidas_mes || 0) || 100;
 
           if (!serie.length) {
             const hoje = new Date();
@@ -105,6 +113,57 @@ export default function ChartSuper2() {
   });
 
   const polyPoints = svgPoints.map((p) => `${p.x},${p.y}`).join(" ");
+
+  // ===== Resumo inteligente dos 7 dias =====
+  const totalNet = points.reduce((acc, p) => acc + (p.net || 0), 0);
+
+  const maiorAlta = points.reduce<Point>(
+    (best, p) => ((p.net || 0) > (best.net || 0) ? p : best),
+    points[0]
+  );
+  const maiorQueda = points.reduce<Point>(
+    (best, p) => ((p.net || 0) < (best.net || 0) ? p : best),
+    points[0]
+  );
+
+  const labelDia = (p: Point) => p.dia.slice(5);
+
+  let resumoTitulo: string;
+  let resumoLinha: string;
+  let destaqueLinha: string;
+
+  if (Math.abs(totalNet) < 0.01) {
+    resumoTitulo = "Semana neutra no PIX";
+    resumoLinha =
+      "Entradas e saídas ficaram praticamente empatadas nos últimos 7 dias. A carteira Aurea Gold seguiu estável.";
+  } else if (totalNet > 0) {
+    resumoTitulo = "Semana positiva no PIX";
+    resumoLinha = `Entrou mais do que saiu: saldo líquido aproximado de ${fmtBRL(
+      totalNet
+    )} nos últimos 7 dias.`;
+  } else {
+    resumoTitulo = "Semana de atenção com mais saídas";
+    resumoLinha = `Saiu mais do que entrou: saldo líquido aproximado de ${fmtBRL(
+      totalNet
+    )} (negativo) nos últimos 7 dias. A carteira Aurea Gold ganhou fôlego nesse período.`;
+  }
+
+  const baseImpacto =
+    Math.abs(maiorAlta.net || 0) >= Math.abs(maiorQueda.net || 0)
+      ? maiorAlta
+      : maiorQueda;
+
+  if (Math.abs(baseImpacto.net || 0) < 0.01) {
+    destaqueLinha =
+      "Ainda não há um dia de grande impacto: as variações foram pequenas nesse período.";
+  } else {
+    const sentido = (baseImpacto.net || 0) >= 0 ? "entrada" : "saída";
+    destaqueLinha = `Dia de maior impacto: ${labelDia(
+      baseImpacto
+    )} com resultado aproximado de ${fmtBRL(
+      baseImpacto.net
+    )} (${sentido} mais forte).`;
+  }
 
   return (
     <div className="mt-2 text-[11px]">
@@ -195,6 +254,13 @@ export default function ChartSuper2() {
               {p.dia.slice(5)}
             </span>
           ))}
+        </div>
+
+        {/* resumo textual dos 7 dias */}
+        <div className="mt-2 text-[10px] text-zinc-200 leading-snug">
+          <div className="font-semibold text-[#facc15]">{resumoTitulo}</div>
+          <div>{resumoLinha}</div>
+          <div className="mt-0.5 text-[9px] text-zinc-400">{destaqueLinha}</div>
         </div>
       </div>
     </div>

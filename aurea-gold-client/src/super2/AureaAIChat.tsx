@@ -118,15 +118,27 @@ export default function AureaAIChat() {
 
   return (
     <section className="mt-4 text-[11px]">
-        <div className="text-[9px] text-zinc-400 mb-1">
-          Focada em saldo, PIX, entradas, saídas e histórico do seu Aurea Gold. Outros assuntos eu não atendo aqui.
-        </div>
-
       <div className="rounded-lg border border-[#d4af37]/30 bg-black/80 px-2 py-2 flex flex-col gap-2">
+
+        <div className="mb-1">
+
+          <div className="text-[10px] font-semibold text-[#facc15]">
+
+            IA 3.0 Aurea Gold — Carteira PIX
+
+          </div>
+
+          <div className="text-[9px] text-zinc-400">
+
+            Focada em saldo, PIX, entradas, saídas e histórico do seu Aurea Gold. Outros assuntos eu não atendo aqui.
+
+          </div>
+
+        </div>
         {/* Lista de mensagens */}
         <div
           ref={listRef}
-          className="h-40 max-h-52 overflow-y-auto pr-1 space-y-1"
+          className="h-44 max-h-60 md:h-52 md:max-h-64 overflow-y-auto pr-1 space-y-1"
         >
           {messages.map((m) => (
             <div
