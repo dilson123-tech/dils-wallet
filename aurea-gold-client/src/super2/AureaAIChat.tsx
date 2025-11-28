@@ -212,6 +212,16 @@ export default function AureaAIChat() {
           >
             Histórico do mês (PIX)
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              handleQuick("to gastando muito no pix esse mes")
+            }
+            className="px-2 py-1 rounded-md border border-emerald-600/80 bg-emerald-900/80 text-emerald-100 hover:border-emerald-400/80 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Modo consultor (PIX)
+          </button>
         </div>
 
         {/* Input + botões */}
