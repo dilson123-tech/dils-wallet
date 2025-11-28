@@ -34,6 +34,11 @@ export default function AureaAIChat() {
     const text = input.trim();
     if (!text || loading) return;
 
+    await sendMessage(text);
+  }
+
+  // Função central: envia mensagem para a IA 3.0 e adiciona no chat
+  async function sendMessage(text: string) {
     const userMsg: ChatMessage = {
       id: Date.now(),
       role: "user",
@@ -105,9 +110,10 @@ export default function AureaAIChat() {
     setMessages((prev) => (prev.length > 0 ? [prev[0]] : []));
   }
 
+  // Botões rápidos agora já disparam a IA direto
   function handleQuick(message: string) {
     if (loading) return;
-    setInput(message);
+    void sendMessage(message);
   }
 
   return (
@@ -190,7 +196,7 @@ export default function AureaAIChat() {
           </button>
           <button
             type="button"
-            onClick={() => setInput("faz um resumo do mês no pix")}
+            onClick={() => handleQuick("faz um resumo do mês no pix")}
             disabled={loading}
             className="h-7 px-3 rounded-md border border-[#d4af37]/40 bg-[#111]/80 text-[10px] hover:border-[#d4af37]/80 active:scale-[0.97] transition"
           >
