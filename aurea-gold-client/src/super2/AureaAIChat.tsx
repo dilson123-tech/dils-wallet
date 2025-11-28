@@ -172,7 +172,7 @@ export default function AureaAIChat() {
             className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
-            Saldo hoje
+            Saldo hoje (PIX)
           </button>
           <button
             type="button"
@@ -180,7 +180,7 @@ export default function AureaAIChat() {
             className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
-            Entradas do mês
+            Entradas do mês no PIX
           </button>
           <button
             type="button"
@@ -188,7 +188,7 @@ export default function AureaAIChat() {
             className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
-            Histórico do mês
+            Histórico do mês (PIX)
           </button>
         </div>
 
@@ -217,13 +217,13 @@ export default function AureaAIChat() {
             Resumo do mês
           </button>
           <button
-            type="button"
-            onClick={handleClear}
-            disabled={loading || messages.length <= 1}
-            className="h-7 px-2 rounded-md border border-[#555]/70 bg-[#111] text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            Limpar
-          </button>
+  type="button"
+  onClick={handleClear}
+  disabled={loading}
+  className="h-7 px-3 rounded-md border border-[#444]/60 bg-[#111]/80 text-[10px] hover:border-[#d4af37]/80 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
+>
+  Limpar
+</button>
         </form>
       </div>
     </section>
