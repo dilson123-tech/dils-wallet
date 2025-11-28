@@ -22,6 +22,12 @@ export default function AureaAIChat() {
   const [err, setErr] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
+  const hasConsultorFinanceiro = messages.some(
+    (m) =>
+      m.role === "assistant" &&
+      m.text.includes("IA 3.0 – Consultor financeiro PIX")
+  );
+
   // auto-scroll sempre para a última mensagem
   useEffect(() => {
     if (listRef.current) {
@@ -68,13 +74,13 @@ export default function AureaAIChat() {
 
       const data = await resp.json();
 
-      const replyText: string =
-        (data.reply ??
-          data.answer ??
-          data.message ??
-          data.text ??
-          "Recebi sua pergunta, mas não consegui gerar uma resposta detalhada agora."
-        ).toString();
+      const replyText: string = (
+        data.reply ??
+        data.answer ??
+        data.message ??
+        data.text ??
+        "Recebi sua pergunta, mas não consegui gerar uma resposta detalhada agora."
+      ).toString();
 
       const aiMsg: ChatMessage = {
         id: Date.now() + 1,
@@ -118,57 +124,55 @@ export default function AureaAIChat() {
 
   return (
     <section className="mt-4 text-[11px]">
-      <div className="rounded-lg border border-[#d4af37]/40 bg-black/90 px-3 py-3 flex flex-col gap-2 sm:gap-3 shadow-[0_0_18px_rgba(0,0,0,0.8)]">
-
-        <div className="mb-1">
-
-          <div className="text-[10px] font-semibold text-[#facc15]">
-
-            IA 3.0 Aurea Gold — Carteira PIX
-
+      <div className="rounded-lg border border-[#d4af37]/40 bg-black/80 px-2 py-2 flex flex-col gap-2 shadow-[0_0_14px_rgba(0,0,0,0.85)]">
+        {/* Cabeçalho da IA 3.0 */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-[10px] font-semibold text-[#facc15]">
+              IA 3.0 Aurea Gold — Carteira PIX
+            </div>
+            <div className="text-[9px] text-zinc-400">
+              Consultor focado em saldo, PIX, entradas, saídas e histórico do
+              seu Aurea Gold. Outros assuntos eu não atendo aqui.
+            </div>
           </div>
-
-          <div className="text-[9px] text-zinc-400">
-
-            Focada em saldo, PIX, entradas, saídas e histórico do seu Aurea Gold. Outros assuntos eu não atendo aqui.
-
-          </div>
-
+          <span className="text-[9px] px-2 py-0.5 rounded-full border border-[#d4af37]/60 bg-black/70 text-[#d4af37]">
+            IA 3.0
+          </span>
         </div>
+
+        {/* Selo visual quando modo consultor financeiro estiver ativo */}
+        {hasConsultorFinanceiro && (
+          <div className="mt-1 rounded-md border border-emerald-500/60 bg-black/80 px-2 py-1 text-[9px] text-emerald-300 flex items-center justify-between gap-2">
+            <span className="font-semibold text-emerald-400">
+              Consultor financeiro ativado
+            </span>
+            <span className="text-[8px] text-emerald-200/80">
+              Analisando seu PIX deste mês e sugerindo ajustes.
+            </span>
+          </div>
+        )}
+
         {/* Lista de mensagens */}
         <div
           ref={listRef}
-          className="h-40 max-h-56 md:h-52 md:max-h-64 overflow-y-auto pr-1 space-y-1.5"
+          className="h-44 max-h-60 md:h-52 md:max-h-64 overflow-y-auto pr-1 space-y-1"
         >
-          {
-            messages.map((m) => {
-              const isConsultorHighlight =
-                m.role === "assistant" &&
-                m.text.startsWith("📊 Fechamento do seu mês no PIX");
-
-              const baseClasses =
-                "px-2 py-1 rounded-md text-[10px] leading-snug " +
-                (m.role === "user"
+          {messages.map((m) => (
+            <div
+              key={m.id}
+              className={`px-2 py-1 rounded-md text-[10px] leading-snug ${
+                m.role === "user"
                   ? "bg-[#1f2a00] text-zinc-50 self-end border border-[#d4af37]/50 text-right"
-                  : "bg-[#050505] text-zinc-200 border border-[#444]/60 text-left");
-
-              const consultorClasses = isConsultorHighlight
-                ? " border-[#facc15]/80 shadow-md shadow-[#facc15]/40"
-                : "";
-
-              return (
-                <div
-                  key={m.id}
-                  className={baseClasses + consultorClasses}
-                >
-                  <span className="block text-[9px] opacity-60 mb-0.5">
-                    {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
-                  </span>
-                  <div className="whitespace-pre-line">{m.text}</div>
-                </div>
-              );
-            })
-          }
+                  : "bg-[#050505] text-zinc-200 border border-[#444]/60 text-left"
+              }`}
+            >
+              <span className="block text-[9px] opacity-60 mb-0.5">
+                {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
+              </span>
+              <div className="whitespace-pre-line">{m.text}</div>
+            </div>
+          ))}
         </div>
 
         {/* Erro, se houver */}
@@ -183,23 +187,27 @@ export default function AureaAIChat() {
           <button
             type="button"
             onClick={() => handleQuick("meu saldo hoje")}
-            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition w-full sm:w-auto text-center"
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
             Saldo hoje (PIX)
           </button>
           <button
             type="button"
-            onClick={() => handleQuick("quais foram minhas entradas do mês no pix?")}
-            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition w-full sm:w-auto text-center"
+            onClick={() =>
+              handleQuick("quais foram minhas entradas do mês no pix?")
+            }
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
             Entradas do mês no PIX
           </button>
           <button
             type="button"
-            onClick={() => handleQuick("me mostra o histórico do mês no pix")}
-            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition w-full sm:w-auto text-center"
+            onClick={() =>
+              handleQuick("me mostra o histórico do mês no pix")
+            }
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
             Histórico do mês (PIX)
@@ -231,13 +239,13 @@ export default function AureaAIChat() {
             Resumo do mês
           </button>
           <button
-  type="button"
-  onClick={handleClear}
-  disabled={loading}
-  className="h-7 px-3 rounded-md border border-[#444]/60 bg-[#111]/80 text-[10px] hover:border-[#d4af37]/80 active:scale-[0.97] transition disabled:opacity-40 disabled:cursor-not-allowed"
->
-  Limpar
-</button>
+            type="button"
+            onClick={handleClear}
+            disabled={loading}
+            className="h-7 px-3 rounded-md border border-[#333]/80 bg-[#111]/80 text-[10px] text-zinc-200 hover:border-red-400 hover:text-red-200 active:scale-[0.97] transition"
+          >
+            Limpar
+          </button>
         </form>
       </div>
     </section>
