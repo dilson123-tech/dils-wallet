@@ -135,14 +135,14 @@ export default function ChartSuper2() {
   if (Math.abs(totalNet) < 0.01) {
     resumoTitulo = "Semana neutra no PIX";
     resumoLinha =
-      "Entradas e saídas ficaram praticamente empatadas nos últimos 7 dias. A carteira Aurea Gold seguiu estável.";
+      "Entradas e saídas ficaram praticamente empatadas nos últimos 7 dias. É uma semana controlada, sem impacto forte no saldo.";
   } else if (totalNet > 0) {
-    resumoTitulo = "Semana positiva no PIX";
+    resumoTitulo = "Semana saudável no PIX";
     resumoLinha = `Entrou mais do que saiu: saldo líquido aproximado de ${fmtBRL(
       totalNet
     )} nos últimos 7 dias.`;
   } else {
-    resumoTitulo = "Semana de atenção com mais saídas";
+    resumoTitulo = "Semana de atenção no PIX";
     resumoLinha = `Saiu mais do que entrou: saldo líquido aproximado de ${fmtBRL(
       totalNet
     )} (negativo) nos últimos 7 dias. A carteira Aurea Gold ganhou fôlego nesse período.`;

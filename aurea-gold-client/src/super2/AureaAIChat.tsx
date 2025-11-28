@@ -118,7 +118,7 @@ export default function AureaAIChat() {
 
   return (
     <section className="mt-4 text-[11px]">
-      <div className="rounded-lg border border-[#d4af37]/30 bg-black/80 px-2 py-2 flex flex-col gap-2">
+      <div className="rounded-lg border border-[#d4af37]/40 bg-black/90 px-3 py-3 flex flex-col gap-2 sm:gap-3 shadow-[0_0_18px_rgba(0,0,0,0.8)]">
 
         <div className="mb-1">
 
@@ -138,23 +138,37 @@ export default function AureaAIChat() {
         {/* Lista de mensagens */}
         <div
           ref={listRef}
-          className="h-44 max-h-60 md:h-52 md:max-h-64 overflow-y-auto pr-1 space-y-1"
+          className="h-40 max-h-56 md:h-52 md:max-h-64 overflow-y-auto pr-1 space-y-1.5"
         >
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`px-2 py-1 rounded-md text-[10px] leading-snug ${
-                m.role === "user"
+          {
+            messages.map((m) => {
+              const isConsultorHighlight =
+                m.role === "assistant" &&
+                m.text.startsWith("📊 Fechamento do seu mês no PIX");
+
+              const baseClasses =
+                "px-2 py-1 rounded-md text-[10px] leading-snug " +
+                (m.role === "user"
                   ? "bg-[#1f2a00] text-zinc-50 self-end border border-[#d4af37]/50 text-right"
-                  : "bg-[#050505] text-zinc-200 border border-[#444]/60 text-left"
-              }`}
-            >
-              <span className="block text-[9px] opacity-60 mb-0.5">
-                {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
-              </span>
-              <div className="whitespace-pre-line">{m.text}</div>
-            </div>
-          ))}
+                  : "bg-[#050505] text-zinc-200 border border-[#444]/60 text-left");
+
+              const consultorClasses = isConsultorHighlight
+                ? " border-[#facc15]/80 shadow-md shadow-[#facc15]/40"
+                : "";
+
+              return (
+                <div
+                  key={m.id}
+                  className={baseClasses + consultorClasses}
+                >
+                  <span className="block text-[9px] opacity-60 mb-0.5">
+                    {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
+                  </span>
+                  <div className="whitespace-pre-line">{m.text}</div>
+                </div>
+              );
+            })
+          }
         </div>
 
         {/* Erro, se houver */}
@@ -169,7 +183,7 @@ export default function AureaAIChat() {
           <button
             type="button"
             onClick={() => handleQuick("meu saldo hoje")}
-            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition w-full sm:w-auto text-center"
             disabled={loading}
           >
             Saldo hoje (PIX)
@@ -177,7 +191,7 @@ export default function AureaAIChat() {
           <button
             type="button"
             onClick={() => handleQuick("quais foram minhas entradas do mês no pix?")}
-            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition w-full sm:w-auto text-center"
             disabled={loading}
           >
             Entradas do mês no PIX
@@ -185,7 +199,7 @@ export default function AureaAIChat() {
           <button
             type="button"
             onClick={() => handleQuick("me mostra o histórico do mês no pix")}
-            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition w-full sm:w-auto text-center"
             disabled={loading}
           >
             Histórico do mês (PIX)

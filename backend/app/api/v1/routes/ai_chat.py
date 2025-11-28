@@ -210,8 +210,9 @@ async def ai_chat(
                 )
             }
 
-        resumo = _ia3_get_pix_month_summary(x_user_email)
-        _reply = _ia3_build_consulting_reply(resumo)
+        balance = await _get_pix_balance(x_user_email)
+        balance = await _get_pix_balance(x_user_email)
+        _reply = _ia3_build_consulting_reply(balance)
         return {"reply": _reply}
 
     user_hint = (
@@ -295,8 +296,8 @@ async def ai_chat(
         ]
     ):
         tema_label = "modo consultor financeiro"
-        resumo = _ia3_get_pix_month_summary(x_user_email)
-        tema_reply = _ia3_build_consulting_reply(resumo)
+        balance = await _get_pix_balance(x_user_email)
+        tema_reply = _ia3_build_consulting_reply(balance)
 
     elif "pix" in norm_msg:
         tema_label = "PIX"
@@ -337,8 +338,8 @@ async def ai_chat(
         ]
     ):
         tema_label = "modo consultor financeiro"
-        resumo = _ia3_get_pix_month_summary(x_user_email)
-        tema_reply = _ia3_build_consulting_reply(resumo)
+        balance = await _get_pix_balance(x_user_email)
+        tema_reply = _ia3_build_consulting_reply(balance)
 
     else:
         tema_reply = (
@@ -549,3 +550,154 @@ def _ia3_build_consulting_reply(resumo: dict) -> str:
 
     return "\n".join(linhas)
 
+
+# === IA 3.0 – helper atualizado para modo consultor financeiro (resumo do mês) ===
+def _ia3_build_consulting_reply(resumo):
+    """
+    Monta a resposta em modo consultor financeiro usando o resumo mensal do PIX.
+    Espera um dict parecido com:
+      - entradas_mes / entradas
+      - saidas_mes / saidas
+      - saldo_mes / saldo / saldo_atual
+    Mas é tolerante se alguma chave vier faltando.
+    """
+
+    if not resumo:
+        return (
+            "Vou te ajudar com o seu mês no PIX assim que eu tiver dados consolidados.\n\n"
+            "Por enquanto não encontrei movimentações suficientes para montar um fechamento. "
+            "Se você já começou a usar o Aurea Gold hoje, é normal ainda não aparecer nada. "
+            "Tente novamente depois de fazer algumas entradas e saídas via PIX."
+        )
+
+    # Tenta ler valores com fallback em nomes diferentes
+    def _num(value):
+        try:
+            return float(value or 0)
+        except Exception:
+            return 0.0
+
+    entradas = _num(
+        resumo.get("entradas_mes")
+        or resumo.get("entradas")
+        or resumo.get("total_entradas")
+    )
+    saidas = _num(
+        resumo.get("saidas_mes")
+        or resumo.get("saidas")
+        or resumo.get("total_saidas")
+    )
+    saldo = _num(
+        resumo.get("saldo_mes")
+        or resumo.get("saldo")
+        or resumo.get("saldo_atual")
+        or (entradas - saidas)
+    )
+
+    # Classificação do mês
+    if entradas <= 0 and saidas <= 0:
+        status = "sem_movimento"
+        faixa_label = "mês quase sem movimento"
+        resumo_status = (
+            "Você teve pouca ou nenhuma movimentação via PIX neste mês. "
+            "É um cenário neutro: não há riscos, mas também não há volume para analisar."
+        )
+        recomendacoes = [
+            "Usar o Aurea Gold como conta principal para concentrar seus recebimentos.",
+            "Registrar pelo menos um fluxo real de entradas e saídas para a IA acompanhar.",
+        ]
+    else:
+        gasto_ratio = None
+        if entradas > 0:
+            gasto_ratio = saidas / entradas
+
+        if gasto_ratio is None:
+            # Entradas zero mas saídas > 0 → claramente crítico
+            status = "estourado"
+            faixa_label = "mês crítico no PIX"
+            resumo_status = (
+                "Você teve saídas relevantes sem um volume claro de entradas. "
+                "Isso indica risco de depender de outras fontes para cobrir o caixa."
+            )
+            recomendacoes = [
+                "Reduzir gastos imediatos via PIX até equilibrar as entradas.",
+                "Definir um valor mínimo de entrada mensal antes de assumir novos compromissos.",
+            ]
+        elif gasto_ratio < 0.4:
+            status = "muito_saudavel"
+            faixa_label = "mês muito saudável"
+            resumo_status = (
+                "Suas saídas ficaram bem abaixo das entradas. "
+                "O mês está no azul com folga, com boa margem para reserva ou investimento."
+            )
+            recomendacoes = [
+                "Separar uma parte fixa das entradas para reserva (ex.: 20% todo mês).",
+                "Definir uma meta de saldo mínimo para manter sempre no Aurea Gold.",
+            ]
+        elif gasto_ratio <= 0.8:
+            status = "controlado"
+            faixa_label = "mês controlado"
+            resumo_status = (
+                "Suas saídas ficaram em um nível confortável em relação às entradas. "
+                "O mês está sob controle, mas ainda existe espaço para otimizar gastos."
+            )
+            recomendacoes = [
+                "Rever pequenos gastos recorrentes via PIX e cortar o que não é essencial.",
+                "Definir um teto de saídas mensal e acompanhar no painel Super2.",
+            ]
+        elif saidas <= entradas:
+            status = "no_limite"
+            faixa_label = "mês no limite"
+            resumo_status = (
+                "Suas saídas ficaram muito próximas do total de entradas. "
+                "Qualquer gasto extra pode colocar o mês no vermelho."
+            )
+            recomendacoes = [
+                "Congelar novos gastos via PIX até abrir mais folga no saldo.",
+                "Acompanhar o painel Super2 semanalmente para ajustar o ritmo de gastos.",
+            ]
+        else:
+            status = "estourado"
+            faixa_label = "mês estourado"
+            resumo_status = (
+                "As saídas superaram as entradas neste mês. "
+                "Isso indica um cenário de atenção máxima com o fluxo de PIX."
+            )
+            recomendacoes = [
+                "Priorizar apenas pagamentos essenciais via PIX até recuperar o saldo.",
+                "Planejar o próximo mês com um limite de saídas menor do que as entradas esperadas.",
+            ]
+
+    # Monta texto final em formato consultor Aurea Gold
+    linhas = []
+
+    linhas.append("📊 Fechamento do seu mês no PIX – modo consultor Aurea Gold 3.0\n")
+
+    linhas.append(
+        f"- Entradas no mês: R$ {entradas:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    )
+    linhas.append(
+        f"- Saídas no mês:   R$ {saidas:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    )
+    linhas.append(
+        f"- Saldo do mês:    R$ {saldo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    )
+    linhas.append("")
+
+    linhas.append(f"Situação geral: {faixa_label}.")
+    linhas.append(resumo_status)
+    linhas.append("")
+
+    linhas.append("Recomendo para este mês:")
+    for rec in recomendacoes:
+        linhas.append(f"- {rec}")
+
+    linhas.append("")
+    linhas.append(
+        "Lembrete: esta análise é focada apenas nos movimentos do seu Aurea Gold via PIX. "
+        "Ela não substitui um planejamento financeiro completo, mas já te dá um radar "
+        "para acompanhar seu mês de forma prática."
+    )
+
+    # status fica só interno por enquanto (não expomos como JSON aqui)
+    return "\n".join(linhas)
