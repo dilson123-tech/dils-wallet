@@ -19,7 +19,17 @@ import ErrorBoundary from "./shared/ErrorBoundary";
 const path = location.pathname;
 
 // LAB primeiro (senão /super2-lab cai no /super2)
-if (path.startsWith("/super2-lab") || path.startsWith("/super2lab")) {
+if (path.startsWith("/pagamentos-lab")) {
+  import("./pagamentos/PanelPagamentos").then(({ default: PanelPagamentos }) => {
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <PanelPagamentos />
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
+  });
+} else if (path === "/super2lab") {
   import("./super2-lab/Super2Lab").then(({ default: Super2Lab }) => {
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
