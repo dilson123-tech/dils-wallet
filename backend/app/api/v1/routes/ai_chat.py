@@ -1,3 +1,4 @@
+import textwrap
 from fastapi import APIRouter, Header
 from pydantic import BaseModel
 from typing import Optional
@@ -236,6 +237,55 @@ async def ai_chat(
     # tenta carregar dados de PIX só quando for relevante
     balance: Optional[dict] = None
     history: Optional[list] = None
+
+
+        # Atalhos diretos para botões do painel Super2:
+    # "Entradas do mês no PIX" e "Histórico/Saídas do mês"
+    try:
+        if any(
+            p in norm_msg
+            for p in [
+                "entradas do mes no pix",
+                "entradas do mês no pix",
+                "entradas no pix esse mes",
+                "entradas no pix esse mês",
+            ]
+        ):
+            resumo = _ia3_get_pix_month_summary(x_user_email)
+            if resumo:
+                reply = _ia3_build_entradas_mes_reply(resumo)
+            else:
+                reply = (
+                    "Não consegui carregar agora as entradas do mês via PIX.\n\n"
+                    "Tente novamente em alguns instantes ou confira as entradas no painel Super2."
+                )
+            return {"reply": reply, "tema": "entradas_mes_pix"}
+
+        if any(
+            p in norm_msg
+            for p in [
+                "saidas do mes no pix",
+                "saídas do mês no pix",
+                "gastos do mes no pix",
+                "gastos do mês no pix",
+            ]
+        ):
+            resumo = _ia3_get_pix_month_summary(x_user_email)
+            if resumo:
+                reply = _ia3_build_saidas_mes_reply(resumo)
+            else:
+                reply = (
+                    "Não consegui carregar agora as saídas do mês via PIX.\n\n"
+                    "Tente novamente em alguns instantes ou confira as saídas no painel Super2."
+                )
+            return {"reply": reply, "tema": "saidas_mes_pix"}
+    except Exception:
+        # Se der qualquer erro interno, não quebra a API:
+        reply = (
+            "Não consegui processar agora os dados de ENTRADAS/SAÍDAS do mês via PIX.\n\n"
+            "Tente novamente em alguns instantes ou confira os valores direto no painel Super2."
+        )
+        return {"reply": reply, "tema": "erro_pix_mes"}
 
     if any(p in norm_msg for p in ["saldo", "quanto tenho", "quanto eu tenho"]):
         tema_label = "saldo"
@@ -588,3 +638,54 @@ def _ia3_build_consulting_reply(balance: dict | None) -> str:
         f"Atendo você usando o cadastro: {balance.get('email') or 'seu usuário Aurea Gold'}."
     )
     return texto
+
+
+def _ia3_build_entradas_mes_reply(resumo: dict) -> str:
+    """Resposta IA 3.0 focada nas ENTRADAS do mês via PIX."""
+    saldo_atual = resumo["saldo_atual"]
+    entradas = resumo["entradas_mes"]
+    saidas = resumo["saidas_mes"]
+    resultado_mes = resumo["resultado_mes"]
+
+    def fmt_brl(v: float) -> str:
+        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    return (
+        "💰 IA 3.0 da Aurea Gold\n\n"
+        "Aqui está o panorama das **entradas do mês via PIX**:\n\n"
+        f"• Entradas no mês (PIX): **{fmt_brl(entradas)}**\n"
+        f"• Saídas no mês (PIX): {fmt_brl(saidas)}\n"
+        f"• Resultado do mês (PIX): {fmt_brl(resultado_mes)}\n"
+        f"• Saldo atual na carteira PIX: {fmt_brl(saldo_atual)}\n\n"
+        "O que isso quer dizer:\n"
+        "- Se as entradas estão fortes, está entrando bastante dinheiro via PIX.\n"
+        "- Se estiver baixo, pode ser sinal de que você precisa reforçar vendas, cobranças e recorrências.\n\n"
+        "Se quiser, posso te ajudar também com **saídas do mês no PIX** ou ativar o "
+        "**modo consultor financeiro** para um diagnóstico mais completo do seu mês."
+    )
+
+
+def _ia3_build_saidas_mes_reply(resumo: dict) -> str:
+    """Resposta IA 3.0 focada nas SAÍDAS do mês via PIX."""
+    saldo_atual = resumo["saldo_atual"]
+    entradas = resumo["entradas_mes"]
+    saidas = resumo["saidas_mes"]
+    resultado_mes = resumo["resultado_mes"]
+
+    def fmt_brl(v: float) -> str:
+        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    return (
+        "💳 IA 3.0 da Aurea Gold\n\n"
+        "Aqui está o panorama das **saídas do mês via PIX**:\n\n"
+        f"• Saídas no mês (PIX): **{fmt_brl(saidas)}**\n"
+        f"• Entradas no mês (PIX): {fmt_brl(entradas)}\n"
+        f"• Resultado do mês (PIX): {fmt_brl(resultado_mes)}\n"
+        f"• Saldo atual na carteira PIX: {fmt_brl(saldo_atual)}\n\n"
+        "Como interpretar:\n"
+        "- Se as saídas estão muito altas, pode ser sinal de gastos puxados no mês.\n"
+        "- Se estiver equilibrado com as entradas, o fluxo está mais controlado.\n"
+        "- Se o resultado do mês estiver negativo, vale revisar onde está indo a maior parte do dinheiro.\n\n"
+        "Se quiser, posso ligar o **modo consultor financeiro** para te dar um diagnóstico completo "
+        "do mês e recomendações práticas sobre como organizar melhor seus PIX."
+    )
