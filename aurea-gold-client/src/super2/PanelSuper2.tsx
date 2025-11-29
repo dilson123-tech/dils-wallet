@@ -83,8 +83,8 @@ export default function PanelSuper2() {
   }
 
   return (
-    <div className="aurea-super2 min-h-screen flex items-start justify-center px-2 pt-10 pb-20 bg-black text-[#f5f5f5]">
-      <main className="aurea-panel w-full max-w-[380px] rounded-2xl border border-[#d4af37]/40 bg-black/80 backdrop-blur-xl px-4 pb-4 pt-3 shadow-[0_0_28px_rgba(0,0,0,0.9)]">
+    <div className="aurea-super2 min-h-screen flex justify-center items-start bg-[#020617] text-[#f5f5f5] px-2 py-6 sm:py-10">
+      <main className="aurea-panel w-full max-w-sm rounded-2xl border border-[#d4af37]/40 bg-black/80 backdrop-blur-xl px-4 pb-4 pt-3 shadow-[0_0_35px_rgba(0,0,0,0.95)]">
         <header className="mb-3 flex items-center justify-between gap-2">
           <div>
             <div className="text-sm font-semibold tracking-wide text-[#d4af37] drop-shadow-[0_0_4px_#d4af37]">
