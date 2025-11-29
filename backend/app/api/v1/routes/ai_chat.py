@@ -689,3 +689,66 @@ def _ia3_build_saidas_mes_reply(resumo: dict) -> str:
         "Se quiser, posso ligar o **modo consultor financeiro** para te dar um diagnóstico completo "
         "do mês e recomendações práticas sobre como organizar melhor seus PIX."
     )
+# === IA 3.0 – Laboratório de Pagamentos ===
+
+@router.post("/pagamentos_lab")
+async def pagamentos_lab(payload: dict, x_user_email: str = Header(None)):
+    msg = (payload.get("message") or "").strip()
+    norm = (msg or "").lower()
+
+    # Versão LAB: responde com textos explicativos, ainda sem dados reais de contas
+    if "risco" in norm and "atras" in norm and "conta" in norm:
+        reply = (
+            "🧠 IA 3.0 da Aurea Gold — Risco de atraso\n\n"
+            "Olhei para a ideia das suas contas e vencimentos e, nesta versão de laboratório,\n"
+            "ainda estou usando dados de exemplo. Quando eu estiver ligada às suas contas reais,\n"
+            "vou analisar vencimentos dos próximos dias, comparar com o saldo da Carteira PIX\n"
+            "e classificar se o cenário está tranquilo, em atenção ou em alerta de atraso.\n\n"
+            "Por enquanto, use o painel de Pagamentos para ver:\n"
+            "- Contas de hoje,\n"
+            "- Contas dos próximos 7 dias,\n"
+            "- Contas cadastradas do mês.\n\n"
+            "Se quiser, pode perguntar também: 'quanto vou pagar de contas esta semana?'\n"
+            "ou 'quais contas faz sentido pagar hoje?'."
+        )
+    elif "semana" in norm and "conta" in norm:
+        reply = (
+            "🧠 IA 3.0 da Aurea Gold — Contas desta semana\n\n"
+            "Na versão completa, eu vou somar todas as contas que vencem nos próximos 7 dias,\n"
+            "comparar com o saldo da Carteira PIX e te mostrar o peso dessa semana no seu caixa.\n\n"
+            "Aqui no laboratório, o painel mostra um exemplo de como isso fica organizado,\n"
+            "com vencimentos em 'Hoje', 'Próximos 7 dias' e 'Este mês'.\n\n"
+            "A ideia é que você consiga bater o olho e entender:\n"
+            "- quantas contas vêm na semana,\n"
+            "- o valor total,\n"
+            "- e quanto deve sobrar de saldo depois dos pagamentos."
+        )
+    elif "pagar hoje" in norm or "faz sentido pagar hoje" in norm:
+        reply = (
+            "🧠 IA 3.0 da Aurea Gold — Ordem sugerida de pagamento\n\n"
+            "Quando eu estiver ligada às suas contas reais, vou montar uma ordem inteligente\n"
+            "de pagamento para o dia, priorizando:\n"
+            "- contas atrasadas ou perto do vencimento,\n"
+            "- contas essenciais (moradia, luz, água, internet, trabalho),\n"
+            "- impacto no saldo da Carteira PIX.\n\n"
+            "Na prática, a ideia é eu te dizer algo como:\n"
+            "1) quais contas pagar primeiro,\n"
+            "2) quais podem esperar alguns dias,\n"
+            "3) e qual fica o saldo provável depois disso.\n\n"
+            "Nesta fase LAB, você já consegue visualizar essa lógica no painel,\n"
+            "mas ainda sem cálculos reais ligados ao seu cadastro."
+        )
+    else:
+        reply = (
+            "💬 IA 3.0 da Aurea Gold — Painel de Pagamentos (LAB)\n\n"
+            "Aqui eu vou te ajudar a responder três grandes perguntas:\n"
+            "- Tenho risco de atrasar alguma conta?\n"
+            "- Quanto vou pagar de contas esta semana?\n"
+            "- Quais contas faz sentido pagar hoje?\n\n"
+            "Nesta versão de laboratório, estou explicando como vou funcionar quando estiver\n"
+            "ligada às suas contas reais e ao saldo da Carteira PIX.\n"
+            "Use o painel para ir se acostumando com a visão de vencimentos e organização."
+        )
+
+    return {"reply": reply, "tema": "pagamentos_lab"}
+
