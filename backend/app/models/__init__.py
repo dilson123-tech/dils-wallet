@@ -10,3 +10,4 @@ for _m in pkgutil.iter_modules([str(_pkg_path)]):
     importlib.import_module(f"{__name__}.{name}")
 
 __all__ = ["Base"]
+from .reservas import Reserva
