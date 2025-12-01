@@ -68,3 +68,13 @@ if __name__ == "__main__":
 # --- AUREA GOLD: IA 3.0 cliente (/api/v1/ai/chat) ---
 from app.api.v1.routes import ai_chat
 app.include_router(ai_chat.router)
+
+# --- Aurea Gold • Painel Receitas & Reservas LAB ---
+from app.api.v1.routes import reservas_lab as reservas_lab_router
+
+app.include_router(reservas_lab_router.router, prefix="/api/v1")
+
+# Painel Receitas & Reservas - endpoint oficial
+# from app.api.v1.routes import reservas as reservas_router  # desativado (arquivo removido)
+
+# app.include_router(reservas_router.router, prefix="/api/v1")
