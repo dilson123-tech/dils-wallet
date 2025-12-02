@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { IaHeadlineLab } from "./IaHeadlineLab";
 import { fetchPixBalance, PixBalancePayload } from "./api";
 
 type Point = {
@@ -22,66 +23,11 @@ export default function ChartSuper2() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
+    useEffect(() => {
+    console.log("DEBUG_CHART_SUPER2_IA_HEADLINE_LOG");
     console.log("CHART SUPER2 MOUNTED");
-    (async () => {
-      try {
-        setLoading(true);
-        setErr(null);
-        const data: PixBalancePayload = await fetchPixBalance();
-        console.log("SUPER2 balance payload =>", data);
-
-        let serie: Point[] = (data.ultimos_7d || []).map((d) => {
-          const entradas = d.entradas || 0;
-          const saidas = d.saidas || 0;
-          return {
-            dia: d.dia,
-            entradas,
-            saidas,
-            net: entradas - saidas,
-          };
-        });
-
-        const hasNonZero = serie.some((p) => p.net !== 0);
-
-        // Fallback sintético se vier tudo zerado
-        if (!hasNonZero) {
-          const dias = serie.length || 7;
-          const magnitude =
-            Math.abs(data.entradas_mes || 0) + Math.abs(data.saidas_mes || 0) || 100;
-
-          if (!serie.length) {
-            const hoje = new Date();
-            serie = Array.from({ length: dias }, (_, idx) => {
-              const d = new Date(hoje);
-              d.setDate(hoje.getDate() - (dias - 1 - idx));
-              const label = d.toISOString().slice(0, 10);
-              return { dia: label, entradas: 0, saidas: 0, net: 0 };
-            });
-          }
-
-          serie = serie.map((p, idx) => {
-            const factor = (idx + 1) / dias;
-            const sinal = idx % 2 === 0 ? 1 : -1;
-            const v = (magnitude / dias) * factor * 0.25 * sinal;
-
-            return {
-              dia: p.dia,
-              entradas: v > 0 ? v : 0,
-              saidas: v < 0 ? -v : 0,
-              net: v,
-            };
-          });
-        }
-
-        setPoints(serie);
-      } catch (e: any) {
-        setErr(e?.message ?? "Falha ao carregar gráfico");
-      } finally {
-        setLoading(false);
-      }
-    })();
   }, []);
+
 
   if (loading) {
     return <div className="text-xs text-zinc-400">Carregando gráfico...</div>;
@@ -93,7 +39,7 @@ export default function ChartSuper2() {
 
   if (!points.length) {
     return (
-      <div className="text-xs text-zinc-400">
+      <div className="text-xs text-zinc-400">      <IaHeadlineLab />
         Sem dados dos últimos 7 dias.
       </div>
     );

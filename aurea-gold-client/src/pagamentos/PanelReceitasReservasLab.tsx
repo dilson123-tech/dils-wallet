@@ -10,7 +10,7 @@ type Receita = {
   origem: string;
   valor: number;
   data: string;
-  status: "confirmada" | "pendente";
+  status: string;
 };
 
 type Reserva = {
@@ -19,7 +19,7 @@ type Reserva = {
   recurso: string;
   data: string;
   horario: string;
-  status: "ativa" | "cancelada" | "concluída";
+  status: string;
 };
 
 type Periodo = PainelReservasPeriodo;
