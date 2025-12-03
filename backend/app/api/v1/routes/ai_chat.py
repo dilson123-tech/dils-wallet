@@ -752,3 +752,44 @@ async def pagamentos_lab(payload: dict, x_user_email: str = Header(None)):
 
     return {"reply": reply, "tema": "pagamentos_lab"}
 
+
+# === Alias de compatibilidade para IA 3.0 (consultor financeiro) ===
+# Alguns pontos da codebase ainda chamam ia3_build_consulting_replyv (com "v").
+# Este alias só repassa para a função oficial ia3_build_consulting_reply.
+def ia3_build_consulting_replyv(*args, **kwargs):
+    """Alias de compatibilidade: delega para ia3_build_consulting_reply."""
+    return ia3_build_consulting_reply(*args, **kwargs)
+
+
+from app.api.v1.ai import build_ia_headline_panel
+from fastapi import Header
+
+# === IA 3.0 – Endpoint LAB do Headline (Painel 3) ===
+@router.post("/ai/headline-lab")
+async def ia_headline_lab(x_user_email: str = Header(None)):
+    """Versão LAB do Headline IA 3.0.
+
+    Por enquanto usa números de exemplo para não depender do ledger real.
+    Depois plugamos nos dados reais do painel Super2.
+    """
+    # TODO: puxar dados reais do Pix / reservas
+    saldo_atual = 1280.0
+    entradas_7d = 4500.0
+    saidas_7d = 4230.0
+    entradas_mes = 4500.0
+    saidas_mes = 4230.0
+    total_contas_7d = 980.0
+    qtd_contas_7d = 3
+    entradas_previstas = 0.0
+
+    resp = build_ia_headline_panel(
+        saldo_atual=saldo_atual,
+        entradas_7d=entradas_7d,
+        saidas_7d=saidas_7d,
+        entradas_mes=entradas_mes,
+        saidas_mes=saidas_mes,
+        total_contas_7d=total_contas_7d,
+        qtd_contas_7d=qtd_contas_7d,
+        entradas_previstas=entradas_previstas,
+    )
+    return resp

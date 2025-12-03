@@ -1,10 +1,12 @@
 import React from "react";
+import { IaHeadlineLab } from "../super2/IaHeadlineLab";
 import ChartSuper2Lab from "./ChartSuper2Lab";
 import AureaAIChatLab from "./AureaAIChatLab";
 
 export default function Super2Lab() {
   return (
     <div className="aurea-super2 min-h-screen flex items-start justify-center pt-10 pb-20 bg-black text-[#f5f5f5]">
+      <IaHeadlineLab />
       <main className="aurea-panel w-[360px] max-w-full rounded-2xl border border-[#d4af37]/40 bg-black/80 backdrop-blur-xl px-4 pb-4 pt-3">
         <header className="mb-2">
           <div className="text-sm font-semibold tracking-wide text-[#d4af37] drop-shadow-[0_0_4px_#d4af37]">

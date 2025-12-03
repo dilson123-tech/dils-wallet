@@ -1,23 +1,23 @@
-export const API_BASE_RESERVAS =
-  (import.meta as any).env.VITE_API_BASE || "http://127.0.0.1:8000";
+export const API_BASE =
+  (import.meta as any).env.VITE_API_BASE || "http://127.0.0.1:8080";
 
 export type PainelReservasPeriodo = "hoje" | "7d" | "30d";
 
-export interface PainelReservasReceitaDTO {
+export interface PainelReceitaDTO {
   id: number;
   origem: string;
   valor: number;
   data: string;
-  status: "confirmada" | "pendente";
+  status: string;
 }
 
-export interface PainelReservasReservaDTO {
+export interface PainelReservaDTO {
   id: number;
   cliente: string;
   recurso: string;
   data: string;
   horario: string;
-  status: "ativa" | "cancelada" | "concluída";
+  status: string;
 }
 
 export interface PainelReservasTotaisDTO {
@@ -26,38 +26,29 @@ export interface PainelReservasTotaisDTO {
 }
 
 export interface PainelReservasResponseDTO {
-  periodo: PainelReservasPeriodo;
+  periodo: string;
   label_periodo: string;
-  receitas: PainelReservasReceitaDTO[];
-  reservas: PainelReservasReservaDTO[];
+  receitas: PainelReceitaDTO[];
+  reservas: PainelReservaDTO[];
   totais: PainelReservasTotaisDTO;
 }
 
-/**
- * Endpoint oficial do painel de reservas:
- * GET /api/v1/reservas/painel?periodo=hoje|7d|30d
- */
-export async function fetchPainelReservasLab(
-  periodo: PainelReservasPeriodo
+// Endpoint oficial do painel de reservas
+// GET /api/v1/reservas/painel?periodo=7d
+export async function fetchPainelReservas(
+  periodo: PainelReservasPeriodo = "7d"
 ): Promise<PainelReservasResponseDTO> {
-  const url = `${API_BASE_RESERVAS}/api/v1/reservas/painel?periodo=${encodeURIComponent(
-    periodo
-  )}`;
+  const url = `${API_BASE}/api/v1/reservas/painel?periodo=${periodo}`;
+  const res = await fetch(url);
 
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`Erro ao carregar painel reservas: ${resp.status}`);
+  if (!res.ok) {
+    throw new Error(
+      `Erro ao carregar painel reservas: ${res.status} ${res.statusText}`
+    );
   }
-  return (await resp.json()) as PainelReservasResponseDTO;
+
+  const data = (await res.json()) as PainelReservasResponseDTO;
+  return data;
 }
 
-/**
- * Compatibilidade com o nome antigo usado pelo painel de pagamentos.
- */
-export type PagamentosAIResponseDTO = PainelReservasResponseDTO;
-
-export async function fetchPagamentosAI(
-  periodo: PainelReservasPeriodo = "hoje"
-): Promise<PagamentosAIResponseDTO> {
-  return fetchPainelReservasLab(periodo);
-}
+export const fetchPainelReservasLab = fetchPainelReservas;

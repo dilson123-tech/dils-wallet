@@ -27,6 +27,19 @@ interface AureaPixChartProps {
   summary?: Pix7dResponse | null;
 }
 
+// Dados simulados para modo LAB quando a API falhar
+const FALLBACK_PIX7D: Pix7dResponse = {
+  ultimos_7d: [
+    { dia: "Seg", entradas: 1200, saidas: 800, saldo_dia: 400 },
+    { dia: "Ter", entradas: 900, saidas: 600, saldo_dia: 300 },
+    { dia: "Qua", entradas: 1500, saidas: 1100, saldo_dia: 400 },
+    { dia: "Qui", entradas: 700, saidas: 500, saldo_dia: 200 },
+    { dia: "Sex", entradas: 2000, saidas: 1400, saldo_dia: 600 },
+    { dia: "Sáb", entradas: 800, saidas: 700, saldo_dia: 100 },
+    { dia: "Dom", entradas: 600, saidas: 400, saldo_dia: 200 },
+  ],
+};
+
 function fmtBRL(v: number | undefined): string {
   const n = typeof v === "number" && !Number.isNaN(v) ? v : 0;
   return (
@@ -66,7 +79,10 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
         setData(j);
       } catch (e: any) {
         if (!alive) return;
-        setErr(e?.message ?? "Falha ao carregar dados do gráfico");
+        // MODO LAB: em vez de quebrar com erro, caímos para dados simulados
+        console.error("[AureaPixChart] Falha ao carregar /api/v1/pix/7d, usando dados simulados:", e);
+        setErr(e?.message ?? "Falha ao carregar dados reais, usando exemplo LAB.");
+        setData(FALLBACK_PIX7D);
       } finally {
         if (alive) setLoading(false);
       }
@@ -88,11 +104,16 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
     );
   }
 
-  if (err && !raw.length) {
+  // Se der erro MAS já temos fallback, mostramos só um aviso discreto
+  if (err && raw.length) {
     return (
-      <p className="aurea-chart__empty text-[11px] text-red-400">
-        Erro ao carregar gráfico: {err}
-      </p>
+      <div className="space-y-1">
+        <p className="aurea-chart__empty text-[11px] opacity-70">
+          Não foi possível carregar os dados reais agora. Exibindo exemplo
+          simulado dos últimos 7 dias (modo LAB).
+        </p>
+        <ChartInner raw={raw} />
+      </div>
     );
   }
 
@@ -104,6 +125,10 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
     );
   }
 
+  return <ChartInner raw={raw} />;
+};
+
+function ChartInner({ raw }: { raw: Pix7dPoint[] }) {
   const chartData = raw.map((d) => ({
     name: d.dia,
     entradas: Number(d.entradas ?? 0),
@@ -173,6 +198,6 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
       </div>
     </div>
   );
-};
+}
 
 export default AureaPixChart;

@@ -1,4 +1,5 @@
 import React from "react";
+import PanelReservasIA3Lab from "./PanelReservasIA3Lab";
 
 export default function PanelPagamentos() {
   return (
@@ -17,6 +18,9 @@ export default function PanelPagamentos() {
         Quando a nova IA de pagamentos estiver pronta, este espaço volta
         com dados em tempo real.
       </p>
+      <div className="mt-4">
+      <PanelReservasIA3Lab />
     </div>
+  </div>
   );
 }
