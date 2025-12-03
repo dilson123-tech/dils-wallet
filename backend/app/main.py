@@ -78,3 +78,34 @@ app.include_router(reservas_lab_router.router, prefix="/api/v1")
 # from app.api.v1.routes import reservas as reservas_router  # desativado (arquivo removido)
 
 # app.include_router(reservas_router.router, prefix="/api/v1")
+
+
+# --- IA 3.0 – HEADLINE LAB (endpoint raiz para testes do Painel 3) ---
+from pydantic import BaseModel
+from fastapi import Header
+from app.api.v1.ai.headline import IAHeadlineResponse
+
+
+class IAHeadlineLabPayload(BaseModel):
+    message: str
+
+
+@app.post("/api/v1/ai/headline-lab", response_model=IAHeadlineResponse)
+async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str = Header(None)):
+    """Endpoint LAB para o Painel 3 da IA 3.0.
+
+    Por enquanto só devolve uma resposta fixa, confirmando que o POST
+    em /api/v1/ai/headline-lab está funcionando.
+    """
+    return IAHeadlineResponse(
+        nivel="ok",
+        headline="Aurea Gold – Headline LAB funcionando",
+        subheadline=f"Mensagem recebida: {payload.message}",
+        resumo="Endpoint /api/v1/ai/headline-lab respondeu com sucesso em ambiente LAB.",
+        destaques=[
+            "Status do Painel 3 operacional (LAB)",
+            "Integração backend → IA 3.0 ok",
+            "Pronto para ligar com dados reais depois",
+        ],
+        recomendacao="Agora é só conectar o Painel 3 e depois evoluir a lógica da IA."
+    )

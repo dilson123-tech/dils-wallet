@@ -4,6 +4,10 @@ import {
   type PainelReservasPeriodo,
   type PainelReservasResponseDTO,
 } from "./api";
+import {
+  fetchHeadlineLab,
+  type IAHeadlineResponse,
+} from "../ia/headlineLabClient";
 
 type Receita = {
   id: number;
@@ -168,6 +172,28 @@ export default function PanelReceitasReservasLab() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // IA 3.0 – Headline LAB (Painel 3)
+  const [headlineData, setHeadlineData] = useState<IAHeadlineResponse | null>(null);
+  const [headlineLoading, setHeadlineLoading] = useState(false);
+  const [headlineError, setHeadlineError] = useState<string | null>(null);
+
+  async function handleGerarHeadlineLab(message: string) {
+    try {
+      setHeadlineLoading(true);
+      setHeadlineError(null);
+
+      const resp = await fetchHeadlineLab(message);
+      setHeadlineData(resp);
+    } catch (err: any) {
+      console.error("Erro ao chamar HEADLINE LAB:", err);
+      setHeadlineError(
+        err?.message ?? "Falha ao gerar a headline da IA (LAB)."
+      );
+    } finally {
+      setHeadlineLoading(false);
+    }
+  }
+
   // carrega da API sempre que mudar o período
   useEffect(() => {
     let isMounted = true;
@@ -297,6 +323,59 @@ export default function PanelReceitasReservasLab() {
   return (
     <div className="w-full flex justify-center">
       <div className="w-full max-w-5xl bg-zinc-950 text-zinc-50 border border-amber-500/50 rounded-2xl p-4 md:p-6 shadow-[0_0_40px_rgba(251,191,36,0.20)]">
+        {/* IA 3.0 – Headline LAB */}
+        <div className="mt-3 md:mt-4 rounded-2xl border border-amber-500/40 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 p-4 md:p-5 shadow-[0_0_40px_rgba(251,191,36,0.18)]">
+          <div className="flex justify-between items-start gap-3">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-amber-300/80">
+                IA 3.0 • Headline LAB
+              </p>
+              <h3 className="text-sm md:text-base font-semibold text-zinc-50">
+                {headlineData?.headline ?? "Visão inteligente das suas reservas e receitas"}
+              </h3>
+              <p className="text-xs md:text-sm text-zinc-400">
+                {headlineData?.subheadline ??
+                  "Clique no botão abaixo para a IA analisar o painel e gerar uma headline executiva."}
+              </p>
+            </div>
+
+            <button
+              className="inline-flex items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 px-3 py-1 text-[11px] font-medium text-amber-200 hover:bg-amber-500/20 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={() =>
+                handleGerarHeadlineLab(
+                  "Analise minhas reservas e receitas deste painel e gere uma headline executiva."
+                )
+              }
+              disabled={headlineLoading}
+            >
+              {headlineLoading ? "Gerando..." : "Gerar Headline LAB"}
+            </button>
+          </div>
+
+          {headlineError && (
+            <p className="mt-2 text-[11px] text-rose-300">
+              {headlineError}
+            </p>
+          )}
+
+          {headlineData && (
+            <div className="mt-3 space-y-2 text-xs md:text-sm">
+              <p className="text-zinc-300 whitespace-pre-line">
+                {headlineData.resumo}
+              </p>
+
+              <ul className="list-disc list-inside space-y-1 text-zinc-200">
+                {headlineData.destaques.map((d, idx) => (
+                  <li key={idx}>{d}</li>
+                ))}
+              </ul>
+
+              <p className="text-amber-300 font-medium">
+                {headlineData.recomendacao}
+              </p>
+            </div>
+          )}
+        </div>
         {/* Header */}
         <div className="flex flex-col gap-2 mb-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">

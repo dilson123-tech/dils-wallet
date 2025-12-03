@@ -19,7 +19,17 @@ export const IaHeadlineLab: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/v1/ai/headline_lab");
+        const res = await fetch("/api/v1/ai/headline-lab", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-User-Email": "dilsonpereira231@gmail.com",
+            },
+            body: JSON.stringify({
+              message:
+                "Analise o painel SUPER2 (saldo, PIX, entradas, saídas e histórico) e gere uma headline executiva em linguagem Aurea Gold.",
+            }),
+          });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
