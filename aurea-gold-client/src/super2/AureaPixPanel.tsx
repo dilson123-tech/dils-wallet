@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchPixHistory, PixHistoryItem } from "./api";
 
 /**
  * AureaPixPanel
@@ -12,8 +13,93 @@ import React, { useState } from "react";
  */
 type PixAction = "send" | "charge" | "statement" | null;
 
+// taxa padrão simulada do Aurea Gold sobre envios de PIX (0,8%)
+const TAXA_ENVIO_PADRAO = 0.008;
+
+function formatBRL(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export default function AureaPixPanel() {
   const [activeAction, setActiveAction] = useState<PixAction>(null);
+
+  const [history, setHistory] = useState<PixHistoryItem[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  // carrega histórico quando o usuário entra no modo EXTRATO
+  useEffect(() => {
+    if (activeAction !== "statement") return;
+    if (history !== null || historyLoading) return;
+
+    setHistoryLoading(true);
+    setHistoryError(null);
+
+    Promise.resolve(fetchPixHistory())
+      .then((raw) => {
+        let arr: unknown = raw;
+
+        if (Array.isArray(raw)) {
+          arr = raw;
+        } else if (raw && typeof raw === "object") {
+          const anyRaw = raw as any;
+          arr =
+            anyRaw.items ??
+            anyRaw.history ??
+            anyRaw.data ??
+            [];
+        }
+
+        if (!Array.isArray(arr)) {
+          setHistory([]);
+          return;
+        }
+
+        setHistory(arr as PixHistoryItem[]);
+      })
+      .catch((err: any) => {
+        setHistoryError(
+          err?.message ||
+            "Não consegui carregar o extrato do PIX agora. Tente novamente em instantes."
+        );
+      })
+      .finally(() => {
+        setHistoryLoading(false);
+      });
+  }, [activeAction, history, historyLoading]);
+
+  const resumo = useMemo(() => {
+    if (!history || history.length === 0) {
+      return {
+        totalEnvios: 0,
+        totalRecebidos: 0,
+        totalTaxas: 0,
+        liquido: 0,
+      };
+    }
+
+    let totalEnvios = 0;
+    let totalRecebidos = 0;
+    let totalTaxas = 0;
+
+    for (const item of history) {
+      if (item.tipo === "envio") {
+        totalEnvios += item.valor;
+        totalTaxas += item.valor * TAXA_ENVIO_PADRAO;
+      } else if (item.tipo === "recebido") {
+        totalRecebidos += item.valor;
+      }
+    }
+
+    const liquido = totalRecebidos - totalEnvios - totalTaxas;
+
+    return { totalEnvios, totalRecebidos, totalTaxas, liquido };
+  }, [history]);
 
   return (
     <div className="w-full max-w-6xl mx-auto">
@@ -32,7 +118,7 @@ export default function AureaPixPanel() {
         <div className="h-px w-32 bg-amber-500 mt-3" />
       </header>
 
-      {/* CARDS PRINCIPAIS */}
+      {/* CARDS PRINCIPAIS (ainda estáticos por enquanto) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
         <div className="rounded-xl border border-amber-500/40 bg-zinc-950/80 p-3">
           <div className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">
@@ -168,20 +254,140 @@ export default function AureaPixPanel() {
           {activeAction === "statement" && (
             <>
               <h3 className="font-semibold text-amber-300 mb-1">
-                Extrato PIX (modo LAB)
+                Extrato PIX (modo real + LAB)
               </h3>
-              <p className="text-zinc-300 mb-1">
-                Esta área será o extrato rápido do PIX dentro do app:
+              <p className="text-zinc-300 mb-2">
+                Aqui você acompanha os envios e recebimentos de PIX e já vê uma
+                simulação das taxas do Aurea Gold sobre cada envio.
               </p>
-              <ul className="list-disc list-inside text-zinc-300 space-y-1">
-                <li>lista de envios e recebimentos;</li>
-                <li>filtros por período e tipo de transação;</li>
-                <li>integração com a IA 3.0 para explicar o movimento;</li>
-                <li>atalho direto para abrir detalhes na IA.</li>
-              </ul>
-              <p className="text-zinc-400 mt-2">
-                Na próxima fase, vamos puxar esses dados direto do backend e
-                cruzar com o painel IA 3.0.
+
+              {/* RESUMO FINANCEIRO COM TAXAS */}
+              <div className="mt-1 rounded-lg border border-zinc-700 bg-black/60 p-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
+                <div>
+                  <div className="text-zinc-500 uppercase tracking-wide">
+                    Envios do período
+                  </div>
+                  <div className="font-semibold text-rose-300">
+                    {formatBRL(resumo.totalEnvios)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-zinc-500 uppercase tracking-wide">
+                    Recebimentos
+                  </div>
+                  <div className="font-semibold text-emerald-300">
+                    {formatBRL(resumo.totalRecebidos)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-zinc-500 uppercase tracking-wide">
+                    Taxas simuladas
+                  </div>
+                  <div className="font-semibold text-amber-300">
+                    {formatBRL(resumo.totalTaxas)}
+                  </div>
+                  <div className="text-[9px] text-zinc-500">
+                    {Math.round(TAXA_ENVIO_PADRAO * 1000) / 10}% sobre envios
+                  </div>
+                </div>
+                <div>
+                  <div className="text-zinc-500 uppercase tracking-wide">
+                    Resultado líquido
+                  </div>
+                  <div
+                    className={`font-semibold ${
+                      resumo.liquido >= 0
+                        ? "text-emerald-300"
+                        : "text-rose-300"
+                    }`}
+                  >
+                    {formatBRL(resumo.liquido)}
+                  </div>
+                </div>
+              </div>
+
+              {historyLoading && (
+                <p className="mt-2 text-[10px] text-zinc-400">
+                  Carregando extrato do PIX...
+                </p>
+              )}
+
+              {historyError && (
+                <p className="mt-2 text-[10px] text-red-400">
+                  {historyError}
+                </p>
+              )}
+
+              {!historyLoading && !historyError && (
+                <>
+                  {(!history || history.length === 0) && (
+                    <p className="mt-2 text-[10px] text-zinc-400">
+                      Ainda não encontramos movimentações de PIX registradas
+                      para este usuário. Assim que o backend começar a salvar as
+                      transações, elas aparecerão aqui.
+                    </p>
+                  )}
+
+                  {history && history.length > 0 && (
+                    <div className="mt-3 space-y-1 max-h-52 overflow-y-auto pr-1">
+                      {history.slice(0, 20).map((item) => {
+                        const isEnvio = item.tipo === "envio";
+                        const taxa = isEnvio
+                          ? item.valor * TAXA_ENVIO_PADRAO
+                          : 0;
+                        const created =
+                          item.created_at &&
+                          new Date(item.created_at).toLocaleString("pt-BR");
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-start justify-between gap-2 rounded-md border border-zinc-700 bg-zinc-950/80 px-2 py-1"
+                          >
+                            <div className="flex-1">
+                              <div className="text-[10px] text-zinc-300">
+                                {isEnvio ? "Envio de PIX" : "PIX recebido"}
+                              </div>
+                              {item.descricao && (
+                                <div className="text-[9px] text-zinc-500">
+                                  {item.descricao}
+                                </div>
+                              )}
+                              {created && (
+                                <div className="text-[9px] text-zinc-500">
+                                  {created}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right text-[10px]">
+                              <div
+                                className={
+                                  isEnvio
+                                    ? "text-rose-300"
+                                    : "text-emerald-300"
+                                }
+                              >
+                                {formatBRL(item.valor)}
+                              </div>
+                              {isEnvio && (
+                                <div className="text-[9px] text-amber-300">
+                                  taxa {formatBRL(taxa)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              <p className="mt-2 text-[10px] text-zinc-500">
+                As taxas mostradas aqui são um modelo padrão (
+                {Math.round(TAXA_ENVIO_PADRAO * 1000) / 10}
+                % por envio) e podem ser ajustadas conforme o plano comercial
+                do Aurea Gold para cada cliente.
               </p>
             </>
           )}
@@ -194,9 +400,9 @@ export default function AureaPixPanel() {
           Modo LAB ativado
         </div>
         <p className="text-[11px] text-zinc-400">
-          Essa tela ainda está em modo laboratório. Os dados estão estáticos,
-          servindo como guia visual. Na próxima fase, vamos plugar o backend
-          de PIX e a IA 3.0 para análise automática dos movimentos.
+          Parte desta tela (extrato e taxas) já está ligada ao backend. Os
+          demais cards ainda estão estáticos, servindo como guia visual. Na
+          próxima fase vamos plugar saldo, entradas e saídas em tempo real.
         </p>
       </section>
     </div>
