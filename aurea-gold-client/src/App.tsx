@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { AppShell, AppTab } from "./AppShell";
 import SuperAureaHome from "./super2/SuperAureaHome";
 import AureaPixPanel from "./super2/AureaPixPanel";
+import AureaIAPanel from "./super2/AureaIAPanel";
 // import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
 export default function App() {
@@ -45,17 +46,8 @@ export default function App() {
 
     case "ia":
       content = (
-        <div className="w-full max-w-6xl px-4 py-6 mx-auto">
-          <h1 className="text-sm font-semibold text-amber-300 mb-2 uppercase tracking-wide">
-            IA 3.0 • Consultor financeiro
-          </h1>
-          <p className="text-xs text-zinc-400 mb-2">
-            Essa aba vai concentrar o chat de IA 3.0, resumos de PIX, alertas e
-            recomendações inteligentes sobre a vida financeira do cliente.
-          </p>
-          <p className="text-[11px] text-zinc-500">
-            Por enquanto, mantemos essa área como rascunho guiando o design.
-          </p>
+        <div className="w-full px-4 py-6 mx-auto">
+          <AureaIAPanel />
         </div>
       );
       break;
