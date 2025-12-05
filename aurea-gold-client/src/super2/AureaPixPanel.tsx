@@ -1,16 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 
 /**
  * AureaPixPanel
  *
- * Primeira versão do painel oficial de PIX do aplicativo Aurea Gold.
+ * Painel oficial de PIX do aplicativo Aurea Gold.
  * Aqui vamos, aos poucos, plugar:
  *  - saldo PIX
  *  - entradas / saídas
  *  - gráficos
  *  - atalhos de envio e cobrança
  */
+type PixAction = "send" | "charge" | "statement" | null;
+
 export default function AureaPixPanel() {
+  const [activeAction, setActiveAction] = useState<PixAction>(null);
+
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* HEADER */}
@@ -76,22 +80,111 @@ export default function AureaPixPanel() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="px-3 py-2 rounded-full bg-amber-500 text-black text-[11px] font-semibold uppercase tracking-wide"
+            onClick={() => setActiveAction("send")}
+            className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-wide transition active:scale-[0.97] ${
+              activeAction === "send"
+                ? "bg-amber-500 text-black shadow-[0_0_18px_rgba(251,191,36,0.6)]"
+                : "bg-amber-500 text-black/90"
+            }`}
           >
             Enviar PIX
           </button>
           <button
             type="button"
-            className="px-3 py-2 rounded-full border border-amber-500/60 text-amber-300 text-[11px] uppercase tracking-wide"
+            onClick={() => setActiveAction("charge")}
+            className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
+              activeAction === "charge"
+                ? "border border-amber-400 bg-black text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.5)]"
+                : "border border-amber-500/60 text-amber-300 bg-transparent"
+            }`}
           >
             Cobrar via PIX
           </button>
           <button
             type="button"
-            className="px-3 py-2 rounded-full border border-zinc-700 text-zinc-200 text-[11px] uppercase tracking-wide"
+            onClick={() => setActiveAction("statement")}
+            className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
+              activeAction === "statement"
+                ? "border border-zinc-200 bg-zinc-900 text-zinc-50"
+                : "border border-zinc-700 text-zinc-200 bg-transparent"
+            }`}
           >
             Ver extrato PIX
           </button>
+        </div>
+
+        {/* PAINEL DE AÇÃO SELECIONADA */}
+        <div className="mt-3 rounded-xl border border-zinc-800 bg-black/50 p-3 text-[11px] text-zinc-200">
+          {!activeAction && (
+            <p className="text-zinc-400">
+              Selecione uma ação acima para ver os detalhes aqui. Nesta área
+              vamos colocar, na próxima fase, os formulários e integrações
+              reais de PIX do Aurea Gold.
+            </p>
+          )}
+
+          {activeAction === "send" && (
+            <>
+              <h3 className="font-semibold text-amber-300 mb-1">
+                Enviar PIX (modo LAB)
+              </h3>
+              <p className="text-zinc-300 mb-1">
+                Esta será a tela onde o cliente informa:
+              </p>
+              <ul className="list-disc list-inside text-zinc-300 space-y-1">
+                <li>destinatário (chave, conta ou contato salvo);</li>
+                <li>valor do PIX;</li>
+                <li>descrição opcional;</li>
+                <li>confirmação antes de enviar.</li>
+              </ul>
+              <p className="text-zinc-400 mt-2">
+                Por enquanto estamos em modo visual. Na próxima etapa, vamos
+                conectar com o backend do Aurea Gold e registrar o PIX real.
+              </p>
+            </>
+          )}
+
+          {activeAction === "charge" && (
+            <>
+              <h3 className="font-semibold text-amber-300 mb-1">
+                Cobrar via PIX (modo LAB)
+              </h3>
+              <p className="text-zinc-300 mb-1">
+                Aqui o cliente vai poder gerar cobranças PIX:
+              </p>
+              <ul className="list-disc list-inside text-zinc-300 space-y-1">
+                <li>definir valor da cobrança;</li>
+                <li>informar descrição/identificador;</li>
+                <li>gerar QR Code ou link de pagamento;</li>
+                <li>acompanhar se a cobrança foi paga.</li>
+              </ul>
+              <p className="text-zinc-400 mt-2">
+                Tudo isso ficará registrado no histórico financeiro do Aurea
+                Gold, integrado à IA 3.0 para avisos e resumos.
+              </p>
+            </>
+          )}
+
+          {activeAction === "statement" && (
+            <>
+              <h3 className="font-semibold text-amber-300 mb-1">
+                Extrato PIX (modo LAB)
+              </h3>
+              <p className="text-zinc-300 mb-1">
+                Esta área será o extrato rápido do PIX dentro do app:
+              </p>
+              <ul className="list-disc list-inside text-zinc-300 space-y-1">
+                <li>lista de envios e recebimentos;</li>
+                <li>filtros por período e tipo de transação;</li>
+                <li>integração com a IA 3.0 para explicar o movimento;</li>
+                <li>atalho direto para abrir detalhes na IA.</li>
+              </ul>
+              <p className="text-zinc-400 mt-2">
+                Na próxima fase, vamos puxar esses dados direto do backend e
+                cruzar com o painel IA 3.0.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
