@@ -58,3 +58,11 @@ if (path.startsWith("/pagamentos-lab")) {
     </React.StrictMode>
   );
 }
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.error('[Aurea PWA] Falha ao registrar service worker:', err);
+    });
+  });
+}

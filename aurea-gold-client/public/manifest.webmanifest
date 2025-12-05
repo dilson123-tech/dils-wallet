@@ -1,20 +1,20 @@
 {
+  "name": "Aurea Gold • Premium v1.0",
   "short_name": "Aurea Gold",
-  "name": "Aurea Gold — Carteira Digital & PIX Inteligente",
-  "description": "Saldo, histórico PIX e consultor financeiro IA em um único app seguro.",
+  "description": "Carteira digital Aurea Gold com painel Super2, PIX e IA 3.0 integrada.",
   "start_url": "/",
   "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#facc15",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#d4af37",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icons/aurea-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icons/aurea-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
