@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { API_BASE, USER_EMAIL } from "./api";
 import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
@@ -42,7 +43,125 @@ function handleServiceShortcut(service: AureaServiceKey) {
   );
 }
 
+  function formatBRL(value: number | null): string {
+    if (value === null || Number.isNaN(value)) {
+      return "R$ 0,00";
+    }
+
+    return "R$ " + value.toFixed(2).replace(".", ",");
+  }
+
 export default function SuperAureaHome() {
+  const [saldoReal, setSaldoReal] = useState<number | null>(null);
+  const [saldoModo, setSaldoModo] = useState<"simulado" | "real">("simulado");
+  const [entradasMes, setEntradasMes] = useState<number | null>(null);
+  const [saidasMes, setSaidasMes] = useState<number | null>(null);
+    const [forecastNivel, setForecastNivel] = useState<
+      | "ok"
+      | "atencao"
+      | "alerta"
+      | "critico"
+      | "observacao"
+      | "indisponivel"
+      | null
+    >(null);
+    const [forecastPrevisaoFimMes, setForecastPrevisaoFimMes] =
+      useState<number | null>(null);
+
+    useEffect(() => {
+    let alive = true;
+
+    async function loadSaldo() {
+      try {
+        // --- 1) Saldo + entradas/saídas via /api/v1/pix/balance ---
+        const resp = await fetch(`${API_BASE}/api/v1/pix/balance`, {
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Email": USER_EMAIL,
+          },
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+
+          const saldo =
+            typeof data?.saldo === "number"
+              ? data.saldo
+              : typeof data?.balance === "number"
+              ? data.balance
+              : null;
+
+          const entradas =
+            typeof data?.entradas_mes === "number" ? data.entradas_mes : null;
+
+          const saidas =
+            typeof data?.saidas_mes === "number" ? data.saidas_mes : null;
+
+          const modoReal = data?.source === "real" ? "real" : "simulado";
+
+          if (alive && saldo !== null) {
+            setSaldoReal(saldo);
+            setSaldoModo(modoReal);
+            setEntradasMes(entradas);
+            setSaidasMes(saidas);
+          }
+        } else {
+          console.error(
+            "[SuperAureaHome] Falha ao buscar /api/v1/pix/balance:",
+            resp.status,
+          );
+        }
+
+        // --- 2) Forecast PIX ---
+        const forecastResp = await fetch(`${API_BASE}/api/v1/pix/forecast`, {
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Email": USER_EMAIL,
+          },
+        });
+
+        if (forecastResp.ok) {
+          const forecastData = await forecastResp.json();
+
+          if (alive) {
+            if (
+              typeof forecastData?.nivel_risco === "string" &&
+              ["ok", "atencao", "alerta", "critico", "observacao", "indisponivel"].includes(
+                forecastData.nivel_risco,
+              )
+            ) {
+              setForecastNivel(forecastData.nivel_risco);
+            } else {
+              setForecastNivel(null);
+            }
+
+            if (typeof forecastData?.previsao_fim_mes === "number") {
+              setForecastPrevisaoFimMes(forecastData.previsao_fim_mes);
+            } else {
+              setForecastPrevisaoFimMes(null);
+            }
+          }
+        } else {
+          console.warn(
+            "[SuperAureaHome] Falha ao buscar /api/v1/pix/forecast:",
+            forecastResp.status,
+          );
+        }
+      } catch (e) {
+        console.error("[SuperAureaHome] Erro geral no loadSaldo():", e);
+      }
+    }
+
+    loadSaldo();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const saldoDisplay =
+    saldoModo === "real" ? formatBRL(saldoReal) : "R$ 12.345,67";
+
   return (
     <section className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* Card de saldo principal */}
@@ -52,12 +171,57 @@ export default function SuperAureaHome() {
             Saldo disponível • Aurea Gold
           </p>
           <p className="mt-1 text-3xl md:text-4xl font-semibold text-amber-300">
-            R$ 12.345,67
+            {saldoDisplay}
           </p>
           <p className="mt-1 text-[10px] md:text-[11px] text-zinc-400">
-            Valor simulado por enquanto. Na versão conectada, esse saldo vem em
-            tempo real do seu Aurea Gold.
+            {saldoModo === "real"
+              ? "Saldo atualizado em tempo quase real do seu Aurea Gold (via PIX)."
+              : "Valor simulado por enquanto. Na versão conectada, esse saldo vem em tempo real do seu Aurea Gold."}
           </p>
+        </div>
+
+        {/* Card de previsão do mês (forecast PIX) */
+        }
+        <div className="rounded-2xl border border-amber-500/40 bg-zinc-950/80 p-4 md:p-5 space-y-2">
+          <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.18em]">
+            Previsão do mês • IA 3.0
+          </p>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <p className="text-xs md:text-sm text-zinc-300">
+                Nível de risco atual:&nbsp;
+                <span className="text-xs md:text-sm font-semibold text-zinc-50">
+                  {forecastNivel === "critico" && "Crítico"}
+                  {forecastNivel === "atencao" && "Atenção"}
+                  {forecastNivel === "observacao" && "Observação"}
+                  {forecastNivel === "ok" && "Tranquilo"}
+                  {!forecastNivel && "—"}
+                </span>
+              </p>
+
+              <p className="text-[11px] md:text-xs text-zinc-400 mt-1">
+                Previsão de saldo ao fim do mês:&nbsp;
+                <p className="text-[11px] md:text-xs text-zinc-100 font-semibold mt-1">
+                  {forecastPrevisaoFimMes !== null
+                    ? forecastPrevisaoFimMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    : "Carregando previsão do mês..."}
+                </p>
+                <span className="text-zinc-100 font-medium">
+                </span>
+              </p>
+            </div>
+
+            <div className="text-[10px] md:text-xs text-zinc-400 md:text-right">
+              <p>
+                A projeção usa seu histórico PIX do mês para estimar se você termina
+                no positivo ou negativo.
+              </p>
+              <p className="mt-1 text-zinc-500">
+                Quanto mais movimentações reais, mais precisa fica a previsão.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Atalhos rápidos PIX */}
@@ -110,7 +274,7 @@ export default function SuperAureaHome() {
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/70 bg-black/70 px-3 py-1 text-[10px] text-amber-200">
-            Modo LAB • Dados simulados
+            Dados reais • fallback LAB se necessário
           </span>
         </div>
 
@@ -120,7 +284,7 @@ export default function SuperAureaHome() {
               Entradas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-emerald-300">
-              R$ 8.500,00
+              {entradasMes !== null ? formatBRL(entradasMes) : "R$ 8.500,00"}
             </p>
             <p className="mt-1 text-[10px] text-emerald-100/80">
               Somando PIX recebidos e créditos principais.
@@ -132,7 +296,7 @@ export default function SuperAureaHome() {
               Saídas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-red-300">
-              R$ 6.200,00
+              {saidasMes !== null ? formatBRL(saidasMes) : "R$ 6.200,00"}
             </p>
             <p className="mt-1 text-[10px] text-red-100/80">
               Pagamentos, transferências e débitos recorrentes.
@@ -159,11 +323,11 @@ export default function SuperAureaHome() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <p className="text-[10px] md:text-[11px] text-emerald-200/80 uppercase tracking-[0.16em]">
-              PIX • Visão rápida (LAB)
+              PIX • Visão rápida
             </p>
             <p className="text-[11px] md:text-sm text-zinc-200">
-              Gráfico resumindo as movimentações recentes de PIX. Nesta versão, usamos o
-              endpoint de laboratório para testar o comportamento visual.
+              Gráfico resumindo as movimentações recentes de PIX. Nesta versão, usamos seus
+              dados reais dos últimos 7 dias, com fallback simulado se o servidor estiver indisponível.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/70 bg-black/70 px-3 py-1 text-[10px] text-emerald-200">

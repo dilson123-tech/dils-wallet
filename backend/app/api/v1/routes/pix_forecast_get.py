@@ -1,130 +1,92 @@
-from datetime import date, timedelta, datetime
+from datetime import datetime
 import calendar
+from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
-from app.models.user_main import User
 
-# mesmo padrão da rota original de balance
+
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
+# Mesma lógica do pix_balance_get: usuário fixo por enquanto.
+USER_FIXO_ID = 1
 
-@router.get("/balance/super2")
-def get_pix_balance_super2(
-    x_user_email: str = Header(..., alias="X-User-Email"),
-    db: Session = Depends(get_db),
-):
-    """
-    Versão Super2 da rota /api/v1/pix/balance.
 
-    - Usa o mesmo cálculo de saldo, entradas e saídas da rota original.
-    - Adiciona um campo `ultimos_7d` para o painel Super2.
-    """
-
-    # --- mesmo começo da get_pix_balance ---
-    user = db.query(User).filter(User.email == x_user_email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="user_not_found")
-
-    entradas = (
-        db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
-        .filter(
-            PixTransaction.user_id == user.id,
-            PixTransaction.tipo.in_(["recebimento", "entrada"]),
-        )
-        .scalar()
-        or 0.0
-    )
-
-    saidas = (
-        db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
-        .filter(
-            PixTransaction.user_id == user.id,
-            PixTransaction.tipo.in_(["envio", "saida"]),
-        )
-        .scalar()
-        or 0.0
-    )
-
-    saldo = float(entradas - saidas)
-
-    # --- mock simples dos últimos 7 dias (por enquanto tudo zero) ---
-    hoje = date.today()
-    ultimos_7d = []
-    for i in range(6, -1, -1):
-        d = hoje - timedelta(days=i)
-        ultimos_7d.append(
-            {
-                "dia": d.isoformat(),
-                "entradas": 0.0,
-                "saidas": 0.0,
-            }
-        )
-
-    return {
-        "saldo_atual": float(saldo),
-        "entradas_mes": float(entradas),
-        "saidas_mes": float(saidas),
-        "ultimos_7d": ultimos_7d,
-    }
-
-@router.get("/forecast_lab_old")
+@router.get("/forecast")
 def get_pix_forecast(
     x_user_email: str = Header(..., alias="X-User-Email"),
     db: Session = Depends(get_db),
 ):
     """
-    Projeta o saldo até o fim do mês com base nas entradas/saídas PIX do usuário.
-    """
-    try:
-        user = db.query(User).filter(User.email == x_user_email).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="user_not_found")
+    Versão GET da rota /api/v1/pix/forecast.
 
-        rows = (
-            db.query(PixTransaction)
-            .filter(PixTransaction.user_id == user.id)
-            .all()
+    Por enquanto:
+    - Ignora o e-mail e usa um usuário fixo (USER_FIXO_ID).
+    - Calcula entradas/saídas via PixTransaction.
+    - Faz uma projeção simples até o fim do mês.
+    """
+
+    debug_error = None
+
+    try:
+        # Somatórios de entradas e saídas, igual ao pix_balance_get
+        entradas = (
+            db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
+            .filter(
+                PixTransaction.user_id == USER_FIXO_ID,
+                PixTransaction.tipo.in_(["recebimento", "entrada"]),
+            )
+            .scalar()
+            or 0.0
         )
 
-        entradas = 0.0
-        saidas = 0.0
-        for t in rows:
-            valor = float(t.valor)
-            if t.tipo in ["recebimento", "entrada"]:
-                entradas += valor
-            elif t.tipo in ["envio", "saida"]:
-                saidas += valor
+        saidas = (
+            db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
+            .filter(
+                PixTransaction.user_id == USER_FIXO_ID,
+                PixTransaction.tipo.in_(["envio", "saida"]),
+            )
+            .scalar()
+            or 0.0
+        )
 
-        saldo_atual = entradas - saidas
+        saldo_atual = float(entradas - saidas)
 
+        # Dados de calendário (mês atual, UTC)
         agora = datetime.utcnow()
         dia_atual = max(agora.day, 1)
         dias_mes = calendar.monthrange(agora.year, agora.month)[1]
 
+        # Média diária de saídas e projeção até o fim do mês
         if dia_atual > 0:
-            media_saidas_dia = saidas / dia_atual
+            media_saidas_dia = float(saidas) / dia_atual
         else:
             media_saidas_dia = 0.0
 
         previsao_saidas_total = media_saidas_dia * dias_mes
-        previsao_fim_mes = entradas - previsao_saidas_total
+        previsao_fim_mes = float(entradas) - previsao_saidas_total
 
+        # Classificação de risco simples
         if previsao_fim_mes >= 0:
-            if entradas > 0 and previsao_fim_mes >= 0.2 * entradas:
+            # Se ainda sobra pelo menos 20% das entradas, ok
+            if entradas > 0 and previsao_fim_mes >= 0.2 * float(entradas):
                 nivel_risco = "ok"
             else:
                 nivel_risco = "atencao"
         else:
+            # Negativo: olhar o tamanho do buraco
             if previsao_fim_mes >= -200:
                 nivel_risco = "alerta"
             else:
                 nivel_risco = "critico"
 
+        # Análise textual
         if nivel_risco == "ok":
             analise = (
                 "Com base no ritmo atual de entradas e saídas, "
@@ -157,7 +119,7 @@ def get_pix_forecast(
                 "Segure compras que não sejam realmente essenciais.",
                 "Use o modo consultor financeiro para identificar onde cortar gastos.",
             ]
-        else:
+        else:  # critico
             analise = (
                 "Pelo ritmo atual, a projeção indica que você pode terminar o mês "
                 "no negativo de forma mais pesada. É um cenário crítico."
@@ -168,7 +130,7 @@ def get_pix_forecast(
                 "Busque aumentar entradas (trabalhos extras, recebíveis antecipados).",
             ]
 
-        return {
+        payload = {
             "saldo_atual": float(saldo_atual),
             "entradas_mes": float(entradas),
             "saidas_mes": float(saidas),
@@ -176,10 +138,16 @@ def get_pix_forecast(
             "nivel_risco": nivel_risco,
             "analise": analise,
             "recomendacoes": recomendacoes,
+            "debug_error": debug_error,
         }
+
+        return JSONResponse(
+            content=jsonable_encoder(payload, custom_encoder={Decimal: float})
+        )
+
     except Exception as e:
-        print("[AUREA PIX] erro ao calcular forecast:", e)
-        return {
+        debug_error = str(e)
+        payload = {
             "saldo_atual": 0.0,
             "entradas_mes": 0.0,
             "saidas_mes": 0.0,
@@ -193,5 +161,9 @@ def get_pix_forecast(
                 "Atualize a página do painel pix e tente novamente.",
                 "Se o problema persistir, fale com o suporte Aurea Gold.",
             ],
-            "debug_error": str(e),
+            "debug_error": debug_error,
         }
+        return JSONResponse(
+            content=jsonable_encoder(payload, custom_encoder={Decimal: float}),
+            status_code=200,
+        )

@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const USER_EMAIL = "dilsonpereira231@gmail.com";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -72,7 +75,12 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
       try {
         setLoading(true);
         setErr(null);
-        const r = await fetch("/api/v1/pix/7d");
+        const r = await fetch(`${API_BASE}/api/v1/pix/7d`, {
+            headers: {
+              "Content-Type": "application/json",
+              "X-User-Email": USER_EMAIL,
+            },
+          });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = (await r.json()) as Pix7dResponse;
         if (!alive) return;

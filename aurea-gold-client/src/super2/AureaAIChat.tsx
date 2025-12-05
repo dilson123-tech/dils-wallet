@@ -183,6 +183,20 @@ export default function AureaAIChat() {
         )}
 
         {/* Sugestões rápidas */}
+{/* Gerente Financeiro */}
+<div className="mt-2 rounded-md border border-amber-500/50 bg-black/70 p-2">
+  <div className="text-[9px] uppercase tracking-widest text-amber-300 mb-1">
+    Gerente Financeiro • IA 3.0
+  </div>
+  <div className="flex flex-wrap gap-1 text-[9px]">
+    <button onClick={() => handleQuick("resumo do mes no pix")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Análise do mês</button>
+    <button onClick={() => handleQuick("gastos do mes no pix")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Onde gasto mais</button>
+    <button onClick={() => handleQuick("o que voce me recomenda fazer com meu pix")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Economizar agora</button>
+    <button onClick={() => handleQuick("previsao de saldo do pix ate o fim do mes")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Previsão de saldo</button>
+    <button onClick={() => handleQuick("to gastando muito no pix")} className="px-2 py-1 rounded-md border border-red-600 bg-red-900 text-red-100 hover:border-red-400 active:scale-[0.97] transition">Risco do mês</button>
+  </div>
+</div>
+
         <div className="flex flex-wrap gap-1 text-[9px]">
           <button
             type="button"
@@ -195,7 +209,7 @@ export default function AureaAIChat() {
           <button
             type="button"
             onClick={() =>
-              handleQuick("quais foram minhas entradas do mês no pix?")
+              handleQuick("entradas do mês no pix")
             }
             className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
@@ -205,17 +219,17 @@ export default function AureaAIChat() {
           <button
             type="button"
             onClick={() =>
-              handleQuick("me mostra o histórico do mês no pix")
+              handleQuick("saídas do mês no pix")
             }
             className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
             disabled={loading}
           >
-            Histórico do mês (PIX)
+            Saídas do mês (PIX)
           </button>
           <button
             type="button"
             onClick={() =>
-              handleQuick("to gastando muito no pix esse mes")
+              handleQuick("to gastando muito no pix")
             }
             className="px-2 py-1 rounded-md border border-emerald-600/80 bg-emerald-900/80 text-emerald-100 hover:border-emerald-400/80 active:scale-[0.97] transition"
             disabled={loading}
@@ -242,7 +256,7 @@ export default function AureaAIChat() {
           </button>
           <button
             type="button"
-            onClick={() => handleQuick("faz um resumo do mês no pix")}
+            onClick={() => handleQuick("resumo do mes no pix")}
             disabled={loading}
             className="h-7 px-3 rounded-md border border-[#d4af37]/40 bg-[#111]/80 text-[10px] hover:border-[#d4af37]/80 active:scale-[0.97] transition"
           >

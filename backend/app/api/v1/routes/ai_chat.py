@@ -86,7 +86,7 @@ async def _fetch_internal_json(
 async def _get_pix_balance(
     x_user_email: Optional[str],
 ) -> Optional[dict]:
-    return await _fetch_internal_json("/api/v1/pix/balance?days=7", x_user_email)
+    return await _fetch_internal_json("/api/v1/pix/balance", x_user_email)
 
 
 async def _get_pix_history(
@@ -186,6 +186,45 @@ async def ai_chat(
 
     raw_msg = payload.message.strip()
     norm_msg = _normalize(raw_msg)
+    # atalhos diretos para perguntas de entradas/saídas do mês no PIX
+    if any(
+        p in norm_msg
+        for p in [
+            "entradas do mes no pix",
+            "entradas do mês no pix",
+            "entradas no pix esse mes",
+            "entradas no pix esse mês",
+        ]
+    ):
+        balance = await _get_pix_balance(x_user_email)
+        if balance:
+            reply = _build_entradas_reply(balance)
+        else:
+            reply = (
+                "Não consegui ler as entradas do mês via PIX agora.\n\n"
+                "Tente novamente em alguns instantes ou confira direto no painel Super2."
+            )
+        return {"reply": reply, "tema": "entradas_mes_pix"}
+
+    if any(
+        p in norm_msg
+        for p in [
+            "saidas do mes no pix",
+            "saídas do mês no pix",
+            "gastos do mes no pix",
+            "gastos do mês no pix",
+        ]
+    ):
+        balance = await _get_pix_balance(x_user_email)
+        if balance:
+            reply = _build_saidas_reply(balance)
+        else:
+            reply = (
+                "Não consegui ler as saídas do mês via PIX agora.\n\n"
+                "Tente novamente em alguns instantes ou confira direto no painel Super2."
+            )
+        return {"reply": reply, "tema": "saidas_mes_pix"}
+
 
     # IA 3.0 – resumo do mês no PIX / consultor financeiro
     if any(
@@ -360,6 +399,7 @@ async def ai_chat(
         tema_label = "modo consultor financeiro"
         balance = await _get_pix_balance(x_user_email)
         tema_reply = _ia3_build_consulting_reply(balance)
+        intro = ""
 
     elif "pix" in norm_msg:
         tema_label = "PIX"
@@ -412,15 +452,19 @@ async def ai_chat(
             "entrego uma explicação mais direta."
         )
 
-    resumo_final = f"\n\nResumo rápido: estou te ajudando agora com {tema_label}."
-
-    final_reply = (
-        f"{intro}"
-        f"Você perguntou: \"{raw_msg}\".\n\n"
-        f"{tema_reply}"
-        f"{resumo_final}"
-        f"{user_hint}"
-    )
+    # Montagem final da resposta
+    if tema_label == "modo consultor financeiro":
+        # No modo consultor, o helper já monta todo o texto (intro, pergunta, resumo, etc.)
+        final_reply = f"{tema_reply}{user_hint}"
+    else:
+        resumo_final = f"\n\nResumo rápido: estou te ajudando agora com {tema_label}."
+        final_reply = (
+            f"{intro}"
+            f"Você perguntou: \"{raw_msg}\".\n\n"
+            f"{tema_reply}"
+            f"{resumo_final}"
+            f"{user_hint}"
+        )
 
     return ChatResponse(reply=final_reply)
 

@@ -30,11 +30,12 @@ def get_pix_7d(db: Session = Depends(get_db)) -> Pix7dResponse:
     """
     hoje = date.today()
     inicio = hoje - timedelta(days=6)
+    fim = hoje + timedelta(days=1)
 
     rows = (
         db.query(PixTransaction)
         .filter(PixTransaction.timestamp >= inicio)
-        .filter(PixTransaction.timestamp <= hoje)
+        .filter(PixTransaction.timestamp < fim)
         .order_by(PixTransaction.timestamp)
         .all()
     )

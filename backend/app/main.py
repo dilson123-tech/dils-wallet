@@ -13,7 +13,8 @@ from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRou
 # PIX Super2 (nossas rotas novas)
 from app.api.v1.routes import pix_balance_get                    # módulo com .router
 from app.api.v1.routes import pix_history_get                    # módulo com .router
-from app.api.v1.routes import pix_7d                             # módulo com .router
+from app.api.v1.routes import pix_7d
+from app.api.v1.routes import pix_forecast_get                             # módulo com .router
 
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
 
@@ -58,6 +59,7 @@ app.include_router(pix_balance_super2.router)
 app.include_router(pix_balance_get.router)
 app.include_router(pix_history_get.router)
 app.include_router(pix_7d.router)
+app.include_router(pix_forecast_get.router)
 
 # --- Execução local ---
 if __name__ == "__main__":
