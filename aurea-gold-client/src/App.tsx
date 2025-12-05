@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AppShell, AppTab } from "./AppShell";
 import SuperAureaHome from "./super2/SuperAureaHome";
+import AureaPixPanel from "./super2/AureaPixPanel";
 // import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
 export default function App() {
@@ -36,14 +37,8 @@ export default function App() {
 
     case "pix":
       content = (
-        <div className="w-full max-w-6xl px-4 py-6 mx-auto">
-          <h1 className="text-sm font-semibold text-amber-300 mb-2 uppercase tracking-wide">
-            PIX • Área oficial em construção
-          </h1>
-          <p className="text-xs text-zinc-400">
-            Aqui vai entrar o painel completo de PIX do aplicativo Aurea Gold,
-            com visão mobile, atalhos rápidos e integração total com a IA 3.0.
-          </p>
+        <div className="w-full px-4 py-6 mx-auto">
+          <AureaPixPanel />
         </div>
       );
       break;
