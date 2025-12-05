@@ -3,6 +3,7 @@ import { AppShell, AppTab } from "./AppShell";
 import SuperAureaHome from "./super2/SuperAureaHome";
 import AureaPixPanel from "./super2/AureaPixPanel";
 import AureaIAPanel from "./super2/AureaIAPanel";
+import AureaPagamentosPanel from "./pagamentos/AureaPagamentosPanel";
 // import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
 export default function App() {
@@ -54,14 +55,8 @@ export default function App() {
 
     case "pagamentos":
       content = (
-        <div className="w-full max-w-6xl px-4 py-6 mx-auto">
-          <h1 className="text-sm font-semibold text-amber-300 mb-2 uppercase tracking-wide">
-            Pagamentos • Laboratório
-          </h1>
-          <p className="text-xs text-zinc-400">
-            Aqui vamos plugar o painel de Pagamentos e o Receitas & Reservas
-            Lab, trazendo contas, boletos, assinaturas e testes avançados.
-          </p>
+        <div className="w-full px-4 py-6 mx-auto">
+          <AureaPagamentosPanel />
         </div>
       );
       break;
