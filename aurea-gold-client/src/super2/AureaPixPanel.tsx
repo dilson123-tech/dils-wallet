@@ -80,6 +80,7 @@ export default function AureaPixPanel() {
         totalRecebidos: 0,
         totalTaxas: 0,
         liquido: 0,
+        taxaMediaPercentual: 0,
       };
     }
 
@@ -90,15 +91,30 @@ export default function AureaPixPanel() {
     for (const item of history) {
       if (item.tipo === "envio") {
         totalEnvios += item.valor;
-        totalTaxas += item.valor * TAXA_ENVIO_PADRAO;
+
+        // usa taxa_valor do backend quando disponível, senão simula
+        const taxaValor =
+          typeof item.taxa_valor === "number"
+            ? item.taxa_valor
+            : item.valor * TAXA_ENVIO_PADRAO;
+
+        totalTaxas += taxaValor;
       } else if (item.tipo === "recebido") {
         totalRecebidos += item.valor;
       }
     }
 
     const liquido = totalRecebidos - totalEnvios - totalTaxas;
+    const taxaMediaPercentual =
+      totalEnvios > 0 ? (totalTaxas / totalEnvios) * 100 : 0;
 
-    return { totalEnvios, totalRecebidos, totalTaxas, liquido };
+    return {
+      totalEnvios,
+      totalRecebidos,
+      totalTaxas,
+      liquido,
+      taxaMediaPercentual,
+    };
   }, [history]);
 
   return (
@@ -281,13 +297,18 @@ export default function AureaPixPanel() {
                 </div>
                 <div>
                   <div className="text-zinc-500 uppercase tracking-wide">
-                    Taxas simuladas
+                    Taxas do período
                   </div>
                   <div className="font-semibold text-amber-300">
                     {formatBRL(resumo.totalTaxas)}
                   </div>
                   <div className="text-[9px] text-zinc-500">
-                    {Math.round(TAXA_ENVIO_PADRAO * 1000) / 10}% sobre envios
+                    {resumo.totalEnvios > 0
+                      ? `${resumo.taxaMediaPercentual.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 2,
+                        })}% médio sobre envios`
+                      : "Sem envios no período"}
                   </div>
                 </div>
                 <div>
