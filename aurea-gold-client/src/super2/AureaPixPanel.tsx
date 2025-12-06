@@ -332,9 +332,17 @@ export default function AureaPixPanel() {
                     <div className="mt-3 space-y-1 max-h-52 overflow-y-auto pr-1">
                       {history.slice(0, 20).map((item) => {
                         const isEnvio = item.tipo === "envio";
-                        const taxa = isEnvio
-                          ? item.valor * TAXA_ENVIO_PADRAO
-                          : 0;
+
+                        // valores vindos do backend, com fallback para simulação
+                        const taxaPercent =
+                          item.taxa_percentual ?? (isEnvio ? TAXA_ENVIO_PADRAO * 100 : 0);
+
+                        const taxaValor =
+                          item.taxa_valor ?? (isEnvio ? item.valor * TAXA_ENVIO_PADRAO : 0);
+
+                        const valorLiquido =
+                          item.valor_liquido ?? (isEnvio ? item.valor - taxaValor : item.valor);
+
                         const created =
                           item.created_at &&
                           new Date(item.created_at).toLocaleString("pt-BR");
@@ -371,7 +379,16 @@ export default function AureaPixPanel() {
                               </div>
                               {isEnvio && (
                                 <div className="text-[9px] text-amber-300">
-                                  taxa {formatBRL(taxa)}
+                                  {`${taxaPercent.toLocaleString("pt-BR", {
+                                    minimumFractionDigits: 1,
+                                    maximumFractionDigits: 2,
+                                  })}% • ${formatBRL(taxaValor)}`}
+                                </div>
+                              )}
+
+                              {typeof valorLiquido === "number" && (
+                                <div className="text-[9px] text-zinc-400">
+                                  Líquido {formatBRL(valorLiquido)}
                                 </div>
                               )}
                             </div>

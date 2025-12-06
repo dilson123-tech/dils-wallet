@@ -32,6 +32,10 @@ export type PixHistoryItem = {
   valor: number;
   descricao?: string | null;
   created_at: string;
+  // campos de taxa vindos do backend (opcionais enquanto fazemos a transição)
+  taxa_percentual?: number | null;
+  taxa_valor?: number | null;
+  valor_liquido?: number | null;
 };
 
 async function apiGet<T>(path: string): Promise<T> {

@@ -7,8 +7,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.idempotency import IdempotencyKey
 from app.models.pix_transaction import PixTransaction
+from app.models.idempotency import IdempotencyKey
 
 # tentamos importar o usuário principal; se não existir, tratamos
 try:
@@ -16,14 +16,8 @@ try:
 except Exception:  # pragma: no cover
     UserMain = None  # fallback p/ ambientes antigos
 
-router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
-# ---------------------------------------------------------------------------
-# Regras de taxa (MODO LAB)
-# ---------------------------------------------------------------------------
-# Por enquanto, taxa fixa de 0,80% em envios de PIX.
-# Recebimentos futuros podem ter regra diferente (hoje só usamos "envio").
-FEE_PERCENTUAL_ENVIO = 0.80  # 0.80%
+router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
 
 class PixSendPayload(BaseModel):
@@ -48,17 +42,18 @@ def _get_user_by_email(db: Session, email: Optional[str]):
 
 def _get_user_fallback_id1(db: Session):
     """
-    Busca user id=1 se existir; retorna None se não existir
-    ou se UserMain não estiver disponível.
+    Busca user id=1 se existir; retorna None se não existir ou se UserMain não estiver disponível.
     """
     if UserMain is None:
         return None
+
     try:
-        return db.get(UserMain, 1)  # SQLAlchemy 2.x-style
+        # SQLAlchemy 2.x-style
+        return db.get(UserMain, 1)
     except Exception:
-        # compat c/ SQLAlchemy 1.x
+        # compat SQLAlchemy 1.x
         try:
-            return db.query(UserMain).get(1)
+            return db.query(UserMain).get(1)  # type: ignore[arg-type]
         except Exception:
             return None
 
@@ -72,9 +67,9 @@ def pix_send(
     x_idem_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
     try:
-        # ------------------------------------------------------------------
+        # ---------------------------------------------------
         # Idempotência (header ganha do body)
-        # ------------------------------------------------------------------
+        # ---------------------------------------------------
         idem_key = x_idem_key or payload.idem_key
         if idem_key:
             existing = (
@@ -88,50 +83,40 @@ def pix_send(
                     status_code=200,
                 )
 
-        # ------------------------------------------------------------------
-        # Resolve usuário remetente
-        # ------------------------------------------------------------------
+        # ---------------------------------------------------
+        # Resolve usuário:
         # 1) tenta por e-mail SE o modelo tiver .email
+        # 2) fallback: usuário id=1
+        # 3) se ainda não achar, força user_id=1 (modo LAB local)
+        # ---------------------------------------------------
         user = _get_user_by_email(db, x_user_email)
-        # 2) fallback: id=1
+
         if not user:
             user = _get_user_fallback_id1(db)
 
-        if not user:
-            return JSONResponse(
-                {
-                    "error": "sender_not_found",
-                    "detail": (
-                        "Modelo de usuário não tem coluna 'email' ou usuário id=1 "
-                        "não existe. Crie um usuário id=1 ou ajuste a resolução."
-                    ),
-                    "hint_seed": "crie um usuário com id=1 no seu UserMain",
-                },
-                status_code=400,
-            )
+        if user:
+            user_id = getattr(user, "id", 1)
+        else:
+            # modo LAB: ainda não temos user real, mas não vamos travar o fluxo
+            user_id = 1
 
-        # ------------------------------------------------------------------
-        # Cálculo de taxa e valor líquido (MODO LAB)
-        # ------------------------------------------------------------------
+        # ---------------------------------------------------
+        # Cria transação PIX com taxa da Aurea Gold.
+        # Regra LAB:
+        #   - taxa_percentual: 0.8 (%)
+        #   - taxa_valor: valor * 0.8 / 100
+        #   - valor_liquido: valor - taxa_valor
+        # ---------------------------------------------------
         valor_bruto = float(payload.valor)
-
-        # somente envios pagam taxa por enquanto
-        taxa_percentual = FEE_PERCENTUAL_ENVIO
+        taxa_percentual = 0.8  # 0.8% por envio
         taxa_valor = round(valor_bruto * (taxa_percentual / 100.0), 2)
-        valor_liquido = round(valor_bruto - taxa_valor, 2)
-        if valor_liquido < 0:
-            valor_liquido = 0.0
+        valor_liquido = valor_bruto - taxa_valor
 
-        descricao = (payload.msg or "").strip() or "PIX"
-
-        # ------------------------------------------------------------------
-        # Cria transação de envio com taxas preenchidas
-        # ------------------------------------------------------------------
         tx = PixTransaction(
-            user_id=user.id,
+            user_id=user_id,
             tipo="envio",
             valor=valor_bruto,
-            descricao=descricao,
+            descricao=(payload.msg or "").strip() or "PIX",
             taxa_percentual=taxa_percentual,
             taxa_valor=taxa_valor,
             valor_liquido=valor_liquido,
@@ -152,9 +137,6 @@ def pix_send(
                 "tipo": tx.tipo,
                 "valor": float(tx.valor or 0),
                 "descricao": tx.descricao or "PIX",
-                "taxa_percentual": float(tx.taxa_percentual or 0),
-                "taxa_valor": float(tx.taxa_valor or 0),
-                "valor_liquido": float(tx.valor_liquido or 0),
             },
         }
 
@@ -163,27 +145,30 @@ def pix_send(
     except SQLAlchemyError as e:
         db.rollback()
         return JSONResponse(
-            {"error": "sql_error", "detail": str(e.__cause__ or e)}, status_code=500
+            {"error": "sql_error", "detail": str(e.__cause__ or e)},
+            status_code=500,
         )
     except Exception as e:
         return JSONResponse(
-            {"error": "internal_error", "detail": str(e)}, status_code=500
+            {"error": "internal_error", "detail": str(e)},
+            status_code=500,
         )
 
 
-# --- list endpoint (fix) ---
+# --- list endpoint (ajustado) ---
 @router.get("/list")
 def pix_list(
     request: Request,
     db: Session = Depends(get_db),
-    x_user_email: str | None = Header(default=None, alias="X-User-Email"),
+    x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
     limit: int = 50,
 ):
     q = db.query(PixTransaction)
-    u = None
 
     if UserMain and x_user_email:
+        u = None
         try:
+            # tenta campo email direto
             col = getattr(UserMain, "email")
             u = db.query(UserMain).filter(col == x_user_email).first()
         except AttributeError:
@@ -195,10 +180,11 @@ def pix_list(
                         .filter(getattr(UserMain, attr) == x_user_email)
                         .first()
                     )
-                    break
+                    if u:
+                        break
 
-    if u:
-        q = q.filter(PixTransaction.user_id == u.id)
+        if u:
+            q = q.filter(PixTransaction.user_id == u.id)
 
     txs = (
         q.order_by(PixTransaction.id.desc())
@@ -206,22 +192,17 @@ def pix_list(
         .all()
     )
 
-    resp = []
-    for t in txs:
-        resp.append(
-            {
-                "id": t.id,
-                "tipo": t.tipo,
-                "valor": float(getattr(t, "valor", 0) or 0),
-                "descricao": (getattr(t, "descricao", None) or "PIX"),
-                "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
-                "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
-                "valor_liquido": float(
-                    getattr(t, "valor_liquido", None)
-                    or getattr(t, "valor", 0)
-                    or 0
-                ),
-            }
-        )
-
-    return resp
+    return [
+        {
+            "id": t.id,
+            "tipo": t.tipo,
+            "valor": float(getattr(t, "valor", 0) or 0),
+            "descricao": getattr(t, "descricao", None) or "PIX",
+            "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
+            "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
+            "valor_liquido": float(
+                getattr(t, "valor_liquido", getattr(t, "valor", 0)) or 0
+            ),
+        }
+        for t in txs
+    ]
