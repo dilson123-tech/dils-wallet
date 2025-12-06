@@ -1,13 +1,14 @@
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.pix_transaction import PixTransaction
 from app.models.idempotency import IdempotencyKey
+from app.models.pix_transaction import PixTransaction
 
 # tentamos importar o usuário principal; se não existir, tratamos
 try:
@@ -17,24 +18,39 @@ except Exception:  # pragma: no cover
 
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
+# ---------------------------------------------------------------------------
+# Regras de taxa (MODO LAB)
+# ---------------------------------------------------------------------------
+# Por enquanto, taxa fixa de 0,80% em envios de PIX.
+# Recebimentos futuros podem ter regra diferente (hoje só usamos "envio").
+FEE_PERCENTUAL_ENVIO = 0.80  # 0.80%
+
+
 class PixSendPayload(BaseModel):
     dest: str = Field(..., description="Email/Chave destino")
     valor: float = Field(..., gt=0, description="Valor em reais")
     msg: Optional[str] = Field(default="", description="Descrição/memo da transação")
     idem_key: Optional[str] = Field(default=None, description="Idempotency-Key opcional")
 
+
 def _get_user_by_email(db: Session, email: Optional[str]):
-    """Tenta buscar por e-mail apenas se o modelo tiver o atributo .email"""
+    """Tenta buscar por e-mail apenas se o modelo tiver o atributo .email."""
     if not email or UserMain is None:
         return None
+
     email_attr = getattr(UserMain, "email", None)
     if email_attr is None:
         # modelo não tem coluna email
         return None
+
     return db.query(UserMain).filter(email_attr == email).first()
 
+
 def _get_user_fallback_id1(db: Session):
-    """Busca user id=1 se existir; retorna None se não existir ou se UserMain não estiver disponível."""
+    """
+    Busca user id=1 se existir; retorna None se não existir
+    ou se UserMain não estiver disponível.
+    """
     if UserMain is None:
         return None
     try:
@@ -46,6 +62,7 @@ def _get_user_fallback_id1(db: Session):
         except Exception:
             return None
 
+
 @router.post("/send", summary="Pix Send")
 def pix_send(
     payload: PixSendPayload,
@@ -55,14 +72,25 @@ def pix_send(
     x_idem_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
     try:
-        # idempotência (header ganha do body)
+        # ------------------------------------------------------------------
+        # Idempotência (header ganha do body)
+        # ------------------------------------------------------------------
         idem_key = x_idem_key or payload.idem_key
         if idem_key:
-            existing = db.query(IdempotencyKey).filter(IdempotencyKey.key == idem_key).first()
+            existing = (
+                db.query(IdempotencyKey)
+                .filter(IdempotencyKey.key == idem_key)
+                .first()
+            )
             if existing:
-                return JSONResponse({"status": "duplicate", "idem_key": idem_key}, status_code=200)
+                return JSONResponse(
+                    {"status": "duplicate", "idem_key": idem_key},
+                    status_code=200,
+                )
 
-        # Resolve usuário:
+        # ------------------------------------------------------------------
+        # Resolve usuário remetente
+        # ------------------------------------------------------------------
         # 1) tenta por e-mail SE o modelo tiver .email
         user = _get_user_by_email(db, x_user_email)
         # 2) fallback: id=1
@@ -73,18 +101,40 @@ def pix_send(
             return JSONResponse(
                 {
                     "error": "sender_not_found",
-                    "detail": "Modelo de usuário não tem coluna 'email' ou usuário id=1 não existe. Crie um usuário id=1 ou ajuste a resolução.",
+                    "detail": (
+                        "Modelo de usuário não tem coluna 'email' ou usuário id=1 "
+                        "não existe. Crie um usuário id=1 ou ajuste a resolução."
+                    ),
                     "hint_seed": "crie um usuário com id=1 no seu UserMain",
                 },
                 status_code=400,
             )
 
-        # cria transação (garante descricao != NULL)
+        # ------------------------------------------------------------------
+        # Cálculo de taxa e valor líquido (MODO LAB)
+        # ------------------------------------------------------------------
+        valor_bruto = float(payload.valor)
+
+        # somente envios pagam taxa por enquanto
+        taxa_percentual = FEE_PERCENTUAL_ENVIO
+        taxa_valor = round(valor_bruto * (taxa_percentual / 100.0), 2)
+        valor_liquido = round(valor_bruto - taxa_valor, 2)
+        if valor_liquido < 0:
+            valor_liquido = 0.0
+
+        descricao = (payload.msg or "").strip() or "PIX"
+
+        # ------------------------------------------------------------------
+        # Cria transação de envio com taxas preenchidas
+        # ------------------------------------------------------------------
         tx = PixTransaction(
             user_id=user.id,
             tipo="envio",
-            valor=float(payload.valor),
-            descricao=(payload.msg or "").strip(),
+            valor=valor_bruto,
+            descricao=descricao,
+            taxa_percentual=taxa_percentual,
+            taxa_valor=taxa_valor,
+            valor_liquido=valor_liquido,
         )
         db.add(tx)
 
@@ -100,8 +150,11 @@ def pix_send(
                 "id": tx.id,
                 "user_id": tx.user_id,
                 "tipo": tx.tipo,
-                "valor": tx.valor,
-                "descricao": tx.descricao,
+                "valor": float(tx.valor or 0),
+                "descricao": tx.descricao or "PIX",
+                "taxa_percentual": float(tx.taxa_percentual or 0),
+                "taxa_valor": float(tx.taxa_valor or 0),
+                "valor_liquido": float(tx.valor_liquido or 0),
             },
         }
 
@@ -117,6 +170,7 @@ def pix_send(
             {"error": "internal_error", "detail": str(e)}, status_code=500
         )
 
+
 # --- list endpoint (fix) ---
 @router.get("/list")
 def pix_list(
@@ -126,22 +180,48 @@ def pix_list(
     limit: int = 50,
 ):
     q = db.query(PixTransaction)
+    u = None
+
     if UserMain and x_user_email:
-        u = None
-    if UserMain:
         try:
             col = getattr(UserMain, "email")
             u = db.query(UserMain).filter(col == x_user_email).first()
         except AttributeError:
             # tenta campos comuns caso "email" não exista
-            for attr in ("user_email","mail","username","login"):
+            for attr in ("user_email", "mail", "username", "login"):
                 if hasattr(UserMain, attr):
-                    u = db.query(UserMain).filter(getattr(UserMain, attr) == x_user_email).first()
+                    u = (
+                        db.query(UserMain)
+                        .filter(getattr(UserMain, attr) == x_user_email)
+                        .first()
+                    )
                     break
-        if u:
-            q = q.filter(PixTransaction.user_id == u.id)
-    txs = q.order_by(PixTransaction.id.desc()).limit(min(max(limit,1),100)).all()
-    return [
-        {"id": t.id, "tipo": t.tipo, "valor": float(t.valor or 0), "descricao": t.descricao or "PIX"}
-        for t in txs
-    ]
+
+    if u:
+        q = q.filter(PixTransaction.user_id == u.id)
+
+    txs = (
+        q.order_by(PixTransaction.id.desc())
+        .limit(min(max(limit, 1), 100))
+        .all()
+    )
+
+    resp = []
+    for t in txs:
+        resp.append(
+            {
+                "id": t.id,
+                "tipo": t.tipo,
+                "valor": float(getattr(t, "valor", 0) or 0),
+                "descricao": (getattr(t, "descricao", None) or "PIX"),
+                "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
+                "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
+                "valor_liquido": float(
+                    getattr(t, "valor_liquido", None)
+                    or getattr(t, "valor", 0)
+                    or 0
+                ),
+            }
+        )
+
+    return resp
