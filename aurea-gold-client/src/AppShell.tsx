@@ -9,18 +9,35 @@ interface AppShellProps extends PropsWithChildren {
 
 /**
  * AppShell — estrutura oficial do aplicativo Aurea Gold.
- * Container principal do app:
- *  - header premium
- *  - área de conteúdo
- *  - tab bar inferior (Home / PIX / IA / Pagamentos)
+ * - Header premium (muda conforme a aba)
+ * - Área de conteúdo (children)
+ * - Navegação inferior estilo banco: Conta / Negócio / Pix / Pagamentos
  */
 export function AppShell({ children, activeTab, onTabChange }: AppShellProps) {
   const tabs: { key: AppTab; label: string; icon: string }[] = [
-    { key: "home", label: "Home",        icon: "🏠" },
-    { key: "pix",  label: "PIX",         icon: "⚡" },
-    { key: "ia",   label: "IA 3.0",      icon: "🧠" },
-    { key: "pagamentos", label: "Pagos", icon: "💳" },
+    { key: "home",       label: "Conta",       icon: "🏦" },
+    { key: "ia",         label: "Negócio",     icon: "🏪" },
+    { key: "pix",        label: "Pix",         icon: "◎" },
+    { key: "pagamentos", label: "Pagamentos",  icon: "💳" },
   ];
+
+  const headerTitle =
+    activeTab === "home"
+      ? "Conta Aurea"
+      : activeTab === "ia"
+      ? "Negócio"
+      : activeTab === "pix"
+      ? "Área PIX"
+      : "Pagamentos";
+
+  const headerSubtitle =
+    activeTab === "home"
+      ? "Visão geral da sua conta Aurea Gold."
+      : activeTab === "ia"
+      ? "Ferramentas e IA 3.0 para o seu negócio."
+      : activeTab === "pix"
+      ? "Envios, recebimentos e extratos PIX."
+      : "Boletos, recorrentes e contas do mês.";
 
   return (
     <div
@@ -31,45 +48,90 @@ export function AppShell({ children, activeTab, onTabChange }: AppShellProps) {
         flex flex-col
       "
     >
-      {/* HEADER PREMIUM — depois refinamos */}
-      <header className="h-12 border-b border-amber-500/40 flex items-center px-4">
-        <div className="text-xs uppercase tracking-widest text-amber-300">
-          Aurea Gold
+      {/* HEADER PREMIUM */}
+      <header className="h-16 border-b border-zinc-800/80 bg-black/80 backdrop-blur flex items-center px-4">
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400">
+            Aurea Gold • Beta
+          </span>
+          <span className="text-sm font-semibold text-zinc-100">
+            {headerTitle}
+          </span>
+          <span className="text-[11px] text-zinc-400">
+            {headerSubtitle}
+          </span>
         </div>
       </header>
 
-      {/* ÁREA PRINCIPAL */}
-      <main className="flex-1 overflow-y-auto p-4">
+      {/* CONTEÚDO PRINCIPAL */}
+      <main className="flex-1 overflow-y-auto">
         {children}
       </main>
 
-      {/* TAB BAR / NAV INFERIOR */}
-      <footer className="h-16 border-t border-amber-500/40 bg-black/80 backdrop-blur flex items-center">
-        <nav className="flex w-full max-w-3xl mx-auto h-full">
+      {/* NAV INFERIOR ESTILO APP DE BANCO */}
+      <footer className="relative border-t border-zinc-800 bg-black/90 backdrop-blur">
+        <nav className="max-w-3xl mx-auto flex items-end justify-between px-4 pt-2 pb-3">
           {tabs.map((tab) => {
             const isActive = tab.key === activeTab;
+            const isPix = tab.key == "pix";
+
+            if (isPix) {
+              // Botão central flutuante do PIX
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => onTabChange?.(tab.key)}
+                  className="flex flex-col items-center justify-center -translate-y-4"
+                >
+                  <div
+                    className={`
+                      h-12 w-12 rounded-full
+                      flex items-center justify-center
+                      text-xl
+                      shadow-[0_0_24px_rgba(45,212,191,0.9)]
+                      border border-emerald-300/70
+                      ${isActive ? "bg-emerald-400 text-black" : "bg-emerald-500 text-black"}
+                    `}
+                  >
+                    {tab.icon}
+                  </div>
+                  <span
+                    className={`
+                      mt-1 text-[10px] font-medium
+                      ${isActive ? "text-emerald-300" : "text-zinc-400"}
+                    `}
+                  >
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            }
+
+            // Demais abas (Conta / Negócio / Pagamentos)
             return (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => onTabChange?.(tab.key)}
-                className={`
-                  flex-1 flex flex-col items-center justify-center
-                  text-[10px] uppercase tracking-wide
-                  transition-colors
-                  ${isActive ? "text-amber-300" : "text-zinc-500"}
-                `}
+                className="flex-1 flex flex-col items-center justify-center gap-1"
               >
-                <div className="flex flex-col items-center gap-1">
-                  {/* Indicador superior */}
-                  <div
-                    className={`h-0.5 w-6 rounded-full ${
-                      isActive ? "bg-amber-400" : "bg-transparent"
-                    }`}
-                  />
-                  <span className="text-base leading-none">{tab.icon}</span>
-                  <span className="leading-none">{tab.label}</span>
-                </div>
+                <span
+                  className={`
+                    text-lg leading-none
+                    ${isActive ? "text-amber-300" : "text-zinc-400"}
+                  `}
+                >
+                  {tab.icon}
+                </span>
+                <span
+                  className={`
+                    text-[10px] uppercase tracking-wide
+                    ${isActive ? "text-amber-300" : "text-zinc-500"}
+                  `}
+                >
+                  {tab.label}
+                </span>
               </button>
             );
           })}
