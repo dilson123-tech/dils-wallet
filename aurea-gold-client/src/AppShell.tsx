@@ -5,6 +5,7 @@ export type AppTab = "home" | "pix" | "ia" | "pagamentos";
 interface AppShellProps extends PropsWithChildren {
   activeTab: AppTab;
   onTabChange?: (tab: AppTab) => void;
+  isSplash?: boolean;
 }
 
 /**
@@ -13,7 +14,12 @@ interface AppShellProps extends PropsWithChildren {
  * - Área de conteúdo (children)
  * - Navegação inferior estilo banco: Conta / Negócio / Pix / Pagamentos
  */
-export function AppShell({ children, activeTab, onTabChange }: AppShellProps) {
+export function AppShell({
+  children,
+  activeTab,
+  onTabChange,
+  isSplash = false,
+}: AppShellProps) {
   const tabs: { key: AppTab; label: string; icon: string }[] = [
     { key: "home",       label: "Conta",       icon: "🏦" },
     { key: "ia",         label: "Negócio",     icon: "🏪" },
@@ -21,23 +27,16 @@ export function AppShell({ children, activeTab, onTabChange }: AppShellProps) {
     { key: "pagamentos", label: "Pagamentos",  icon: "💳" },
   ];
 
-  const headerTitle =
-    activeTab === "home"
-      ? "Conta Aurea"
-      : activeTab === "ia"
-      ? "Negócio"
-      : activeTab === "pix"
-      ? "Área PIX"
-      : "Pagamentos";
+  const headerTitle = "Aurea Gold";
 
   const headerSubtitle =
     activeTab === "home"
       ? "Visão geral da sua conta Aurea Gold."
-      : activeTab === "ia"
-      ? "Ferramentas e IA 3.0 para o seu negócio."
       : activeTab === "pix"
       ? "Envios, recebimentos e extratos PIX."
-      : "Boletos, recorrentes e contas do mês.";
+      : activeTab === "ia"
+      ? "AureaIA 3.0 para o seu negócio."
+      : "Pagamentos & cobranças";
 
   return (
     <div
@@ -81,7 +80,7 @@ export function AppShell({ children, activeTab, onTabChange }: AppShellProps) {
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => onTabChange?.(tab.key)}
+                  onClick={() => !isSplash && onTabChange?.(tab.key)}
                   className="flex flex-col items-center justify-center -translate-y-4"
                 >
                   <div
@@ -137,6 +136,21 @@ export function AppShell({ children, activeTab, onTabChange }: AppShellProps) {
           })}
         </nav>
       </footer>
+
+      {/* SPLASH / LOADING PREMIUM */}
+      {isSplash && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 rounded-full border border-amber-400/70 border-t-transparent animate-spin" />
+            <div className="text-[11px] uppercase tracking-[0.28em] text-amber-300">
+              AUREA GOLD
+            </div>
+            <div className="text-[10px] text-zinc-400">
+              Carregando painel...
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
