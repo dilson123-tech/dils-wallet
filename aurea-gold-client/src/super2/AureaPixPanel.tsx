@@ -273,8 +273,8 @@ export default function AureaPixPanel() {
                 Extrato PIX (modo real + LAB)
               </h3>
               <p className="text-zinc-300 mb-2">
-                Aqui você acompanha os envios e recebimentos de PIX e já vê uma
-                simulação das taxas do Aurea Gold sobre cada envio.
+                Aqui você acompanha os envios e recebimentos de PIX e já vê as
+                taxas aplicadas e o resultado líquido de cada envio.
               </p>
 
               {/* RESUMO FINANCEIRO COM TAXAS */}
@@ -422,10 +422,12 @@ export default function AureaPixPanel() {
               )}
 
               <p className="mt-2 text-[10px] text-zinc-500">
-                As taxas mostradas aqui são um modelo padrão (
+                As taxas mostradas aqui usam, sempre que possível, os valores reais
+                salvos pelo backend. Quando alguma transação ainda não tiver taxa
+                registrada, aplicamos o modelo padrão de
                 {Math.round(TAXA_ENVIO_PADRAO * 1000) / 10}
-                % por envio) e podem ser ajustadas conforme o plano comercial
-                do Aurea Gold para cada cliente.
+                % por envio como referência visual. Esses valores podem ser ajustados
+                conforme o plano comercial do Aurea Gold para cada cliente.
               </p>
             </>
           )}
