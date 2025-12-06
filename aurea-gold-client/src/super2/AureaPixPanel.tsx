@@ -13,6 +13,10 @@ import { fetchPixHistory, PixHistoryItem } from "./api";
  */
 type PixAction = "send" | "charge" | "statement" | null;
 
+type AureaPixPanelProps = {
+  initialAction?: PixAction | null;
+};
+
 // taxa padrão simulada do Aurea Gold sobre envios de PIX (0,8%)
 const TAXA_ENVIO_PADRAO = 0.008;
 
@@ -25,8 +29,14 @@ function formatBRL(value: number): string {
   });
 }
 
-export default function AureaPixPanel() {
+export default function AureaPixPanel({ initialAction = null }: AureaPixPanelProps) {
   const [activeAction, setActiveAction] = useState<PixAction>(null);
+
+  useEffect(() => {
+    if (initialAction) {
+      setActiveAction(initialAction);
+    }
+  }, [initialAction]);
 
   const [history, setHistory] = useState<PixHistoryItem[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -356,17 +366,38 @@ export default function AureaPixPanel() {
 
                         // valores vindos do backend, com fallback para simulação
                         const taxaPercent =
-                          item.taxa_percentual ?? (isEnvio ? TAXA_ENVIO_PADRAO * 100 : 0);
+                          typeof item.taxa_percentual === "number"
+                            ? item.taxa_percentual
+                            : isEnvio
+                            ? TAXA_ENVIO_PADRAO * 100
+                            : undefined;
 
                         const taxaValor =
-                          item.taxa_valor ?? (isEnvio ? item.valor * TAXA_ENVIO_PADRAO : 0);
+                          typeof item.taxa_valor === "number"
+                            ? item.taxa_valor
+                            : isEnvio && typeof taxaPercent === "number"
+                            ? item.valor * (taxaPercent / 100)
+                            : undefined;
 
                         const valorLiquido =
-                          item.valor_liquido ?? (isEnvio ? item.valor - taxaValor : item.valor);
+                          typeof item.valor_liquido === "number"
+                            ? item.valor_liquido
+                            : isEnvio && typeof taxaValor === "number"
+                            ? item.valor - taxaValor
+                            : item.valor;
 
                         const created =
                           item.created_at &&
                           new Date(item.created_at).toLocaleString("pt-BR");
+
+                        const infoParts = [
+                          typeof taxaValor === "number"
+                            ? `Taxa: ${formatBRL(taxaValor)}`
+                            : null,
+                          typeof valorLiquido === "number"
+                            ? `Você recebeu líquido: ${formatBRL(valorLiquido)}`
+                            : null,
+                        ].filter(Boolean) as string[];
 
                         return (
                           <div
@@ -398,18 +429,9 @@ export default function AureaPixPanel() {
                               >
                                 {formatBRL(item.valor)}
                               </div>
-                              {isEnvio && (
-                                <div className="text-[9px] text-amber-300">
-                                  {`${taxaPercent.toLocaleString("pt-BR", {
-                                    minimumFractionDigits: 1,
-                                    maximumFractionDigits: 2,
-                                  })}% • ${formatBRL(taxaValor)}`}
-                                </div>
-                              )}
-
-                              {typeof valorLiquido === "number" && (
-                                <div className="text-[9px] text-zinc-400">
-                                  Líquido {formatBRL(valorLiquido)}
+                              {infoParts.length > 0 && (
+                                <div className="text-[9px] text-amber-200">
+                                  {infoParts.join(" • ")}
                                 </div>
                               )}
                             </div>
