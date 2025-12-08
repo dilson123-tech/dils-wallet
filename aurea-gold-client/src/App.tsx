@@ -4,10 +4,53 @@ import SuperAureaHome from "./super2/SuperAureaHome";
 import AureaPixPanel from "./super2/AureaPixPanel";
 import AureaIAPanel from "./super2/AureaIAPanel";
 import AureaPagamentosPanel from "./pagamentos/AureaPagamentosPanel";
+import PlanosPremium from "./super2-lab/PlanosPremium";
 // import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
+const isPlanosLab =
+  typeof window !== "undefined" &&
+  window.location.pathname.includes("planos-lab");
+
 export default function App() {
+  if (isPlanosLab) {
+    return (
+      <div className="min-h-screen bg-black text-zinc-50">
+        <main className="w-full px-4 py-6 mx-auto max-w-6xl">
+          <PlanosPremium />
+        </main>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<AppTab>("home");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [pixInitialAction, setPixInitialAction] = useState<"send" | "charge" | "statement" | null>(null);
+
+  const handleTabChange = (tab: AppTab) => {
+    if (tab === activeTab) return;
+
+    setIsTransitioning(true);
+
+    setTimeout(() => {
+      setActiveTab(tab);
+      setIsTransitioning(false);
+    }, 500);
+  };
+
+  const handleHomePixShortcut = (action: "enviar" | "receber" | "extrato") => {
+    let next: "send" | "charge" | "statement" | null = null;
+
+    if (action === "enviar") {
+      next = "send";
+    } else if (action === "extrato") {
+      next = "statement";
+    } else if (action === "receber") {
+      next = "charge";
+    }
+
+    setPixInitialAction(next);
+    handleTabChange("pix");
+  };
 
   let content: React.ReactNode;
 
@@ -30,7 +73,7 @@ export default function App() {
 
           {/* MAIN CONTENT */}
           <main className="w-full pb-4 md:pb-6 overflow-x-auto">
-            <SuperAureaHome />
+            <SuperAureaHome onPixShortcut={handleHomePixShortcut} />
             {/* <PanelReceitasReservasLab /> */}
           </main>
         </>
@@ -40,7 +83,7 @@ export default function App() {
     case "pix":
       content = (
         <div className="w-full px-4 py-6 mx-auto">
-          <AureaPixPanel />
+          <AureaPixPanel initialAction={pixInitialAction} />
         </div>
       );
       break;
@@ -66,7 +109,11 @@ export default function App() {
   }
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
+    <AppShell
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      isSplash={isTransitioning}
+    >
       {content}
     </AppShell>
   );

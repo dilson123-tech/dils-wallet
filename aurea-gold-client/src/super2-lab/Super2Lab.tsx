@@ -2,6 +2,7 @@ import React from "react";
 import { IaHeadlineLab } from "../super2/IaHeadlineLab";
 import ChartSuper2Lab from "./ChartSuper2Lab";
 import AureaAIChatLab from "./AureaAIChatLab";
+import PlanosPremium from "./PlanosPremium";
 
 export default function Super2Lab() {
   return (
@@ -29,6 +30,9 @@ export default function Super2Lab() {
 
         {/* IA 3.0 em modo LAB, isolada */}
         <AureaAIChatLab />
+
+        {/* Planos premium da Aurea Gold (somente LAB por enquanto) */}
+        <PlanosPremium />
       </main>
     </div>
   );

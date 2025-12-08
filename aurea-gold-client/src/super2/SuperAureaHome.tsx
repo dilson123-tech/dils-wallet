@@ -4,7 +4,13 @@ import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
 
-function handlePixShortcut(action: "enviar" | "receber" | "extrato") {
+type PixShortcutAction = "enviar" | "receber" | "extrato";
+
+type SuperAureaHomeProps = {
+  onPixShortcut?: (action: PixShortcutAction) => void;
+};
+
+function handlePixShortcutFallback(action: PixShortcutAction) {
   console.log(`[SuperAureaHome] Atalho PIX clicado: ${action}`);
   alert(
     "Atalho em construção. Em breve este botão vai levar direto para o painel correspondente do Aurea Gold. 😉"
@@ -32,7 +38,15 @@ type AureaServiceKey =
   | "cofrinhos"
   | "investimentos"
   | "criptomoedas"
-  | "informe_rendimentos";
+  | "informe_rendimentos"
+  // Serviços de negócio inspirados no Mercado Pago
+  | "vendas"
+  | "produtos"
+  | "relatorios_faturamento"
+  | "gestao_caixa"
+  | "taxas_parcelas"
+  | "maquininhas"
+  | "config_negocio";
 
 function handleServiceShortcut(service: AureaServiceKey) {
   console.log(`[SuperAureaHome] Atalho de serviço clicado: ${service}`);
@@ -51,7 +65,7 @@ function handleServiceShortcut(service: AureaServiceKey) {
     return "R$ " + value.toFixed(2).replace(".", ",");
   }
 
-export default function SuperAureaHome() {
+export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   const [saldoReal, setSaldoReal] = useState<number | null>(null);
   const [saldoModo, setSaldoModo] = useState<"simulado" | "real">("simulado");
   const [entradasMes, setEntradasMes] = useState<number | null>(null);
@@ -162,6 +176,19 @@ export default function SuperAureaHome() {
   const saldoDisplay =
     saldoModo === "real" ? formatBRL(saldoReal) : "R$ 12.345,67";
 
+  const resultadoMes =
+    entradasMes !== null && saidasMes !== null
+      ? entradasMes - saidasMes
+      : null;
+
+  const resultadoClass =
+    resultadoMes !== null && resultadoMes >= 0
+      ? "text-emerald-300"
+      : "text-red-300";
+
+  const resultadoLabel =
+    resultadoMes !== null && resultadoMes >= 0 ? "superávit" : "déficit";
+
   return (
     <section className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* Card de saldo principal */}
@@ -231,8 +258,12 @@ export default function SuperAureaHome() {
           </p>
           <button
             type="button"
-            onClick={() => handlePixShortcut("enviar")}
-            className="px-3 py-1.5 rounded-lg border border-emerald-500/70 bg-emerald-900/60 text-emerald-50 text-left text-[11px] hover:border-emerald-300/80 active:scale-[0.98] transition"
+            onClick={() =>
+            onPixShortcut
+              ? onPixShortcut("enviar")
+              : handlePixShortcutFallback("enviar")
+          }
+            className="px-3 py-1.5 rounded-lg border border-emerald-500/70 bg-emerald-900/60 text-emerald-50 text-left text-[11px] hover:border-emerald-300/80 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
           >
             Enviar PIX
             <span className="block text-[9px] text-emerald-100/80">
@@ -241,8 +272,12 @@ export default function SuperAureaHome() {
           </button>
           <button
             type="button"
-            onClick={() => handlePixShortcut("receber")}
-            className="px-3 py-1.5 rounded-lg border border-amber-500/80 bg-black/60 text-amber-100 text-left text-[11px] hover:border-amber-300/90 active:scale-[0.98] transition"
+            onClick={() =>
+            onPixShortcut
+              ? onPixShortcut("receber")
+              : handlePixShortcutFallback("receber")
+          }
+            className="px-3 py-1.5 rounded-lg border border-amber-500/80 bg-black/60 text-amber-100 text-left text-[11px] hover:border-amber-300/90 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
           >
             Receber PIX
             <span className="block text-[9px] text-amber-100/80">
@@ -251,8 +286,12 @@ export default function SuperAureaHome() {
           </button>
           <button
             type="button"
-            onClick={() => handlePixShortcut("extrato")}
-            className="px-3 py-1.5 rounded-lg border border-zinc-600/80 bg-zinc-900/80 text-zinc-100 text-left text-[11px] hover:border-amber-400/80 active:scale-[0.98] transition"
+            onClick={() =>
+            onPixShortcut
+              ? onPixShortcut("extrato")
+              : handlePixShortcutFallback("extrato")
+          }
+            className="px-3 py-1.5 rounded-lg border border-zinc-600/80 bg-zinc-900/80 text-zinc-100 text-left text-[11px] hover:border-amber-400/80 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
           >
             Ver extrato PIX
             <span className="block text-[9px] text-zinc-300/80">
@@ -305,16 +344,43 @@ export default function SuperAureaHome() {
 
           <div className="col-span-2 md:col-span-1 rounded-xl border border-amber-500/50 bg-black/60 px-3 py-2 flex flex-col justify-between">
             <p className="text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
-              Destaque do mês
+              Resultado do mês
             </p>
-            <p className="mt-1 text-[11px] text-zinc-100">
-              Você está gastando{" "}
-              <span className="text-emerald-300 font-semibold">
-                menos que o mês passado
-              </span>{" "}
-              (simulação). Bom sinal para manter sua estratégia de reservas.
+            <p className="mt-1 text-lg font-semibold">
+              {resultadoMes !== null ? (
+                <span className={resultadoClass}>
+                  {formatBRL(resultadoMes)} ({resultadoLabel})
+                </span>
+              ) : (
+                <span className="text-zinc-100">
+                  R$ 2.300,00 (simulação)
+                </span>
+              )}
+            </p>
+            <p className="mt-1 text-[10px] text-zinc-400">
+              Diferença entre todas as entradas e saídas do mês. Use este número para ajustar
+              reservas, investimentos e gastos do seu negócio.
             </p>
           </div>
+        </div>
+
+        <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-zinc-300">
+          <div>
+            <span className="uppercase tracking-[0.16em] text-amber-300">
+              Plano atual (LAB): Free
+            </span>
+            <span className="ml-1 text-zinc-400">
+              {" "}
+              — IA financeira completa e relatórios avançados ficam nos planos Pro, Gold e Empresarial.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => (window.location.href = "/planos-lab")}
+            className="inline-flex items-center justify-center rounded-full border border-amber-400/80 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] transition"
+          >
+            Ver planos e benefícios
+          </button>
         </div>
       </div>
 
@@ -358,17 +424,101 @@ export default function SuperAureaHome() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] md:text-[11px]">
+          {/* Coluna 1 */}
           <button
             type="button"
             onClick={() => handleServiceShortcut("negocios")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-amber-500/50 bg-zinc-950 px-3 py-2 hover:border-amber-300/80 active:scale-[0.98] transition"
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-amber-500/60 bg-zinc-950 px-3 py-2 hover:border-amber-300/80 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
           >
-            <span className="font-semibold text-amber-200">Negócios</span>
+            <span className="font-semibold text-amber-200">Negócio Aurea</span>
             <span className="text-[9px] text-zinc-400">
               Conta para MEI, PJ e empreendedores.
             </span>
           </button>
-          {/* ... (resto dos botões de serviços, idênticos à versão anterior) ... */}
+
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("vendas")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">Vendas</span>
+            <span className="text-[9px] text-zinc-400">
+              Acompanhe faturamento, tickets médios e volume diário.
+            </span>
+          </button>
+
+          {/* Coluna 2 */}
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("produtos")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">Produtos</span>
+            <span className="text-[9px] text-zinc-400">
+              Cadastre itens, categorias e controle de estoque.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("relatorios_faturamento")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">
+              Relatórios &amp; faturamento
+            </span>
+            <span className="text-[9px] text-zinc-400">
+              Visão financeira, DRE simplificado e exportações.
+            </span>
+          </button>
+
+          {/* Coluna 3 */}
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("gestao_caixa")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">Gestão de caixa</span>
+            <span className="text-[9px] text-zinc-400">
+              Entradas, saídas, reservas e projeção de fluxo.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("taxas_parcelas")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">Taxas &amp; parcelas</span>
+            <span className="text-[9px] text-zinc-400">
+              Veja quanto paga por venda e simule cenários.
+            </span>
+          </button>
+
+          {/* Coluna 4 */}
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("maquininhas")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">Maquininhas / Tap</span>
+            <span className="text-[9px] text-zinc-400">
+              Conecte sua maquininha ou solução parceira ao Aurea.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("config_negocio")}
+            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
+          >
+            <span className="font-semibold text-zinc-100">
+              Configurações do negócio
+            </span>
+            <span className="text-[9px] text-zinc-400">
+              Dados da empresa, colaboradores e permissões.
+            </span>
+          </button>
         </div>
       </div>
 
