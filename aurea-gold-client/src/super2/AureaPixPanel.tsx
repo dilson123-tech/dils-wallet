@@ -21,11 +21,22 @@ function formatBRL(value: number | null): string {
 }
 
 
-function formatDescricaoPublicaPix(descricao: string | null | undefined) {
+function formatDescricaoPublicaPix(
+  descricao: string | null | undefined
+): string {
   if (!descricao) return "";
-  // Remove qualquer trecho entre parênteses que mencione "taxa"
-  return descricao.replace(/\s*\(.*taxa.*\)/i, "");
+
+  const lower = descricao.toLowerCase();
+
+  // Se a descrição mencionar taxa, não mostramos o texto original para o cliente.
+  // Isso evita exibir coisas como "PIX com taxa 0,8%".
+  if (lower.includes("taxa")) {
+    return "Movimento registrado pela carteira PIX Aurea Gold.";
+  }
+
+  return descricao;
 }
+
 
 export default function AureaPixPanel({
   initialAction = null,
@@ -674,6 +685,48 @@ export default function AureaPixPanel({
 
           {activeAction === "statement" && (
             <div>
+              {/* Cards premium de resumo do período */}
+              <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
+                <div className="rounded-2xl border border-amber-500/70 bg-gradient-to-br from-black via-zinc-950 to-amber-950/30 px-3 py-2.5">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80 mb-1">
+                    Envios do período
+                  </p>
+                  <p className="text-sm md:text-base font-semibold text-amber-100">
+                    {formatBRL(resumo.totalEnvios)}
+                  </p>
+                  <p className="text-[9px] text-zinc-400 mt-1">
+                    Somando todos os PIX enviados pela carteira Aurea Gold.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-500/70 bg-gradient-to-br from-black via-zinc-950 to-emerald-900/30 px-3 py-2.5">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/90 mb-1">
+                    Recebimentos do período
+                  </p>
+                  <p className="text-sm md:text-base font-semibold text-emerald-100">
+                    {formatBRL(resumo.totalRecebidos)}
+                  </p>
+                  <p className="text-[9px] text-emerald-200/80 mt-1">
+                    Entradas de PIX recebidas neste período.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-amber-400/80 bg-gradient-to-br from-black via-zinc-950 to-amber-800/40 px-3 py-2.5">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200 mb-1">
+                    Resultado líquido
+                  </p>
+                  <p
+                              className={`text-sm md:text-base font-semibold ${resumo.liquido >= 0 ? "text-emerald-200" : "text-rose-300"}`}
+
+                  >
+                    {formatBRL(resumo.liquido)}
+                  </p>
+                  <p className="text-[9px] text-zinc-300 mt-1">
+                    Diferença entre o que saiu e o que entrou no período.
+                  </p>
+                </div>
+              </div>
+
               <h3 className="font-semibold text-amber-300 mb-1">
                 Extrato PIX (modo real + LAB)
               </h3>
