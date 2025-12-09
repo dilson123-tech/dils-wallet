@@ -230,10 +230,71 @@ export default function AureaPixPanel({
     );
   };
 
+  
+  const handleAskPixInsight = async () => {
+    if (iaPixLoading) return;
+
+    setIaPixError(null);
+    setIaPixLoading(true);
+
+    try {
+      // monta um resumo textual para a IA 3.0 com base nos totais atuais
+      const resumoTexto = [
+        `Envios do período: ${formatBRL(resumo.totalEnvios)}`,
+        `Recebimentos do período: ${formatBRL(resumo.totalRecebidos)}`,
+        `Taxas do período: ${formatBRL(resumo.totalTaxas)}`,
+        `Resultado líquido: ${formatBRL(resumo.liquido)}`,
+        resumo.totalEnvios > 0
+          ? `Taxa média sobre envios: ${resumo.taxaMediaPercentual.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}%`
+          : "Ainda não há envios para calcular taxa média.",
+      ].join(" | ");
+
+      const mensagem =
+        "[MODO INSIGHT PIX] Analise o extrato do PIX do mês com foco em risco, taxas e sustentabilidade financeira. Dados resumidos: " +
+        resumoTexto +
+        ". Dê um diagnóstico objetivo (alertas, pontos fortes, recomendações práticas).";
+
+      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": USER_EMAIL,
+        },
+        body: JSON.stringify({ message: mensagem }),
+      });
+
+      if (!resp.ok) {
+        throw new Error("HTTP " + resp.status);
+      }
+
+      const data: any = await resp.json().catch(() => null);
+      const reply =
+        data && typeof data.reply === "string"
+          ? data.reply
+          : JSON.stringify(data, null, 2);
+
+      setIaPixInsight(reply);
+    } catch (err) {
+      console.error("[AureaPixPanel] Erro ao pedir insight da IA 3.0:", err);
+      setIaPixError(
+        "Não consegui falar com a IA 3.0 agora para analisar o extrato. Tente novamente em instantes."
+      );
+    } finally {
+      setIaPixLoading(false);
+    }
+  };
+
   // histórico do extrato
   const [history, setHistory] = useState<PixHistoryItem[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [iaPixInsight, setIaPixInsight] = useState<string | null>(null);
+  const [iaPixLoading, setIaPixLoading] = useState(false);
+  const [iaPixError, setIaPixError] = useState<string | null>(null);
+
 
   // carrega histórico quando o usuário entra no modo EXTRATO
   useEffect(() => {
@@ -666,6 +727,40 @@ export default function AureaPixPanel({
                     {formatBRL(resumo.liquido)}
                   </div>
                 </div>
+              </div>
+
+              {/* IA 3.0 insight sobre o extrato PIX */}
+              <div className="mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="uppercase tracking-wide text-amber-200">
+                    IA 3.0 • Insight do mês no PIX
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAskPixInsight}
+                    disabled={iaPixLoading}
+                    className="rounded-full border border-amber-500/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200 hover:bg-amber-500/20 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {iaPixLoading ? "Analisando..." : "Pedir análise"}
+                  </button>
+                </div>
+
+                {iaPixError && (
+                  <p className="text-[10px] text-rose-300">{iaPixError}</p>
+                )}
+
+                {iaPixInsight && !iaPixError && (
+                  <p className="text-[11px] text-zinc-100 whitespace-pre-line">
+                    {iaPixInsight}
+                  </p>
+                )}
+
+                {!iaPixInsight && !iaPixError && !iaPixLoading && (
+                  <p className="text-[10px] text-zinc-400">
+                    Use a IA 3.0 para interpretar o extrato, apontar riscos,
+                    oportunidades de economia e sugerir ajustes no uso do PIX.
+                  </p>
+                )}
               </div>
 
               {historyLoading && (
