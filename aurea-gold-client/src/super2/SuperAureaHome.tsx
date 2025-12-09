@@ -70,6 +70,10 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   const [saldoModo, setSaldoModo] = useState<"simulado" | "real">("simulado");
   const [entradasMes, setEntradasMes] = useState<number | null>(null);
   const [saidasMes, setSaidasMes] = useState<number | null>(null);
+  const [pixInsight, setPixInsight] = useState<string | null>(null);
+  const [pixInsightLoading, setPixInsightLoading] = useState(false);
+  const [pixInsightError, setPixInsightError] = useState<string | null>(null);
+
     const [forecastNivel, setForecastNivel] = useState<
       | "ok"
       | "atencao"
@@ -172,6 +176,38 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
       alive = false;
     };
   }, []);
+
+  async function handleHomeInsight() {
+    if (pixInsightLoading) return;
+    setPixInsightError(null);
+    setPixInsightLoading(true);
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/ai/headline`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": USER_EMAIL,
+        },
+        body: JSON.stringify({
+          message: "resumo rápido do mês no pix"
+        })
+      });
+
+      if (!resp.ok) {
+        setPixInsightError("Erro ao buscar Insight PIX");
+        return;
+      }
+
+      const data = await resp.json();
+      setPixInsight(data?.headline || "Insight PIX disponível");
+    } catch (err) {
+      setPixInsightError("Falha de comunicação com IA");
+    } finally {
+      setPixInsightLoading(false);
+    }
+  }
+
 
   const saldoDisplay =
     saldoModo === "real" ? formatBRL(saldoReal) : "R$ 12.345,67";
@@ -389,6 +425,47 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
             Ver planos e benefícios
           </button>
         </div>
+      </div>
+
+      {/* Insight IA 3.0 • PIX */}
+      <div className="rounded-2xl border border-amber-500/50 bg-gradient-to-br from-black via-zinc-950 to-black p-4 md:p-5 space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div>
+            <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
+              IA 3.0 • Situação do seu PIX no mês
+            </p>
+            <p className="text-[11px] md:text-sm text-zinc-200">
+              Diagnóstico rápido usando saldo, entradas, saídas e previsão do mês.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleHomeInsight}
+            disabled={pixInsightLoading}
+            className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-black/80 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed transition"
+          >
+            {pixInsightLoading ? "Analisando..." : "Atualizar insight do mês"}
+          </button>
+        </div>
+
+        {pixInsightError && (
+          <p className="text-[11px] text-rose-300">
+            {pixInsightError}
+          </p>
+        )}
+
+        {!pixInsightError && pixInsight && (
+          <p className="text-[11px] text-zinc-100 whitespace-pre-line">
+            {pixInsight}
+          </p>
+        )}
+
+        {!pixInsightError && !pixInsight && !pixInsightLoading && (
+          <p className="text-[10px] text-zinc-400">
+            Toque em "Atualizar insight do mês" para a IA 3.0 ler seu cenário PIX
+            e apontar se o momento é de atenção, risco ou folga de caixa.
+          </p>
+        )}
       </div>
 
       {/* PIX • Visão rápida (LAB) */}
