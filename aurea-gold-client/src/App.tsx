@@ -58,15 +58,15 @@ export default function App() {
     case "home":
       content = (
         <>
-          {/* HEADER BETA / TÍTULO */}
+          {/* HEADER APP OFICIAL */}
           <header className="mb-6 md:mb-8">
-            <div className="text-[10px] md:text-xs border-b border-zinc-800 pb-4 text-xs uppercase tracking-wide">
+            <div className="text-[10px] md:text-xs border-b border-zinc-800 pb-4 uppercase tracking-wide flex flex-col md:flex-row md:items-center md:justify-between gap-1">
               <span className="font-bold leading-tight">
-                AUREA GOLD • PAINEL v2 super/ia beta
+                AUREA GOLD • CARTEIRA DIGITAL
               </span>
-            </div>
-            <div className="text-[10px] text-zinc-400 mt-1">
-              Ambiente interno IA 3.0 • Modo dev-27
+              <span className="text-[9px] md:text-[10px] text-amber-300">
+                Versão IA 3.0 • Ambiente interno (LAB)
+              </span>
             </div>
             <div className="h-px w-40 md:w-64 bg-amber-500 mt-2" />
           </header>
