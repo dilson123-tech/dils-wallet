@@ -20,6 +20,13 @@ function formatBRL(value: number | null): string {
   });
 }
 
+
+function formatDescricaoPublicaPix(descricao: string | null | undefined) {
+  if (!descricao) return "";
+  // Remove qualquer trecho entre parênteses que mencione "taxa"
+  return descricao.replace(/\s*\(.*taxa.*\)/i, "");
+}
+
 export default function AureaPixPanel({
   initialAction = null,
 }: AureaPixPanelProps) {
@@ -245,7 +252,7 @@ export default function AureaPixPanel({
         `Taxas do período: ${formatBRL(resumo.totalTaxas)}`,
         `Resultado líquido: ${formatBRL(resumo.liquido)}`,
         resumo.totalEnvios > 0
-          ? `Taxa média sobre envios: ${resumo.taxaMediaPercentual.toLocaleString("pt-BR", {
+          ? ` sobre envios: ${resumo.taxaMediaPercentual.toLocaleString("pt-BR", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}%`
@@ -253,7 +260,7 @@ export default function AureaPixPanel({
       ].join(" | ");
 
       const mensagem =
-        "[MODO INSIGHT PIX] Analise o extrato do PIX do mês com foco em risco, taxas e sustentabilidade financeira. Dados resumidos: " +
+        "[MODO INSIGHT PIX] Analise o extrato do PIX do mês com foco em risco,  e sustentabilidade financeira. Dados resumidos: " +
         resumoTexto +
         ". Dê um diagnóstico objetivo (alertas, pontos fortes, recomendações práticas).";
 
@@ -672,7 +679,7 @@ export default function AureaPixPanel({
               </h3>
               <p className="text-zinc-300 mb-2">
                 Aqui você acompanha os envios e recebimentos de PIX e, quando
-                houver, as taxas repassadas pelo parceiro e o resultado líquido
+                houver, as  repassadas pelo parceiro e o 
                 de cada operação.
               </p>
 
@@ -696,7 +703,8 @@ export default function AureaPixPanel({
                   </div>
                 </div>
 
-                <div>
+                {/* Bloco interno de taxas do período (escondido para o cliente final) */}
+                <div className="hidden">
                   <div className="text-zinc-500 uppercase tracking-wide">
                     Taxas do período
                   </div>
@@ -730,7 +738,7 @@ export default function AureaPixPanel({
               </div>
 
               {/* IA 3.0 insight sobre o extrato PIX */}
-              <div className="mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
+              <div className="hidden mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="uppercase tracking-wide text-amber-200">
                     IA 3.0 • Insight do mês no PIX
@@ -855,32 +863,11 @@ export default function AureaPixPanel({
                             </div>
 
                             <div className="text-[11px] text-zinc-200">
-                              {item.descricao || "PIX"}
+                              {formatDescricaoPublicaPix(item.descricao) || "PIX"}
                             </div>
 
-                            <div className="flex flex-wrap gap-1 text-[9px] text-zinc-300">
-                              {typeof taxaValor === "number" && taxaValor > 0 && (
-                                <span className="inline-flex items-center rounded-full bg-black/40 border border-amber-500/60 px-2 py-[1px]">
-                                  Taxa: {formatBRL(taxaValor)}
-                                </span>
-                              )}
-
-                              {typeof valorLiquido === "number" && (
-                                <span className="inline-flex items-center rounded-full bg-black/40 border border-zinc-600 px-2 py-[1px]">
-                                  Líquido: {formatBRL(valorLiquido)}
-                                </span>
-                              )}
-
-                              {typeof taxaPercent === "number" && (
-                                <span className="inline-flex items-center rounded-full bg-black/40 border border-amber-500/40 px-2 py-[1px] text-amber-200">
-                                  Taxa:{" "}
-                                  {taxaPercent.toLocaleString("pt-BR", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
-                                  %
-                                </span>
-                              )}
+                            <div className="text-[9px] text-zinc-400">
+                              Movimento registrado pela carteira PIX Aurea Gold.
                             </div>
                           </div>
                         );
