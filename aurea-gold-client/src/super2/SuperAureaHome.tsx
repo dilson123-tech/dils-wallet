@@ -191,6 +191,13 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
 
   return (
     <section className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
+      {/* Modo de dados (real vs simulado) */}
+      <div className="mb-2 text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.18em]">
+        {saldoModo === "real"
+          ? "Dados reais carregados do backend Aurea Gold"
+          : "Modo simulado • aguardando conexão completa do PIX"}
+      </div>
+
       {/* Card de saldo principal */}
       <div className="rounded-2xl border border-amber-500/60 bg-gradient-to-br from-black via-zinc-950 to-zinc-900 p-4 md:p-6 shadow-[0_0_40px_rgba(251,191,36,0.18)] flex flex-col md:flex-row justify-between gap-4">
         <div>
