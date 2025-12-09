@@ -568,6 +568,18 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
           </div>
         </div>
       </div>
-    </section>
+    
+      {/* Acesso a planos Aurea Gold (LAB) */}
+      <div className="mt-6 text-center">
+        <button
+          type="button"
+          onClick={() => window.open('/planos-lab', '_blank')}
+          className="text-[10px] md:text-[11px] text-amber-300 underline hover:text-amber-200 transition"
+        >
+          Conhecer planos Aurea Gold (LAB)
+        </button>
+      </div>
+
+</section>
   );
 }
