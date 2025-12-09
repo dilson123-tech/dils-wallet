@@ -791,7 +791,7 @@ export default function AureaPixPanel({
               </div>
 
               {/* IA 3.0 insight sobre o extrato PIX */}
-              <div className="hidden mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
+              <div className="mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="uppercase tracking-wide text-amber-200">
                     IA 3.0 • Insight do mês no PIX
@@ -919,7 +919,7 @@ export default function AureaPixPanel({
                               {formatDescricaoPublicaPix(item.descricao) || "PIX"}
                             </div>
 
-                            <div className="text-[9px] text-zinc-400">
+                            <div className="text-[9px] text-zinc-500 mt-1">
                               Movimento registrado pela carteira PIX Aurea Gold.
                             </div>
                           </div>
