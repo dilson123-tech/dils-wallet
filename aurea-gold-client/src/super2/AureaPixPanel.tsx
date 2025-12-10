@@ -845,7 +845,17 @@ export default function AureaPixPanel({
                   )}
 
                   {history && history.length > 0 && (
-                    <div className="mt-3 space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                    <div className="mt-3 space-y-1.5 max-h-64 md:max-h-72 lg:max-h-80 overflow-y-auto pr-1 border border-zinc-800/80 rounded-lg bg-black/40">
+                      <div className="flex items-center justify-between text-[10px] text-zinc-300 mb-2 pb-1 border-b border-zinc-700/70 pr-1">
+                        <span className="uppercase tracking-[0.16em] text-amber-200">
+                          Movimentações recentes
+                        </span>
+                        <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[9px] text-amber-100">
+                          {history.length > 30
+                            ? "Mostrando 30 de " + history.length + " lançamentos"
+                            : history.length + (history.length === 1 ? " lançamento" : " lançamentos")}
+                        </span>
+                      </div>
                       {history.slice(0, 30).map((item) => {
                         const isEnvio = item.tipo === "envio";
 
@@ -880,15 +890,24 @@ export default function AureaPixPanel({
                           : "bg-emerald-950/20";
 
                         const cardClassName = [
-                          "rounded-lg",
+                          "rounded-xl",
                           "border",
                           borderColor,
                           bgColor,
-                          "px-2.5",
-                          "py-2",
+                          "px-3.5",
+                          "py-3",
                           "flex",
                           "flex-col",
-                          "gap-1",
+                          "gap-1.5",
+                          "transition",
+                          "duration-150",
+                          "transform",
+                          "shadow-sm",
+                          "hover:shadow-xl",
+                          "hover:border-amber-400",
+                          "hover:bg-amber-500/10",
+                          "hover:-translate-y-[1px]",
+                          "cursor-default",
                         ].join(" ");
 
                         return (
@@ -911,7 +930,7 @@ export default function AureaPixPanel({
                                 )}
                               </div>
                               <div className={`text-sm font-semibold ${mainColor}`}>
-                                {formatBRL(item.valor)}
+                                {formatBRL(valorLiquido)}
                               </div>
                             </div>
 
