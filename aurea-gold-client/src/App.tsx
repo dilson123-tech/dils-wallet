@@ -4,6 +4,7 @@ import SuperAureaHome from "./super2/SuperAureaHome";
 import AureaPixPanel from "./super2/AureaPixPanel";
 import AureaIAPanel from "./super2/AureaIAPanel";
 import AureaPagamentosPanel from "./pagamentos/AureaPagamentosPanel";
+import AureaCreditoIAPanel from "./credito/AureaCreditoIAPanel";
 import PlanosPremium from "./super2-lab/PlanosPremium";
 // import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
@@ -100,6 +101,14 @@ export default function App() {
       content = (
         <div className="w-full px-4 py-6 mx-auto">
           <AureaPagamentosPanel />
+        </div>
+      );
+      break;
+
+    case "credito-ia":
+      content = (
+        <div className="w-full px-4 py-6 mx-auto">
+          <AureaCreditoIAPanel />
         </div>
       );
       break;

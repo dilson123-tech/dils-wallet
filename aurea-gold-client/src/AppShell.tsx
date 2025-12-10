@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from "react";
 
-export type AppTab = "home" | "pix" | "ia" | "pagamentos";
+export type AppTab = "home" | "pix" | "ia" | "pagamentos" | "credito-ia";
 
 interface AppShellProps extends PropsWithChildren {
   activeTab: AppTab;
@@ -12,7 +12,7 @@ interface AppShellProps extends PropsWithChildren {
  * AppShell — estrutura oficial do aplicativo Aurea Gold.
  * - Header premium (muda conforme a aba)
  * - Área de conteúdo (children)
- * - Navegação inferior estilo banco: Conta / Negócio / Pix / Pagamentos
+ * - Navegação inferior estilo banco: Conta / Negócio / Pix / Pagamentos / Crédito IA
  */
 export function AppShell({
   children,
@@ -21,10 +21,11 @@ export function AppShell({
   isSplash = false,
 }: AppShellProps) {
   const tabs: { key: AppTab; label: string; icon: string }[] = [
-    { key: "home",       label: "Conta",       icon: "🏦" },
-    { key: "ia",         label: "Negócio",     icon: "🏪" },
-    { key: "pix",        label: "Pix",         icon: "◎" },
-    { key: "pagamentos", label: "Pagamentos",  icon: "💳" },
+    { key: "home",       label: "Conta",        icon: "🏦" },
+    { key: "ia",         label: "Negócio",      icon: "🏪" },
+    { key: "pix",        label: "Pix",          icon: "◎" },
+    { key: "pagamentos", label: "Pagamentos",   icon: "💳" },
+    { key: "credito-ia", label: "Crédito IA",   icon: "📊" },
   ];
 
   const headerTitle = "Aurea Gold";
@@ -36,7 +37,9 @@ export function AppShell({
       ? "Envios, recebimentos e extratos PIX."
       : activeTab === "ia"
       ? "AureaIA 3.0 para o seu negócio."
-      : "Pagamentos & cobranças";
+      : activeTab === "pagamentos"
+      ? "Pagamentos, boletos e assinaturas."
+      : "Simulações de crédito inteligente com IA 3.0.";
 
   return (
     <div
@@ -72,7 +75,7 @@ export function AppShell({
         <nav className="max-w-3xl mx-auto flex items-end justify-between px-4 pt-2 pb-3">
           {tabs.map((tab) => {
             const isActive = tab.key === activeTab;
-            const isPix = tab.key == "pix";
+            const isPix = tab.key === "pix";
 
             if (isPix) {
               // Botão central flutuante do PIX
@@ -107,12 +110,12 @@ export function AppShell({
               );
             }
 
-            // Demais abas (Conta / Negócio / Pagamentos)
+            // Demais abas (Conta / Negócio / Pagamentos / Crédito IA)
             return (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => onTabChange?.(tab.key)}
+                onClick={() => !isSplash && onTabChange?.(tab.key)}
                 className="flex-1 flex flex-col items-center justify-center gap-1"
               >
                 <span
