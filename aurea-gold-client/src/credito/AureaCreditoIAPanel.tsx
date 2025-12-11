@@ -453,10 +453,54 @@ const AureaCreditoIAPanel: React.FC = () => {
           </div>
         )}
 
-        <p className="text-[9px] text-zinc-500 mt-1">
-          Este módulo é apenas consultivo. Nenhum crédito será contratado
-          automaticamente pela Aurea Gold a partir desta tela.
-        </p>
+        <div className="mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-2 space-y-1 text-[9px]">
+          <div className="font-semibold text-emerald-300">
+            Parecer de saúde do crédito • IA 3.0
+          </div>
+          <p className="text-zinc-200">
+            Use este resultado como um raio-x consultivo do seu crédito: quanto
+            maior a parcela em relação à sua renda mensal, maior o risco de
+            aperto no caixa.
+          </p>
+          <ul className="list-disc list-inside text-zinc-300 space-y-0.5">
+            <li>Busque manter todas as parcelas de crédito abaixo de 25–30% da renda.</li>
+            <li>Compare a taxa mensal simulada com a faixa sugerida ({faixaJuros}).</li>
+            <li>Se a parcela ficar pesada, ajuste valor solicitado, prazo ou repense o crédito.</li>
+          </ul>
+          {(() => {
+            if (!simParcela || !limiteSugerido) return null;
+            const ratio = simParcela / limiteSugerido;
+
+            let nivel = "Saúde do crédito: BAIXO COMPROMETIMENTO";
+            let classe = "text-emerald-300";
+            let detalhe = "Parcela leve em relação ao limite sugerido. Perfil mais confortável.";
+
+            if (ratio >= 0.25 && ratio < 0.4) {
+              nivel = "Saúde do crédito: COMPROMETIMENTO MÉDIO";
+              classe = "text-amber-300";
+              detalhe = "Parcela começa a pesar. Vale revisar gastos e evitar novos créditos.";
+            } else if (ratio >= 0.4) {
+              nivel = "Saúde do crédito: COMPROMETIMENTO ALTO";
+              classe = "text-red-300";
+              detalhe = "Risco elevado de aperto no caixa. Considere reduzir valor ou alongar prazo.";
+            }
+
+            return (
+              <div className="mt-1">
+                <div className={`font-semibold ${classe}`}>
+                  {nivel}
+                </div>
+                <p className="text-zinc-300">
+                  {detalhe}
+                </p>
+              </div>
+            );
+          })()}
+          <p className="text-zinc-400">
+            Este módulo é apenas consultivo. Nenhum crédito será contratado
+            automaticamente pela Aurea Gold a partir desta tela.
+          </p>
+        </div>
 
       </section>
 
