@@ -130,3 +130,6 @@ async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str 
         qtd_contas_7d=qtd_contas_7d,
         entradas_previstas=entradas_previstas,
     )
+
+from app.api.v1.routes import auth as auth_router
+app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["auth"])

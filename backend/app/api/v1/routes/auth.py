@@ -4,7 +4,8 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 
 from app.database import get_db
-from app.models import User, RefreshToken
+from app.models.user_main import User
+from app.models.refresh_token import RefreshToken
 from app.utils.security import (
     verify_password,
     create_access_token,
