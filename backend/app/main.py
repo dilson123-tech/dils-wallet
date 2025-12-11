@@ -92,22 +92,41 @@ class IAHeadlineLabPayload(BaseModel):
     message: str
 
 
-@app.post("/api/v1/ai/headline-lab", response_model=IAHeadlineResponse)
+@app.post("/api/v1/ai/headline-lab-root", response_model=IAHeadlineResponse)
 async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str = Header(None)):
     """Endpoint LAB para o Painel 3 da IA 3.0.
 
-    Por enquanto só devolve uma resposta fixa, confirmando que o POST
-    em /api/v1/ai/headline-lab está funcionando.
+    Aqui usamos números de exemplo para alimentar o painel de Crédito Inteligente • IA 3.0.
+    No futuro, esses valores virão do ledger real do Aurea Gold.
     """
+
+    # Números LAB para simulação de fluxo PIX / crédito
+    saldo_atual = 1280.0
+    entradas_7d = 4500.0
+    saidas_7d = 4230.0
+    entradas_mes = 4500.0
+    saidas_mes = 4230.0
+    total_contas_7d = 980.0
+    qtd_contas_7d = 3
+    entradas_previstas = 0.0
+
     return IAHeadlineResponse(
         nivel="ok",
-        headline="Aurea Gold – Headline LAB funcionando",
+        headline="Aurea Gold – Headline LAB funcionando.",
         subheadline=f"Mensagem recebida: {payload.message}",
         resumo="Endpoint /api/v1/ai/headline-lab respondeu com sucesso em ambiente LAB.",
         destaques=[
             "Status do Painel 3 operacional (LAB)",
-            "Integração backend → IA 3.0 ok",
+            "Integração backend → IA 3.0 ok.",
             "Pronto para ligar com dados reais depois",
         ],
-        recomendacao="Agora é só conectar o Painel 3 e depois evoluir a lógica da IA."
+        recomendacao="Agora é só conectar o Painel 3 e depois evoluir a lógica da IA.",
+        saldo_atual=saldo_atual,
+        entradas_mes=entradas_mes,
+        saidas_mes=saidas_mes,
+        entradas_7d=entradas_7d,
+        saidas_7d=saidas_7d,
+        total_contas_7d=total_contas_7d,
+        qtd_contas_7d=qtd_contas_7d,
+        entradas_previstas=entradas_previstas,
     )

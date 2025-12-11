@@ -1,5 +1,76 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { API_BASE, USER_EMAIL } from "./api";
+
+interface IAHeadline {
+  entradasMes: number;
+  saidasMes: number;
+  saldoAtual: number;
+  nivelRisco: string;
+}
+
+function formatBRL(value: number | null | undefined): string {
+  const n = typeof value === "number" && !Number.isNaN(value) ? value : 0;
+  return n.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function normalizeHeadline(raw: any): IAHeadline {
+  if (!raw) {
+    return {
+      entradasMes: 0,
+      saidasMes: 0,
+      saldoAtual: 0,
+      nivelRisco: "Em análise (LAB)",
+    };
+  }
+
+  const base = raw.data ?? raw;
+
+  const entradas =
+    Number(
+      base.entradas_mes ??
+        base.entradasMes ??
+        base.totalEntradas ??
+        base.entradas ??
+        0
+    ) || 0;
+
+  const saidas =
+    Number(
+      base.saidas_mes ??
+        base.saidasMes ??
+        base.totalSaidas ??
+        base.saidas ??
+        0
+    ) || 0;
+
+  const saldo =
+    Number(
+      base.saldo_atual ??
+        base.saldoAtual ??
+        base.saldo ??
+        base.saldoHoje ??
+        0
+    ) || 0;
+
+  const nivel =
+    base.nivel_risco ??
+    base.nivelRisco ??
+    base.risco_label ??
+    base.risco ??
+    "Em análise (LAB)";
+
+  return {
+    entradasMes: entradas,
+    saidasMes: saidas,
+    saldoAtual: saldo,
+    nivelRisco: String(nivel),
+  };
+}
 
 /**
  * AureaIAPanel
@@ -12,15 +83,73 @@ import { API_BASE, USER_EMAIL } from "./api";
  *  - área reservada para o chat completo (fase 2)
  */
 export default function AureaIAPanel() {
-  const [loading, setLoading] = useState(false);
+  // Estado da conversa com a IA (chat)
+  const [chatLoading, setChatLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string | null>(null);
 
-  async function askIA(message: string) {
-    if (loading) return;
+  // Estado do resumo numérico do mês (mesmos dados do crédito IA)
+  const [headline, setHeadline] = useState<IAHeadline | null>(null);
+  const [headlineLoading, setHeadlineLoading] = useState(false);
+  const [headlineError, setHeadlineError] = useState<string | null>(null);
 
-    setLoading(true);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHeadline = async () => {
+      try {
+        setHeadlineLoading(true);
+        setHeadlineError(null);
+
+        const resp = await fetch(`${API_BASE}/api/v1/ia/headline-lab`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Email": USER_EMAIL,
+          },
+          body: JSON.stringify({
+            message:
+              "resumo do painel Aurea Gold para modulo de consultor financeiro ia 3.0",
+          }),
+        });
+
+        if (!resp.ok) {
+          throw new Error("Falha ao carregar resumo PIX (headline).");
+        }
+
+        const data = await resp.json();
+        const normalized = normalizeHeadline(data);
+
+        if (!cancelled) {
+          setHeadline(normalized);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar headline IA 3.0 (consultor)", e);
+        if (!cancelled) {
+          setHeadline(null);
+          setHeadlineError(
+            "Não foi possível carregar o resumo do mês agora. Usando apenas visão consultiva textual."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setHeadlineLoading(false);
+        }
+      }
+    };
+
+    void loadHeadline();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function askIA(message: string) {
+    if (chatLoading) return;
+
+    setChatLoading(true);
     setErr(null);
     setLastQuestion(message);
     setAnswer(null);
@@ -58,7 +187,7 @@ export default function AureaIAPanel() {
         "Não consegui falar com a IA agora. Verifique sua conexão ou tente de novo em alguns segundos.";
       setErr(msg);
     } finally {
-      setLoading(false);
+      setChatLoading(false);
     }
   }
 
@@ -89,6 +218,57 @@ export default function AureaIAPanel() {
         </p>
         <div className="h-px w-32 bg-amber-500 mt-3" />
       </header>
+
+      {/* MINI RESUMO CONECTADO AO BACKEND */}
+      <section className="mb-4 rounded-xl border border-amber-500/40 bg-black/40 p-3 text-[11px]">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-amber-300">
+              Visão rápida do mês (IA 3.0)
+            </div>
+
+            {headlineLoading && (
+              <p className="mt-1 text-[10px] text-zinc-400">
+                Carregando dados reais do PIX para análise da IA...
+              </p>
+            )}
+
+            {headlineError && (
+              <p className="mt-1 text-[10px] text-red-400">
+                {headlineError}
+              </p>
+            )}
+
+            {!headlineLoading && !headlineError && (
+              <p className="mt-1 text-[11px] text-zinc-200">
+                {headline ? (
+                  <>
+                    Saldo atual:{" "}
+                    <span className="font-semibold">
+                      {formatBRL(headline.saldoAtual)}
+                    </span>{" "}
+                    · Entradas no mês:{" "}
+                    <span className="font-semibold">
+                      {formatBRL(headline.entradasMes)}
+                    </span>{" "}
+                    · Saídas no mês:{" "}
+                    <span className="font-semibold">
+                      {formatBRL(headline.saidasMes)}
+                    </span>{" "}
+                    · Nível de risco:{" "}
+                    <span className="font-semibold">
+                      {headline.nivelRisco || "Em análise (LAB)"}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  "Aguardando análise da IA 3.0 sobre seu fluxo de PIX. Assim que o resumo estiver pronto, ele aparece aqui."
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* CARDS RESUMO */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
@@ -133,7 +313,7 @@ export default function AureaIAPanel() {
             type="button"
             onClick={() => handleQuick("resumo do mes no pix")}
             className="px-3 py-2 rounded-full bg-amber-500 text-black text-[11px] font-semibold uppercase tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
-            disabled={loading}
+            disabled={chatLoading}
           >
             Analisar meu mês
           </button>
@@ -143,7 +323,7 @@ export default function AureaIAPanel() {
               handleQuick("tenho risco de atrasar alguma conta?")
             }
             className="px-3 py-2 rounded-full border border-amber-500/60 text-amber-300 text-[11px] uppercase tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
-            disabled={loading}
+            disabled={chatLoading}
           >
             Tenho risco de atrasar contas?
           </button>
@@ -153,7 +333,7 @@ export default function AureaIAPanel() {
               handleQuick("onde estou gastando mais no pix este mes?")
             }
             className="px-3 py-2 rounded-full border border-zinc-700 text-zinc-200 text-[11px] uppercase tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
-            disabled={loading}
+            disabled={chatLoading}
           >
             Onde estou gastando mais?
           </button>
@@ -165,7 +345,7 @@ export default function AureaIAPanel() {
               )
             }
             className="px-3 py-2 rounded-full border border-zinc-700 text-zinc-200 text-[11px] uppercase tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
-            disabled={loading}
+            disabled={chatLoading}
           >
             Sugerir um plano de ação
           </button>
@@ -177,7 +357,7 @@ export default function AureaIAPanel() {
         <div className="text-[11px] font-semibold text-zinc-200 mb-1 flex items-center justify-between gap-2">
           <span>Resposta da IA 3.0</span>
           <div className="flex items-center gap-2">
-            {loading && (
+            {chatLoading && (
               <span className="text-[10px] text-amber-300">
                 Pensando na sua situação...
               </span>
@@ -186,7 +366,7 @@ export default function AureaIAPanel() {
               type="button"
               onClick={handleClear}
               className="px-2 py-1 rounded-full border border-zinc-600 text-[9px] uppercase tracking-wide text-zinc-300 hover:border-amber-400 hover:text-amber-300 active:scale-[0.97] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading}
+              disabled={chatLoading}
             >
               Limpar
             </button>

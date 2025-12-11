@@ -813,10 +813,11 @@ from fastapi import Header
 async def ia_headline_lab(x_user_email: str = Header(None)):
     """Versão LAB do Headline IA 3.0.
 
-    Por enquanto usa números de exemplo para não depender do ledger real.
+    Usa números de exemplo para não depender do ledger real.
     Depois plugamos nos dados reais do painel Super2.
     """
-    # TODO: puxar dados reais do Pix / reservas
+
+    # Números de exemplo para o modo LAB (simulação de fluxo PIX)
     saldo_atual = 1280.0
     entradas_7d = 4500.0
     saidas_7d = 4230.0
@@ -826,14 +827,25 @@ async def ia_headline_lab(x_user_email: str = Header(None)):
     qtd_contas_7d = 3
     entradas_previstas = 0.0
 
-    resp = build_ia_headline_panel(
-        saldo_atual=saldo_atual,
-        entradas_7d=entradas_7d,
-        saidas_7d=saidas_7d,
-        entradas_mes=entradas_mes,
-        saidas_mes=saidas_mes,
-        total_contas_7d=total_contas_7d,
-        qtd_contas_7d=qtd_contas_7d,
-        entradas_previstas=entradas_previstas,
-    )
-    return resp
+    # Retorno direto em formato JSON: textos + números
+    return {
+        "nivel": "ok",
+        "headline": "Aurea Gold – Headline LAB funcionando",
+        "subheadline": "Simulação de crédito inteligente com IA 3.0 em ambiente LAB.",
+        "resumo": "Endpoint /api/v1/ai/headline-lab respondeu com sucesso em ambiente LAB.",
+        "destaques": [
+            "Status do Painel 3 operacional (LAB)",
+            "Integração backend → IA 3.0 ok",
+            "Pronto para ligar com dados reais depois",
+        ],
+        "recomendacao": "Agora é só conectar o Painel 3 e depois evoluir a lógica da IA.",
+        "saldo_atual": saldo_atual,
+        "entradas_mes": entradas_mes,
+        "saidas_mes": saidas_mes,
+        "entradas_7d": entradas_7d,
+        "saidas_7d": saidas_7d,
+        "total_contas_7d": total_contas_7d,
+        "qtd_contas_7d": qtd_contas_7d,
+        "entradas_previstas": entradas_previstas,
+    }
+

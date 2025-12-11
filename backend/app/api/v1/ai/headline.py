@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 
 
@@ -132,4 +132,12 @@ def build_ia_headline_panel(
         resumo=resumo,
         destaques=destaques,
         recomendacao=recomendacao,
+        saldo_atual=saldo_atual,
+        entradas_mes=entradas_mes,
+        saidas_mes=saidas_mes,
+        entradas_7d=entradas_7d,
+        saidas_7d=saidas_7d,
+        total_contas_7d=total_contas_7d,
+        qtd_contas_7d=qtd_contas_7d,
+        entradas_previstas=entradas_previstas,
     )

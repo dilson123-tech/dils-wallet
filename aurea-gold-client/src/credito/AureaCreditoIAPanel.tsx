@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from "react";
+import { API_BASE, USER_EMAIL } from "../super2/api";
 
 interface CreditoHeadline {
   entradasMes: number;
@@ -62,6 +63,7 @@ function normalizeHeadline(raw: any): CreditoHeadline {
     base.nivelRisco ??
     base.risco_label ??
     base.risco ??
+    base.nivel ??
     "Em análise (LAB)";
 
   return {
@@ -125,6 +127,14 @@ const AureaCreditoIAPanel: React.FC = () => {
   const [headline, setHeadline] = useState<CreditoHeadline | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [labResumo, setLabResumo] = useState<string | null>(null);
+  const [simValor, setSimValor] = useState<string>("5.000,00");
+  const [simPrazoMeses, setSimPrazoMeses] = useState<string>("12");
+  const [simTaxaMes, setSimTaxaMes] = useState<string>("3,0");
+  const [simParcela, setSimParcela] = useState<number | null>(null);
+  const [simTotalJuros, setSimTotalJuros] = useState<number | null>(null);
+  const [simTotalPagar, setSimTotalPagar] = useState<number | null>(null);
+  const [simError, setSimError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,11 +144,11 @@ const AureaCreditoIAPanel: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const resp = await fetch("/api/v1/ia/headline-lab", {
+        const resp = await fetch(`${API_BASE}/api/v1/ai/ai/headline-lab`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-User-Email": "dilsonpereira231@gmail.com",
+            "X-User-Email": USER_EMAIL,
           },
           body: JSON.stringify({
             message:
@@ -155,6 +165,9 @@ const AureaCreditoIAPanel: React.FC = () => {
 
         if (!cancelled) {
           setHeadline(normalized);
+          if (data && typeof data.resumo === "string") {
+            setLabResumo(data.resumo);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar headline de crédito IA", err);
@@ -177,6 +190,32 @@ const AureaCreditoIAPanel: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+
+  const handleSimular = () => {
+    setSimError(null);
+    setSimParcela(null);
+    setSimTotalJuros(null);
+    setSimTotalPagar(null);
+
+    const valorRaw = simValor.replace(/\./g, "").replace(",", ".");
+    const principal = Number(valorRaw);
+    const prazo = Number(simPrazoMeses);
+    const taxa = Number(simTaxaMes.replace(",", ".")) / 100;
+
+    if (!principal || principal <= 0 || !prazo || prazo <= 0 || !taxa || taxa <= 0) {
+      setSimError("Preencha um valor, prazo e taxa válidos para simular.");
+      return;
+    }
+
+    const parcela = (principal * taxa) / (1 - Math.pow(1 + taxa, -prazo));
+    const totalPagar = parcela * prazo;
+    const totalJuros = totalPagar - principal;
+
+    setSimParcela(parcela);
+    setSimTotalPagar(totalPagar);
+    setSimTotalJuros(totalJuros);
+  };
 
   const comprometimentoPix =
     headline && headline.entradasMes > 0
@@ -228,6 +267,35 @@ const AureaCreditoIAPanel: React.FC = () => {
           identificar riscos e simular cenários.
         </p>
       </header>
+
+      {/* Resumo rápido vindo do backend (IA 3.0 / headline PIX) */}
+      {loading && (
+        <p className="text-[11px] text-amber-300 max-w-3xl mt-1">
+          Carregando resumo PIX da IA 3.0 para simulação de crédito...
+        </p>
+      )}
+      {error && !loading && (
+        <p className="text-[11px] text-red-400 max-w-3xl mt-1">
+          {error}
+        </p>
+      )}
+      {!loading && !error && (
+        <div className="text-[11px] text-zinc-300 max-w-3xl mt-1 space-y-1">
+          <div>
+            <span className="font-semibold">Visão rápida IA 3.0: </span>
+            saldo {formatBRL(saldoAtual)}, entradas do mês {formatBRL(entradasMes)},
+            saídas do mês {formatBRL(saidasMes)}.{" "}
+            <span className="font-semibold">Nível de risco atual:</span>{" "}
+            {headline?.nivelRisco || "Em análise (LAB)"}.
+          </div>
+          {labResumo && (
+            <div className="text-[10px] text-amber-300">
+              {labResumo}
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Visão geral do fluxo PIX */}
       <section className="rounded-xl border border-amber-500/40 bg-black/60 p-3 space-y-2 text-[11px]">
@@ -372,35 +440,146 @@ const AureaCreditoIAPanel: React.FC = () => {
             </p>
           </div>
         </div>
+        {simError && (
+          <p className="mt-2 text-[10px] text-red-400">{simError}</p>
+        )}
 
-        <p className="text-[9px] text-zinc-500 mt-1">
-          *Valores consultivos. Nenhum crédito será contratado automaticamente
-          pela Aurea Gold a partir desta tela.
-        </p>
-      </section>
-
-      {/* Simulação rápida */}
-      <section className="rounded-xl border border-amber-500/40 bg-black/60 p-3 space-y-2 text-[11px]">
-        <h2 className="text-[12px] font-semibold text-amber-300">
-          Simulação rápida
-        </h2>
-        <p className="text-zinc-300">
-          Nesta área vamos permitir que o cliente simule valores, prazos e veja
-          o impacto no fluxo mensal. Por enquanto, esta é apenas uma prévia
-          visual.
-        </p>
-
-        <button
-          type="button"
-          disabled
-          className="mt-2 w-full rounded-full border border-amber-500/80 bg-amber-500/10 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-300 cursor-not-allowed"
-        >
-          Em breve: simulação com IA
-        </button>
+        {simParcela !== null && simTotalPagar !== null && simTotalJuros !== null && (
+          <div className="mt-3 rounded-lg border border-amber-500/60 bg-black/70 p-2 text-[10px] space-y-1">
+            <div className="font-semibold text-amber-300">Resultado da simulação</div>
+            <div>Parcela aproximada: {formatBRL(simParcela || 0)}</div>
+            <div>Total em juros: {formatBRL(simTotalJuros || 0)}</div>
+            <div>Total a pagar: {formatBRL(simTotalPagar || 0)}</div>
+          </div>
+        )}
 
         <p className="text-[9px] text-zinc-500 mt-1">
           Este módulo é apenas consultivo. Nenhum crédito será contratado
           automaticamente pela Aurea Gold a partir desta tela.
+        </p>
+
+      </section>
+
+      {/* Simulação rápida */}
+      <section className="rounded-xl border border-amber-500/40 bg-black/60 p-3 space-y-3 text-[11px]">
+        <h2 className="text-[12px] font-semibold text-amber-300">
+          Simulação rápida
+        </h2>
+        <p className="text-zinc-300">
+          Simule um valor de crédito, prazo em meses e uma taxa mensal dentro da
+          faixa sugerida para ver parcela aproximada e impacto no fluxo.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+              Valor desejado (R$)
+            </label>
+            <input
+              type="text"
+              value={simValor}
+              onChange={(e) => setSimValor(e.target.value)}
+              placeholder="Ex.: 5.000,00"
+              className="w-full rounded-md border border-zinc-700 bg-black/60 px-2 py-1 text-[11px] outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+              Prazo (meses)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={simPrazoMeses}
+              onChange={(e) => setSimPrazoMeses(e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-black/60 px-2 py-1 text-[11px] outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+              Taxa mensal (%)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min={0.5}
+              max={10}
+              value={simTaxaMes}
+              onChange={(e) => setSimTaxaMes(e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-black/60 px-2 py-1 text-[11px] outline-none focus:border-amber-500"
+            />
+            <p className="text-[9px] text-zinc-500">
+              Use um valor dentro da faixa sugerida: {faixaJuros}
+            </p>
+          </div>
+        </div>
+
+        {simError && (
+          <p className="text-[10px] text-rose-300">
+            {simError}
+          </p>
+        )}
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-1">
+          <button
+            type="button"
+            onClick={handleSimular}
+            className="w-full md:w-auto rounded-full border border-amber-500/80 bg-amber-500/20 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200 hover:bg-amber-500/30 transition"
+          >
+            Simular parcelas
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSimValor("");
+              setSimPrazoMeses("12");
+              setSimTaxaMes("3.0");
+              setSimParcela(null);
+              setSimTotalJuros(null);
+              setSimTotalPagar(null);
+              setSimError(null);
+            }}
+            className="w-full md:w-auto rounded-full border border-zinc-600 bg-black/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300 hover:bg-zinc-800/80 transition"
+          >
+            Limpar
+          </button>
+        </div>
+
+        {(simParcela !== null || simTotalPagar !== null) && (
+          <div className="mt-3 border border-zinc-700/70 rounded-lg p-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+                Parcela aproximada
+              </div>
+              <div className="mt-1 font-semibold">
+                {simParcela !== null ? formatBRL(simParcela) : "--"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+                Total em juros
+              </div>
+              <div className="mt-1 font-semibold">
+                {simTotalJuros !== null ? formatBRL(simTotalJuros) : "--"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+                Total a pagar
+              </div>
+              <div className="mt-1 font-semibold">
+                {simTotalPagar !== null ? formatBRL(simTotalPagar) : "--"}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <p className="text-[9px] text-zinc-500 mt-1">
+          Simulação consultiva. Valores aproximados, sem contratação automática
+          de crédito pela Aurea Gold.
         </p>
       </section>
     </div>
