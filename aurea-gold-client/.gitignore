@@ -26,3 +26,6 @@ dev_backups/
 *.safe.*
 *.ui.*
 *.corrompido.*
+
+# arquivos zumbi
+*.corrompido.*
