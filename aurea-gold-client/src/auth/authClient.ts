@@ -43,14 +43,14 @@ export interface LoginRequest {
 }
 
 function getApiBase(): string {
-  return import.meta.env.VITE_API_BASE ?? "";
+  const raw = (import.meta as any)?.env?.VITE_API_BASE ?? (import.meta as any)?.env?.VITE_API_BASE_URL ?? "";
+  return String(raw || "").replace(/\/+$/, "");
 }
-
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
   const API_BASE = getApiBase();
 
-  const url = API_BASE != ""
-    ? API_BASE + "/api/v1/auth/login"
+  const url = API_BASE
+    ? `${API_BASE}/api/v1/auth/login`
     : "/api/v1/auth/login";
 
   const res = await fetch(url, {
@@ -96,9 +96,8 @@ export function setAccessToken(token: string | null): void {
 }
 
 export function clearAuth(): void {
-  setAccessToken(null);
+  clearTokens();
 }
-
 export function authHeaders(extra?: HeadersInit): HeadersInit {
   const token = getAccessToken();
 
