@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 
-const API = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8080";
+const API = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8000";
 const REFRESH_MS = Number((import.meta as any).env?.VITE_AI_REFRESH_MS ?? 30000); // 30s padrão
 
 type WindowStats = { entradas: number; saidas: number; qtd: number };

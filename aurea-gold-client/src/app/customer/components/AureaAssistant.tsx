@@ -27,7 +27,7 @@ export default function AureaAssistant() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resposta, setResposta] = useState<AIResponseData | null>(null);
-  const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
   async function consultarIA(e: React.FormEvent) {
     e.preventDefault();

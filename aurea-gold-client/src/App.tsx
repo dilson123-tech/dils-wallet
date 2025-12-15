@@ -185,7 +185,7 @@ function AureaAppWithAuth() {
         password: loginPassword,
       });
 
-      saveTokens(tokens);
+      saveTokens((tokens as any).access_token ?? (tokens as any).token ?? JSON.stringify(tokens));
       setIsAuthenticated(true);
     } catch (err: any) {
       setLoginError(err?.message || "Falha ao autenticar. Tente novamente.");

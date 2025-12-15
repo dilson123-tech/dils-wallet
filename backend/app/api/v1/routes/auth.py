@@ -16,33 +16,52 @@ from app.utils.security import (
 
 router = APIRouter()
 
+
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
+
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = (
-        db.query(User)
-        .filter(User.username == payload.username)
-        .first()
-    )
+    ident = (payload.username or "").strip()
+    print('[AUTH LOGIN] ident=', repr(ident), 'pwd_len=', len(payload.password))
 
-    if not user or not verify_password(payload.password, user.hashed_password):
+    user = None
+
+    # aceita email OU username
+    if hasattr(User, "email") and ident:
+        user = db.query(User).filter(User.email == ident).first()
+
+    if not user and hasattr(User, "username") and ident:
+        user = db.query(User).filter(User.username == ident).first()
+
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas"
+            detail="Credenciais inválidas",
         )
 
-    # gera access_token (JWT curto)
-    access_token = create_access_token({"sub": user.username})
+    # hash no campo padrão do projeto
+    pwd_hash = getattr(user, "hashed_password", None)
+    print('[AUTH LOGIN] user.id=', getattr(user,'id',None), 'username=', getattr(user,'username',None), 'email=', getattr(user,'email',None))
 
-    # gera refresh token opaco e guarda o hash no banco
+    if (not pwd_hash) or (not verify_password(payload.password, pwd_hash)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciais inválidas",
+        )
+
+    # sub do token: prioriza username, senão email
+    sub = (getattr(user, "username", None) or getattr(user, "email", None) or ident)
+    access_token = create_access_token({"sub": sub})
+
     raw_refresh = generate_refresh_token()
     hashed = hash_refresh_token(raw_refresh)
 
@@ -57,6 +76,6 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     return TokenResponse(
         access_token=access_token,
-        refresh_token=raw_refresh,  # mandamos o valor cru pro cliente
+        refresh_token=raw_refresh,
         token_type="bearer",
     )

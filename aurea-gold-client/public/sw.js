@@ -9,6 +9,3 @@ self.addEventListener('activate', (event) => {
 });
 
 // Placeholder: no futuro podemos colocar cache offline aqui
-self.addEventListener('fetch', (event) => {
-  // Por enquanto, deixa tudo ir direto pra rede
-});

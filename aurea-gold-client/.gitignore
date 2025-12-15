@@ -17,3 +17,12 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# backups gerados por scripts
+*.bak_*
+dev_backups/
+
+# snapshots/rascunhos
+*.safe.*
+*.ui.*
+*.corrompido.*

@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.models import User
+from app.utils.authz import require_customer
 from app.models.idempotency import IdempotencyKey
+from app.utils.authz import require_customer
 
 # tentamos importar o usuário principal; se não existir, tratamos
 try:
@@ -63,7 +66,7 @@ def pix_send(
     payload: PixSendPayload,
     request: Request,
     db: Session = Depends(get_db),
-    x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
+    current_user = Depends(require_customer),
     x_idem_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
     try:
@@ -84,21 +87,14 @@ def pix_send(
                 )
 
         # ---------------------------------------------------
-        # Resolve usuário:
-        # 1) tenta por e-mail SE o modelo tiver .email
-        # 2) fallback: usuário id=1
-        # 3) se ainda não achar, força user_id=1 (modo LAB local)
+        # Resolve usuário autenticado (JWT)
         # ---------------------------------------------------
-        user = _get_user_by_email(db, x_user_email)
-
-        if not user:
-            user = _get_user_fallback_id1(db)
-
-        if user:
-            user_id = getattr(user, "id", 1)
-        else:
-            # modo LAB: ainda não temos user real, mas não vamos travar o fluxo
-            user_id = 1
+        user_id = getattr(current_user, "id", None)
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Usuário não autenticado para envio de PIX.",
+            )
 
         # ---------------------------------------------------
         # Cria transação PIX com taxa da Aurea Gold.

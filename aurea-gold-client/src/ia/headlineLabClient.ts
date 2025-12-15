@@ -1,5 +1,7 @@
+import { API_BASE, USER_EMAIL } from "../super2/api";
+
 // IA 3.0 – Cliente HEADLINE LAB
-// Endpoint: POST http://127.0.0.1:8100/api/v1/ai/headline-lab
+// Endpoint: POST POST ${API_BASE}/api/v1/ai/headline-lab
 
 export type IAHeadlineNivel = "ok" | "atencao" | "critico";
 
@@ -12,13 +14,12 @@ export interface IAHeadlineResponse {
   recomendacao: string;
 }
 
-const BASE_URL = "http://127.0.0.1:8000"; // backend local padrão
 
 export async function fetchHeadlineLab(
   message: string,
-  userEmail: string = "dilsonpereira231@gmail.com"
+  userEmail: string = USER_EMAIL
 ): Promise<IAHeadlineResponse> {
-  const resp = await fetch(`${BASE_URL}/api/v1/ai/headline-lab`, {
+  const resp = await fetch(`${API_BASE}/api/v1/ai/headline-lab`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

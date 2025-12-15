@@ -1,4 +1,5 @@
-const DEFAULT_API_BASE = "http://127.0.0.1:8080";
+import { authFetch } from "../auth/authClient";
+const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 const DEFAULT_USER_EMAIL = "dilsonpereira231@gmail.com";
 
 export const API_BASE = import.meta.env.VITE_API_BASE || DEFAULT_API_BASE;
@@ -91,7 +92,7 @@ export async function fetchPixHistory(): Promise<any> {
     headers["X-User-Email"] = USER_EMAIL;
   }
 
-  const r = await fetch(`${API_BASE}/api/v1/pix/history`, {
+  const r = await authFetch(`${API_BASE}/api/v1/pix/history`, {
     method: "GET",
     headers,
   });

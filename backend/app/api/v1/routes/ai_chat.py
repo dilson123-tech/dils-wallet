@@ -1,11 +1,45 @@
 import textwrap
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Request
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
 import json
 from urllib import request, error as urlerror  # noqa: F401
 
+
+from sqlalchemy import text
+import json, base64
+from typing import Optional
+
+def _b64url_decode(s: str) -> bytes:
+    pad = '=' * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + pad)
+
+def _jwt_sub_unverified(token: str) -> Optional[str]:
+    # DEV: pega 'sub' sem validar assinatura
+    try:
+        _h, p, _s = token.split('.', 2)
+    except ValueError:
+        return None
+    try:
+        payload = json.loads(_b64url_decode(p).decode('utf-8'))
+    except Exception:
+        return None
+    return payload.get('sub')
+
+def _resolve_user_id(db, request, x_user_email: Optional[str]):
+    auth = request.headers.get('authorization') or request.headers.get('Authorization')
+    if auth and auth.lower().startswith('bearer '):
+        sub = _jwt_sub_unverified(auth.split(' ',1)[1].strip())
+        if sub:
+            row = db.execute(text('SELECT id FROM users WHERE username=:u LIMIT 1'), {'u': sub}).fetchone()
+            if row:
+                return int(row[0])
+    if x_user_email:
+        row = db.execute(text('SELECT id FROM users WHERE email=:e LIMIT 1'), {'e': x_user_email}).fetchone()
+        if row:
+            return int(row[0])
+    return None
 router = APIRouter(
     prefix="/api/v1/ai",
     tags=["ai"],
@@ -809,7 +843,173 @@ from app.api.v1.ai import build_ia_headline_panel
 from fastapi import Header
 
 # === IA 3.0 – Endpoint LAB do Headline (Painel 3) ===
-@router.post("/ai/headline-lab")
+
+# === IA 3.0 – Insight oficial do PIX (dados reais) ===
+@router.post("/ai/pix-insight")
+async def ia_pix_insight(x_user_email: str = Header(None)):
+    """IA 3.0 lendo o extrato oficial de PIX do usuário logado.
+
+    Consulta a tabela pix_transactions filtrando pelo usuário
+    e devolve um resumo numérico + interpretação pronta para o painel.
+    """
+
+    def _to_float(value):
+        try:
+            return float(value or 0)
+        except Exception:
+            return 0.0
+
+    if not x_user_email:
+        # Mantém padrão de resposta JSON em vez de exception
+        return {
+            "nivel": "erro",
+            "headline": "Não consegui identificar o usuário para a IA do PIX",
+            "subheadline": "O cabeçalho X-User-Email não foi enviado.",
+            "resumo": "Envie o X-User-Email no header da requisição para eu conseguir localizar o extrato oficial.",
+            "metricas": {
+                "total_transacoes": 0,
+                "entradas_brutas": 0.0,
+                "saidas_brutas": 0.0,
+                "taxas_totais": 0.0,
+                "saldo_liquido_estimado": 0.0,
+                "entradas_7d": 0.0,
+                "saidas_7d": 0.0,
+                "entradas_mes": 0.0,
+                "saidas_mes": 0.0,
+            },
+        }
+
+    db: Session = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == x_user_email).first()
+        if not user:
+            return {
+                "nivel": "erro",
+                "headline": "Usuário não encontrado para IA do PIX",
+                "subheadline": "Não achei nenhum usuário com esse e-mail cadastrado na Aurea Gold.",
+                "resumo": f"E-mail recebido: {x_user_email!r}. Verifique se é o mesmo usado no cadastro/login.",
+                "metricas": {
+                    "total_transacoes": 0,
+                    "entradas_brutas": 0.0,
+                    "saidas_brutas": 0.0,
+                    "taxas_totais": 0.0,
+                    "saldo_liquido_estimado": 0.0,
+                    "entradas_7d": 0.0,
+                    "saidas_7d": 0.0,
+                    "entradas_mes": 0.0,
+                    "saidas_mes": 0.0,
+                },
+            }
+
+        # Busca últimas N transações oficiais de PIX desse usuário
+        limite = 200
+        txs = (
+            db.query(PixTransaction)
+            .filter(PixTransaction.user_id == user.id)
+            .order_by(PixTransaction.timestamp.desc())
+            .limit(limite)
+            .all()
+        )
+
+        if not txs:
+            return {
+                "nivel": "vazio",
+                "headline": "Ainda não encontrei movimentações oficiais de PIX",
+                "subheadline": "Assim que sua carteira começar a registrar envios e recebimentos, eu passo a analisar os dados reais.",
+                "resumo": "Sem transações PIX para este usuário no histórico consultado.",
+                "metricas": {
+                    "total_transacoes": 0,
+                    "entradas_brutas": 0.0,
+                    "saidas_brutas": 0.0,
+                    "taxas_totais": 0.0,
+                    "saldo_liquido_estimado": 0.0,
+                    "entradas_7d": 0.0,
+                    "saidas_7d": 0.0,
+                    "entradas_mes": 0.0,
+                    "saidas_mes": 0.0,
+                },
+            }
+
+        now = datetime.utcnow()
+        inicio_mes = datetime(now.year, now.month, 1)
+        sete_dias_atras = now - timedelta(days=7)
+
+        entradas_total = 0.0
+        saidas_total = 0.0
+        taxas_total = 0.0
+
+        entradas_7d = 0.0
+        saidas_7d = 0.0
+        entradas_mes = 0.0
+        saidas_mes = 0.0
+
+        for tx in txs:
+            valor = _to_float(tx.valor)
+            taxa = _to_float(tx.taxa_valor)
+            ts = tx.timestamp or now
+
+            # Normaliza tipo
+            tipo = (tx.tipo or "").lower()
+
+            if tipo.startswith("rec"):  # recebido
+                entradas_total += valor
+                if ts >= sete_dias_atras:
+                    entradas_7d += valor
+                if ts >= inicio_mes:
+                    entradas_mes += valor
+            else:
+                # trata como saída/envio
+                saidas_total += valor
+                if ts >= sete_dias_atras:
+                    saidas_7d += valor
+                if ts >= inicio_mes:
+                    saidas_mes += valor
+
+            taxas_total += taxa
+
+        saldo_liquido_estimado = entradas_total - saidas_total - taxas_total
+
+        # Classificação simples de nível com base no saldo e no fluxo recente
+        if saldo_liquido_estimado <= 0 and (entradas_7d - saidas_7d) < 0:
+            nivel = "critico"
+            headline = "Alerta máximo na Carteira PIX"
+            subheadline = "Os dados oficiais indicam fluxo recente negativo e saldo pressionado."
+        elif saldo_liquido_estimado < 500:
+            nivel = "atencao"
+            headline = "Caixa do PIX apertado"
+            subheadline = "O saldo estimado está baixo em relação às movimentações recentes."
+        else:
+            nivel = "ok"
+            headline = "PIX saudável pelos dados oficiais"
+            subheadline = "O saldo estimado e o fluxo recente estão sob controle."
+
+        resumo = (
+            "Analisando as últimas "
+            f"{len(txs)} transações oficiais de PIX desse usuário, "
+            "considerando entradas, saídas e taxas registradas na tabela pix_transactions."
+        )
+
+        return {
+            "nivel": nivel,
+            "headline": headline,
+            "subheadline": subheadline,
+            "resumo": resumo,
+            "metricas": {
+                "total_transacoes": len(txs),
+                "entradas_brutas": round(entradas_total, 2),
+                "saidas_brutas": round(saidas_total, 2),
+                "taxas_totais": round(taxas_total, 2),
+                "saldo_liquido_estimado": round(saldo_liquido_estimado, 2),
+                "entradas_7d": round(entradas_7d, 2),
+                "saidas_7d": round(saidas_7d, 2),
+                "entradas_mes": round(entradas_mes, 2),
+                "saidas_mes": round(saidas_mes, 2),
+            },
+        }
+    finally:
+        db.close()
+
+@router.post("/headline-lab")
 async def ia_headline_lab(x_user_email: str = Header(None)):
     """Versão LAB do Headline IA 3.0.
 

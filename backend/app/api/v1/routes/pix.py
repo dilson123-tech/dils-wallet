@@ -3,21 +3,58 @@ import calendar
 from decimal import Decimal
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.models import User
+from app.utils.authz import require_customer
+from app.utils.authz import require_customer
 
 
+
+from sqlalchemy import text
+import json, base64
+from typing import Optional
+
+def _b64url_decode(s: str) -> bytes:
+    pad = '=' * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + pad)
+
+def _jwt_sub_unverified(token: str) -> Optional[str]:
+    # DEV: pega 'sub' sem validar assinatura
+    try:
+        _h, p, _s = token.split('.', 2)
+    except ValueError:
+        return None
+    try:
+        payload = json.loads(_b64url_decode(p).decode('utf-8'))
+    except Exception:
+        return None
+    return payload.get('sub')
+
+def _resolve_user_id(db, request, x_user_email: Optional[str]):
+    auth = request.headers.get('authorization') or request.headers.get('Authorization')
+    if auth and auth.lower().startswith('bearer '):
+        sub = _jwt_sub_unverified(auth.split(' ',1)[1].strip())
+        if sub:
+            row = db.execute(text('SELECT id FROM users WHERE username=:u LIMIT 1'), {'u': sub}).fetchone()
+            if row:
+                return int(row[0])
+    if x_user_email:
+        row = db.execute(text('SELECT id FROM users WHERE email=:e LIMIT 1'), {'e': x_user_email}).fetchone()
+        if row:
+            return int(row[0])
+    return None
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
-
-# TODO: depois ligar com auth/jwt e X-User-Email
-USER_FIXO_ID = 1
 
 
 @router.get("/balance")
-def get_balance(db: Session = Depends(get_db)):
+def get_balance(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_customer),
+):
     """
     Retorna o saldo PIX calculado:
     - entradas somam
@@ -33,7 +70,7 @@ def get_balance(db: Session = Depends(get_db)):
     try:
         rows = (
             db.query(PixTransaction)
-            .filter(PixTransaction.user_id == USER_FIXO_ID)
+            .filter(PixTransaction.user_id == current_user.id)
             .all()
         )
 
@@ -63,32 +100,53 @@ def get_balance(db: Session = Depends(get_db)):
 
 
 @router.get("/history")
-def get_history(db: Session = Depends(get_db)):
-    """
-    Retorna as últimas transações do usuário.
-    """
-    txs = (
-        db.query(PixTransaction)
-        .filter(PixTransaction.user_id == USER_FIXO_ID)
-        .order_by(PixTransaction.id.desc())
-        .limit(20)
-        .all()
-    )
+def get_history(
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+):
+    """Retorna as últimas transações PIX do usuário autenticado."""
 
-    result = [
-        {
-            "id": t.id,
-            "tipo": t.tipo,
-            "valor": float(t.valor),
-            "descricao": t.descricao or "",
-        }
-        for t in txs
-    ]
+    try:
+        user_id = getattr(current_user, "id", 1)
 
-    return result
+        txs = (
+            db.query(PixTransaction)
+            .filter(PixTransaction.user_id == user_id)
+            .order_by(PixTransaction.id.desc())
+            .limit(50)
+            .all()
+        )
+
+        result = [
+            {
+                "id": t.id,
+                "tipo": t.tipo,
+                "valor": float(getattr(t, "valor", 0) or 0),
+                "descricao": getattr(t, "descricao", None) or "",
+                "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
+                "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
+                "valor_liquido": float(
+                    getattr(t, "valor_liquido", getattr(t, "valor", 0)) or 0
+                ),
+                "criado_em": getattr(t, "created_at", None),
+            }
+            for t in txs
+        ]
+
+        from fastapi.responses import JSONResponse  # garante import local se faltar
+
+        return JSONResponse(
+            content=jsonable_encoder(result, custom_encoder={Decimal: float})
+        )
+    except Exception as e:
+        print("[AUREA PIX] erro ao carregar histórico:", e)
+        return JSONResponse(content=[], status_code=200)
 
 @router.get("/forecast")
-def get_forecast(db: Session = Depends(get_db)):
+def get_forecast(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_customer),
+):
     """
     Faz uma projeção simples do saldo até o fim do mês com base nas
     entradas e saídas PIX do usuário.
@@ -107,7 +165,7 @@ def get_forecast(db: Session = Depends(get_db)):
     try:
         rows = (
             db.query(PixTransaction)
-            .filter(PixTransaction.user_id == USER_FIXO_ID)
+            .filter(PixTransaction.user_id == current_user.id)
             .all()
         )
 

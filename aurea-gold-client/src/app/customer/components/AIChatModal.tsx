@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 type Props = { open: boolean; onClose: () => void; };
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8080";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
 export default function AIChatModal({ open, onClose }: Props) {
   const [msg, setMsg] = useState("");

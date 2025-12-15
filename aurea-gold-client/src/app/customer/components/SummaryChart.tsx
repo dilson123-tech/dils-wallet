@@ -5,7 +5,8 @@ export default function SummaryChart({ data }: { data?: { dia: string; valor: nu
   const rows = Array.isArray(data) ? data : [];
   return (
     <div className="w-full h-48">
-      <ResponsiveContainer width="100%" height="100%">
+      <div data-aurea-rc="wrap220" style={{ width: "100%", height: 220 }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={220}>
         <AreaChart data={rows}>
           <XAxis dataKey="dia" hide={false} />
           <YAxis hide />
@@ -13,6 +14,7 @@ export default function SummaryChart({ data }: { data?: { dia: string; valor: nu
           <Area type="monotone" dataKey="valor" stroke="#d4af37" fill="#d4af37" fillOpacity={0.25} />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

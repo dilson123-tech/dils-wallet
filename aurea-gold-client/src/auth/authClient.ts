@@ -1,26 +1,57 @@
+const ACCESS_TOKEN_KEYS = [
+  "aurea.access_token",  // padrão novo
+  "aurea_access_token",  // legado
+  "aurea.jwt",           // legado
+  "aurea_jwt",           // legado
+];
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const REFRESH_TOKEN_KEYS = [
+  "aurea.refresh_token", // padrão novo
+  "aurea_refresh_token", // legado
+];
+
+function getFirst(keys: string[]): string | null {
+  try {
+    for (const k of keys) {
+      const v = localStorage.getItem(k);
+      if (v && typeof v === "string") return v;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setAll(keys: string[], value: string) {
+  for (const k of keys) localStorage.setItem(k, value);
+}
+
+function removeAll(keys: string[]) {
+  for (const k of keys) localStorage.removeItem(k);
+}
+
+
+export interface TokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  token_type: string;
+}
 
 export interface LoginRequest {
   username: string;
   password: string;
 }
 
-export interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-}
-
-const ACCESS_TOKEN_KEY = "aurea_access_token";
-const REFRESH_TOKEN_KEY = "aurea_refresh_token";
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+function getApiBase(): string {
+  return import.meta.env.VITE_API_BASE ?? "";
 }
 
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
-  const url = API_BASE ? `${API_BASE}/api/v1/auth/login` : "/api/v1/auth/login";
+  const API_BASE = getApiBase();
+
+  const url = API_BASE != ""
+    ? API_BASE + "/api/v1/auth/login"
+    : "/api/v1/auth/login";
 
   const res = await fetch(url, {
     method: "POST",
@@ -31,55 +62,95 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
   });
 
   if (!res.ok) {
-    let message = "Falha ao autenticar. Verifique usuário e senha.";
-
-    try {
-      const data = await res.json();
-      if (data && typeof data === "object" && "detail" in data) {
-        const detail: any = (data as any).detail;
-        if (typeof detail === "string") {
-          message = detail;
-        } else if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
-          message = detail[0].msg;
-        }
-      }
-    } catch {
-      // ignora erros ao tentar ler o corpo
-    }
-
-    throw new Error(message);
+    throw new Error("Falha ao autenticar na Aurea Gold.");
   }
 
   const data = (await res.json()) as TokenResponse;
+  saveTokens(data.access_token, (data as any).refresh_token ?? null);
   return data;
 }
 
-export function saveTokens(tokens: TokenResponse): void {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
-}
-
 export function getAccessToken(): string | null {
-  if (!isBrowser()) return null;
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  try {
+    return getFirst(ACCESS_TOKEN_KEYS);
+  } catch {
+    return null;
+  }
 }
 
-export function getRefreshToken(): string | null {
-  if (!isBrowser()) return null;
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+export function setAccessToken(token: string | null): void {
+  try {
+    const tok =
+      typeof token === "string"
+        ? token
+        : (token as any)?.access_token; // defesa contra [object Object]
+
+    if (tok && typeof tok === "string") {
+      setAll(ACCESS_TOKEN_KEYS, tok);
+    } else {
+      removeAll(ACCESS_TOKEN_KEYS);
+    }
+  } catch {
+    // ambiente sem localStorage
+  }
 }
 
-export function clearTokens(): void {
-  if (!isBrowser()) return;
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+export function clearAuth(): void {
+  setAccessToken(null);
 }
 
-export function getAuthHeaders(): HeadersInit {
+export function authHeaders(extra?: HeadersInit): HeadersInit {
   const token = getAccessToken();
-  if (!token) return {};
+
+  const base: Record<string, string> = {};
+  if (token) {
+    base["Authorization"] = "Bearer " + token;
+  }
+
+  const extraObj: Record<string, string> = {};
+  if (extra) {
+    const h = new Headers(extra as HeadersInit);
+    h.forEach((value, key) => {
+      extraObj[key] = value;
+    });
+  }
+
   return {
-    Authorization: `Bearer ${token}`,
+    ...extraObj,
+    ...base,
   };
 }
+
+export async function authFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const headers = authHeaders(init.headers);
+  return fetch(input, {
+    ...init,
+    headers,
+  });
+}
+
+export function clearTokens() {
+  try {
+    removeAll(ACCESS_TOKEN_KEYS);
+    removeAll(REFRESH_TOKEN_KEYS);
+  } catch (err) {
+    console.warn("[auth] erro ao limpar tokens:", err);
+  }
+}
+
+export function saveTokens(accessToken: string, refreshToken?: string | null) {
+  try {
+    if (accessToken) {
+      setAll(ACCESS_TOKEN_KEYS, accessToken);
+    }
+    if (refreshToken) {
+      setAll(REFRESH_TOKEN_KEYS, refreshToken);
+    }
+  } catch (err) {
+    console.warn("[auth] erro ao salvar tokens:", err);
+  }
+}
+

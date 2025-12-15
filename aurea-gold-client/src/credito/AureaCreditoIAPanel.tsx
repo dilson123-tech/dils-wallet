@@ -144,7 +144,7 @@ const AureaCreditoIAPanel: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const resp = await fetch(`${API_BASE}/api/v1/ai/ai/headline-lab`, {
+        const resp = await fetch(`${API_BASE}/api/v1/ai/headline-lab`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

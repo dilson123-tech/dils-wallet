@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 const USER_EMAIL = "dilsonpereira231@gmail.com";
 import {
   ResponsiveContainer,

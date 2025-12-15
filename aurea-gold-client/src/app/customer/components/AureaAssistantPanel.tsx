@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8080";
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8000";
 
 type Msg = { role: "user" | "assistant"; text: string };
 export default function AureaAssistantPanel() {

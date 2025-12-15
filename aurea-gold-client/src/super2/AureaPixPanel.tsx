@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getAccessToken } from "../auth/authClient";
 import { API_BASE, USER_EMAIL, fetchPixHistory, PixHistoryItem } from "./api";
 
 type PixAction = "send" | "charge" | "statement" | null;
@@ -6,6 +7,27 @@ type PixAction = "send" | "charge" | "statement" | null;
 type AureaPixPanelProps = {
   initialAction?: PixAction | null;
 };
+
+type PixInsightMetrics = {
+  total_transacoes: number;
+  entradas_brutas: number;
+  saidas_brutas: number;
+  taxas_totais: number;
+  saldo_liquido_estimado: number;
+  entradas_7d: number;
+  saidas_7d: number;
+  entradas_mes: number;
+  saidas_mes: number;
+};
+
+type PixInsightResponse = {
+  nivel: string;
+  headline: string;
+  subheadline: string;
+  resumo: string;
+  metricas: PixInsightMetrics;
+};
+
 
 function formatBRL(value: number | null): string {
   if (value === null || Number.isNaN(value)) {
@@ -53,6 +75,24 @@ export default function AureaPixPanel({
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [balanceReloadToken, setBalanceReloadToken] = useState(0);
+
+  // estados para IA 3.0 do PIX (dados oficiais)
+  const [pixInsight, setPixInsight] = useState<PixInsightResponse | null>(null);
+  const [pixInsightLoading, setPixInsightLoading] = useState(false);
+  const [pixInsightError, setPixInsightError] = useState<string | null>(null);
+  const [pixInsightReloadToken, setPixInsightReloadToken] = useState(0);
+
+  const pixInsightMetrics: PixInsightMetrics = pixInsight?.metricas ?? {
+    total_transacoes: 0,
+    entradas_brutas: 0,
+    saidas_brutas: 0,
+    taxas_totais: 0,
+    saldo_liquido_estimado: 0,
+    entradas_7d: 0,
+    saidas_7d: 0,
+    entradas_mes: 0,
+    saidas_mes: 0,
+  };
 
   // envio de PIX
   const [sendPixKey, setSendPixKey] = useState("");
@@ -145,8 +185,72 @@ export default function AureaPixPanel({
     };
   }, [balanceReloadToken]);
 
+  // carrega IA 3.0 do PIX (dados oficiais) em /api/v1/ai/chat
+  useEffect(() => {
+    let alive = true;
+
+    const loadPixInsight = async () => {
+      try {
+        setPixInsightLoading(true);
+        setPixInsightError(null);
+
+        const accessToken = getAccessToken();
+
+const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+  method: "POST",
+  headers: {
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: `Analise o PIX do usuário (últimos movimentos/mes). Seja direto: riscos, oportunidades e próximos passos.`,
+  }),
+});
+
+        if (!resp.ok) {
+          console.warn(
+            "[AureaPixPanel] Falha ao buscar /api/v1/ai/chat:",
+            resp.status
+          );
+          if (!alive) return;
+          setPixInsightError(
+            "Não consegui carregar a IA do PIX 3.0 agora. Tente novamente em instantes."
+          );
+          return;
+        }
+
+        const data: any = await resp.json();
+
+        if (!alive) return;
+        setPixInsight(data || null);
+      } catch (err) {
+        console.error(
+          "[AureaPixPanel] Erro ao carregar /api/v1/ai/chat:",
+          err
+        );
+        if (!alive) return;
+        setPixInsightError(
+          "Erro ao carregar a IA do PIX 3.0. Tente novamente em instantes."
+        );
+      } finally {
+        if (!alive) return;
+        setPixInsightLoading(false);
+      }
+    };
+
+    loadPixInsight();
+
+    return () => {
+      alive = false;
+    };
+  }, [pixInsightReloadToken]);
+
   const handleReloadBalance = () => {
     setBalanceReloadToken((prev) => prev + 1);
+  };
+
+  const handleReloadPixInsight = () => {
+    setPixInsightReloadToken((prev) => prev + 1);
   };
 
   const handleSubmitSendPix = async (e: React.FormEvent) => {
@@ -177,19 +281,24 @@ export default function AureaPixPanel({
         typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : `pix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const accessToken = getAccessToken();
+
+      if (!accessToken) {
+        setSendPixError("Você precisa entrar na Aurea Gold para enviar PIX.");
+        return;
+      }
 
       const resp = await fetch(`${API_BASE}/api/v1/pix/send`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
-          "X-User-Email": USER_EMAIL,
           "Idempotency-Key": idemKey,
         },
         body: JSON.stringify({
-          valor: amount,
-          msg: sendPixDescription || "PIX enviado pelo app Aurea Gold",
           dest: key,
-          idem_key: idemKey,
+          valor: amount,
+          msg: (sendPixDescription || "PIX enviado pelo app Aurea Gold").trim(),
         }),
       });
 
@@ -727,6 +836,104 @@ export default function AureaPixPanel({
                 </div>
               </div>
 
+              {/* IA 3.0 – Insight do mês com dados oficiais */}
+              <div className="mb-3 rounded-2xl border border-amber-500/60 bg-gradient-to-br from-zinc-950 via-black to-amber-950/40 p-3 md:p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
+                      IA 3.0 • Insight do mês no PIX
+                    </p>
+
+                    {pixInsightLoading && (
+                      <p className="text-[10px] text-zinc-400 mt-1">
+                        Carregando análise oficial do PIX...
+                      </p>
+                    )}
+
+                    {pixInsightError && (
+                      <p className="text-[10px] text-rose-300 mt-1">
+                        {pixInsightError}
+                      </p>
+                    )}
+
+                    {!pixInsightLoading && !pixInsightError && pixInsight && (
+                      <>
+                        <p className="text-sm md:text-base font-semibold text-amber-100 mt-1">
+                          {pixInsight.headline}
+                        </p>
+                        <p className="text-[11px] text-zinc-200 mt-1">
+                          {pixInsight.subheadline}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 mt-1">
+                          {pixInsight.resumo}
+                        </p>
+                      </>
+                    )}
+
+                    {!pixInsightLoading && !pixInsightError && !pixInsight && (
+                      <p className="text-[10px] text-zinc-400 mt-1">
+                        Assim que o histórico oficial de PIX começar a ser
+                        registrado na carteira, a IA 3.0 passa a analisar os
+                        dados reais das suas movimentações.
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleReloadPixInsight}
+                    className="self-start rounded-full border border-amber-500/70 bg-black/40 px-2.5 py-1 text-[10px] font-medium text-amber-200 hover:bg-amber-500/10 transition"
+                  >
+                    Atualizar IA do PIX
+                  </button>
+                </div>
+
+                {pixInsight && !pixInsightLoading && !pixInsightError && (
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
+                    <div>
+                      <div className="text-zinc-500 uppercase tracking-wide">
+                        Saldo líquido estimado
+                      </div>
+                      <div
+                      className={`font-semibold ${pixInsightMetrics.saldo_liquido_estimado >= 0 ? "text-emerald-300" : "text-rose-300"}`}
+                      >
+                        {formatBRL(pixInsightMetrics.saldo_liquido_estimado)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-zinc-500 uppercase tracking-wide">
+                        Entradas mês
+                      </div>
+                      <div className="font-semibold text-emerald-300">
+                        {formatBRL(pixInsightMetrics.entradas_mes)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-zinc-500 uppercase tracking-wide">
+                        Saídas mês
+                      </div>
+                      <div className="font-semibold text-rose-300">
+                        {formatBRL(pixInsightMetrics.saidas_mes)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-zinc-500 uppercase tracking-wide">
+                        Movimentação 7 dias
+                      </div>
+                      <div className="font-semibold text-amber-200">
+                        {formatBRL(
+                          pixInsightMetrics.entradas_7d -
+                            pixInsightMetrics.saidas_7d
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <h3 className="font-semibold text-amber-300 mb-1">
                 Extrato PIX (modo real + LAB)
               </h3>
@@ -779,11 +986,7 @@ export default function AureaPixPanel({
                     Resultado líquido
                   </div>
                   <div
-                    className={`font-semibold ${
-                      resumo.liquido >= 0
-                        ? "text-emerald-300"
-                        : "text-rose-300"
-                    }`}
+                    className={`font-semibold ${pixInsightMetrics.saldo_liquido_estimado >= 0 ? "text-emerald-300" : "text-rose-300"}`}
                   >
                     {formatBRL(resumo.liquido)}
                   </div>
