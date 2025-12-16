@@ -35,11 +35,11 @@ def _resolve_user_id(db, request, x_user_email: Optional[str]):
     if auth and auth.lower().startswith('bearer '):
         sub = _jwt_sub_unverified(auth.split(' ',1)[1].strip())
         if sub:
-            row = db.execute(text('SELECT id FROM users WHERE username=:u LIMIT 1'), {'u': sub}).fetchone()
+            row = db.execute(text('SELECT id FROM users WHERE username=:u OR email=:u LIMIT 1'), {'u': sub}).fetchone()
             if row:
                 return int(row[0])
     if x_user_email:
-        row = db.execute(text('SELECT id FROM users WHERE email=:e LIMIT 1'), {'e': x_user_email}).fetchone()
+        row = db.execute(text('SELECT id FROM users WHERE email=:e OR username=:e LIMIT 1'), {'e': x_user_email}).fetchone()
         if row:
             return int(row[0])
     return None
@@ -73,6 +73,13 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
     """
     debug_error = None
 
+    # resolve usuário real (Bearer sub ou X-User-Email). fallback: USER_FIXO_ID
+    user_id = _resolve_user_id(db, request, x_user_email)
+    if not user_id:
+        user_id = USER_FIXO_ID
+        debug_error = (debug_error or "") + "|user_fallback"
+
+
     try:
         # Entradas: PIX recebidos (e qualquer tipo marcado como 'entrada')
         entradas = (
@@ -105,8 +112,11 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
             d = hoje - timedelta(days=i)
             k = d.isoformat()
             day_map[k] = {"dia": k, "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
-
-        ts_col = getattr(PixTransaction, "created_at", None)
+        ts_col = (
+            getattr(PixTransaction, "created_at", None)
+            or getattr(PixTransaction, "timestamp", None)
+            or getattr(PixTransaction, "data", None)
+        )
         rows_q = db.query(PixTransaction).filter(PixTransaction.user_id == user_id)
         if ts_col is not None:
             start_dt = datetime.utcnow() - timedelta(days=7)
