@@ -52,9 +52,10 @@ export function AppShell({
     >
       {/* HEADER PREMIUM */}
       <header className="h-16 border-b border-zinc-800/80 bg-black/80 backdrop-blur flex items-center px-4">
-        <div className="flex flex-col">
+        <div className="w-full flex items-center justify-between gap-3">
+          <div className="flex flex-col">
           <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400">
-            Aurea Gold • Beta
+            Aurea Gold
           </span>
           <span className="text-sm font-semibold text-zinc-100">
             {headerTitle}
@@ -62,6 +63,11 @@ export function AppShell({
           <span className="text-[11px] text-zinc-400">
             {headerSubtitle}
           </span>
+        </div>
+
+        <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 border border-zinc-700/70 bg-black/40 px-2 py-1 rounded-full">
+          BETA
+        </span>
         </div>
       </header>
 

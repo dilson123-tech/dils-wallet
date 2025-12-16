@@ -87,15 +87,12 @@ export default function PanelSuper2() {
         <header className="mb-3 flex items-center justify-between gap-2">
           <div>
             <div className="text-sm font-semibold tracking-wide text-[#d4af37] drop-shadow-[0_0_4px_#d4af37]">
-              AUREA GOLD • PREMIUM
+              PIX • Super2
             </div>
             <div className="text-[10px] opacity-70">
               Carteira PIX • painel Super2
             </div>
           </div>
-          <span className="text-[9px] px-2 py-0.5 rounded-full border border-[#d4af37]/60 bg-black/70 text-[#facc15]">
-            v1.0 BETA
-          </span>
         </header>
 
         {err && <div className="mt-1 text-[11px] text-red-400">{err}</div>}

@@ -54,10 +54,7 @@ export default function PanelSuper2() {
       >
         <header className="mb-4">
           <h1 className="text-sm font-bold tracking-wide text-[#d4af37] drop-shadow-[0_0_4px_#d4af37]">
-            AUREA GOLD • PREMIUM{" "}
-            <span className="text-[10px] font-normal opacity-70 align-middle">
-              v1.0 beta
-            </span>
+            PIX • Super2
           </h1>
 
           {err && (
