@@ -11,6 +11,8 @@ import {
   Legend,
   Bar,
   Line,
+  ReferenceLine,
+  LabelList,
 } from "recharts";
 
 type Pix7dPoint = {
@@ -145,6 +147,12 @@ function ChartInner({ raw }: { raw: Pix7dPoint[] }) {
     saidas: Number(d.saidas ?? 0),
     saldo: Number(d.saldo_dia ?? 0),
   }));
+  const allVals = chartData.flatMap((d) => [d.entradas, d.saidas, d.saldo]);
+  const minV = Math.min(0, ...(allVals.length ? allVals : [0]));
+  const maxV = Math.max(0, ...(allVals.length ? allVals : [0]));
+  const pad = Math.max(50, Math.round((maxV - minV) * 0.12));
+  const domain: [number, number] = [minV - pad, maxV + pad];
+
 
   return (
     <div
@@ -166,9 +174,8 @@ function ChartInner({ raw }: { raw: Pix7dPoint[] }) {
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
             <XAxis dataKey="name" />
             <YAxis
-              tickFormatter={(v) =>
-                fmtBRL(Number(v)).replace("R$ ", "")
-              }
+              domain={domain}
+              tickFormatter={(v) => fmtBRL(Number(v)).replace("R$ ", "")}
             />
             <Tooltip
               formatter={(value: any, name: string) => [
@@ -181,6 +188,7 @@ function ChartInner({ raw }: { raw: Pix7dPoint[] }) {
               ]}
             />
             <Legend />
+            <ReferenceLine y={0} strokeDasharray="3 3" opacity={0.35} />
 
             <Bar
               dataKey="entradas"
@@ -202,7 +210,13 @@ function ChartInner({ raw }: { raw: Pix7dPoint[] }) {
               strokeWidth={3}
               dot={{ r: 4 }}
               activeDot={{ r: 6 }}
-            />
+            >
+              <LabelList
+                dataKey="saldo"
+                position="top"
+                formatter={(v: any) => fmtBRL(Number(v)).replace("R$ ", "")}
+              />
+            </Line>
           </ComposedChart>
         </ResponsiveContainer>
       </div>
