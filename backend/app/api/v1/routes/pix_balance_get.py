@@ -11,6 +11,7 @@ from app.models.pix_transaction import PixTransaction
 from sqlalchemy import text
 import json, base64
 from typing import Optional
+import math
 
 def _b64url_decode(s: str) -> bytes:
     pad = '=' * (-len(s) % 4)
@@ -19,16 +20,11 @@ def _b64url_decode(s: str) -> bytes:
 def _jwt_sub_unverified(token: str) -> Optional[str]:
     # DEV: pega 'sub' sem validar assinatura
     try:
-
-        user_id = _resolve_user_id(db, request, x_user_email) or USER_FIXO_ID
         _h, p, _s = token.split('.', 2)
-    except ValueError:
-        return None
-    try:
         payload = json.loads(_b64url_decode(p).decode('utf-8'))
+        return payload.get('sub')
     except Exception:
         return None
-    return payload.get('sub')
 
 def _resolve_user_id(db, request, x_user_email: Optional[str]):
     auth = request.headers.get('authorization') or request.headers.get('Authorization')
@@ -72,38 +68,54 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
     }
     """
     debug_error = None
+    debug_tx_total = None
+    debug_tipos = []
+    debug_user_id = None
+
+    def _sf(x: float) -> float:
+        try:
+            v = float(x)
+            return v if math.isfinite(v) else 0.0
+        except Exception:
+            return 0.0
 
     # resolve usuário real (Bearer sub ou X-User-Email). fallback: USER_FIXO_ID
     user_id = _resolve_user_id(db, request, x_user_email)
     if not user_id:
         user_id = USER_FIXO_ID
         debug_error = (debug_error or "") + "|user_fallback"
+    debug_user_id = user_id
 
+    try:
+        debug_tx_total = int(db.query(func.count(PixTransaction.id)).filter(PixTransaction.user_id == user_id).scalar() or 0)
+        debug_tipos = [r[0] for r in db.query(PixTransaction.tipo).filter(PixTransaction.user_id == user_id).distinct().all()][:12]
+    except Exception as _e:
+        debug_tx_total = None
+        debug_tipos = []
+        debug_error = (debug_error or "") + f"|debug:{_e}"
 
     try:
         # Entradas: PIX recebidos (e qualquer tipo marcado como 'entrada')
-        entradas = (
+        entradas = _sf(
             db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
             .filter(
                 PixTransaction.user_id == user_id,
                 PixTransaction.tipo.in_(["recebimento", "entrada"]),
             )
             .scalar()
-            or 0.0
         )
 
         # Saídas: PIX enviados (e qualquer tipo marcado como 'saida')
-        saidas = (
+        saidas = _sf(
             db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
             .filter(
                 PixTransaction.user_id == user_id,
                 PixTransaction.tipo.in_(["envio", "saida"]),
             )
             .scalar()
-            or 0.0
         )
 
-        saldo = float(entradas - saidas)
+        saldo = _sf(entradas - saidas)
 
         # --- últimos 7 dias (agregado por dia) ---
         hoje = date.today()
@@ -112,37 +124,37 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
             d = hoje - timedelta(days=i)
             k = d.isoformat()
             day_map[k] = {"dia": k, "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
-        ts_col = (
-            getattr(PixTransaction, "created_at", None)
-            or getattr(PixTransaction, "timestamp", None)
-            or getattr(PixTransaction, "data", None)
+        # ultimos_7d: tolerante a timestamp NULL (usa últimas tx por id)
+        rows = (
+            db.query(PixTransaction)
+            .filter(PixTransaction.user_id == user_id)
+            .order_by(PixTransaction.id.desc())
+            .limit(500)
+            .all()
         )
-        rows_q = db.query(PixTransaction).filter(PixTransaction.user_id == user_id)
-        if ts_col is not None:
-            start_dt = datetime.utcnow() - timedelta(days=7)
-            rows_q = rows_q.filter(ts_col >= start_dt)
-        rows = rows_q.all()
-
         for tx in rows:
-            dt = getattr(tx, "created_at", None) or getattr(tx, "data", None) or getattr(tx, "timestamp", None)
-            if not dt:
-                continue
+            # se timestamp faltando/nulo, cai para dia de hoje
+            dt = getattr(tx, 'timestamp', None) or datetime.combine(hoje, datetime.min.time())
             try:
                 dia = dt.date().isoformat()
             except Exception:
-                continue
+                try:
+                    dia = datetime.fromisoformat(str(dt)).date().isoformat()
+                except Exception:
+                    continue
             if dia not in day_map:
                 continue
-            v = float(getattr(tx, "valor", 0.0) or 0.0)
-            tipo = str(getattr(tx, "tipo", "") or "").lower()
-            if tipo in ("recebimento", "entrada"):
-                day_map[dia]["entradas"] += v
-            elif tipo in ("envio", "saida"):
-                day_map[dia]["saidas"] += v
-
+            v = _sf(getattr(tx, 'valor', 0.0) or 0.0)
+            tipo = str(getattr(tx, 'tipo', '') or '').lower()
+            if tipo in ('recebimento','entrada'):
+                day_map[dia]['entradas'] += v
+            elif tipo in ('envio','saida'):
+                day_map[dia]['saidas'] += v
         for k in list(day_map.keys()):
-            day_map[k]["saldo_dia"] = float(day_map[k]["entradas"] - day_map[k]["saidas"])
-        ultimos_7d = list(day_map.values())
+            day_map[k]["entradas"] = _sf(day_map[k]["entradas"])
+            day_map[k]["saidas"] = _sf(day_map[k]["saidas"])
+            day_map[k]["saldo_dia"] = _sf(day_map[k]["entradas"] - day_map[k]["saidas"])
+        ultimos_7d = list(day_map.values()) if day_map else []
 
         source = "real"
     except Exception as e:
@@ -159,14 +171,18 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
             ultimos_7d.append({"dia": d.isoformat(), "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0})
 
     return {
-        "saldo": float(saldo),
+        "saldo": _sf(saldo),
         "source": source,
         "updated_at": datetime.utcnow().isoformat() + "Z",
         # Campos antigos mantidos para compatibilidade com IA 3.0:
-        "saldo_atual": float(saldo),
-        "entradas_mes": float(entradas),
-        "saidas_mes": float(saidas),
+        "saldo_atual": _sf(saldo),
+        "entradas_mes": _sf(entradas),
+        "saidas_mes": _sf(saidas),
         "ultimos_7d": ultimos_7d,
         # Só pra debugar por enquanto
         "debug_error": debug_error,
+        "debug_user_id": user_id,
+        "debug_user_email": x_user_email,
+        "debug_tx_total": debug_tx_total,
+        "debug_tipos": debug_tipos,
     }
