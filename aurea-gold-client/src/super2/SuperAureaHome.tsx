@@ -356,7 +356,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/70 bg-black/70 px-3 py-1 text-[10px] text-amber-200">
-            Dados reais • fallback LAB se necessário
+            Dados reais • fallback automático se necessário
           </span>
         </div>
 
@@ -410,7 +410,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
         <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-zinc-300">
           <div>
             <span className="uppercase tracking-[0.16em] text-amber-300">
-              Plano atual (LAB): Free
+              Plano atual: Free
             </span>
             <span className="ml-1 text-zinc-400">
               {" "}
@@ -419,7 +419,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
           </div>
           <button
             type="button"
-            onClick={() => (window.location.href = "/planos-lab")}
+            onClick={() => (window.location.href = "/planos")}
             className="inline-flex items-center justify-center rounded-full border border-amber-400/80 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] transition"
           >
             Ver planos e benefícios
@@ -468,7 +468,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
         )}
       </div>
 
-      {/* PIX • Visão rápida (LAB) */}
+      {/* PIX • Visão rápida */}
       <div className="rounded-2xl border border-emerald-500/50 bg-gradient-to-br from-black via-zinc-950 to-black p-4 md:p-5 space-y-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
@@ -611,10 +611,10 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
         {/* Headline executiva */}
         <div className="rounded-2xl border border-amber-500/40 bg-zinc-950/90 p-3 md:p-4">
           <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em] mb-2">
-            IA 3.0 • Headline executiva (LAB)
+            IA 3.0 • Headline executiva
           </p>
           <p className="text-[11px] text-zinc-300 mb-3">
-            Resumo automático do seu painel Aurea Gold. Nesta versão LAB, os dados ainda
+            Resumo automático do seu painel Aurea Gold. Nesta versão beta, os dados ainda
             são simulados, mas o formato já é o mesmo da versão executiva.
           </p>
           <IaHeadlineLab />
@@ -646,14 +646,14 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
         </div>
       </div>
     
-      {/* Acesso a planos Aurea Gold (LAB) */}
+      {/* Acesso a planos Aurea Gold */}
       <div className="mt-6 text-center">
         <button
           type="button"
-          onClick={() => window.open('/planos-lab', '_blank')}
+          onClick={() => window.open('/planos', '_blank')}
           className="text-[10px] md:text-[11px] text-amber-300 underline hover:text-amber-200 transition"
         >
-          Conhecer planos Aurea Gold (LAB)
+          Conhecer planos Aurea Gold
         </button>
       </div>
 

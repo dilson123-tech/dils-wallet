@@ -16,10 +16,10 @@ import {
 
 const isPlanosLab =
   typeof window !== "undefined" &&
-  window.location.pathname.includes("planos-lab");
+  window.location.pathname.includes("planos");
 
 // ==============================
-// Versão especial: Planos LAB
+// Versão especial: Planos
 // ==============================
 function PlanosLabApp() {
   return (
@@ -84,7 +84,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
                 AUREA GOLD • CARTEIRA DIGITAL
               </span>
               <span className="text-[9px] md:text-[10px] text-amber-300">
-                Versão IA 3.0 • Ambiente interno (LAB)
+                Versão IA 3.0 • Ambiente interno
               </span>
             </div>
             <div className="h-px w-40 md:w-64 bg-amber-500 mt-2" />
