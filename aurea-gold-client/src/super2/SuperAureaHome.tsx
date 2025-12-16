@@ -477,7 +477,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
             </p>
             <p className="text-[11px] md:text-sm text-zinc-200">
               Gráfico resumindo as movimentações recentes de PIX. Nesta versão, usamos seus
-              dados reais dos últimos 7 dias, com fallback simulado se o servidor estiver indisponível.
+              dados reais dos últimos 7 dias (se não houver movimentações, o gráfico fica zerado).
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/70 bg-black/70 px-3 py-1 text-[10px] text-emerald-200">
