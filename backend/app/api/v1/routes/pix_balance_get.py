@@ -12,6 +12,7 @@ from sqlalchemy import text
 import json, base64
 from typing import Optional
 import math
+import os
 
 def _b64url_decode(s: str) -> bytes:
     pad = '=' * (-len(s) % 4)
@@ -48,6 +49,7 @@ USER_FIXO_ID = 1
 @router.get("/balance")
 def get_pix_balance(request: Request, x_user_email: str = Header(default=None, alias="X-User-Email"),
     db: Session = Depends(get_db),
+    debug: int = 0,
 ):
     """
     Versão GET da rota /api/v1/pix/balance.
@@ -170,7 +172,8 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
             d = hoje - timedelta(days=i)
             ultimos_7d.append({"dia": d.isoformat(), "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0})
 
-    return {
+    # ✅ Payload "limpo" (produção): sem debug_* por padrão
+    payload = {
         "saldo": _sf(saldo),
         "source": source,
         "updated_at": datetime.utcnow().isoformat() + "Z",
@@ -179,10 +182,16 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         "entradas_mes": _sf(entradas),
         "saidas_mes": _sf(saidas),
         "ultimos_7d": ultimos_7d,
-        # Só pra debugar por enquanto
-        "debug_error": debug_error,
-        "debug_user_id": user_id,
-        "debug_user_email": x_user_email,
-        "debug_tx_total": debug_tx_total,
-        "debug_tipos": debug_tipos,
     }
+
+    # 🔍 Debug só quando explicitamente ligado (AUREA_DEBUG=1) + ?debug=1
+    allow_debug = os.getenv("AUREA_DEBUG", "").strip().lower() in ("1", "true", "yes", "on")
+    if allow_debug and int(debug or 0) == 1:
+        payload.update({
+            "debug_error": debug_error,
+            "debug_user_id": user_id,
+            "debug_tx_total": debug_tx_total,
+            "debug_tipos": debug_tipos,
+        })
+
+    return payload
