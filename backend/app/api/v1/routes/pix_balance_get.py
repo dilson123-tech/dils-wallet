@@ -1,5 +1,4 @@
-from datetime import datetime
-
+from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -20,6 +19,8 @@ def _b64url_decode(s: str) -> bytes:
 def _jwt_sub_unverified(token: str) -> Optional[str]:
     # DEV: pega 'sub' sem validar assinatura
     try:
+
+        user_id = _resolve_user_id(db, request, x_user_email) or USER_FIXO_ID
         _h, p, _s = token.split('.', 2)
     except ValueError:
         return None
@@ -77,7 +78,7 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         entradas = (
             db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
             .filter(
-                PixTransaction.user_id == USER_FIXO_ID,
+                PixTransaction.user_id == user_id,
                 PixTransaction.tipo.in_(["recebimento", "entrada"]),
             )
             .scalar()
@@ -88,7 +89,7 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         saidas = (
             db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
             .filter(
-                PixTransaction.user_id == USER_FIXO_ID,
+                PixTransaction.user_id == user_id,
                 PixTransaction.tipo.in_(["envio", "saida"]),
             )
             .scalar()
@@ -96,6 +97,43 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         )
 
         saldo = float(entradas - saidas)
+
+        # --- últimos 7 dias (agregado por dia) ---
+        hoje = date.today()
+        day_map = {}
+        for i in range(6, -1, -1):
+            d = hoje - timedelta(days=i)
+            k = d.isoformat()
+            day_map[k] = {"dia": k, "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
+
+        ts_col = getattr(PixTransaction, "created_at", None)
+        rows_q = db.query(PixTransaction).filter(PixTransaction.user_id == user_id)
+        if ts_col is not None:
+            start_dt = datetime.utcnow() - timedelta(days=7)
+            rows_q = rows_q.filter(ts_col >= start_dt)
+        rows = rows_q.all()
+
+        for tx in rows:
+            dt = getattr(tx, "created_at", None) or getattr(tx, "data", None) or getattr(tx, "timestamp", None)
+            if not dt:
+                continue
+            try:
+                dia = dt.date().isoformat()
+            except Exception:
+                continue
+            if dia not in day_map:
+                continue
+            v = float(getattr(tx, "valor", 0.0) or 0.0)
+            tipo = str(getattr(tx, "tipo", "") or "").lower()
+            if tipo in ("recebimento", "entrada"):
+                day_map[dia]["entradas"] += v
+            elif tipo in ("envio", "saida"):
+                day_map[dia]["saidas"] += v
+
+        for k in list(day_map.keys()):
+            day_map[k]["saldo_dia"] = float(day_map[k]["entradas"] - day_map[k]["saidas"])
+        ultimos_7d = list(day_map.values())
+
         source = "real"
     except Exception as e:
         print("[AUREA PIX] erro em get_pix_balance:", e)
@@ -104,6 +142,11 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         saidas = 0.0
         saldo = 0.0
         source = "lab"
+        hoje = date.today()
+        ultimos_7d = []
+        for i in range(6, -1, -1):
+            d = hoje - timedelta(days=i)
+            ultimos_7d.append({"dia": d.isoformat(), "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0})
 
     return {
         "saldo": float(saldo),
@@ -113,6 +156,7 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         "saldo_atual": float(saldo),
         "entradas_mes": float(entradas),
         "saidas_mes": float(saidas),
+        "ultimos_7d": ultimos_7d,
         # Só pra debugar por enquanto
         "debug_error": debug_error,
     }
