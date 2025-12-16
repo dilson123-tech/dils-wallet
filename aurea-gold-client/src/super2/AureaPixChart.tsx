@@ -74,16 +74,19 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
       try {
         setLoading(true);
         setErr(null);
-        const r = await fetch(`${API_BASE}/api/v1/pix/7d`, {
+        const r = await fetch(`${API_BASE}/api/v1/pix/balance?days=7`, {
           method: "GET",
           headers: {
             "X-User-Email": USER_EMAIL,
           },
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const j = (await r.json()) as Pix7dResponse;
+        const j = (await r.json()) as any;
+        const ult = Array.isArray(j?.ultimos_7d) ? j.ultimos_7d : [];
+        if (!ult.length) throw new Error('payload_sem_ultimos_7d');
+        const payload: Pix7dResponse = { ultimos_7d: ult };
         if (!alive) return;
-        setData(j);
+        setData(payload);
       } catch (e: any) {
         if (!alive) return;
         // MODO LAB: em vez de quebrar com erro, caímos para dados simulados
