@@ -414,6 +414,59 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
     }
   };
 
+
+  // normaliza payloads variados do backend para um formato único no front
+  const normalizePixHistoryItem = (x: any): PixHistoryItem | null => {
+    if (!x || typeof x !== "object") return null;
+
+    const low = (v: any) => String(v ?? "").toLowerCase().trim();
+    const num = (v: any) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const t = low(x.tipo ?? x.type ?? x.kind ?? x.direction);
+    const isEnvio =
+      ["envio","saida","send","out","debit","debito","pagamento","payment"].includes(t) ||
+      Boolean(x.is_out) ||
+      (typeof x.valor === "number" && x.valor < 0) ||
+      (typeof x.amount === "number" && x.amount < 0) ||
+      (typeof x.value === "number" && x.value < 0);
+
+    const isRecebido =
+      ["recebido","entrada","receive","in","credit","credito","recebimento"].includes(t) ||
+      Boolean(x.is_in) ||
+      Boolean(x.recebido);
+
+    const tipo: "envio" | "recebido" = isEnvio && !isRecebido ? "envio" : "recebido";
+
+    const valorRaw = x.valor ?? x.amount ?? x.value ?? x.valor_bruto ?? x.valor_total ?? 0;
+    const valor = Math.abs(num(valorRaw));
+
+    const taxa_valor = num(x.taxa_valor ?? x.fee_value ?? x.fee ?? x.taxa ?? 0);
+    const taxa_percentual = num(x.taxa_percentual ?? x.fee_percent ?? x.taxa_percent ?? 0);
+
+    const netRaw = x.valor_liquido ?? x.net ?? x.valorLiquido;
+    const valor_liquido = Number.isFinite(Number(netRaw))
+      ? num(netRaw)
+      : (tipo === "envio" ? Math.max(0, valor - taxa_valor) : valor);
+
+    const created_at = x.created_at ?? x.createdAt ?? x.timestamp ?? x.data ?? x.date ?? null;
+    const descricao = String(x.descricao ?? x.description ?? x.memo ?? x.nome ?? "");
+
+    return {
+      ...(x as any),
+      tipo,
+      valor,
+      taxa_valor,
+      taxa_percentual,
+      valor_liquido,
+      created_at,
+      descricao,
+    } as PixHistoryItem;
+  };
+
+
   // histórico do extrato
   const [history, setHistory] = useState<PixHistoryItem[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -447,7 +500,10 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
           return;
         }
 
-        setHistory(arr as PixHistoryItem[]);
+        const normalized = (arr as any[])
+          .map(normalizePixHistoryItem)
+          .filter(Boolean) as PixHistoryItem[];
+        setHistory(normalized);
       })
       .catch((err: any) => {
         setHistoryError(
@@ -500,7 +556,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
     };
   }, [history]);
 
-  const saldoPixDisplay = saldoPix !== null ? formatBRL(saldoPix) : "R$ 0,00";
+  const saldoPixDisplay = saldoPix !== null ? formatBRL(Math.max(0, saldoPix)) : "R$ 0,00";
   const entradasMesDisplay =
     entradasMes !== null ? formatBRL(entradasMes) : "R$ 0,00";
   const saidasMesDisplay =
@@ -527,7 +583,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
             <span className="text-[10px] uppercase tracking-wide text-amber-200">
               {saldoSource === "real"
                 ? "Dados reais carregados do backend Aurea Gold"
-                : "Modo simulado • aguardando conexão completa do PIX"}
+                : "Conectando PIX • aguardando sincronização completa"}
             </span>
           </div>
 
@@ -566,7 +622,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
           <p className="text-[11px] text-zinc-500 mt-1">
             {saldoSource === "real"
               ? "Saldo carregado diretamente do backend Aurea Gold."
-              : "Valor simulado por enquanto. Na versão conectada, esse card mostra o saldo real da carteira PIX."}
+              : "Saldo provisório enquanto o PIX sincroniza. Na versão completa, esse card mostra o saldo real da carteira."}
           </p>
         </div>
 
@@ -655,7 +711,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
             <div className="space-y-3">
               <div>
                 <h3 className="font-semibold text-amber-300 mb-1">
-                  Enviar PIX (modo LAB)
+                  Enviar PIX
                 </h3>
                 <p className="text-zinc-300">
                   Preencha os campos abaixo para testar o envio. Usamos o
@@ -731,7 +787,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
             <div className="space-y-3">
               <div>
                 <h3 className="font-semibold text-amber-300 mb-1">
-                  Cobrar via PIX (modo LAB)
+                  Cobrar via PIX
                 </h3>
                 <p className="text-zinc-300">
                   Simulamos a criação da cobrança. Quando o backend estiver
@@ -841,7 +897,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
-                      IA 3.0 • Insight do mês no PIX
+                      IA 3.0 • Analisar extrato
                     </p>
 
                     {pixInsightLoading && (
@@ -935,12 +991,10 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
               </div>
 
               <h3 className="font-semibold text-amber-300 mb-1">
-                Extrato PIX (modo real + LAB)
+                Extrato PIX
               </h3>
               <p className="text-zinc-300 mb-2">
-                Aqui você acompanha os envios e recebimentos de PIX e, quando
-                houver, as  repassadas pelo parceiro e o 
-                de cada operação.
+                Aqui você acompanha os envios e recebimentos de PIX e os detalhes de cada operação.
               </p>
 
               {/* RESUMO FINANCEIRO COM TAXAS */}
@@ -997,7 +1051,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
               <div className="mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="uppercase tracking-wide text-amber-200">
-                    IA 3.0 • Insight do mês no PIX
+                    IA 3.0 • Analisar extrato
                   </p>
                   <button
                     type="button"
