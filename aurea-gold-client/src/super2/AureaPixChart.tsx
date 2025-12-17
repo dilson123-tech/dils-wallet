@@ -80,12 +80,22 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
     let alive = true;
 
     async function load() {
-      try {
+      const accessToken =
+      (typeof window !== "undefined" &&
+        (localStorage.getItem("aurea_access_token") ||
+          localStorage.getItem("aurea_access") ||
+          localStorage.getItem("aurea_jwt") ||
+          localStorage.getItem("aurea.jwt") ||
+          localStorage.getItem("authToken"))) ||
+      "";
+
+    try {
         setLoading(true);
         setErr(null);
         const r = await fetch(`${API_BASE}/api/v1/pix/balance?days=7`, {
           method: "GET",
           headers: {
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             "X-User-Email": USER_EMAIL,
           },
         });
