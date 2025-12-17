@@ -1,3 +1,11 @@
+const __isJwt = (t: any) =>
+  typeof t === "string" && t.length >= 120 && t.split(".").length === 3;
+
+const __pickToken = (...cands: Array<string | null | undefined>) => {
+  for (const c of cands) if (__isJwt(c)) return c as string;
+  return "";
+};
+
 import { API_BASE } from "./api";
 import { apiGet } from "./api";
 
@@ -6,9 +14,18 @@ const KEY = "aurea.jwt";
 export function setToken(tok: string) {
   localStorage.setItem(KEY, tok);
 }
-export function getToken(): string | null {
-  return localStorage.getItem(KEY);
+export function getToken(): string {
+  return __pickToken(
+    localStorage.getItem("aurea.jwt"),
+    localStorage.getItem("aurea_jwt"),
+    localStorage.getItem("aurea.access_token"),
+    localStorage.getItem("aurea_access_token"),
+    localStorage.getItem("authToken"),
+    localStorage.getItem("aurea_token"),
+    localStorage.getItem("token"),
+  );
 }
+
 export function clearToken() {
   localStorage.removeItem(KEY);
 }

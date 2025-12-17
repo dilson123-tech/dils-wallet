@@ -1,17 +1,26 @@
 const RAW_BASE = String(import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/+$/, "");
 const BASE_URL = `${RAW_BASE}/api/v1`;
 
+const __isJwt = (t: any) =>
+  typeof t === "string" && t.length >= 120 && t.split(".").length === 3;
+
+const __pickToken = (...cands: Array<string | null | undefined>) => {
+  for (const c of cands) if (__isJwt(c)) return c as string;
+  return "";
+};
+
+
 function getToken() {
-  return (
-    localStorage.getItem("aurea.access_token") ||
-    localStorage.getItem("aurea_access_token") ||
-    localStorage.getItem("aurea.jwt") ||
-    localStorage.getItem("aurea_jwt") ||
-    localStorage.getItem("authToken") ||
-    ""
+  return __pickToken(
+    localStorage.getItem("aurea.jwt"),
+    localStorage.getItem("aurea_jwt"),
+    localStorage.getItem("aurea.access_token"),
+    localStorage.getItem("aurea_access_token"),
+    localStorage.getItem("authToken"),
+    localStorage.getItem("aurea_token"),
+    localStorage.getItem("token"),
   );
 }
-
 
 // rota protegida (precisa Bearer)
 export async function getPixBalance() {
