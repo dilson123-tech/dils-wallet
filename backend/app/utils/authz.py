@@ -1,14 +1,30 @@
+from __future__ import annotations
+
+import os
+import logging
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
 from jose import jwt, JWTError
-from typing import Optional
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
 from app.utils.security import SECRET_KEY, ALGORITHM
 
+logger = logging.getLogger("authz")
 security = HTTPBearer(auto_error=False)
+
+# ⚠️ Produção: fallback DEV deve ser OFF por padrão.
+AUREA_ALLOW_DEV_FALLBACK = os.getenv("AUREA_ALLOW_DEV_FALLBACK", "0") == "1"
+
+
+def _dev_fallback_user(db: Session) -> Optional[User]:
+    if not AUREA_ALLOW_DEV_FALLBACK:
+        return None
+    return db.query(User).filter(User.id == 1).first()
 
 
 def get_current_user(
@@ -17,51 +33,54 @@ def get_current_user(
 ) -> User:
     """
     Lê Authorization: Bearer <token>, valida JWT e carrega o usuário do banco.
-
-    Em modo DEV local, se o token vier ausente ou inválido, tentamos
-    automaticamente usar o usuário id=1 como fallback para não travar o fluxo.
+    Em produção, token é obrigatório. Sem fallback por header/email.
     """
-    # Caso não venha Authorization correto, tenta fallback dev
+    # Token obrigatório
     if creds is None or creds.scheme.lower() != "bearer":
-        print("[AUTHZ] Authorization ausente ou esquema != Bearer; tentando fallback dev (user id=1).")
-        fallback = db.query(User).filter(User.id == 1).first()
-        if fallback:
-            return fallback
+        fb = _dev_fallback_user(db)
+        if fb:
+            logger.warning("[AUTHZ] Fallback DEV ativo: usando user id=1 por ausência de token.")
+            return fb
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token ausente.",
         )
 
-    token = creds.credentials
+    token = creds.credentials.strip()
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        sub: Optional[str] = payload.get("sub")
+        if not sub:
             raise JWTError("payload sem 'sub'")
     except JWTError as e:
-        print("[AUTHZ] Erro ao decodificar JWT:", e)
-        fallback = db.query(User).filter(User.id == 1).first()
-        if fallback:
-            print("[AUTHZ] Usando fallback dev (id=1) após erro no JWT.")
-            return fallback
+        fb = _dev_fallback_user(db)
+        if fb:
+            logger.warning("[AUTHZ] Fallback DEV ativo após erro no JWT: %s", e)
+            return fb
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido ou expirado.",
         )
 
-    user = db.query(User).filter(User.username == username).first()
+    # Aceita sub como username OU email, mas sempre vindo do JWT validado.
+    user = (
+        db.query(User)
+        .filter(or_(User.username == sub, User.email == sub))
+        .first()
+    )
     if not user:
-        print("[AUTHZ] Usuário '%s' não encontrado, tentando fallback dev id=1." % username)
-        fallback = db.query(User).filter(User.id == 1).first()
-        if fallback:
-            return fallback
+        fb = _dev_fallback_user(db)
+        if fb:
+            logger.warning("[AUTHZ] Fallback DEV ativo: sub '%s' não encontrado, usando id=1.", sub)
+            return fb
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário não encontrado.",
         )
 
     return user
+
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
@@ -70,6 +89,7 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="Acesso restrito ao administrador.",
         )
     return current_user
+
 
 def require_customer(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role not in ("customer", "admin"):

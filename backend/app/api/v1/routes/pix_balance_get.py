@@ -4,10 +4,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.database import get_db
+from app.utils.authz import get_current_user
 from app.models.pix_transaction import PixTransaction
 
 
 
+from app.models import User
 from sqlalchemy import text
 import json, base64
 from typing import Optional
@@ -18,39 +20,12 @@ def _b64url_decode(s: str) -> bytes:
     pad = '=' * (-len(s) % 4)
     return base64.urlsafe_b64decode(s + pad)
 
-def _jwt_sub_unverified(token: str) -> Optional[str]:
-    # DEV: pega 'sub' sem validar assinatura
-    try:
-        _h, p, _s = token.split('.', 2)
-        payload = json.loads(_b64url_decode(p).decode('utf-8'))
-        return payload.get('sub')
-    except Exception:
-        return None
-
-def _resolve_user_id(db, request, x_user_email: Optional[str]):
-    auth = request.headers.get('authorization') or request.headers.get('Authorization')
-    if auth and auth.lower().startswith('bearer '):
-        sub = _jwt_sub_unverified(auth.split(' ',1)[1].strip())
-        if sub:
-            row = db.execute(text('SELECT id FROM users WHERE username=:u OR email=:u LIMIT 1'), {'u': sub}).fetchone()
-            if row:
-                return int(row[0])
-    if x_user_email:
-        row = db.execute(text('SELECT id FROM users WHERE email=:e OR username=:e LIMIT 1'), {'e': x_user_email}).fetchone()
-        if row:
-            return int(row[0])
-    return None
-router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
-
-# TODO: ligar com auth/JWT e X-User-Email de verdade.
-USER_FIXO_ID = 1
-
+router = APIRouter()
 
 @router.get("/balance")
-def get_pix_balance(request: Request, x_user_email: str = Header(default=None, alias="X-User-Email"),
+def get_pix_balance(request: Request, current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    debug: int = 0,
-):
+    debug: int = 0,):
     """
     Versão GET da rota /api/v1/pix/balance.
 
@@ -81,11 +56,7 @@ def get_pix_balance(request: Request, x_user_email: str = Header(default=None, a
         except Exception:
             return 0.0
 
-    # resolve usuário real (Bearer sub ou X-User-Email). fallback: USER_FIXO_ID
-    user_id = _resolve_user_id(db, request, x_user_email)
-    if not user_id:
-        user_id = USER_FIXO_ID
-        debug_error = (debug_error or "") + "|user_fallback"
+    user_id = current_user.id
     debug_user_id = user_id
 
     try:
