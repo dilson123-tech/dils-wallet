@@ -80,13 +80,19 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
     let alive = true;
 
     async function load() {
-      const accessToken =
-      (typeof window !== "undefined" &&
-        (localStorage.getItem("aurea_access_token") ||
-          localStorage.getItem("aurea_access") ||
-          localStorage.getItem("aurea_jwt") ||
-          localStorage.getItem("aurea.jwt") ||
-          localStorage.getItem("authToken"))) ||
+      const pickJWT = (k: string) => {
+      const v =
+        (typeof window !== "undefined" && localStorage.getItem(k)) || "";
+      // JWT real: 3 partes + tamanho mínimo (evita token curto/lixo)
+      return v.split(".").length === 3 && v.length > 120 ? v : "";
+    };
+
+    const accessToken =
+      pickJWT("aurea.jwt") ||
+      pickJWT("aurea_jwt") ||
+      pickJWT("aurea.access_token") ||
+      pickJWT("aurea_access_token") ||
+      pickJWT("authToken") ||
       "";
 
     try {
@@ -230,7 +236,7 @@ function ChartInner({ raw }: { raw: Pix7dPoint[] }) {
       </div>
 
       <div style={{ width: "100%", height: 220 }}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+        <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={220}>
           <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
             <XAxis dataKey="name" tickFormatter={(v) => fmtDiaShort(v)} />
