@@ -89,6 +89,16 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
     useEffect(() => {
     let alive = true;
 
+    const accessToken =
+      (typeof window !== "undefined" &&
+        (localStorage.getItem("aurea.access_token") ||
+          localStorage.getItem("aurea_access_token") ||
+          localStorage.getItem("aurea.jwt") ||
+          localStorage.getItem("aurea_jwt") ||
+          localStorage.getItem("authToken"))) ||
+      "";
+
+
     async function loadSaldo() {
       try {
         // --- 1) Saldo + entradas/saídas via /api/v1/pix/balance ---
@@ -96,6 +106,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
           headers: {
             "Content-Type": "application/json",
             "X-User-Email": USER_EMAIL,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
         });
 
@@ -135,6 +146,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
           headers: {
             "Content-Type": "application/json",
             "X-User-Email": USER_EMAIL,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
         });
 
