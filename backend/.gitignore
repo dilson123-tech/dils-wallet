@@ -47,3 +47,6 @@ __pycache__/
 placeholder.db
 *.sqlite
 *.db
+
+# editor backups
+*~
