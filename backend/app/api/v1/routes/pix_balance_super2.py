@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime, timezone
 
 from datetime import date, timedelta, datetime
 import calendar
@@ -116,7 +117,7 @@ def get_pix_balance(
         "entradas_mes": _sf(entradas),
         "saidas_mes": _sf(saidas),
         "ultimos_7d": ult7,
-        "updated_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
         "source": "real",
     }
 
@@ -155,7 +156,7 @@ def get_pix_forecast(
 
     saldo_atual = _sf(entradas - saidas)
 
-    agora = datetime.utcnow()
+    agora = datetime.now(timezone.utc)
     dia_atual = max(agora.day, 1)
     dias_mes = calendar.monthrange(agora.year, agora.month)[1]
     media_saidas_dia = _sf(saidas / dia_atual) if dia_atual > 0 else 0.0
@@ -211,7 +212,7 @@ def get_pix_forecast(
         "nivel_risco": nivel_risco,
         "analise": analise,
         "recomendacoes": recomendacoes,
-        "updated_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     }
 
     if AUREA_DEBUG and request.query_params.get("debug") == "1":
