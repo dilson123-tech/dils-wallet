@@ -4,7 +4,7 @@ import os
 import logging
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy import or_
@@ -28,6 +28,7 @@ def _dev_fallback_user(db: Session) -> Optional[User]:
 
 
 def get_current_user(
+    request: Request,
     creds: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
@@ -35,6 +36,13 @@ def get_current_user(
     Lê Authorization: Bearer <token>, valida JWT e carrega o usuário do banco.
     Em produção, token é obrigatório. Sem fallback por header/email.
     """
+
+    # LAB DEBUG (não vaza token inteiro)
+    if os.getenv("AUREA_DEBUG", "").strip().lower() in ("1","true","yes","on"):
+        ah = request.headers.get("authorization")
+        logger.warning("[AUTHZ][DEBUG] %s %s | authorization=%s",
+                       request.method, request.url.path,
+                       (ah[:40] + "..." if ah and len(ah) > 40 else ah) or "<none>")
     # Token obrigatório
     if creds is None or creds.scheme.lower() != "bearer":
         fb = _dev_fallback_user(db)
@@ -45,6 +53,16 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token ausente.",
         )
+
+        # --- LAB DEBUG (sem vazar token) ---
+    if os.getenv("AUREA_DEBUG", "").strip().lower() in ("1", "true", "yes", "on"):
+        try:
+            tok_len = len(creds.credentials) if creds else 0
+            scheme = (creds.scheme if creds else None)
+            head = (creds.credentials[:12] + "...") if (creds and creds.credentials) else None
+            logger.warning("[AUTHZ DEBUG] has_creds=%s scheme=%s tok_len=%s tok_head=%s", bool(creds), scheme, tok_len, head)
+        except Exception as _e:
+            logger.warning("[AUTHZ DEBUG] log fail: %s", _e)
 
     token = creds.credentials.strip()
 

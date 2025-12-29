@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { API_BASE, USER_EMAIL } from "./api";
+import { withAuth } from "../lib/api";
 
 interface IAHeadline {
   entradasMes: number;
@@ -155,14 +156,14 @@ export default function AureaIAPanel() {
     setAnswer(null);
 
     try {
-      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-User-Email": USER_EMAIL,
         },
         body: JSON.stringify({ message }),
-      });
+      }));
 
       if (!resp.ok) {
         throw new Error(

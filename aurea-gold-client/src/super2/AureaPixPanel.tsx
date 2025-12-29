@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getAccessToken } from "../auth/authClient";
 import { API_BASE, USER_EMAIL, fetchPixHistory, PixHistoryItem } from "./api";
+import { apiGet } from "../app/lib/http";
+import { withAuth } from "../lib/api";
+import { getToken } from "../lib/auth";
 
 type PixAction = "send" | "charge" | "statement" | null;
 
@@ -123,28 +126,8 @@ export default function AureaPixPanel({
         setBalanceLoading(true);
         setBalanceError(null);
 
-        const resp = await fetch(`${API_BASE}/api/v1/pix/balance`, {
-          headers: {
-            "Content-Type": "application/json",
-            "X-User-Email": USER_EMAIL,
-          },
-        });
-
-        if (!resp.ok) {
-          console.warn(
-            "[AureaPixPanel] Falha ao buscar /api/v1/pix/balance:",
-            resp.status
-          );
-          if (!alive) return;
-          setBalanceError(
-            "Não consegui atualizar os dados do PIX agora. Tente novamente em instantes."
-          );
-          return;
-        }
-
-        const data: any = await resp.json();
-
-        const saldo =
+                  const data: any = await apiGet("/api/v1/pix/balance?days=7");
+const saldo =
           typeof data?.saldo === "number"
             ? data.saldo
             : typeof data?.balance === "number"
@@ -196,7 +179,7 @@ export default function AureaPixPanel({
 
         const accessToken = getAccessToken();
 
-const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
   method: "POST",
   headers: {
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -205,7 +188,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
   body: JSON.stringify({
     message: `Analise o PIX do usuário (últimos movimentos/mes). Seja direto: riscos, oportunidades e próximos passos.`,
   }),
-});
+}));
 
         if (!resp.ok) {
           console.warn(
@@ -384,14 +367,14 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
         resumoTexto +
         ". Dê um diagnóstico objetivo (alertas, pontos fortes, recomendações práticas).";
 
-      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Email": USER_EMAIL,
+          "X-User-Email": USER_EMAIL, ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
         },
         body: JSON.stringify({ message: mensagem }),
-      });
+      }));
 
       if (!resp.ok) {
         throw new Error("HTTP " + resp.status);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { withAuth } from "../../../lib/api";
 
 type Props = { open: boolean; onClose: () => void; };
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
@@ -21,11 +22,11 @@ export default function AIChatModal({ open, onClose }: Props) {
     if (!msg.trim()) return;
     setLoading(true); setAnswer(""); setError(""); setRaw(null);
     try {
-      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg.trim(), user_id: 1 }),
-      });
+      }));
 
       let data: any = null;
       try { data = await r.json(); }

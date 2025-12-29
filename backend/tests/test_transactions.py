@@ -14,21 +14,17 @@ def setup_db():
     # cria usuário de teste direto no banco
     if not db.query(models.User).filter(models.User.email == "test@local").first():
         db.add(models.User(
-            email="test@local",
-            full_name="Test User",
-            password_hash=hash_password("test123"),
-            type="pf"
-        ))
+    email="test@local",
+    username="test",
+    hashed_password=hash_password("test123"),
+    role="user"
+))
         db.commit()
     db.close()
     yield
 
 def test_login_and_balance_flow():
-    resp = client.post(
-        "/api/v1/auth/login",
-        data={"username": "test@local", "password": "test123"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    resp = client.post("/api/v1/auth/login", json={"username": "test@local", "password": "test123"})
     assert resp.status_code == 200
     token = resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

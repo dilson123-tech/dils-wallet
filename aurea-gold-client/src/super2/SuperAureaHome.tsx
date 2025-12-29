@@ -3,6 +3,8 @@ import { API_BASE, USER_EMAIL } from "./api";
 import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
+import { apiGet } from "../lib/api";
+import { getToken } from "../lib/auth";
 
 type PixShortcutAction = "enviar" | "receber" | "extrato";
 
@@ -87,109 +89,70 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
       useState<number | null>(null);
 
     useEffect(() => {
-    let alive = true;
+  let alive = true;
 
-    const accessToken =
-      (typeof window !== "undefined" &&
-        (localStorage.getItem("aurea.access_token") ||
-          localStorage.getItem("aurea_access_token") ||
-          localStorage.getItem("aurea.jwt") ||
-          localStorage.getItem("aurea_jwt") ||
-          localStorage.getItem("authToken"))) ||
-      "";
-
-
-    async function loadSaldo() {
-      try {
-        // --- 1) Saldo + entradas/saídas via /api/v1/pix/balance ---
-        const resp = await fetch(`${API_BASE}/api/v1/pix/balance`, {
-          headers: {
-            "Content-Type": "application/json",
-            "X-User-Email": USER_EMAIL,
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-        });
-
-        if (resp.ok) {
-          const data = await resp.json();
-
-          const saldo =
-            typeof data?.saldo === "number"
-              ? data.saldo
-              : typeof data?.balance === "number"
-              ? data.balance
-              : null;
-
-          const entradas =
-            typeof data?.entradas_mes === "number" ? data.entradas_mes : null;
-
-          const saidas =
-            typeof data?.saidas_mes === "number" ? data.saidas_mes : null;
-
-          const modoReal = data?.source === "real" ? "real" : "simulado";
-
-          if (alive && saldo !== null) {
-            setSaldoReal(saldo);
-            setSaldoModo(modoReal);
-            setEntradasMes(entradas);
-            setSaidasMes(saidas);
-          }
-        } else {
-          console.error(
-            "[SuperAureaHome] Falha ao buscar /api/v1/pix/balance:",
-            resp.status,
-          );
-        }
-
-        // --- 2) Forecast PIX ---
-        const forecastResp = await fetch(`${API_BASE}/api/v1/pix/forecast`, {
-          headers: {
-            "Content-Type": "application/json",
-            "X-User-Email": USER_EMAIL,
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-        });
-
-        if (forecastResp.ok) {
-          const forecastData = await forecastResp.json();
-
-          if (alive) {
-            if (
-              typeof forecastData?.nivel_risco === "string" &&
-              ["ok", "atencao", "alerta", "critico", "observacao", "indisponivel"].includes(
-                forecastData.nivel_risco,
-              )
-            ) {
-              setForecastNivel(forecastData.nivel_risco);
-            } else {
-              setForecastNivel(null);
-            }
-
-            if (typeof forecastData?.previsao_fim_mes === "number") {
-              setForecastPrevisaoFimMes(forecastData.previsao_fim_mes);
-            } else {
-              setForecastPrevisaoFimMes(null);
-            }
-          }
-        } else {
-          console.warn(
-            "[SuperAureaHome] Falha ao buscar /api/v1/pix/forecast:",
-            forecastResp.status,
-          );
-        }
-      } catch (e) {
-        console.error("[SuperAureaHome] Erro geral no loadSaldo():", e);
-      }
+  async function loadSaldo() {
+    const tok = getToken();
+    if (!tok) {
+      // Sem token: não chama endpoints protegidos (evita 401 em loop)
+      return;
     }
 
-    loadSaldo();
+    try {
+      // --- 1) Saldo + entradas/saídas via /api/v1/pix/balance ---
+      const data: any = await apiGet("/api/v1/pix/balance?days=7");
 
-    return () => {
-      alive = false;
-    };
-  }, []);
+      const saldo =
+        typeof data?.saldo === "number"
+          ? data.saldo
+          : typeof data?.balance === "number"
+          ? data.balance
+          : null;
 
-  async function handleHomeInsight() {
+      const entradas = typeof data?.entradas_mes === "number" ? data.entradas_mes : null;
+      const saidas = typeof data?.saidas_mes === "number" ? data.saidas_mes : null;
+      const modoReal = data?.source === "real" ? "real" : "simulado";
+
+      if (alive && saldo !== null) {
+        setSaldoReal(saldo);
+        setSaldoModo(modoReal);
+        setEntradasMes(entradas);
+        setSaidasMes(saidas);
+      }
+
+      // --- 2) Forecast PIX ---
+      const forecastData: any = await apiGet("/api/v1/pix/forecast");
+
+      if (!alive) return;
+
+      if (
+        typeof forecastData?.nivel_risco === "string" &&
+        ["ok", "atencao", "alerta", "critico", "observacao", "indisponivel"].includes(
+          forecastData.nivel_risco,
+        )
+      ) {
+        setForecastNivel(forecastData.nivel_risco);
+      } else {
+        setForecastNivel(null);
+      }
+
+      if (typeof forecastData?.previsao_fim_mes === "number") {
+        setForecastPrevisaoFimMes(forecastData.previsao_fim_mes);
+      } else {
+        setForecastPrevisaoFimMes(null);
+      }
+    } catch (e) {
+      console.error("[SuperAureaHome] Erro no loadSaldo():", e);
+    }
+  }
+
+  loadSaldo();
+
+  return () => {
+    alive = false;
+  };
+}, []);
+async function handleHomeInsight() {
     if (pixInsightLoading) return;
     setPixInsightError(null);
     setPixInsightLoading(true);

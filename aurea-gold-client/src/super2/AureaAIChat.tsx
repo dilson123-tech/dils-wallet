@@ -7,7 +7,85 @@ type ChatMessage = {
   text: string;
 };
 
+
+function _aureaDecodeJwtSub(tok: string): string | null {
+  try {
+    const parts = tok.split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = atob(b64 + pad);
+    const payload = JSON.parse(json);
+    const sub = payload?.sub;
+    return typeof sub === "string" ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildAureaAuthHeaders(): Record<string, string> {
+  const tok =
+    localStorage.getItem("aurea.access_token") ||
+    localStorage.getItem("aurea.jwt") ||
+    localStorage.getItem("aurea_jwt") ||
+    localStorage.getItem("authToken") ||
+    "";
+
+  const headers: Record<string, string> = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+  };
+
+  if (tok) {
+    const ah = tok.toLowerCase().startsWith("bearer ") ? tok : `Bearer ${tok}`;
+    headers["Authorization"] = ah;
+  }
+
+  const email =
+    localStorage.getItem("aurea.user_email") ||
+    localStorage.getItem("aurea.email") ||
+    _aureaDecodeJwtSub(tok);
+
+  if (email && email.includes("@")) {
+    headers["X-User-Email"] = email;
+    try { localStorage.setItem("aurea.user_email", email); } catch {}
+  }
+
+  return headers;
+}
+
 export default function AureaAIChat() {
+  // Headers oficiais (token + email) para IA 3.0 / PIX
+  function buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
+
+    const rawTok =
+      localStorage.getItem("aurea.access_token") ||
+      localStorage.getItem("aurea.jwt") ||
+      localStorage.getItem("authToken") ||
+      "";
+
+    const tok = (rawTok || "").trim();
+    if (tok) {
+      headers["Authorization"] = tok.toLowerCase().startsWith("bearer ")
+        ? tok
+        : `Bearer ${tok}`;
+    }
+
+    const email =
+      (localStorage.getItem("aurea.user_email") || "").trim() ||
+      (typeof (globalThis as any).USER_EMAIL !== "undefined"
+        ? String((globalThis as any).USER_EMAIL || "").trim()
+        : "");
+
+    if (email) headers["X-User-Email"] = email;
+    return headers;
+  }
+
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
@@ -59,10 +137,7 @@ export default function AureaAIChat() {
     try {
       const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Email": USER_EMAIL,
-        },
+        headers: buildHeaders(),
         body: JSON.stringify({ message: text }),
       });
 

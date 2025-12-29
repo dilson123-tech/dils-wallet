@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { API_BASE } from "../../../lib/api";
+import { getToken } from "../../../lib/auth";
 
 const USER_EMAIL = (import.meta as any).env?.VITE_USER_EMAIL || "";
 
@@ -85,7 +86,7 @@ export default function QuickPixActions() {
     setHist(null);
     try {
       const r = await fetch(`${API_BASE}/api/v1/pix/list`, {
-        headers: USER_EMAIL ? { "X-User-Email": USER_EMAIL } : {},
+        headers: { ...(USER_EMAIL ? { "X-User-Email": USER_EMAIL } : {}), ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}), },
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();

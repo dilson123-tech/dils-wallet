@@ -1,15 +1,14 @@
 import os, httpx, pytest
 
 BASE = os.getenv("BASE", "http://127.0.0.1:8000")
-U = os.getenv("U", "teste@dilswallet.com")
-P = os.getenv("P", "123456")
+U = os.getenv("AUREA_USER", "dilsonpereira231@gmail.com")
+P = os.getenv("AUREA_PASS", "Aurea@12345")
 
 def _login():
     with httpx.Client(timeout=5.0) as c:
         try:
             r = c.post(f"{BASE}/api/v1/auth/login",
-                       headers={"Content-Type":"application/x-www-form-urlencoded"},
-                       data={"username": U, "password": P})
+           json={"username": U, "password": P})
         except Exception as e:
             pytest.skip(f"server off? {e}")
         assert r.status_code == 200, f"login falhou: {r.text}"

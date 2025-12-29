@@ -7,39 +7,67 @@ const __pickToken = (...cands: Array<string | null | undefined>) => {
 };
 
 import { API_BASE } from "./api";
-import { apiGet } from "./api";
 
-const KEY = "aurea.jwt";
+// ✅ Fonte única oficial do token
+const OFFICIAL = "aurea.access_token";
+
+// ✅ lista de chaves legadas que a gente ainda aceita ler/limpar
+const LEGACY_KEYS = [
+  "aurea.jwt",
+  "aurea_jwt",
+  "aurea_access_token",
+  "authToken",
+  "aurea_token",
+  "token",
+  "USER_TOKEN",
+  "aurea_token",
+  "aurea.refresh_token",
+  "aurea_refresh_token",
+];
 
 export function setToken(tok: string) {
-  localStorage.setItem(KEY, tok);
+  try { localStorage.setItem(OFFICIAL, tok); } catch {}
+
+  // compat (temporário): grava também em alguns legados pra não quebrar telas antigas
+  try { localStorage.setItem("aurea_access_token", tok); } catch {}
+  try { localStorage.setItem("authToken", tok); } catch {}
+  try { localStorage.setItem("aurea.jwt", tok); } catch {}
 }
+
 export function getToken(): string {
   return __pickToken(
-    localStorage.getItem("aurea.jwt"),
-    localStorage.getItem("aurea_jwt"),
-    localStorage.getItem("aurea.access_token"),
-    localStorage.getItem("aurea_access_token"),
-    localStorage.getItem("authToken"),
-    localStorage.getItem("aurea_token"),
-    localStorage.getItem("token"),
-  );
+  localStorage.getItem("aurea.access_token"),
+  localStorage.getItem("aurea_access_token"),
+  localStorage.getItem("aurea.jwt"),
+  localStorage.getItem("aurea_jwt"),
+  localStorage.getItem("authToken"),
+  localStorage.getItem("aurea_token"),
+  localStorage.getItem("token"),
+);
+
 }
 
 export function clearToken() {
-  localStorage.removeItem(KEY);
+  // apaga oficial + todos os legados (mata token velho assombrando o app)
+  try { localStorage.removeItem(OFFICIAL); } catch {}
+  for (const k of LEGACY_KEYS) {
+    try { localStorage.removeItem(k); } catch {}
+  }
 }
 
-export async function login(email: string, password: string) {
+// ✅ login no contrato do backend: {username, password}
+export async function login(emailOrUsername: string, password: string) {
   const r = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username: emailOrUsername, password }),
   });
+
   if (!r.ok) {
-    const t = await r.text().catch(()=> "");
+    const t = await r.text().catch(() => "");
     throw new Error(`login failed (${r.status}): ${t}`);
   }
+
   const j = await r.json();
   if (j?.access_token) setToken(j.access_token);
   return j;

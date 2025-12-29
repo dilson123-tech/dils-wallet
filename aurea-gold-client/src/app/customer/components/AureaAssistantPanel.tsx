@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { withAuth } from "../../../lib/api";
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8000";
 
@@ -64,11 +65,11 @@ export default function AureaAssistantPanel() {
     setMsgs(m => [...m, { role: "user", text: content }]);
     setBusy(true);
     try {
-      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: content, user_id: 1 })
-      });
+      }));
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       const reply = j.reply ?? "Sem resposta no momento.";

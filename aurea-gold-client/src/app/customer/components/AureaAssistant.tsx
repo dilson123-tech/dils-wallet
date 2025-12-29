@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { withAuth } from "../../../lib/api";
 
 type AIRequestPayload = {
   message: string;
@@ -42,13 +43,13 @@ export default function AureaAssistant() {
         user_id: 1,
       };
 
-      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      });
+      }));
 
       if (!r.ok) {
         throw new Error("Falha ao consultar IA");

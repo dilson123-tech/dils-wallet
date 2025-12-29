@@ -1,4 +1,5 @@
 import { authFetch } from "../auth/authClient";
+import { getToken } from "../lib/auth";
 const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 const DEFAULT_USER_EMAIL = "dilsonpereira231@gmail.com";
 
@@ -41,11 +42,11 @@ export type PixHistoryItem = {
 
 async function apiGet<T>(path: string): Promise<T> {
   const headers: Record<string, string> = {};
-  if (USER_EMAIL) {
-    headers["X-User-Email"] = USER_EMAIL;
-  }
+  const tok = getToken();
+  if (tok) headers["Authorization"] = `Bearer ${tok}`;
+  if (USER_EMAIL) headers["X-User-Email"] = USER_EMAIL;
 
-  const r = await fetch(`${API_BASE}${path}`, {
+  const r = await authFetch(`${API_BASE}${path}`, {
     method: "GET",
     headers,
   });
@@ -61,19 +62,19 @@ async function apiPost<T>(path: string, body: any): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (USER_EMAIL) {
-    headers["X-User-Email"] = USER_EMAIL;
-  }
+  const tok = getToken();
+  if (tok) headers["Authorization"] = `Bearer ${tok}`;
+  if (USER_EMAIL) headers["X-User-Email"] = USER_EMAIL;
 
-  const r = await fetch(`${API_BASE}${path}`, {
+  const r = await authFetch(`${API_BASE}${path}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
   });
 
   if (!r.ok) {
-    const t = await r.text().catch(() => "");
-    throw new Error(`POST ${path} -> HTTP ${r.status} ${t}`);
+    const txt = await r.text().catch(() => "");
+    throw new Error(`POST ${path} -> HTTP ${r.status} ${txt}`);
   }
 
   return (await r.json()) as T;
@@ -88,6 +89,8 @@ export function fetchPixBalance(): Promise<PixBalancePayload> {
 // 🔹 histórico de PIX — backend pode devolver vários formatos, tratamos no front
 export async function fetchPixHistory(): Promise<any> {
   const headers: Record<string, string> = {};
+  const tok = getToken();
+  if (tok) headers["Authorization"] = `Bearer ${tok}`;
   if (USER_EMAIL) {
     headers["X-User-Email"] = USER_EMAIL;
   }
