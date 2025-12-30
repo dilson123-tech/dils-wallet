@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
@@ -19,6 +20,30 @@ from app.utils.authz import get_current_user
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
 AUREA_DEBUG = os.getenv("AUREA_DEBUG", "0") == "1"
+
+
+
+class Pix7dPoint(BaseModel):
+    dia: str
+    entradas: float = 0.0
+    saidas: float = 0.0
+    saldo_dia: float = 0.0
+
+
+class PixBalanceResponse(BaseModel):
+    saldo: float
+    saldo_atual: float
+    entradas_mes: float
+    saidas_mes: float
+    ultimos_7d: List[Pix7dPoint] = []
+    updated_at: str
+    source: str = Field(..., description="real|lab")
+
+    # debug (só aparece quando AUREA_DEBUG=1 e ?debug=1)
+    debug_user_id: Optional[int] = None
+    debug_tx_total: Optional[int] = None
+
+
 
 
 def _sf(x: float) -> float:
@@ -75,7 +100,7 @@ def _ultimos_7d(db: Session, user_id: int) -> List[Dict[str, Any]]:
     return list(day_map.values())
 
 
-@router.get("/balance")
+@router.get("/balance", response_model=PixBalanceResponse, summary="Pix Balance")
 @router.get("/balance/super2")
 def get_pix_balance(
     request: Request,
