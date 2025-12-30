@@ -29,6 +29,26 @@ class PixSendPayload(BaseModel):
     msg: Optional[str] = Field(default="", description="Descrição/memo da transação")
     idem_key: Optional[str] = Field(default=None, description="Idempotency-Key opcional")
 
+class PixSendTx(BaseModel):
+    id: int
+    user_id: int
+    tipo: str
+    valor: float
+    descricao: str
+    taxa_percentual: float
+    taxa_valor: float
+    valor_liquido: float
+    timestamp: Optional[str] = None
+
+
+class PixSendResponse(BaseModel):
+    ok: bool = True
+    status: str = Field(default="created", description="created|duplicate")
+    idem_key: Optional[str] = None
+    tx: Optional[PixSendTx] = None
+
+
+
 
 def _get_user_by_email(db: Session, email: Optional[str]):
     """Tenta buscar por e-mail apenas se o modelo tiver o atributo .email."""
@@ -61,7 +81,7 @@ def _get_user_fallback_id1(db: Session):
             return None
 
 
-@router.post("/send", summary="Pix Send")
+@router.post("/send", summary="Pix Send", response_model=PixSendResponse)
 def pix_send(
     payload: PixSendPayload,
     request: Request,
@@ -81,10 +101,12 @@ def pix_send(
                 .first()
             )
             if existing:
-                return JSONResponse(
-                    {"status": "duplicate", "idem_key": idem_key},
-                    status_code=200,
-                )
+                return {
+                    "ok": True,
+                    "status": "duplicate",
+                    "idem_key": idem_key,
+                    "tx": None,
+                }
 
         # ---------------------------------------------------
         # Resolve usuário autenticado (JWT)
@@ -125,14 +147,21 @@ def pix_send(
         db.commit()
         db.refresh(tx)
 
+        ts = getattr(tx, "timestamp", None)
         return {
             "ok": True,
+            "status": "created",
+            "idem_key": idem_key,
             "tx": {
-                "id": tx.id,
-                "user_id": tx.user_id,
-                "tipo": tx.tipo,
+                "id": int(tx.id),
+                "user_id": int(tx.user_id),
+                "tipo": str(tx.tipo),
                 "valor": float(tx.valor or 0),
                 "descricao": tx.descricao or "PIX",
+                "taxa_percentual": float(getattr(tx, "taxa_percentual", 0) or 0),
+                "taxa_valor": float(getattr(tx, "taxa_valor", 0) or 0),
+                "valor_liquido": float(getattr(tx, "valor_liquido", tx.valor) or 0),
+                "timestamp": (ts.isoformat() if hasattr(ts, "isoformat") else (str(ts) if ts else None)),
             },
         }
 
