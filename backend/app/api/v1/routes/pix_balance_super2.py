@@ -100,8 +100,8 @@ def _ultimos_7d(db: Session, user_id: int) -> List[Dict[str, Any]]:
     return list(day_map.values())
 
 
-@router.get("/balance", response_model=PixBalanceResponse, summary="Pix Balance")
-@router.get("/balance/super2")
+@router.get("/balance", response_model=PixBalanceResponse, response_model_exclude_none=True)
+@router.get("/balance/super2", response_model=PixBalanceResponse, response_model_exclude_none=True)
 def get_pix_balance(
     request: Request,
     db: Session = Depends(get_db),
