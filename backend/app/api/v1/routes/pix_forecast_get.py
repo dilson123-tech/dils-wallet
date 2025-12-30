@@ -18,13 +18,13 @@ router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 USER_FIXO_ID = 1
 
 
-@router.get("/forecast")
+@router.get("/forecast/legacy", include_in_schema=False)
 def get_pix_forecast(
-    x_user_email: str = Header(..., alias="X-User-Email"),
+    x_user_email: str | None = Header(default=None, alias="X-User-Email"),
     db: Session = Depends(get_db),
 ):
     """
-    Versão GET da rota /api/v1/pix/forecast.
+    LEGACY: rota antiga (não-oficial) para /api/v1/pix/forecast.
 
     Por enquanto:
     - Ignora o e-mail e usa um usuário fixo (USER_FIXO_ID).
