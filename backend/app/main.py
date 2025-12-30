@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Response
+from datetime import datetime
 from fastapi import Request
 import logging
 import uuid
@@ -175,3 +176,14 @@ async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str 
 
 from app.api.v1.routes import auth as auth_router
 app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["auth"])
+
+# --- healthcheck endpoints ---
+
+@app.get("/health", tags=["infra"])
+def health():
+    return {"status": "ok", "service": "dils-wallet", "ts": datetime.utcnow().isoformat() + "Z"}
+
+@app.get("/ready", tags=["infra"])
+def ready():
+    # pronto pra receber tráfego (db/redis/etc podem ser checados aqui depois)
+    return {"ready": True, "service": "dils-wallet", "ts": datetime.utcnow().isoformat() + "Z"}
