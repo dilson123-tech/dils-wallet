@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -40,6 +40,16 @@ class PixSendTx(BaseModel):
     taxa_valor: float
     valor_liquido: float
     timestamp: Optional[str] = None
+
+
+class PixListItem(BaseModel):
+    id: int
+    tipo: str
+    valor: float
+    descricao: str
+    taxa_percentual: float
+    taxa_valor: float
+    valor_liquido: float
 
 
 class PixSendResponse(BaseModel):
@@ -171,18 +181,19 @@ def pix_send(
     except SQLAlchemyError as e:
         db.rollback()
         return JSONResponse(
-            {"error": "sql_error", "detail": str(e.__cause__ or e)},
+            {"error": "sql_error", "message": "Database error", "detail": str(e.__cause__ or e)},
             status_code=500,
         )
     except Exception as e:
         return JSONResponse(
-            {"error": "internal_error", "detail": str(e)},
+            {"error": "internal_error", "message": "Internal server error", "detail": str(e)},
             status_code=500,
         )
 
 
 # --- list endpoint (ajustado) ---
-@router.get("/list")
+@router.get("/list", response_model=List[PixListItem], responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
+
 def pix_list(
     request: Request,
     db: Session = Depends(get_db),

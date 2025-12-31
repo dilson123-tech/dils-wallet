@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
 router = APIRouter(prefix="/api/v1/pix", tags=["pix-7d"])
 
@@ -22,7 +23,7 @@ class Pix7dResponse(BaseModel):
     ultimos_7d: List[Pix7dPoint]
 
 
-@router.get("/7d", response_model=Pix7dResponse)
+@router.get("/7d", response_model=Pix7dResponse, responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
 def get_pix_7d(db: Session = Depends(get_db)) -> Pix7dResponse:
     """
     Resumo de todas as transações dos últimos 7 dias, agregadas por dia.
