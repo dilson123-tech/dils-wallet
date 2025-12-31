@@ -199,29 +199,9 @@ def pix_list(
     db: Session = Depends(get_db),
     x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
     limit: int = 50,
+    current_user = Depends(require_customer),
 ):
     q = db.query(PixTransaction)
-
-    if UserMain and x_user_email:
-        u = None
-        try:
-            # tenta campo email direto
-            col = getattr(UserMain, "email")
-            u = db.query(UserMain).filter(col == x_user_email).first()
-        except AttributeError:
-            # tenta campos comuns caso "email" não exista
-            for attr in ("user_email", "mail", "username", "login"):
-                if hasattr(UserMain, attr):
-                    u = (
-                        db.query(UserMain)
-                        .filter(getattr(UserMain, attr) == x_user_email)
-                        .first()
-                    )
-                    if u:
-                        break
-
-        if u:
-            q = q.filter(PixTransaction.user_id == u.id)
 
     txs = (
         q.order_by(PixTransaction.id.desc())
