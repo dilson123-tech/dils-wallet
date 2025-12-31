@@ -1115,8 +1115,8 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
                             : item.valor;
 
                         const created =
-                          item.created_at &&
-                          new Date(item.created_at).toLocaleString("pt-BR");
+                          (item.timestamp || item.created_at) &&
+                          new Date(item.timestamp || item.created_at || "").toLocaleString("pt-BR");
 
                         const chipLabel = isEnvio ? "Envio PIX" : "PIX recebido";
                         const mainColor = isEnvio
@@ -1154,7 +1154,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
                           <div
                             key={
                               (item as any).id ||
-                              `${item.tipo}-${item.created_at}-${item.valor}`
+                              `${item.tipo}-${item.timestamp || item.created_at || ""}-${item.valor}`
                             }
                             className={cardClassName}
                           >

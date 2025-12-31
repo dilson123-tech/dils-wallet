@@ -62,7 +62,7 @@ export default function PanelSuper2() {
       const arr = Array.isArray((hist as any)?.dias)
         ? ((hist as any).dias as PixHistoryDay[])
         : Array.isArray(hist as any)
-        ? (hist as PixHistoryDay[])
+        ? (((hist as any)?.dias ?? (hist as any)) as PixHistoryDay[])
         : Array.isArray((hist as any)?.history)
         ? ((hist as any).history as PixHistoryDay[])
         : [];

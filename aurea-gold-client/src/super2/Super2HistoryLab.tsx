@@ -11,7 +11,7 @@ export default function Super2HistoryLab() {
       setLoading(true);
       setErr(null);
       const dias = await fetchPixHistory();
-      setData(dias);
+      setData(((dias as any)?.dias ?? (dias as any) ?? []) as any);
     } catch (e: any) {
       setErr(e?.message ?? "Falha ao carregar histórico.");
     } finally {
