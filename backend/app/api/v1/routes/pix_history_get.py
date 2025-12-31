@@ -4,60 +4,17 @@ import base64, json, os, math
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
-from fastapi import APIRouter, Depends, Query, Header, Request
+from fastapi import APIRouter, Depends, Query, Header, Request, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.utils.authz import require_customer
 from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
 router = APIRouter(prefix="/api/v1/pix", tags=["PIX"])
-
-def _b64url_decode(s: str) -> bytes:
-    pad = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode(s + pad)
-
-def _jwt_sub_unverified(token: str) -> Optional[str]:
-    """
-    Extrai 'sub' do JWT sem validar assinatura (compat/lab).
-    Em produção, ideal é usar get_current_user/require_customer como dependency.
-    """
-    try:
-        _h_b64, p_b64, _s_b64 = token.split(".", 2)
-    except ValueError:
-        return None
-    try:
-        payload = json.loads(_b64url_decode(p_b64).decode("utf-8"))
-    except Exception:
-        return None
-    return payload.get("sub")
-
-def _resolve_user_id(db: Session, request: Request, x_user_email: Optional[str]) -> Optional[int]:
-    # 1) Bearer token -> users.username (sub) -> users.id
-    auth = request.headers.get("authorization") or request.headers.get("Authorization")
-    if auth and auth.lower().startswith("bearer "):
-        token = auth.split(" ", 1)[1].strip()
-        sub = _jwt_sub_unverified(token)
-        if sub:
-            row = db.execute(
-                text("SELECT id FROM users WHERE username=:u LIMIT 1"),
-                {"u": sub},
-            ).fetchone()
-            if row:
-                return int(row[0])
-
-    # 2) fallback compat: X-User-Email -> users.id
-    if x_user_email:
-        row = db.execute(
-            text("SELECT id FROM users WHERE email=:e LIMIT 1"),
-            {"e": x_user_email},
-        ).fetchone()
-        if row:
-            return int(row[0])
-
-    return None
 
 def _pick_date_col():
     candidates = ["created_at", "created", "timestamp", "data", "dia", "date"]
@@ -98,16 +55,14 @@ def get_pix_history(
     offset: int = Query(0, ge=0),
     x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
     db: Session = Depends(get_db),
+    current_user = Depends(require_customer),
 ):
     q = db.query(PixTransaction)
 
-    user_id = _resolve_user_id(db, request, x_user_email)
-
-    # ✅ Prioridade: user_id (token) -> email (fallback)
-    if user_id and "user_id" in PixTransaction.__table__.columns.keys():
-        q = q.filter(PixTransaction.user_id == user_id)
-    elif x_user_email and "email" in PixTransaction.__table__.columns.keys():
-        q = q.filter(PixTransaction.email == x_user_email)
+    user_id = getattr(current_user, "id", None)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Token ausente.")
+    q = q.filter(PixTransaction.user_id == int(user_id))
 
     if DATE_COL is not None:
         q = q.order_by(DATE_COL.desc())
