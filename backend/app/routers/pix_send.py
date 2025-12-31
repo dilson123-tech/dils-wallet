@@ -12,6 +12,7 @@ from app.models import User
 from app.utils.authz import require_customer
 from app.models.idempotency import IdempotencyKey
 from app.utils.authz import require_customer
+from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
 # tentamos importar o usuário principal; se não existir, tratamos
 try:
@@ -81,7 +82,7 @@ def _get_user_fallback_id1(db: Session):
             return None
 
 
-@router.post("/send", summary="Pix Send", response_model=PixSendResponse)
+@router.post("/send", summary="Pix Send", response_model=PixSendResponse, responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
 def pix_send(
     payload: PixSendPayload,
     request: Request,

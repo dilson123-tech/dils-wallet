@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
 router = APIRouter(prefix="/api/v1/pix", tags=["PIX"])
 
@@ -90,7 +91,7 @@ class PixHistoryResponse(BaseModel):
     updated_at: str = Field(..., description="ISO8601 UTC")
     source: str = Field(default="real")
 
-@router.get("/history", response_model=PixHistoryResponse)
+@router.get("/history", response_model=PixHistoryResponse, responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
 def get_pix_history(
     request: Request,
     limit: int = Query(50, ge=1, le=200),

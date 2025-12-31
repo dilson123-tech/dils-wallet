@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models.pix_transaction import PixTransaction
 from app.models import User
 from app.utils.authz import get_current_user
+from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
@@ -113,7 +114,7 @@ def _ultimos_7d(db: Session, user_id: int) -> List[Dict[str, Any]]:
     return list(day_map.values())
 
 
-@router.get("/balance", response_model=PixBalanceResponse, response_model_exclude_none=True)
+@router.get("/balance", response_model=PixBalanceResponse, response_model_exclude_none=True, responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
 @router.get("/balance/super2", response_model=PixBalanceResponse, response_model_exclude_none=True)
 def get_pix_balance(
     request: Request,
@@ -168,7 +169,7 @@ def get_pix_balance(
     return payload
 
 
-@router.get("/forecast", response_model=PixForecastResponse, response_model_exclude_none=True)
+@router.get("/forecast", response_model=PixForecastResponse, response_model_exclude_none=True, responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
 @router.get("/forecast_lab_old", include_in_schema=False)
 def get_pix_forecast(
     request: Request,
