@@ -43,6 +43,19 @@ class PixBalanceResponse(BaseModel):
     debug_user_id: Optional[int] = None
     debug_tx_total: Optional[int] = None
 
+class PixForecastResponse(BaseModel):
+    saldo_atual: float
+    entradas_mes: float
+    saidas_mes: float
+    previsao_fim_mes: float
+    nivel_risco: str
+    analise: str
+    recomendacoes: List[str]
+    updated_at: str
+    source: str = "real"
+    debug_user_id: Optional[int] = None
+
+
 
 
 
@@ -155,8 +168,8 @@ def get_pix_balance(
     return payload
 
 
-@router.get("/forecast")
-@router.get("/forecast_lab_old")
+@router.get("/forecast", response_model=PixForecastResponse, response_model_exclude_none=True)
+@router.get("/forecast_lab_old", include_in_schema=False)
 def get_pix_forecast(
     request: Request,
     db: Session = Depends(get_db),
