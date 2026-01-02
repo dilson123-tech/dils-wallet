@@ -4,6 +4,20 @@ import { getToken } from "../../../lib/auth";
 
 const USER_EMAIL = (import.meta as any).env?.VITE_USER_EMAIL || "";
 
+function buildPixHeaders(withJson: boolean = false): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (withJson) h["Content-Type"] = "application/json";
+
+  const tok = (typeof getToken === "function" ? getToken() : "") || "";
+  if (tok) {
+    h["Authorization"] = `Bearer ${tok}`;
+  } else if (USER_EMAIL && String(USER_EMAIL).trim() !== "") {
+    h["X-User-Email"] = String(USER_EMAIL).trim();
+  }
+  return h;
+}
+
+
 type PixTx = {
   id: number;
   tipo: "envio" | "recebimento";
@@ -61,7 +75,6 @@ export default function QuickPixActions() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(USER_EMAIL ? { "X-User-Email": USER_EMAIL } : {}),
         },
         body: JSON.stringify({ dest, valor: Number(valor), msg }),
       });
@@ -86,19 +99,7 @@ export default function QuickPixActions() {
     setHist(null);
     try {
       const r = await fetch(`${API_BASE}/api/v1/pix/list`, {
-        headers: { ...(USER_EMAIL ? { "X-User-Email": USER_EMAIL } : {}), ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}), },
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-      setHist(Array.isArray(j) ? (j as PixTx[]) : []);
-    } catch (e: any) {
-      setErr(e?.message || "Falha ao carregar histórico");
-    }
-  }
-
-  useEffect(() => {
-    if (openHist) loadHist();
-  }, [openHist]);
+        headers: buildPixHeaders(false), [openHist]);
 
   return (
     <>

@@ -98,8 +98,15 @@ export function withAuth(init: RequestInit = {}): RequestInit {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  if (USER_EMAIL && USER_EMAIL.trim() !== "" && !headers.has("X-User-Email")) {
+  const hasAuth = headers.has("Authorization") || headers.has("authorization");
+
+
+  if (!hasAuth && USER_EMAIL && USER_EMAIL.trim() !== "" && !headers.has("X-User-Email")) {
+
+
     headers.set("X-User-Email", USER_EMAIL);
+
+
   }
 
   return { ...init, headers };

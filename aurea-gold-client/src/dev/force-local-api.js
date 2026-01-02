@@ -51,7 +51,8 @@
         (typeof input !== "string" && input && input.headers) ||
         undefined
       );
-      if (!headers.has("X-User-Email") && USER_EMAIL) {
+      var hasAuth = headers.has("Authorization") || headers.has("authorization");
+      if (!hasAuth && !headers.has("X-User-Email") && USER_EMAIL) {
         headers.set("X-User-Email", USER_EMAIL);
       }
 

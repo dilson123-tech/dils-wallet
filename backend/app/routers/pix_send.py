@@ -27,7 +27,10 @@ router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 class PixSendPayload(BaseModel):
     dest: str = Field(..., description="Email/Chave destino")
     valor: float = Field(..., gt=0, description="Valor em reais")
-    msg: Optional[str] = Field(default="", description="Descrição/memo da transação")
+    # descricao é o campo OFICIAL (novo)
+    descricao: Optional[str] = Field(default="", description="Descrição/memo da transação")
+    # msg é LEGADO (mantém compat com front antigo)
+    msg: Optional[str] = Field(default="", description="LEGADO: use 'descricao' preferencialmente")
     idem_key: Optional[str] = Field(default=None, description="Idempotency-Key opcional")
 
 class PixSendTx(BaseModel):
@@ -137,6 +140,7 @@ def pix_send(
         #   - valor_liquido: valor - taxa_valor
         # ---------------------------------------------------
         valor_bruto = float(payload.valor)
+        descricao = (payload.descricao or payload.msg or 'PIX').strip() or 'PIX'
         taxa_percentual = 0.8  # 0.8% por envio
         taxa_valor = round(valor_bruto * (taxa_percentual / 100.0), 2)
         valor_liquido = valor_bruto - taxa_valor
@@ -145,7 +149,7 @@ def pix_send(
             user_id=user_id,
             tipo="envio",
             valor=valor_bruto,
-            descricao=(payload.msg or "").strip() or "PIX",
+            descricao=descricao.strip() or "PIX",
             taxa_percentual=taxa_percentual,
             taxa_valor=taxa_valor,
             valor_liquido=valor_liquido,

@@ -162,7 +162,6 @@ async function handleHomeInsight() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Email": USER_EMAIL,
         },
         body: JSON.stringify({
           message: "resumo rápido do mês no pix"

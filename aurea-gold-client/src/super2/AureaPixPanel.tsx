@@ -371,7 +371,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Email": USER_EMAIL, ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
         },
         body: JSON.stringify({ message: mensagem }),
       }));

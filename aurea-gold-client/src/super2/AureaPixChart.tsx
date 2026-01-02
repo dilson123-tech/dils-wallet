@@ -102,7 +102,6 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
           method: "GET",
           headers: {
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-            "X-User-Email": USER_EMAIL,
           },
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
