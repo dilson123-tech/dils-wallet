@@ -72,12 +72,10 @@ export default function QuickPixActions() {
     setOk(null);
     try {
       const r = await fetch(`${API_BASE}/api/v1/pix/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ dest, valor: Number(valor), msg }),
-      });
+          method: "POST",
+          headers: buildPixHeaders(true),
+          body: JSON.stringify({ dest, valor: Number(valor), descricao: msg || null }),
+        });
       if (!r.ok) {
         const t = await r.text().catch(() => "");
         throw new Error(`HTTP ${r.status} ${t}`.slice(0, 240));
@@ -92,16 +90,39 @@ export default function QuickPixActions() {
       setSending(false);
     }
   }
+    async function loadHist() {
+      setErr(null);
+      setOk(null);
+      setHist(null);
 
-  async function loadHist() {
-    setErr(null);
-    setOk(null);
-    setHist(null);
-    try {
-      const r = await fetch(`${API_BASE}/api/v1/pix/list`, {
-        headers: buildPixHeaders(false), [openHist]);
+      try {
+        const r = await fetch(`${API_BASE}/api/v1/pix/list?limit=10`, {
+          method: "GET",
+          headers: buildPixHeaders(false),
+        });
 
-  return (
+        if (!r.ok) {
+          const tx = await r.text().catch(() => "");
+          throw new Error(`HTTP ${r.status} ${tx}`.slice(0, 240));
+        }
+
+        const data: any = await r.json();
+        // backend pode ser array direto ou objeto com {history/items}
+        const items =
+          Array.isArray(data) ? data :
+          Array.isArray(data?.history) ? data.history :
+          Array.isArray(data?.items) ? data.items :
+          Array.isArray(data?.list) ? data.list :
+          [];
+
+        setHist(items);
+      } catch (e: any) {
+        setErr(e?.message || "Falha ao carregar histórico");
+      }
+    }
+
+    return (
+
     <>
       {/* Barra fixa */}
       <div className="fixed bottom-4 right-4 flex gap-2 z-40">
