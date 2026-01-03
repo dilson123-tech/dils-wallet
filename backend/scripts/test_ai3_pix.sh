@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BASE="http://127.0.0.1:8000"
-EMAIL="dilsonpereira231@gmail.com"
+EMAIL="user@example.com"
 
 echo "== Saldo hoje =="
 curl -s -X POST "$BASE/api/v1/ai/chat" \

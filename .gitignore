@@ -53,3 +53,13 @@ artifacts/
 *.csv
 cookies.txt
 backend/app.db
+
+# Aurea secrets
+.config/aurea/
+
+# backups / lixo local
+*.bak_*
+*.fixbak*
+
+# lixo acidental
+so e infinito nao acaba nunca

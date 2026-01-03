@@ -44,7 +44,50 @@ export interface LoginRequest {
 
 function getApiBase(): string {
   const raw = (import.meta as any)?.env?.VITE_API_BASE ?? (import.meta as any)?.env?.VITE_API_BASE_URL ?? "";
-  return String(raw || "").replace(/\/+$/, "");
+  const envBase = String(raw || "").replace(/\/+$/, "");
+
+  // Se o front abriu por IP na rede (ex: 192.168.x.x:5173),
+  // o backend está no mesmo host na porta 8000.
+  try {
+    if (typeof window !== "undefined" && window.location?.hostname) {
+      const h = window.location.hostname;
+      if (h && h !== "localhost" && h !== "127.0.0.1") {
+        if (!envBase || /localhost|127\.0\.0\.1/.test(envBase)) {
+          return `http://${h}:8000`;
+        }
+      }
+    }
+  } catch {}
+
+  return envBase;
+}
+
+
+function maybeInjectDevToken(): void {
+  // --- AUREA LAB (DEV): injeta token via ?token=... ou VITE_DEV_TOKEN ---
+  try {
+    const isDev = !!((import.meta as any)?.env?.DEV);
+    if (!isDev || typeof window === "undefined") return;
+
+    const sp = new URLSearchParams(window.location.search);
+    const qtok = (sp.get("token") || "").trim();
+    const etok = String(((import.meta as any)?.env?.VITE_DEV_TOKEN as string) || "").trim();
+    const tok = qtok || etok;
+
+    // JWT básico: 3 partes
+    if (tok && tok.split(".").length === 3) {
+      try { setAll(ACCESS_TOKEN_KEYS, tok); } catch {}
+
+      // limpa token da URL pra não vazar em print
+      if (qtok) {
+        sp.delete("token");
+        const qs = sp.toString();
+        const clean = window.location.pathname + (qs ? "?" + qs : "") + window.location.hash;
+        window.history.replaceState({}, "", clean);
+      }
+    }
+  } catch {}
+  // --- /AUREA LAB (DEV) ---
 }
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
   const API_BASE = getApiBase();
@@ -72,6 +115,7 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
 
 export function getAccessToken(): string | null {
   try {
+      maybeInjectDevToken();
     return getFirst(ACCESS_TOKEN_KEYS);
   } catch {
     return null;

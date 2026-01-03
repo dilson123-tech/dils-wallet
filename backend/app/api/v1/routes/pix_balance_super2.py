@@ -18,6 +18,17 @@ from app.models import User
 from app.utils.authz import get_current_user
 from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
+# AUREA_MONEY_ROUND (pydantic v2/v1 compat)
+try:
+    from pydantic import field_validator as _pyd_field_validator  # v2
+    def _fv(*fields):
+        return _pyd_field_validator(*fields, mode="before")
+except Exception:
+    from pydantic import validator as _pyd_validator  # v1
+    def _fv(*fields):
+        return _pyd_validator(*fields, pre=True, always=True)
+
+
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
 AUREA_DEBUG = os.getenv("AUREA_DEBUG", "0") == "1"
@@ -44,7 +55,26 @@ class PixBalanceResponse(BaseModel):
     debug_user_id: Optional[int] = None
     debug_tx_total: Optional[int] = None
 
+# _AUREA_MV_HELPER (pydantic v2/v1 safe)
+try:
+    from pydantic import model_validator as _mv  # v2
+except Exception:
+    def _mv(*args, **kwargs):
+        def deco(fn): return fn
+        return deco
+
+
 class PixForecastResponse(BaseModel):
+    # AUREA_MONEY_ROUND
+    @_mv(mode="after")
+    def _round_money(self):
+        for f in ("saldo_atual", "saldo_previsto"):
+            if hasattr(self, f):
+                v = getattr(self, f)
+                if isinstance(v, float):
+                    setattr(self, f, round(v, 2))
+        return self
+
     saldo_atual: float
     entradas_mes: float
     saidas_mes: float

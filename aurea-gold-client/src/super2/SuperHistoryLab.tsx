@@ -43,7 +43,7 @@ export default function SuperHistoryLab() {
       setSending(true);
       setStatus("Enviando PIX de teste (LAB) R$ 1,23...");
       const resp = await sendPix({
-        dest: "dilsonpereira231@gmail.com",
+        dest: "cliente@exemplo.com",
         valor: 1.23,
         descricao: "LAB Super2",
       });

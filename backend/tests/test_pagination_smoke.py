@@ -1,8 +1,9 @@
-import os, httpx, pytest
+import os
+import pytest, httpx, pytest
 
 BASE = os.getenv("BASE", "http://127.0.0.1:8000")
-U = os.getenv("AUREA_USER", "dilsonpereira231@gmail.com")
-P = os.getenv("AUREA_PASS", "Aurea@12345")
+U = os.getenv("AUREA_USER", "user@example.com")
+P = os.getenv("AUREA_PASS", "")
 
 def _login():
     with httpx.Client(timeout=5.0) as c:

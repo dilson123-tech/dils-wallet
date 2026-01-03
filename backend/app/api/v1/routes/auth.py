@@ -14,6 +14,14 @@ from app.utils.security import (
     refresh_token_expiry_dt,
 )
 
+# AUREA_DEBUG: logs sensíveis só com AUREA_DEBUG=1
+import os
+_AUREA_DEBUG = os.getenv('AUREA_DEBUG', '0') == '1'
+def _dbg(*a, **k):
+    if _AUREA_DEBUG:
+        print(*a, **k)
+
+
 router = APIRouter()
 
 
@@ -31,7 +39,7 @@ class TokenResponse(BaseModel):
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     ident = (payload.username or "").strip()
-    print('[AUTH LOGIN] ident=', repr(ident), 'pwd_len=', len(payload.password))
+    _dbg('[AUTH LOGIN] ident=', repr(ident), 'pwd_len=', len(payload.password))
 
     user = None
 
@@ -50,7 +58,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     # hash no campo padrão do projeto
     pwd_hash = getattr(user, "hashed_password", None)
-    print('[AUTH LOGIN] user.id=', getattr(user,'id',None), 'username=', getattr(user,'username',None), 'email=', getattr(user,'email',None))
+    _dbg('[AUTH LOGIN] user.id=', getattr(user,'id',None), 'username=', getattr(user,'username',None), 'email=', getattr(user,'email',None))
 
     if (not pwd_hash) or (not verify_password(payload.password, pwd_hash)):
         raise HTTPException(

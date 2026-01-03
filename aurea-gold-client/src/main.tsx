@@ -7,6 +7,51 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import ErrorBoundary from "./shared/ErrorBoundary";
 
+// AUREA_RESET_HARD: limpa cache/service worker/storage quando abrir com ?reset=1
+(async () => {
+  try {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("reset") !== "1") return;
+
+    // mata service workers
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+
+    // limpa caches
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+
+    try { localStorage.clear(); } catch {}
+    try { sessionStorage.clear(); } catch {}
+
+    // tenta limpar indexedDB
+    try {
+      const anyIDB = indexedDB;
+      const dbs = (anyIDB as any).databases ? await (anyIDB as any).databases() : [];
+      if (Array.isArray(dbs)) {
+        await Promise.all(dbs.map((d: any) => d?.name
+          ? new Promise(res => {
+              const req = indexedDB.deleteDatabase(d.name);
+              req.onsuccess = req.onerror = req.onblocked = () => res(null);
+            })
+          : null
+        ));
+      }
+    } catch {}
+
+    sp.delete("reset");
+    sp.set("v", String(Date.now())); // cache-bust
+    const clean = window.location.pathname + "?" + sp.toString() + window.location.hash;
+    window.location.replace(clean);
+  } catch {}
+})();
+
+
 // ⚠️ Desativado para evitar crash durante o debug
 // import "@/dev/force-local-api";
 

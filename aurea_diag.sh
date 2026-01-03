@@ -4,7 +4,7 @@ set -euo pipefail
 # === Ajuste se seus domínios mudarem ===
 BACK="https://dils-wallet-production.up.railway.app"
 CLIENT="https://aurea-gold-client-production.up.railway.app"
-USER_EMAIL="dilsonpereira231@gmail.com"
+USER_EMAIL="user@example.com"
 
 echo "===== RAILWAY STATUS ====="
 railway status || true

@@ -80,6 +80,7 @@ origins = [o for o in os.getenv("CORS_ORIGINS", "").split(",") if o] or _default
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1|192\.168\.1\.\d{1,3}):517[0-9]$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

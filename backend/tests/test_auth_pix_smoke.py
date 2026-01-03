@@ -6,8 +6,10 @@ from app.main import app
 
 client = TestClient(app)
 
-USER = os.getenv("AUREA_USER", "dilsonpereira231@gmail.com")
-PASS = os.getenv("AUREA_PASS", "Aurea@12345")
+USER = os.getenv("AUREA_USER", "user@example.com")
+PASS = os.getenv("AUREA_PASS")
+if not PASS:
+    pytest.skip("AUREA_PASS não definida (use dev.env)", allow_module_level=True)
 
 def test_login_returns_token():
     r = client.post("/api/v1/auth/login", json={"username": USER, "password": PASS})

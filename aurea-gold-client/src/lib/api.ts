@@ -4,9 +4,15 @@ import { getToken } from "./auth";
 // Seguro, simples e com Authorization automático
 // ======================================================
 
-export const API_BASE: string = String(import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/+$|\s+/g, "");
+const FALLBACK_API_BASE: string =
+  typeof window !== "undefined"
+    ? `http://${window.location.hostname}:8000`
+    : "http://127.0.0.1:8000";
+
+export const API_BASE: string = String(import.meta.env.VITE_API_BASE || FALLBACK_API_BASE).replace(/\/+$|\s+/g, "");
 export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || "";
 
+export const DEV_TOKEN: string = String(import.meta.env.VITE_DEV_TOKEN || "").trim();
 // Tenta pegar token de vários lugares (compat com versões antigas)
 function clearTokenKeys() {
   try {
@@ -36,8 +42,16 @@ function jwtExpMs(tok: string): number | null {
 function pickToken(): string | null {
   if (typeof window === "undefined") return null;
 
+    const devTok = DEV_TOKEN;
+
+
+
+  // DEV: força token do env (ótimo pra celular/rede) — ignora tokens velhos do storage
+  if (DEV_TOKEN && DEV_TOKEN.length > 40) return DEV_TOKEN;
+
+  // prioridade: chave oficial primeiro (evita 401 por token legado inválido)
   const keys = [
-    "aurea.access_token",
+    "aurea.access_token", // oficial
     "aurea_access_token",
     "aurea.jwt",
     "aurea_jwt",
@@ -45,15 +59,13 @@ function pickToken(): string | null {
   ];
 
   const now = Date.now();
-  const cands: { tok: string; expMs: number | null; key: string }[] = [];
 
-  for (const k of keys) {
-    const raw = localStorage.getItem(k);
-    if (!raw) continue;
-    if (raw === "[object Object]") continue;
+  function normalize(raw: string | null): string | null {
+    if (!raw) return null;
+    if (raw === "[object Object]") return null;
 
     let v = raw.trim();
-    if (!v) continue;
+    if (!v) return null;
 
     // às vezes salvaram JSON inteiro do login
     if (v.startsWith("{")) {
@@ -61,31 +73,41 @@ function pickToken(): string | null {
         const j = JSON.parse(v);
         if (typeof j?.access_token === "string") v = j.access_token;
         else if (typeof j?.token === "string") v = j.token;
-        else continue;
-      } catch { continue; }
+        else return null;
+      } catch {
+        return null;
+      }
     }
 
-    if (v.length < 40) continue;
-
-    const exp = jwtExpMs(v);
-    cands.push({ tok: v, expMs: exp, key: k });
+    if (v.length < 40) return null;
+    return v;
   }
 
-  if (cands.length === 0) return null;
+  // escolhe o primeiro JWT não-expirado seguindo a ordem de prioridade
+  for (const k of keys) {
+    const v = normalize(localStorage.getItem(k));
+    if (!v) continue;
+    if (v.split(".").length !== 3) continue;
 
-  // preferir JWT não-expirado com maior exp
-  const jwt = cands
-    .filter(c => c.tok.split(".").length === 3)
-    .filter(c => c.expMs === null || c.expMs > now + 15000)
-    .sort((a,b) => (b.expMs || 0) - (a.expMs || 0));
+    const exp = jwtExpMs(v);
+    if (exp !== null && exp <= now + 15000) continue; // expirado/expirando
+    return v;
+  }
 
-  if (jwt.length > 0) return jwt[0].tok;
+  // fallback: qualquer JWT na ordem
+  for (const k of keys) {
+    const v = normalize(localStorage.getItem(k));
+    if (!v) continue;
+    if (v.split(".").length === 3) return v;
+  }
 
-  // fallback: qualquer JWT
-  const anyJwt = cands.filter(c => c.tok.split(".").length === 3);
-  if (anyJwt.length > 0) return anyJwt[0].tok;
+  // último recurso: qualquer token "comprido" (legado)
+  for (const k of keys) {
+    const v = normalize(localStorage.getItem(k));
+    if (v) return v;
+  }
 
-  return cands[0].tok;
+  return null;
 }
 
 

@@ -2,7 +2,7 @@
 set -eu
 
 BASE="http://127.0.0.1:8000"
-EMAIL="dilsonpereira231@gmail.com"
+EMAIL="user@example.com"
 
 echo
 echo ">>> Pergunta FORA do escopo (piada)..."

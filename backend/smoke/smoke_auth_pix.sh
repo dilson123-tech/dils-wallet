@@ -2,8 +2,9 @@
 set -euo pipefail
 
 API_BASE="${API_BASE:-http://127.0.0.1:8000}"
-USER="${AUREA_USER:-dilsonpereira231@gmail.com}"
-PASS="${AUREA_PASS:-Aurea@12345}"
+USER="${AUREA_USER:-user@example.com}"
+PASS="${AUREA_PASS:-}"
+[ -n "$PASS" ] || { echo "❌ AUREA_PASS não setada (use dev.env)"; exit 1; }
 DAYS="${DAYS:-7}"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ Falta comando: $1"; exit 2; }; }
