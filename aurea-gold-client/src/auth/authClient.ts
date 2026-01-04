@@ -65,6 +65,8 @@ function getApiBase(): string {
 
 function maybeInjectDevToken(): void {
   // --- AUREA LAB (DEV): injeta token via ?token=... ou VITE_DEV_TOKEN ---
+const DEV_RT: string = String(((import.meta as any)?.env?.VITE_DEV_REFRESH_TOKEN as string) || "").trim();
+try { if (DEV_RT) { localStorage.setItem("aurea.refresh_token", DEV_RT); localStorage.setItem("aurea_refresh_token", DEV_RT); } } catch {}
   try {
     const isDev = !!((import.meta as any)?.env?.DEV);
     if (!isDev || typeof window === "undefined") return;

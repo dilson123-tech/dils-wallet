@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Auto-carrega env do Aurea (evita "AUREA_USER: unbound variable")
+ENV_FILE="$HOME/.config/aurea/dev.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a; source "$ENV_FILE"; set +a
+fi
+
+
 HOST_IP="${HOST_IP:-192.168.1.20}"
 BE_PORT="${BE_PORT:-8000}"
 FE_PORT="${FE_PORT:-5174}"

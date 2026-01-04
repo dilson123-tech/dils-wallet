@@ -53,6 +53,15 @@ sleep 1
 wait_backend
 
 echo "🔐 Gerando VITE_DEV_TOKEN..."
+
+# --- AUREA: DEV refresh token (pra 401 não matar a sessão) ---
+VITE_DEV_REFRESH_TOKEN="$(
+  curl -sS --max-time 6 'http://127.0.0.1:8000/api/v1/auth/login' \
+    -H 'Content-Type: application/json' \
+    -d "$(jq -n --arg u "$AUREA_USER" --arg p "$AUREA_PASS" '{username:$u,password:$p}')" \
+  | jq -r '.refresh_token'
+)"
+export VITE_DEV_REFRESH_TOKEN
 TOKEN="$(curl -sS --max-time 8 "http://127.0.0.1:${BE_PORT}/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -d "$(jq -n --arg u "$AUREA_USER" --arg p "$AUREA_PASS" '{username:$u,password:$p}')" | jq -r '.access_token')"
