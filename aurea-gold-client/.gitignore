@@ -29,3 +29,6 @@ dev_backups/
 
 # arquivos zumbi
 *.corrompido.*
+
+# allow tracked env template
+!.env.example
