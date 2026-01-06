@@ -9,6 +9,8 @@ import App from "./App";
 import ErrorBoundary from "./shared/ErrorBoundary";
 
 // AUREA_RESET_HARD: limpa cache/service worker/storage quando abrir com ?reset=1
+
+
 (async () => {
   try {
     if (typeof window === "undefined") return;
