@@ -10,7 +10,8 @@
     "start:prod": "serve -s dist -l ${PORT:-8080}",
     "dev": "vite",
     "predev": "bash scripts/pix_ui_guard.sh",
-    "prebuild": "bash scripts/pix_ui_guard.sh"
+    "prebuild": "bash scripts/pix_ui_guard.sh",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "apexcharts": "^5.3.6",

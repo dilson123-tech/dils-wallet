@@ -70,6 +70,65 @@ function handleServiceShortcut(service: AureaServiceKey) {
 export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   const [saldoReal, setSaldoReal] = useState<number | null>(null);
   const [saldoModo, setSaldoModo] = useState<"simulado" | "real">("simulado");
+
+  const DEV_LOGIN_ENABLED =
+    (import.meta as any).env?.DEV ||
+    new URLSearchParams(window.location.search).get("devlogin") === "1";
+
+  const [needAuth, setNeedAuth] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPass, setAuthPass] = useState("");
+  const [authErr, setAuthErr] = useState<string | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+
+  async function doDevLogin() {
+    if (!DEV_LOGIN_ENABLED) return;
+    setAuthErr(null);
+    setAuthBusy(true);
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: authEmail.trim(), password: authPass }),
+      });
+
+      const txt = await resp.text();
+      if (!resp.ok) throw new Error(txt || `login ${resp.status}`);
+
+      const j = JSON.parse(txt);
+      const atRaw = String(j?.access_token || "");
+      const rtRaw = String(j?.refresh_token || "");
+
+      const pickJwt = (v: string) =>
+        (v.match(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/) || [])[0] || "";
+
+      const at = (pickJwt(atRaw) || atRaw).trim();
+      const rt = rtRaw.trim();
+
+      if (!at || at.length < 20) throw new Error("access_token vazio/curto");
+
+      // oficial + compat (pro front inteiro, inclusive fetch-refresh.ts)
+      localStorage.setItem("aurea.access_token", at);
+      localStorage.setItem("aurea_access_token", at);
+      localStorage.setItem("aurea.jwt", at);
+      localStorage.setItem("aurea_jwt", at);
+
+      if (rt && rt.length >= 24) {
+        localStorage.setItem("aurea.refresh_token", rt);
+        localStorage.setItem("aurea_refresh_token", rt);
+      }
+
+      console.log("✅ Dev login OK. AT len=", at.length, "origin=", location.origin);
+      location.reload();
+    } catch (e: any) {
+      console.warn("❌ Dev login falhou:", e);
+      setAuthErr(e?.message || String(e));
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  const [saldoUpdatedAt, setSaldoUpdatedAt] = useState<string | null>(null);
   const [entradasMes, setEntradasMes] = useState<number | null>(null);
   const [saidasMes, setSaidasMes] = useState<number | null>(null);
   const [pixInsight, setPixInsight] = useState<string | null>(null);
@@ -116,6 +175,9 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
       if (alive && saldo !== null) {
         setSaldoReal(saldo);
         setSaldoModo(modoReal);
+        if (modoReal === "real") setNeedAuth(false);
+        if (modoReal === "real") setSaldoUpdatedAt(new Date().toISOString());
+        else setSaldoUpdatedAt(null);
         setEntradasMes(entradas);
         setSaidasMes(saidas);
       }
@@ -176,6 +238,8 @@ async function handleHomeInsight() {
       const data = await resp.json();
       setPixInsight(data?.headline || "Insight PIX disponível");
     } catch (err) {
+        if (/401|Token ausente/i.test(String(err))) setNeedAuth(true);
+
       setPixInsightError("Falha de comunicação com IA");
     } finally {
       setPixInsightLoading(false);
@@ -185,6 +249,10 @@ async function handleHomeInsight() {
 
   const saldoDisplay =
     saldoModo === "real" ? formatBRL(saldoReal) : "R$ 12.345,67";
+
+  const saldoUpdatedHHMM = saldoUpdatedAt
+    ? new Date(saldoUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   const resultadoMes =
     entradasMes !== null && saidasMes !== null
@@ -208,7 +276,49 @@ async function handleHomeInsight() {
           : "Modo simulado • aguardando conexão completa do PIX"}
       </div>
 
-      {/* Card de saldo principal */}
+      {DEV_LOGIN_ENABLED && saldoModo !== "real" && needAuth && (
+          <div className="rounded-2xl border border-amber-500/40 bg-zinc-950/70 p-4 md:p-5">
+            <p className="text-[11px] md:text-xs text-amber-200/80 uppercase tracking-[0.18em]">
+              Conectar ao backend (DEV)
+            </p>
+            <p className="mt-1 text-xs md:text-sm text-zinc-300">
+              Sem token nessa origem (<span className="text-zinc-100">{typeof window !== "undefined" ? window.location.origin : ""}</span>). Faça login e pronto.
+            </p>
+
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+              <input
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                placeholder="email/username"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                autoComplete="username"
+              />
+              <input
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                placeholder="senha"
+                type="password"
+                value={authPass}
+                onChange={(e) => setAuthPass(e.target.value)}
+                autoComplete="current-password"
+              />
+              <button
+                className="rounded-xl bg-amber-500/90 hover:bg-amber-500 text-black font-semibold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={authBusy || !authEmail || !authPass}
+                onClick={doDevLogin}
+              >
+                {authBusy ? "Conectando..." : "Conectar"}
+              </button>
+            </div>
+
+            {authErr && <p className="mt-2 text-xs text-red-300">{authErr}</p>}
+
+            <p className="mt-2 text-[10px] text-zinc-500">
+              Dica: isso aparece só em DEV (Vite) ou se abrir com <span className="text-zinc-300">?devlogin=1</span>.
+            </p>
+          </div>
+        )}
+
+        {/* Card de saldo principal */}
       <div className="rounded-2xl border border-amber-500/60 bg-gradient-to-br from-black via-zinc-950 to-zinc-900 p-4 md:p-6 shadow-[0_0_40px_rgba(251,191,36,0.18)] flex flex-col md:flex-row justify-between gap-4">
         <div>
           <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.18em]">
@@ -222,6 +332,11 @@ async function handleHomeInsight() {
               ? "Saldo atualizado em tempo quase real do seu Aurea Gold (via PIX)."
               : "Valor simulado por enquanto. Na versão conectada, esse saldo vem em tempo real do seu Aurea Gold."}
           </p>
+            {saldoModo === "real" && saldoUpdatedHHMM && (
+              <p className="mt-1 text-[10px] md:text-[11px] text-zinc-500">
+                Atualizado às {saldoUpdatedHHMM}
+              </p>
+            )}
         </div>
 
         {/* Card de previsão do mês (forecast PIX) */
@@ -246,11 +361,11 @@ async function handleHomeInsight() {
 
               <p className="text-[11px] md:text-xs text-zinc-400 mt-1">
                 Previsão de saldo ao fim do mês:&nbsp;
-                <p className="text-[11px] md:text-xs text-zinc-100 font-semibold mt-1">
+                <span className="block text-[11px] md:text-xs text-zinc-100 font-semibold mt-1">
                   {forecastPrevisaoFimMes !== null
                     ? forecastPrevisaoFimMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
                     : "Carregando previsão do mês..."}
-                </p>
+                </span>
                 <span className="text-zinc-100 font-medium">
                 </span>
               </p>

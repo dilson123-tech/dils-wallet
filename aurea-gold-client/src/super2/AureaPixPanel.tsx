@@ -536,6 +536,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
       totalTaxas,
       liquido,
       taxaMediaPercentual,
+      
     };
   }, [history]);
 
