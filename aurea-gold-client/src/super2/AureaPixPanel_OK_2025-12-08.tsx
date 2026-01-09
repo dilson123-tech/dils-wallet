@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { API_BASE, USER_EMAIL, fetchPixHistory, PixHistoryItem } from "./api";
+import { getToken } from "../lib/auth";
+
+const __pixAuthHeaders = (): Record<string, string> => {
+  const tok = getToken();
+  if (!tok || tok === "null" || tok === "undefined") return {};
+  return { Authorization: `Bearer ${tok}` };
+};
+
 
 type PixAction = "send" | "charge" | "statement" | null;
 
@@ -67,7 +75,8 @@ export default function AureaPixPanel({
 
         const resp = await fetch(`${API_BASE}/api/v1/pix/balance`, {
           headers: {
-            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+"Content-Type": "application/json",
             "X-User-Email": USER_EMAIL,
           },
         });
@@ -162,7 +171,7 @@ export default function AureaPixPanel({
 
       const resp = await fetch(`${API_BASE}/api/v1/pix/send`, {
         method: "POST",
-        headers: {
+        headers: { ...__pixAuthHeaders(), 
           "Content-Type": "application/json",
           "X-User-Email": USER_EMAIL,
           "Idempotency-Key": idemKey,

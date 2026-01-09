@@ -5,6 +5,7 @@ import "./styles/aurea-mobile.css";
 import "./styles/aurea.css";
 import "./index.css";
 import { devLanAuthBootstrap } from "./dev/devLanAuthBootstrap";
+import "./lib/aurea_hash_boot";
 
 console.log("[main] start", location.href);
 

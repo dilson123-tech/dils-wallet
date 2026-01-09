@@ -1,3 +1,4 @@
+import { getAccessToken, saveAccessToken, clearAccessTokenForThisOrigin } from "./tokenVault";
 const __isJwt = (t: any) =>
   typeof t === "string" && t.length >= 120 && t.split(".").length === 3;
 
@@ -34,17 +35,8 @@ export function setToken(tok: string) {
   try { localStorage.setItem("aurea.jwt", tok); } catch {}
 }
 
-export function getToken(): string {
-  return __pickToken(
-  localStorage.getItem("aurea.access_token"),
-  localStorage.getItem("aurea_access_token"),
-  localStorage.getItem("aurea.jwt"),
-  localStorage.getItem("aurea_jwt"),
-  localStorage.getItem("authToken"),
-  localStorage.getItem("aurea_token"),
-  localStorage.getItem("token"),
-);
-
+export function getToken() {
+  return getAccessToken();
 }
 
 export function clearToken() {

@@ -1,4 +1,5 @@
 import { authFetch } from "../auth/authClient";
+import { getToken } from "../lib/auth";
 
 const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 export const API_BASE = String(import.meta.env.VITE_API_BASE || DEFAULT_API_BASE).replace(/\/+$/, "");
@@ -47,8 +48,13 @@ export type PixHistoryResponse = {
 };
 
 async function apiGet<T>(path: string): Promise<T> {
+  const tok = getToken();
+  const headers: Record<string, string> = {};
+  if (tok) headers.Authorization = `Bearer ${tok}`;
+
   const r = await authFetch(`${API_BASE}${path}`, {
     method: "GET",
+    headers,
   });
 
   if (!r.ok) {
@@ -60,9 +66,13 @@ async function apiGet<T>(path: string): Promise<T> {
 }
 
 async function apiPost<T>(path: string, body: any): Promise<T> {
+  const tok = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (tok) headers.Authorization = `Bearer ${tok}`;
+
   const r = await authFetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
 

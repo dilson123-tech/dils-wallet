@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_BASE, USER_EMAIL } from "./api";
+import {API_BASE, USER_EMAIL, sendPix, fetchPixList, type PixListItem} from "./api";
 import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
@@ -135,6 +135,22 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   const [pixInsightLoading, setPixInsightLoading] = useState(false);
   const [pixInsightError, setPixInsightError] = useState<string | null>(null);
 
+  // ---- PIX MODALS (Send / Extrato) ----
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const [pixSendOpen, setPixSendOpen] = useState(false);
+  const [pixSendDest, setPixSendDest] = useState("");
+  const [pixSendValor, setPixSendValor] = useState("");
+  const [pixSendMsg, setPixSendMsg] = useState("");
+  const [pixSendBusy, setPixSendBusy] = useState(false);
+  const [pixSendErr, setPixSendErr] = useState<string | null>(null);
+  const [pixSendOk, setPixSendOk] = useState<string | null>(null);
+
+  const [pixExtratoOpen, setPixExtratoOpen] = useState(false);
+  const [pixExtratoBusy, setPixExtratoBusy] = useState(false);
+  const [pixExtratoErr, setPixExtratoErr] = useState<string | null>(null);
+  const [pixExtratoItems, setPixExtratoItems] = useState<PixListItem[] | null>(null);
+
     const [forecastNivel, setForecastNivel] = useState<
       | "ok"
       | "atencao"
@@ -213,7 +229,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   return () => {
     alive = false;
   };
-}, []);
+}, [reloadKey]);
 async function handleHomeInsight() {
     if (pixInsightLoading) return;
     setPixInsightError(null);
@@ -222,9 +238,13 @@ async function handleHomeInsight() {
     try {
       const resp = await fetch(`${API_BASE}/api/v1/ai/headline`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: (() => {
+            // AUREA_AI_AUTH_HEADER: injeta Bearer quando houver token
+            const h: Record<string, string> = { "Content-Type": "application/json" };
+            const tok = getToken();
+            if (tok) h["Authorization"] = `Bearer ${tok}`;
+            return h;
+          })(),
         body: JSON.stringify({
           message: "resumo rápido do mês no pix"
         })
@@ -247,7 +267,77 @@ async function handleHomeInsight() {
   }
 
 
-  const saldoDisplay =
+  
+  // AUREA_PIX_MODALS_V1
+  function openPixSend() {
+    if (!getToken()) {
+      setNeedAuth(true);
+      return;
+    }
+    setPixSendOk(null);
+    setPixSendErr(null);
+    setPixSendOpen(true);
+  }
+
+  async function submitPixSend() {
+    if (pixSendBusy) return;
+    const tok = getToken();
+    if (!tok) {
+      setNeedAuth(true);
+      setPixSendErr("Sem token. Abra pelo link/QR com #at=...");
+      return;
+    }
+    const dest = pixSendDest.trim();
+    const v = Number(String(pixSendValor).replace(",", "."));
+    if (!dest) {
+      setPixSendErr("Informe o destino (chave/conta).");
+      return;
+    }
+    if (!(v > 0)) {
+      setPixSendErr("Informe um valor válido.");
+      return;
+    }
+    setPixSendBusy(true);
+    setPixSendErr(null);
+    try {
+      await sendPix({ dest, valor: v, msg: (pixSendMsg.trim() || null) });
+      setPixSendOk("PIX enviado ✅");
+      setPixSendDest("");
+      setPixSendValor("");
+      setPixSendMsg("");
+      setReloadKey((k) => k + 1);
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (/401|Token ausente/i.test(msg)) setNeedAuth(true);
+      setPixSendErr("Falha ao enviar PIX.");
+    } finally {
+      setPixSendBusy(false);
+    }
+  }
+
+  async function openPixExtrato() {
+    const tok = getToken();
+    if (!tok) {
+      setNeedAuth(true);
+      return;
+    }
+    setPixExtratoOpen(true);
+    setPixExtratoBusy(true);
+    setPixExtratoErr(null);
+    try {
+      const items = await fetchPixList(50);
+      setPixExtratoItems(items || []);
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (/401|Token ausente/i.test(msg)) setNeedAuth(true);
+      setPixExtratoErr("Falha ao carregar extrato.");
+      setPixExtratoItems(null);
+    } finally {
+      setPixExtratoBusy(false);
+    }
+  }
+
+const saldoDisplay =
     saldoModo === "real" ? formatBRL(saldoReal) : "R$ 12.345,67";
 
   const saldoUpdatedHHMM = saldoUpdatedAt
@@ -266,6 +356,35 @@ async function handleHomeInsight() {
 
   const resultadoLabel =
     resultadoMes !== null && resultadoMes >= 0 ? "superávit" : "déficit";
+
+  // --- PIX Atalhos (wire definitivo) ---
+  function handlePixAtalho(action: "send" | "receive" | "extrato") {
+    console.log(`[SuperAureaHome] Atalho PIX clicado: ${action}`);
+
+    const tok = getToken();
+    if (!tok) {
+      setNeedAuth(true);
+      return;
+    }
+
+    if (action === "send") {
+      setPixSendErr(null);
+      setPixSendOk(null);
+      setPixSendDest("");
+      setPixSendValor("");
+      setPixSendMsg("");
+      setPixSendOpen(true);
+      return;
+    }
+
+    if (action === "extrato") {
+      void openPixExtrato();
+      return;
+    }
+
+    alert("Receber PIX / QR Code: em breve ✅");
+  }
+
 
   return (
     <section className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
@@ -384,56 +503,47 @@ async function handleHomeInsight() {
         </div>
 
         {/* Atalhos rápidos PIX */}
-        <div className="flex flex-col gap-2 text-[10px] md:text-[11px] min-w-[190px]">
-          <p className="text-[10px] text-zinc-400 uppercase tracking-[0.16em]">
-            Atalhos rápidos PIX
-          </p>
-          <button
-            type="button"
-            onClick={() =>
-            onPixShortcut
-              ? onPixShortcut("enviar")
-              : handlePixShortcutFallback("enviar")
-          }
-            className="px-3 py-1.5 rounded-lg border border-emerald-500/70 bg-emerald-900/60 text-emerald-50 text-left text-[11px] hover:border-emerald-300/80 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            Enviar PIX
-            <span className="block text-[9px] text-emerald-100/80">
-              Atalho para envio rápido de PIX
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-            onPixShortcut
-              ? onPixShortcut("receber")
-              : handlePixShortcutFallback("receber")
-          }
-            className="px-3 py-1.5 rounded-lg border border-amber-500/80 bg-black/60 text-amber-100 text-left text-[11px] hover:border-amber-300/90 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            Receber PIX
-            <span className="block text-[9px] text-amber-100/80">
-              Copiar chave ou gerar QR Code (em breve)
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-            onPixShortcut
-              ? onPixShortcut("extrato")
-              : handlePixShortcutFallback("extrato")
-          }
-            className="px-3 py-1.5 rounded-lg border border-zinc-600/80 bg-zinc-900/80 text-zinc-100 text-left text-[11px] hover:border-amber-400/80 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            Ver extrato PIX
-            <span className="block text-[9px] text-zinc-300/80">
-              Acessar histórico detalhado do mês
-            </span>
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-col gap-2 text-[10px] md:text-[11px] min-w-[190px]">
+            <p className="text-[10px] text-zinc-400 uppercase tracking-[0.16em]">
+              Atalhos rápidos PIX
+            </p>
 
-      {/* Resumo rápido do mês */}
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
+              className="px-3 py-2 rounded-lg border border-amber-500/60 bg-amber-500/20 text-amber-100 text-left text-[11px] hover:bg-amber-500/25 active:scale-[0.98] transition"
+            >
+              Enviar PIX
+              <span className="block text-[9px] text-zinc-300/90">
+                Transferir agora
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
+              className="px-3 py-2 rounded-lg border border-amber-500/60 bg-amber-500/10 text-amber-100 text-left text-[11px] hover:bg-amber-500/18 active:scale-[0.98] transition"
+            >
+              Receber PIX
+              <span className="block text-[9px] text-zinc-300/90">
+                Mostrar chave/QR (em breve)
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
+              className="px-3 py-2 rounded-lg border border-amber-500/60 bg-amber-500/30 text-amber-50 text-left text-[11px] hover:bg-amber-500/35 active:scale-[0.98] transition"
+            >
+              Ver extrato PIX
+              <span className="block text-[9px] text-zinc-300/90">
+                Acessar histórico detalhado do mês
+              </span>
+            </button>
+          </div>
+
+{/* Resumo rápido do mês */}
+      </div>
       <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-4 md:p-5 space-y-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
@@ -745,6 +855,98 @@ async function handleHomeInsight() {
           Conhecer planos Aurea Gold
         </button>
       </div>
+
+
+      {/* PIX Modals */}
+      {pixSendOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-zinc-950 p-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-amber-200">Enviar PIX</h3>
+              <button
+                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                onClick={() => { setPixSendOpen(false); setPixSendErr(null); setPixSendOk(null); }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              <input
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                placeholder="Destino (chave PIX / conta)"
+                value={pixSendDest}
+                onChange={(e) => setPixSendDest(e.target.value)}
+              />
+              <input
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                placeholder="Valor (ex: 10,50)"
+                value={pixSendValor}
+                onChange={(e) => setPixSendValor(e.target.value)}
+                inputMode="decimal"
+              />
+              <input
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                placeholder="Mensagem (opcional)"
+                value={pixSendMsg}
+                onChange={(e) => setPixSendMsg(e.target.value)}
+              />
+
+              {pixSendErr && <p className="text-xs text-red-300">{pixSendErr}</p>}
+              {pixSendOk && <p className="text-xs text-emerald-300">{pixSendOk}</p>}
+
+              <button
+                className="w-full rounded-xl bg-amber-500/90 hover:bg-amber-500 text-black font-semibold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={pixSendBusy || !pixSendDest || !pixSendValor}
+                onClick={submitPixSend}
+              >
+                {pixSendBusy ? "Enviando..." : "Confirmar envio"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pixExtratoOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-amber-500/40 bg-zinc-950 p-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-amber-200">Extrato PIX</h3>
+              <button
+                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                onClick={() => { setPixExtratoOpen(false); setPixExtratoErr(null); }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            {pixExtratoBusy && <p className="mt-3 text-xs text-zinc-400">Carregando...</p>}
+            {pixExtratoErr && <p className="mt-3 text-xs text-red-300">{pixExtratoErr}</p>}
+
+            {!pixExtratoBusy && !pixExtratoErr && (
+              <div className="mt-3 max-h-[70vh] overflow-auto space-y-2">
+                {(pixExtratoItems || []).length === 0 ? (
+                  <p className="text-xs text-zinc-400">Sem movimentações (ainda).</p>
+                ) : (
+                  (pixExtratoItems || []).map((it) => (
+                    <div key={it.id} className="flex items-start justify-between gap-3 border-b border-zinc-800/70 pb-2">
+                      <div className="min-w-0">
+                        <p className="text-xs text-zinc-200">
+                          <span className="text-zinc-400">#{it.id}</span> • {String(it.tipo || "").toUpperCase()}
+                        </p>
+                        {it.descricao && <p className="text-[11px] text-zinc-400 truncate">{it.descricao}</p>}
+                      </div>
+                      <div className="text-xs text-amber-200 whitespace-nowrap">
+                        {formatBRL(Number(it.valor || 0))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
 </section>
   );

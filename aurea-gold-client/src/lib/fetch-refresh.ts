@@ -76,7 +76,12 @@
   }
 
   function clearTokens() {
-    try {
+      // SAFE_GUARD_RT: não limpe access_token quando não existe refresh_token (sessão via #at)
+  try {
+    const hasRT = !!(localStorage.getItem(RT_KEY) || COMPAT_RT_KEYS.some((k) => localStorage.getItem(k)));
+    if (!hasRT) return;
+  } catch {}
+try {
       localStorage.removeItem(AT_KEY);
       localStorage.removeItem(RT_KEY);
       for (const k of COMPAT_AT_KEYS) localStorage.removeItem(k);
