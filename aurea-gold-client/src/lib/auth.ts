@@ -39,6 +39,15 @@ export function getToken() {
   return getAccessToken();
 }
 
+export function authHeaders(): Record<string, string> {
+  const tok = getToken();
+  if (tok && tok !== "null" && tok !== "undefined") {
+    return { Authorization: `Bearer ${tok}` };
+  }
+  return {} as Record<string, string>;
+}
+
+
 export function clearToken() {
   // apaga oficial + todos os legados (mata token velho assombrando o app)
   try { localStorage.removeItem(OFFICIAL); } catch {}

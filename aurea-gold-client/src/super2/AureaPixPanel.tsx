@@ -5,6 +5,8 @@ import { apiGet } from "../app/lib/http";
 import { withAuth } from "../lib/api";
 import { getToken } from "../lib/auth";
 
+import { authHeaders } from "../lib/auth";
+
 type PixAction = "send" | "charge" | "statement" | null;
 
 type AureaPixPanelProps = {
@@ -181,7 +183,7 @@ const saldo =
 
 const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
   method: "POST",
-  headers: {
+  headers: { ...authHeaders(), 
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     "Content-Type": "application/json",
   },
@@ -273,7 +275,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
 
       const resp = await fetch(`${API_BASE}/api/v1/pix/send`, {
         method: "POST",
-        headers: {
+        headers: { ...authHeaders(), 
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
           "Idempotency-Key": idemKey,
@@ -369,7 +371,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
 
       const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
-        headers: {
+        headers: { ...authHeaders(), 
           "Content-Type": "application/json",
           ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
         },

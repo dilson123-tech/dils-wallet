@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { API_BASE, USER_EMAIL } from "../super2/api";
+import { getToken } from "../lib/auth";
+
+import { authHeaders } from "../lib/auth";
 
 type DayPoint = {
   dia: string;

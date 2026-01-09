@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { getToken } from "../lib/auth";
 
 import { API_BASE, USER_EMAIL } from "./api";
+import { authHeaders } from "../lib/auth";
+
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -100,7 +103,7 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
         setErr(null);
         const r = await fetch(`${API_BASE}/api/v1/pix/balance?days=7`, {
           method: "GET",
-          headers: {
+          headers: { ...authHeaders(), 
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
         });
