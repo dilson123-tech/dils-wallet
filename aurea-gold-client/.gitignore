@@ -43,3 +43,9 @@ dev_backups/
 *.bak_*
 *.BROKEN_*
 .uvicorn*.log
+
+# backups / broken
+src/**/.bak*
+src/**/*.BROKEN_*
+**/*.BROKEN_*
+**/*.bak_*
