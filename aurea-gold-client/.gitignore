@@ -38,3 +38,8 @@ dev_backups/
 /lan_links/
 /scripts/lan_qr_login.sh
 /scripts/which_api.sh
+
+# backups / patches locais
+*.bak_*
+*.BROKEN_*
+.uvicorn*.log
