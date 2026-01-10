@@ -13,7 +13,6 @@ export async function getPixBalance() {
   const res = await fetch(`${BASE_URL}/pix/balance`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${getToken()}`,
 ...authHeaders(),
     },
     credentials: "include",

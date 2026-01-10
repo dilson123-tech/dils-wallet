@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { API_BASE } from "../../../lib/api";
 import { getToken } from "../../../lib/auth";
 
+import { authHeaders } from "../../../lib/auth";
+
 const USER_EMAIL = (import.meta as any).env?.VITE_USER_EMAIL || "";
 
 function buildPixHeaders(withJson: boolean = false): Record<string, string> {

@@ -181,17 +181,14 @@ const saldo =
 
         const accessToken = getAccessToken();
 
-const headers: Record<string, string> = {
-  "Content-Type": "application/json",
-  ...authHeaders(),
-};
-if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
 const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
   method: "POST",
-  headers,
+  headers: { ...authHeaders(), 
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    "Content-Type": "application/json",
+  },
   body: JSON.stringify({
-    message: "Analise o PIX do usuário (últimos movimentos/mes). Seja direto: riscos, oportunidades e próximos passos.",
+    message: `Analise o PIX do usuário (últimos movimentos/mes). Seja direto: riscos, oportunidades e próximos passos.`,
   }),
 }));
 
@@ -278,8 +275,7 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
 
       const resp = await fetch(`${API_BASE}/api/v1/pix/send`, {
         method: "POST",
-        headers: { ...authHeaders(), 
-          Authorization: `Bearer ${accessToken}`,
+        headers: { ...authHeaders()}`,
           "Content-Type": "application/json",
           "Idempotency-Key": idemKey,
         },
@@ -372,17 +368,12 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         resumoTexto +
         ". Dê um diagnóstico objetivo (alertas, pontos fortes, recomendações práticas).";
 
-      const tok = getToken();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      };
-      if (tok) headers.Authorization = `Bearer ${tok}`;
-
-
       const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
-        headers,
+        headers: { ...authHeaders(), 
+          "Content-Type": "application/json",
+          ...(() => { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; })(),
+        },
         body: JSON.stringify({ message: mensagem }),
       }));
 

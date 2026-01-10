@@ -40,12 +40,10 @@ export function getToken() {
 }
 
 export function authHeaders(): Record<string, string> {
-  const tok = getToken();
-  if (tok && tok !== "null" && tok !== "undefined") {
-    return { Authorization: `Bearer ${tok}` };
-  }
-  return {} as Record<string, string>;
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
 }
+
 
 
 export function clearToken() {

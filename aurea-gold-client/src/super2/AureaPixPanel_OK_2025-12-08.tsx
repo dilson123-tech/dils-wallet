@@ -75,7 +75,7 @@ export default function AureaPixPanel({
 
         const resp = await fetch(`${API_BASE}/api/v1/pix/balance`, {
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            ...__pixAuthHeaders(),
 "Content-Type": "application/json",
             "X-User-Email": USER_EMAIL,
           },
