@@ -69,3 +69,6 @@ _lan_links/
 lan_links/
 scripts/lan_qr_login.sh
 scripts/which_api.sh
+
+# local stress scripts (do not commit)
+aurea-gold-client/pix_stress.sh
