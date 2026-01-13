@@ -9,8 +9,8 @@ say(){ printf "\n▶ %s\n" "$*"; }
 ok(){ printf "✔ %s\n" "$*"; }
 fail(){ printf "✖ %s\n" "$*\n"; exit 1; }
 
-say "Ping /api/v1/health"
-HEALTH_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE/api/v1/health")
+say "Ping /health"
+HEALTH_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE/health")
 cat /tmp/health.json || true
 [[ "$HEALTH_CODE" == "200" ]] || fail "Health FAIL ($HEALTH_CODE)"
 ok "Health OK"

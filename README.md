@@ -70,7 +70,7 @@ PIX_MOCK_SEED_ENABLED=true
 > Para recriar contas mock em ambientes de teste, ligue temporariamente e execute um `mock-transfer` — as contas serão geradas com saldo inicial seguro (`1000.0` e `100.0`).
 
 #### 🩺 Healthchecks
-- `/api/v1/health` — usado internamente pelo app.  
+- `/health` — usado internamente pelo app.  
 - `/healthz` — compatibilidade com Railway (`{"status": "ok"}`).
 
 #### ✅ Boas práticas

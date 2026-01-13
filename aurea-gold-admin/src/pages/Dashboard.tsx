@@ -19,7 +19,7 @@ export default function Dashboard(){
       }catch{}
       // health
       try{
-        const {data}=await API.get("/api/v1/health");
+        const {data}=await API.get("/health");
         setHealth(JSON.stringify(data));
       }catch{ setHealth("erro"); }
     }finally{ setLoading(false); }
