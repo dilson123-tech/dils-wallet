@@ -65,14 +65,25 @@ jobs:
       HEALTH_TOKEN:   ${{ secrets.HEALTH_TOKEN }}     # header de health
       BEARER_TOKEN:   ${{ secrets.BEARER_TOKEN }}     # opcional p/ endpoints protegidos
     steps:
+        - name: Gate smoke-prod (secrets present?)
+          id: gate
+          run: |
+            if [ -n "${SMOKE_BASE_URL:-}" ] && [ -n "${HEALTH_TOKEN:-}" ]; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              echo "SMOKE-PROD: SKIP (missing SMOKE_BASE_URL/HEALTH_TOKEN secrets)"
+            fi
+
       - name: Healthz
+          if: ${{ steps.gate.outputs.run == \'true\' }}
         run: |
           set -e
           echo ">> /healthz"
           curl -fsS --retry 10 --retry-all-errors --retry-delay 1 -H "X-Health-Token: ${HEALTH_TOKEN}" "${SMOKE_BASE_URL}/healthz" | jq .
 
       - name: Auth sanity (opcional)
-        if: ${{ env.BEARER_TOKEN != '' }}
+        if: ${{ github.ref == \'refs/heads/main\' }}
         run: |
           echo ">> /api/v1/transactions/balance"
           curl -fsS -H "Authorization: Bearer ${BEARER_TOKEN}" "${SMOKE_BASE_URL}/api/v1/transactions/balance" | jq .
