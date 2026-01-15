@@ -1,56 +1,17 @@
-name: Notify on Failure (Telegram)
-permissions:
-  actions: read
-  contents: read
+name: notify-on-failure (workflow_run)
 
 on:
   workflow_run:
-    workflows: ["CI — dils-wallet"]
-    workflows:
-      - Fail Fast
-      - CI - Dils Wallet (backend)
-      - Smoke Prod
-      - Smoke PR (Read-only)
-      - Smoke + Health
-      - health-prod
-      - CD - Publish Docker image (GHCR)
-      - Slack Webhook Test
+    workflows: ["CI", "smoke-pix", "health-prod"]
     types: [completed]
 
-    branches: ["main"]
 jobs:
   notify:
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    if: ${{ github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Context debug (always)
+      - name: Print failure info
         run: |
-          echo "TRIGGERED BY: ${{ github.event.workflow_run.name }}"
-          echo "STATUS:       ${{ github.event.workflow_run.status }}"
-          echo "CONCLUSION:   ${{ github.event.workflow_run.conclusion }}"
-          echo "HTML_URL:     ${{ github.event.workflow_run.html_url }}"
-          echo "REPO:         ${{ github.event.workflow_run.repository.full_name }}"
-
-      - name: Send Telegram alert (best-effort)
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
-          REPO:     ${{ github.event.workflow_run.repository.full_name }}
-          NAME:     ${{ github.event.workflow_run.name }}
-          STATUS:   ${{ github.event.workflow_run.conclusion }}
-          HTML_URL: ${{ github.event.workflow_run.html_url }}
-        run: |
-          set -euo pipefail
-          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
-            echo "Sem TELEGRAM_* secrets; pulando envio." ; exit 0
-          fi
-          MSG="❌ $NAME falhou em $REPO
-status=$STATUS
-run=$HTML_URL"
-          HTTP=$(curl -s -o /tmp/tg.txt -w '%{http_code}' \
-                 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-                 -d chat_id="$TELEGRAM_CHAT_ID" \
-                 --data-urlencode text="$MSG") || true
-          echo "HTTP=$HTTP"
-          echo "BODY=$(cat /tmp/tg.txt || true)"
-          exit 0
+          echo "❌ Workflow FAILED: ${{ github.event.workflow_run.name }}"
+          echo "CONCLUSION: ${{ github.event.workflow_run.conclusion }}"
+          echo "URL:        ${{ github.event.workflow_run.html_url }}"
