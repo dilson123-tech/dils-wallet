@@ -112,7 +112,7 @@ jobs:
 
       - name: Auth sanity (opcional)
 
-        if: ${{ steps.gate.outputs.run == 'true' && env.BEARER_TOKEN != '' }}
+        if: ${{ steps.gate.outputs.run == 'true' && secrets.BEARER_TOKEN != '' }}
 
         run: |
 
