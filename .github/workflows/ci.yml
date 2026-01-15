@@ -76,14 +76,14 @@ jobs:
             fi
 
       - name: Healthz
-          if: ${{ steps.gate.outputs.run == \'true\' }}
+          if: ${{ steps.gate.outputs.run == 'true' }}
         run: |
           set -e
           echo ">> /healthz"
           curl -fsS --retry 10 --retry-all-errors --retry-delay 1 -H "X-Health-Token: ${HEALTH_TOKEN}" "${SMOKE_BASE_URL}/healthz" | jq .
 
       - name: Auth sanity (opcional)
-        if: ${{ github.ref == \'refs/heads/main\' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           echo ">> /api/v1/transactions/balance"
           curl -fsS -H "Authorization: Bearer ${BEARER_TOKEN}" "${SMOKE_BASE_URL}/api/v1/transactions/balance" | jq .
