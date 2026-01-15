@@ -2,8 +2,10 @@ name: Notify Canary (workflow_run)
 
 on:
   workflow_run:
+    workflows: ["CI — dils-wallet"]
     types: [completed]
 
+    branches: ["main"]
 jobs:
   echo:
     runs-on: ubuntu-latest

@@ -5,6 +5,7 @@ permissions:
 
 on:
   workflow_run:
+    workflows: ["CI — dils-wallet"]
     workflows:
       - Fail Fast
       - CI - Dils Wallet (backend)
@@ -16,6 +17,7 @@ on:
       - Slack Webhook Test
     types: [completed]
 
+    branches: ["main"]
 jobs:
   notify:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
