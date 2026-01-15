@@ -1,37 +1,42 @@
 name: smoke-pix
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  smoke:
-    if: ${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && env.AUREA_USER != '' && env.AUREA_PASS != '' }}
+  smoke_pix:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      PORT: "8090"
-      API_BASE: "http://127.0.0.1:8090"
-      AUREA_USER: ${{ secrets.AUREA_USER }}
-      AUREA_PASS: ${{ secrets.AUREA_PASS }}
+    timeout-minutes: 12
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Skip (missing secrets)
+        if: ${{ secrets.AUREA_USER == '' || secrets.AUREA_PASS == '' }}
+        run: |
+          echo "SMOKE-PIX: SKIP (missing secrets AUREA_USER/AUREA_PASS)"
+          exit 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Create venv + install deps
+      - name: Install backend deps
         working-directory: backend
         run: |
           python -m venv .venv
           . .venv/bin/activate
-          python -m pip install --upgrade pip
+          python -m pip install -U pip
           pip install -r requirements.txt
 
       - name: Run smoke (PIX)
+        env:
+          API_BASE: http://127.0.0.1:8090
+          AUREA_USER: ${{ secrets.AUREA_USER }}
+          AUREA_PASS: ${{ secrets.AUREA_PASS }}
         run: |
-          bash ./smoke.sh
+          bash backend/smoke/smoke_all.sh
