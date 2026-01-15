@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# --- PADRÃO AUREA (PIX) ---
+# default: ./smoke.sh  -> roda PIX smoke_all
+# legado:  ./smoke.sh tx -> roda smoke de transactions antigo
+MODE="${1:-pix}"
+if [[ "$MODE" == "pix" ]]; then
+  # compat: aceita API_BASE (preferido) ou BASE (antigo)
+  export API_BASE="${API_BASE:-${BASE:-http://127.0.0.1:8090}}"
+  exec bash backend/smoke/smoke_all.sh
+fi
+# --- LEGADO (transactions) continua abaixo ---
+
 BASE=${BASE:-http://127.0.0.1:8686}
 
 echo "[1/7] health"

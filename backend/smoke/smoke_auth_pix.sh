@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Blindagem: evita history expansion de '!' caso alguém rode via "source" em shell interativo
+set +o histexpand 2>/dev/null || true
+
 API_BASE="${API_BASE:-http://127.0.0.1:8000}"
 USER="${AUREA_USER:-user@example.com}"
 PASS="${AUREA_PASS:-}"
-[ -n "$PASS" ] || { echo "❌ AUREA_PASS não setada (use dev.env)"; exit 1; }
+if [[ -z "${PASS}" ]]; then
+  if [[ -t 0 ]]; then
+    read -r -s -p "AUREA_PASS: " PASS
+    echo
+  else
+    echo "❌ AUREA_PASS não setada (use dev.env ou export AUREA_PASS=...)" >&2
+    exit 1
+  fi
+fi
+[[ -n "${PASS}" ]] || { echo "❌ AUREA_PASS vazia"; exit 1; }
 DAYS="${DAYS:-7}"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ Falta comando: $1"; exit 2; }; }
