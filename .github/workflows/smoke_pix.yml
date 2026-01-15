@@ -1,11 +1,8 @@
 name: smoke-pix
-
 on:
-  workflow_dispatch:
   push:
-    branches: [ "lab/pix-pro" ]
-  pull_request:
-    branches: [ "lab/pix-pro" ]
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   smoke:
