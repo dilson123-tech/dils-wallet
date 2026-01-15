@@ -1,6 +1,7 @@
 name: smoke-pix
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "lab/pix-pro" ]
   pull_request:
@@ -8,6 +9,7 @@ on:
 
 jobs:
   smoke:
+    if: ${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && env.AUREA_USER != '' && env.AUREA_PASS != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
