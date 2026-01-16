@@ -1,17 +1,28 @@
 name: notify-reusable
 
 on:
+  workflow_call:
+    inputs:
+      text:
+        required: false
+        type: string
   workflow_dispatch:
-  push:
-    branches: [main]
+    inputs:
+      text:
+        description: "Mensagem"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
 
 jobs:
   echo:
     runs-on: ubuntu-latest
     steps:
-      - name: Context
+      - name: Print
         run: |
+          echo "text=${{ inputs.text }}"
+          echo "workflow=${{ github.workflow }}"
           echo "ref=${{ github.ref }}"
           echo "sha=${{ github.sha }}"
-          echo "actor=${{ github.actor }}"
-          echo "event=${{ github.event_name }}"
