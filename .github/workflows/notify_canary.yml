@@ -3,25 +3,21 @@ name: notify-canary (workflow_run)
 on:
   workflow_run:
     workflows:
-      - CI - dils-wallet
-      - smoke-pix
-      - Smoke Prod
-      - health-prod
-      - Smoke - PIX Idempotency
-      - Fail Fast
-      - CD - Publish Docker image (GHCR)
+      - "CI — dils-wallet"
+      - "smoke-pix"
+      - "health-prod"
+      - "Smoke Prod"
+      - "Smoke - PIX Idempotency"
     types: [completed]
-    branches: [main]
 
 jobs:
-  echo:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print workflow_run payload (essentials)
-        run: |
-          echo "TRIGGERED BY:  ${{ github.event.workflow_run.name }}"
-          echo "EVENT STATUS:  ${{ github.event.workflow_run.status }}"
-          echo "CONCLUSION:    ${{ github.event.workflow_run.conclusion }}"
-          echo "HTML_URL:      ${{ github.event.workflow_run.html_url }}"
-          echo "HEAD_BRANCH:   ${{ github.event.workflow_run.head_branch }}"
-          echo "HEAD_SHA:      ${{ github.event.workflow_run.head_sha }}"
+  call:
+    if: ${{ github.event.workflow_run.head_branch == 'main' }}
+    uses: ./.github/workflows/notify_reusable.yml
+    with:
+      trigger_workflow: ${{ github.event.workflow_run.name }}
+      status: ${{ github.event.workflow_run.status }}
+      conclusion: ${{ github.event.workflow_run.conclusion }}
+      html_url: ${{ github.event.workflow_run.html_url }}
+      head_branch: ${{ github.event.workflow_run.head_branch }}
+      head_sha: ${{ github.event.workflow_run.head_sha }}

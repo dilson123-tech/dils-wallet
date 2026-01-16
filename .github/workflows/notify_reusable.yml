@@ -3,26 +3,34 @@ name: notify-reusable
 on:
   workflow_call:
     inputs:
-      text:
-        required: false
+      trigger_workflow:
         type: string
-  workflow_dispatch:
-    inputs:
-      text:
-        description: "Mensagem"
+        required: true
+      status:
+        type: string
+        required: true
+      conclusion:
+        type: string
         required: false
-        default: ""
-
-permissions:
-  contents: read
+      html_url:
+        type: string
+        required: true
+      head_branch:
+        type: string
+        required: false
+      head_sha:
+        type: string
+        required: false
 
 jobs:
   echo:
     runs-on: ubuntu-latest
     steps:
-      - name: Print
+      - name: Print workflow info
         run: |
-          echo "text=${{ inputs.text }}"
-          echo "workflow=${{ github.workflow }}"
-          echo "ref=${{ github.ref }}"
-          echo "sha=${{ github.sha }}"
+          echo "TRIGGERED BY:  ${{ inputs.trigger_workflow }}"
+          echo "STATUS:        ${{ inputs.status }}"
+          echo "CONCLUSION:    ${{ inputs.conclusion }}"
+          echo "BRANCH:        ${{ inputs.head_branch }}"
+          echo "SHA:           ${{ inputs.head_sha }}"
+          echo "HTML_URL:      ${{ inputs.html_url }}"
