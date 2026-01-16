@@ -62,7 +62,7 @@ jobs:
 
     needs: [backend-build, client-build]
 
-    if: ${{ github.ref == 'refs/heads/main' && secrets.SMOKE_BASE_URL != '' && secrets.HEALTH_TOKEN != '' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
 
     env:
 
@@ -112,7 +112,7 @@ jobs:
 
       - name: Auth sanity (opcional)
 
-        if: ${{ steps.gate.outputs.run == 'true' && secrets.BEARER_TOKEN != '' }}
+        if: ${{ steps.gate.outputs.run == 'true' && env.BEARER_TOKEN != '' }}
 
         run: |
 
