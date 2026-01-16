@@ -62,7 +62,7 @@ jobs:
 
     needs: [backend-build, client-build]
 
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && secrets.SMOKE_BASE_URL != '' && secrets.HEALTH_TOKEN != '' }}
 
     env:
 
