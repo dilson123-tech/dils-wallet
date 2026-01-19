@@ -3,16 +3,14 @@ name: smoke-pix
 on:
   push:
     branches: [main]
-    paths:
-      - "backend/**"
-      - "smoke.sh"
-      - ".github/workflows/smoke_pix.yml"
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
+    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
+
     env:
       PORT: "8090"
       API_BASE: "http://127.0.0.1:8090"
@@ -20,9 +18,8 @@ jobs:
       AUREA_PASS: ${{ secrets.AUREA_PASS }}
 
     steps:
-      - name: Gate (secrets present?)
+      - name: Gate smoke-pix (secrets present?)
         id: gate
-        shell: bash
         run: |
           if [ -n "${AUREA_USER:-}" ] && [ -n "${AUREA_PASS:-}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -47,7 +44,7 @@ jobs:
         run: |
           python -m venv .venv
           . .venv/bin/activate
-          python -m pip install -U pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run smoke (PIX)
