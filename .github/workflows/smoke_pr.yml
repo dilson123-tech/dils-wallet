@@ -6,18 +6,39 @@ on:
 jobs:
   smoke_pr:
     runs-on: ubuntu-latest
+    env:
+      SMOKE_BASE: ${{ secrets.SMOKE_BASE }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
+      - name: Gate Smoke PR (secrets present?)
+        id: gate
+        shell: bash
+        run: |
+          if [ -n "${SMOKE_BASE:-}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "SMOKE PR: SKIP (missing SMOKE_BASE secret)"
+          fi
+          if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "slack=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "slack=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Checkout
+        if: ${{ steps.gate.outputs.run == 'true' }}
         uses: actions/checkout@v4
 
       - name: Deps (jq, curl)
+        if: ${{ steps.gate.outputs.run == 'true' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y jq curl
 
       - name: Smoke read-only
+        if: ${{ steps.gate.outputs.run == 'true' }}
         env:
-          SMOKE_BASE: ${{ secrets.SMOKE_BASE }} # produção ok porque é somente leitura
+          SMOKE_BASE: ${{ env.SMOKE_BASE }} # produção ok porque é somente leitura
           EMAIL: "smoke@dilswallet.com"
           PASS: "123456"
         run: |
@@ -25,9 +46,9 @@ jobs:
           ./scripts/smoke_readonly.sh
 
       - name: Notificar Slack se falhar
-        if: failure()
+        if: ${{ failure() && steps.gate.outputs.run == 'true' && steps.gate.outputs.slack == 'true' }}
         env:
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          WEBHOOK: ${{ env.SLACK_WEBHOOK_URL }}
         run: |
           TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           MSG=$(printf '{"text":"❌ Smoke PR falhou @ %s\nrepo: %s\nrun: %s\njob: %s"}' \
