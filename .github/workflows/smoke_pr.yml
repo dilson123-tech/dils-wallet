@@ -1,6 +1,7 @@
 name: Smoke PR (Read-only)
 on:
   pull_request:
+  workflow_dispatch:
     branches: [ main ]
 
 jobs:
@@ -13,8 +14,13 @@ jobs:
       - name: Gate Smoke PR (secrets present?)
         id: gate
         shell: bash
+        env:
+          GH_EVENT: ${{ github.event_name }}
         run: |
-          if [ -n "${SMOKE_BASE:-}" ]; then
+          if [ "${GH_EVENT:-}" = "pull_request" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "SMOKE PR: SKIP on pull_request (read-only safety)"
+          elif [ -n "${SMOKE_BASE:-}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
