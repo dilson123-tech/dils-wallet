@@ -3,7 +3,7 @@ name: CI — dils-wallet
 on:
   workflow_dispatch:
   push:
-    branches: [ main, chore/**, feat/**, fix/** ]
+    branches: [main, lab/**, chore/**, feat/**, fix/**]
   pull_request:
     branches: [ main ]
 
