@@ -11,8 +11,8 @@ export default function TxHistoryLive(){
   const alive = () => document.visibilityState === "visible";
 
   async function fetchHistory(){
-    const r = await apiGet("/api/v1/pix/history?limit=10");
-    const j = await r.json();
+    const r = await apiGet("/api/v1/pix/list?limit=10");
+    const j: any = await (r as any).json();
     setItems(Array.isArray(j) ? j : (j?.items ?? []));
   }
 

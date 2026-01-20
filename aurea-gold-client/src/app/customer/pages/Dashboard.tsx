@@ -1,37 +1,16 @@
-import React, { useState } from "react";
-import "../../../styles/aurea.css";
-import AIChatModal from "../components/AIChatModal";
+import SummaryKpis from "@/app/customer/components/SummaryKpis";
+import SummaryChart from "@/app/customer/components/SummaryChart";
+import RecentPixList from "@/app/customer/components/RecentPixList";
 
-export default function Dashboard() {
-  const [openAI, setOpenAI] = useState(false);
-
+export default function Dashboard(){
   return (
-    <div className="dashboard-container">
-      <header className="dashboard-header">
-        <h1 className="gold-title">Aurea Gold Premium</h1>
-        <span className="user-welcome">Bem-vindo(a), Cliente!</span>
-      </header>
-
-      <section className="dashboard-balance">
-        <h2>Saldo Atual</h2>
-        <div className="balance-card">R$ 10.432,00</div>
-      </section>
-
-      <section className="dashboard-actions">
-        <button className="gold-btn">Enviar PIX</button>
-        <button className="gold-btn">Extrato</button>
-        <button className="gold-btn" onClick={() => setOpenAI(true)}>IA Financeira</button>
-      </section>
-
-      <footer className="dashboard-footer">
-        <small>© 2025 Aurea Gold Bank • IA 3.0</small>
-      </footer>
-
-      {/* Botão flutuante IA */}
-      <button className="ia-float" onClick={() => setOpenAI(true)} aria-label="Abrir IA">🤖</button>
-
-      {/* Modal IA */}
-      <AIChatModal open={openAI} onClose={() => setOpenAI(false)} />
+    <div className="p-4 md:p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Aurea Gold — Resumo</h1>
+      <SummaryKpis />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2"><SummaryChart /></div>
+        <div className="lg:col-span-1"><RecentPixList /></div>
+      </div>
     </div>
   );
 }

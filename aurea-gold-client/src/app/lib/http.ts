@@ -1,33 +1,37 @@
-import { BASE_API } from './env';
+// ======================================================
+// AUREA GOLD • LEGACY HTTP WRAPPER
+// Mantém apiGet/readJson, mas o GET agora delega pro CORE
+// (src/lib/api.ts) para garantir Authorization consistente.
+// ======================================================
 
-/** Faz GET no backend (tolerante a texto e JSON). */
+import { apiGet as coreGet } from "../../lib/api";
+
+/** Faz GET no backend (JSON). Usa CORE com Authorization automático. */
 export async function apiGet(path: string) {
-  const url = path.startsWith('http') ? path : `${BASE_API}${path}`;
-  const res = await fetch(url);
-  return readJson(res);
+  // CORE espera path relativo (ex: /api/v1/...)
+  return coreGet<any>(path);
 }
 
-/** Lê um Response como JSON, com tolerância e mensagens úteis. */
+/** Lê response como JSON (se possível) ou texto cru. (mantido por compat) */
 export async function readJson(res: Response): Promise<any> {
   if (res.status === 204) return null;
 
-  const ct = res.headers.get('content-type') || '';
+  const ct = res.headers.get("content-type") || "";
   const txt = await res.text();
 
   if (!res.ok) {
-    const snippet = txt == null ? '' : txt.slice(0, 300);
-    throw new Error(`${res.status} ${res.statusText} :: ${snippet}`);
+    const snippet = txt ? txt.slice(0, 300) : "";
+    throw new Error(`${res.status} ${res.statusText} : ${snippet}`);
   }
 
-  if (ct.includes('application/json')) {
+  if (ct.includes("application/json")) {
     if (!txt) return null;
     try {
       return JSON.parse(txt);
     } catch (err: any) {
-      throw new Error(`JSON parse fail: ${err?.message || err} :: body="${txt.slice(0,200)}"`);
+      throw new Error(`JSON parse fail: ${err?.message || err} :: body=${txt.slice(0, 200)}`);
     }
   }
 
-  // Se não for JSON, retorna o texto cru (ou null).
   return txt || null;
 }

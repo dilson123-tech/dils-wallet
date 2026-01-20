@@ -54,8 +54,8 @@ die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
 run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
 run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"" ERR
 
-say "Ping /api/v1/health"
-curl -fsS "$BASE/api/v1/health" | jq . && ok "Health OK"
+say "Ping /health"
+curl -fsS "$BASE/health" | jq . && ok "Health OK"
 
 say "Registrar usuário (idempotente)"
 REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \

@@ -1,82 +1,49 @@
-from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-
+from typing import Optional, List
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
 
-router = APIRouter(prefix="/api/v1/ai", tags=["summary"])
+router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
+
+def _is_receb(tipo: str) -> bool:
+    t = (tipo or "").strip().lower()
+    return t in ("pix", "recebimento", "credito", "entrada", "in")
+
+def _is_envio(tipo: str) -> bool:
+    t = (tipo or "").strip().lower()
+    return not _is_receb(t)
 
 @router.get("/summary")
-def get_ai_summary(
-    hours: int = Query(24, ge=1, le=24*30, description="Janela em horas (1..720)"),
-    db: Session = Depends(get_db),
-):
-    """
-    Resumo de PIX:
-    - saldo_atual: soma de todos os valores (positivo entra, negativo sai)
-    - entradas_total / saidas_total: totais absolutos no histórico
-    - ultimas_<hours>h: entradas, saídas e quantidade de transações na janela
-    Campos fixos: valor (Numeric), tipo ('IN'/'OUT'), timestamp (datetime)
-    """
-    try:
-        now = datetime.now(timezone.utc)
-        since = now - timedelta(hours=hours)
+def summary(limit: int = 50,
+            x_user_email: Optional[str] = Header(default=None),
+            db: Session = Depends(get_db)):
+    # Busca transações mais recentes
+    q = db.query(PixTransaction).order_by(PixTransaction.id.desc()).limit(limit)
+    rows: List[PixTransaction] = q.all()
 
-        # totais históricos
-        saldo_total = db.query(func.coalesce(func.sum(PixTransaction.valor), 0)).scalar() or 0
+    # Totais
+    total_envios = sum(float(r.valor) for r in rows if _is_envio(r.tipo))
+    recebimentos = sum(float(r.valor) for r in rows if _is_receb(r.tipo))
+    entradas = sum(1 for r in rows if _is_receb(r.tipo))
+    total_transacoes = len(rows)
+    saldo_estimado = recebimentos - total_envios
 
-        entradas_total = (
-            db.query(func.coalesce(func.sum(PixTransaction.valor), 0))
-              .filter(PixTransaction.tipo.in_(["IN","in","ENTRADA","entrada","credit","CREDIT"]))
-              .scalar() or 0
-        )
+    # Lista normalizada (created_at mapeado de timestamp)
+    txs = [{
+        "id": r.id,
+        "tipo": r.tipo,
+        "valor": float(r.valor),
+        "descricao": r.descricao,
+        "created_at": (r.timestamp.isoformat() if getattr(r, "timestamp", None) else None),
+        "user_id": r.user_id,
+    } for r in rows]
 
-        saidas_total = (
-            db.query(func.coalesce(func.sum(PixTransaction.valor), 0))
-              .filter(PixTransaction.tipo.in_(["OUT","out","SAIDA","saida","debit","DEBIT"]))
-              .scalar() or 0
-        )
-        # normaliza saídas como positivo se estiver negativo no banco
-        try:
-            saidas_total = abs(float(saidas_total))
-        except Exception:
-            pass
-
-        # últimas N horas
-        entradas_h = (
-            db.query(func.coalesce(func.sum(PixTransaction.valor), 0))
-              .filter(PixTransaction.tipo.in_(["IN","in","ENTRADA","entrada","credit","CREDIT"]))
-              .filter(PixTransaction.timestamp >= since)
-              .scalar() or 0
-        )
-
-        saidas_h_raw = (
-            db.query(func.coalesce(func.sum(PixTransaction.valor), 0))
-              .filter(PixTransaction.tipo.in_(["OUT","out","SAIDA","saida","debit","DEBIT"]))
-              .filter(PixTransaction.timestamp >= since)
-              .scalar() or 0
-        )
-        saidas_h = abs(float(saidas_h_raw))
-
-        qtd_h = (
-            db.query(func.count(PixTransaction.id))
-              .filter(PixTransaction.timestamp >= since)
-              .scalar() or 0
-        )
-
-        return {
-            "saldo_atual": float(saldo_total),
-            "entradas_total": float(entradas_total),
-            "saidas_total": float(saidas_total),
-            "ultimas_horas": int(hours),
-            "ultimas_janela": {
-                "entradas": float(entradas_h),
-                "saidas": float(saidas_h),
-                "qtd": int(qtd_h),
-                "desde": since.isoformat(),
-            },
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"summary_error: {e}")
+    return {
+        "total_envios": round(total_envios, 2),
+        "total_transacoes": total_transacoes,
+        "recebimentos": round(recebimentos, 2),
+        "entradas": entradas,
+        "saldo_estimado": round(saldo_estimado, 2),
+        "txs": txs
+    }

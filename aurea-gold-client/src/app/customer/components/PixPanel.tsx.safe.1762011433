@@ -23,8 +23,8 @@ export default function PixPanel() {
     setLoading(true);
     try {
       const [h,b] = await Promise.all([
-        fetch(`${API_BASE}/api/v1/pix/history`).then(r=>r.json() as Promise<PixHistoryResponse>),
-        fetch(`${API_BASE}/api/v1/pix/balance`).then(r=>r.json() as Promise<BalanceResp>)
+        fetch(`${API_BASE}/api/v1/pix/list`).then(r=>r.json() as Promise<PixHistoryResponse>),
+        fetch(`${API_BASE}/balance`).then(r=>r.json() as Promise<BalanceResp>)
       ]);
       setHist(h.history ?? []);
       setSaldo(b.saldo_pix ?? 0);
@@ -83,7 +83,6 @@ export default function PixPanel() {
           <button
             onClick={()=>{ playClick(); setShowModal(true); }}
             className="px-3 py-2 text-xs rounded-lg bg-yellow-600 hover:bg-yellow-500 text-black font-semibold"
-          >➤ Enviar PIX</button>
           <button
             onClick={()=>{ playClick(); loadAll().then(loadAISummary); }}
             className="px-3 py-2 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700"

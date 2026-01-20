@@ -1,106 +1,229 @@
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Request
+from typing import Optional, List
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-import json
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.models import User
+from app.utils.authz import require_customer
 from app.models.idempotency import IdempotencyKey
+from app.utils.authz import require_customer
+from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
-# tentamos importar o user principal; se não existir, tratamos
+# tentamos importar o usuário principal; se não existir, tratamos
 try:
     from app.models.user_main import User as UserMain
-except Exception:
-    UserMain = None  # fallback
+except Exception:  # pragma: no cover
+    UserMain = None  # fallback p/ ambientes antigos
 
-router = APIRouter(prefix="/pix", tags=["pix"])
 
-class PixSendIn(BaseModel):
-    valor: float = Field(..., gt=0, description="Valor em BRL, positivo")
-    dest: str = Field(..., min_length=1, max_length=120, description="Identificação do destinatário")
+router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
-@router.post("/send")
-def pix_send(request: Request, payload: PixSendIn, db: Session = Depends(get_db)):
+
+class PixSendPayload(BaseModel):
+    dest: str = Field(..., description="Email/Chave destino")
+    valor: float = Field(..., gt=0, description="Valor em reais")
+    # descricao é o campo OFICIAL (novo)
+    descricao: Optional[str] = Field(default="", description="Descrição/memo da transação")
+    # msg é LEGADO (mantém compat com front antigo)
+    msg: Optional[str] = Field(default="", description="LEGADO: use 'descricao' preferencialmente")
+    idem_key: Optional[str] = Field(default=None, description="Idempotency-Key opcional")
+
+class PixSendTx(BaseModel):
+    id: int
+    user_id: int
+    tipo: str
+    valor: float
+    descricao: str
+    taxa_percentual: float
+    taxa_valor: float
+    valor_liquido: float
+    timestamp: Optional[str] = None
+
+
+class PixListItem(BaseModel):
+    id: int
+    tipo: str
+    valor: float
+    descricao: str
+    taxa_percentual: float
+    taxa_valor: float
+    valor_liquido: float
+
+
+class PixSendResponse(BaseModel):
+    ok: bool = True
+    status: str = Field(default="created", description="created|duplicate")
+    idem_key: Optional[str] = None
+    tx: Optional[PixSendTx] = None
+
+
+
+
+def _get_user_by_email(db: Session, email: Optional[str]):
+    """Tenta buscar por e-mail apenas se o modelo tiver o atributo .email."""
+    if not email or UserMain is None:
+        return None
+
+    email_attr = getattr(UserMain, "email", None)
+    if email_attr is None:
+        # modelo não tem coluna email
+        return None
+
+    return db.query(UserMain).filter(email_attr == email).first()
+
+
+def _get_user_fallback_id1(db: Session):
     """
-    Cria uma transação PIX de saída (tipo='OUT').
-    **Idempotência**: se houver `Idempotency-Key`, retorna a mesma resposta do primeiro POST.
+    Busca user id=1 se existir; retorna None se não existir ou se UserMain não estiver disponível.
     """
-    key = request.headers.get("Idempotency-Key")
-    if key:
-        rec = db.query(IdempotencyKey).filter_by(key=key).first()
-        if rec:
-            try:
-                data = json.loads(rec.response_json or "{}")
-            except Exception:
-                data = {}
-            return JSONResponse(data, status_code=rec.status_code or 200)
+    if UserMain is None:
+        return None
 
     try:
-        tx = PixTransaction(valor=payload.valor, tipo="OUT")
+        # SQLAlchemy 2.x-style
+        return db.get(UserMain, 1)
+    except Exception:
+        # compat SQLAlchemy 1.x
+        try:
+            return db.query(UserMain).get(1)  # type: ignore[arg-type]
+        except Exception:
+            return None
 
-        if hasattr(PixTransaction, "timestamp"):
-            setattr(tx, "timestamp", datetime.now(timezone.utc))
-        if hasattr(PixTransaction, "descricao"):
-            setattr(tx, "descricao", f"PIX para {payload.dest}")
-        if hasattr(PixTransaction, "dest"):
-            setattr(tx, "dest", payload.dest)
-        if hasattr(PixTransaction, "user_id"):
-            uid = None
-            if UserMain is not None:
-                u = db.query(UserMain).first()
-                uid = getattr(u, "id", None) if u else None
-            if uid is None:
-                raise HTTPException(status_code=400, detail="pix_send_error: nenhum usuário cadastrado para vincular (user_id).")
-            setattr(tx, "user_id", uid)
 
+@router.post("/send", summary="Pix Send", response_model=PixSendResponse, responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
+def pix_send(
+    payload: PixSendPayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_customer),
+    x_idem_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+):
+    try:
+        # ---------------------------------------------------
+        # Idempotência (header ganha do body)
+        # ---------------------------------------------------
+        idem_key = x_idem_key or payload.idem_key
+        if idem_key:
+            existing = (
+                db.query(IdempotencyKey)
+                .filter(IdempotencyKey.key == idem_key)
+                .first()
+            )
+            if existing:
+                return {
+                    "ok": True,
+                    "status": "duplicate",
+                    "idem_key": idem_key,
+                    "tx": None,
+                }
+
+        # ---------------------------------------------------
+        # Resolve usuário autenticado (JWT)
+        # ---------------------------------------------------
+        user_id = getattr(current_user, "id", None)
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Usuário não autenticado para envio de PIX.",
+            )
+
+        # ---------------------------------------------------
+        # Cria transação PIX com taxa da Aurea Gold.
+        # Regra LAB:
+        #   - taxa_percentual: 0.8 (%)
+        #   - taxa_valor: valor * 0.8 / 100
+        #   - valor_liquido: valor - taxa_valor
+        # ---------------------------------------------------
+        valor_bruto = float(payload.valor)
+        descricao = (payload.descricao or payload.msg or 'PIX').strip() or 'PIX'
+        taxa_percentual = 0.8  # 0.8% por envio
+        taxa_valor = round(valor_bruto * (taxa_percentual / 100.0), 2)
+        valor_liquido = valor_bruto - taxa_valor
+
+        tx = PixTransaction(
+            user_id=user_id,
+            tipo="envio",
+            valor=valor_bruto,
+            descricao=descricao.strip() or "PIX",
+            taxa_percentual=taxa_percentual,
+            taxa_valor=taxa_valor,
+            valor_liquido=valor_liquido,
+        )
         db.add(tx)
+
+        if idem_key:
+            db.add(IdempotencyKey(key=idem_key))
+
         db.commit()
         db.refresh(tx)
 
-        resp = {
-            "id": getattr(tx, "id", None),
-            "valor": float(getattr(tx, "valor", payload.valor)),
-            "tipo": getattr(tx, "tipo", "OUT"),
-            "timestamp": getattr(tx, "timestamp", None).isoformat() if getattr(tx, "timestamp", None) else None,
-            "dest": payload.dest,
-            "status": "OK",
+        ts = getattr(tx, "timestamp", None)
+        return {
+            "ok": True,
+            "status": "created",
+            "idem_key": idem_key,
+            "tx": {
+                "id": int(tx.id),
+                "user_id": int(tx.user_id),
+                "tipo": str(tx.tipo),
+                "valor": float(tx.valor or 0),
+                "descricao": tx.descricao or "PIX",
+                "taxa_percentual": float(getattr(tx, "taxa_percentual", 0) or 0),
+                "taxa_valor": float(getattr(tx, "taxa_valor", 0) or 0),
+                "valor_liquido": float(getattr(tx, "valor_liquido", tx.valor) or 0),
+                "timestamp": (ts.isoformat() if hasattr(ts, "isoformat") else (str(ts) if ts else None)),
+            },
         }
 
-        # salva idempotência, se houver chave
-        if key:
-            try:
-                db.add(IdempotencyKey(key=key, status_code=200, response_json=json.dumps(resp)))
-                db.commit()
-            except Exception:
-                db.rollback()
-                # segue sem quebrar
-
-        return resp
-
     except HTTPException:
-        db.rollback()
         raise
-    except Exception as e:
+    except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"pix_send_error: {e}")
-
-@router.get("/list")
-def pix_list(limit: int = 10, db: Session = Depends(get_db)):
-    """Lista as últimas transações (default 10)."""
-    try:
-        q = db.query(PixTransaction)
-        if hasattr(PixTransaction, "id"):
-            q = q.order_by(getattr(PixTransaction, "id").desc())
-        return [
-            {
-                "id": getattr(t, "id", None),
-                "valor": float(getattr(t, "valor", 0.0)),
-                "tipo": getattr(t, "tipo", None),
-                "timestamp": getattr(t, "timestamp", None).isoformat() if getattr(t, "timestamp", None) else None,
-            }
-            for t in q.limit(limit).all()
-        ]
+        return JSONResponse(
+            {"error": "sql_error", "message": "Database error", "detail": str(e.__cause__ or e)},
+            status_code=500,
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"pix_list_error: {e}")
+        return JSONResponse(
+            {"error": "internal_error", "message": "Internal server error", "detail": str(e)},
+            status_code=500,
+        )
+
+
+# --- list endpoint (ajustado) ---
+@router.get("/list", response_model=List[PixListItem], responses={401: {"model": ErrorResponse, "description": "Unauthorized"}, 422: OPENAPI_422, 500: {"model": ErrorResponse, "description": "Internal Server Error"}})
+
+def pix_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
+    limit: int = 50,
+    current_user = Depends(require_customer),
+):
+    q = db.query(PixTransaction)
+
+    txs = (
+        q.order_by(PixTransaction.id.desc())
+        .limit(min(max(limit, 1), 100))
+        .all()
+    )
+
+    return [
+        {
+            "id": t.id,
+            "tipo": t.tipo,
+            "valor": float(getattr(t, "valor", 0) or 0),
+            "descricao": getattr(t, "descricao", None) or "PIX",
+            "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
+            "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
+            "valor_liquido": float(
+                getattr(t, "valor_liquido", getattr(t, "valor", 0)) or 0
+            ),
+        }
+        for t in txs
+    ]

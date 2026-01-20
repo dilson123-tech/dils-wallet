@@ -1,0 +1,23 @@
+/* AUREA – ações do PIX no card de lista */
+.pix-actions {
+  position: absolute;
+  top: -6px; right: 8px;
+  display: flex; gap: 8px; z-index: 10;
+}
+.btn-gold {
+  padding: 6px 12px; border-radius: 12px;
+  background: linear-gradient(90deg,#d99e00,#f2c34a,#efc53a);
+  color: #111; font-weight: 700;
+  border: 0; box-shadow: 0 1px 9px rgba(0,0,0,.25);
+  cursor: pointer; transition: filter .15s ease-in-out;
+}
+.btn-gold:hover { filter: brightness(1.06); }
+
+.btn-dark {
+  padding: 6px 12px; border-radius: 12px;
+  background: #111; color: #f0f0f0;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 1px 9px rgba(0,0,0,.25);
+  cursor: pointer; transition: filter .15s ease-in-out;
+}
+.btn-dark:hover { filter: brightness(1.08); }

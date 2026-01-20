@@ -1,17 +1,11 @@
-from passlib.context import CryptContext
+"""
+Compat layer (LEGADO).
+Fonte oficial de senha: app.utils.security
 
-# Aceita pbkdf2_sha256 e bcrypt (qualquer um que estiver no banco)
-pwd_context = CryptContext(
-    schemes=["pbkdf2_sha256", "bcrypt"],
-    deprecated="auto",
-)
+Este arquivo existe só para não quebrar imports antigos como:
+- from app.utils import hash_password
+- from app.utils import verify_password
+"""
+from app.utils.security import pwd_context, hash_password, verify_password
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    try:
-        return pwd_context.verify(plain_password, password_hash)
-    except Exception:
-        # Evita 500 se vier um formato inesperado
-        return False
+__all__ = ["pwd_context", "hash_password", "verify_password"]

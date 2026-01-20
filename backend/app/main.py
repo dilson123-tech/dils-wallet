@@ -1,52 +1,190 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from datetime import datetime
+from fastapi import Request
+import logging
+import uuid
+import time
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import os
 
 from app.database import Base, engine
 
-# Routers
-from app.routers import summary
-from app.routers import pix
-from app.routers.pix_send import router as pix_send_router
+# Routers principais / legados
+from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
+from app.routers import admin_dbfix                              # módulo com .router
+from app.routers.pix_send import router as pix_send_router       # já é APIRouter
+from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRouter
+
+# PIX Super2 (nossas rotas novas)
+from app.api.v1.routes import pix_balance_get                    # módulo com .router
+from app.api.v1.routes import pix_history_get                    # módulo com .router
+from app.api.v1.routes import pix_7d
+from app.api.v1.routes import pix_forecast_get                             # módulo com .router
 
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
 
-# CORS (abrir em dev; ajustar na prod)
-origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175,http://localhost:8080,http://127.0.0.1:8080").split(",")
+
+# --- Request-ID (produção): correlação de logs por chamada ---
+logger = logging.getLogger("aurea.request")
+
+@app.middleware("http")
+async def aurea_request_id_mw(request: Request, call_next):
+    rid = request.headers.get("X-Request-Id") or uuid.uuid4().hex[:12]
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        ms = int((time.perf_counter() - start) * 1000)
+        logger.exception("rid=%s %s %s -> EXC %sms", rid, request.method, request.url.path, ms)
+        raise
+    ms = int((time.perf_counter() - start) * 1000)
+    response.headers["X-Request-Id"] = rid
+    logger.info("rid=%s %s %s -> %s %sms", rid, request.method, request.url.path, response.status_code, ms)
+    return response
+# --- /Request-ID ---
+
+# AUREA_MW_PIXBAL_TRACE
+@app.middleware("http")
+async def aurea_trace_pix_balance(request: Request, call_next):
+    try:
+        if request.url.path == "/api/v1/pix/balance":
+            auth = request.headers.get("authorization")
+            origin = request.headers.get("origin")
+            referer = request.headers.get("referer")
+            print("[PIX_BAL_TRACE]",
+                  request.method, str(request.url),
+                  "auth=" + ("yes" if auth else "no"),
+                  "auth_head=" + ((auth[:25] + "...") if auth else "None"),
+                  "origin=" + str(origin),
+                  "referer=" + str(referer))
+    except Exception as e:
+        print("[PIX_BAL_TRACE_ERR]", e)
+    return await call_next(request)
+
+# --- Routers base ---
+app.include_router(assist_router_v1.router)
+app.include_router(pix_send_router)
+app.include_router(ai_router_v1)
+app.include_router(admin_dbfix.router, prefix="/admin")
+
+from app.api.v1.ai import chat_lab_router
+app.include_router(chat_lab_router, prefix="/api/v1/ai")
+# --- CORS ---
+_default_dev = [
+    "http://localhost:5173", "http://127.0.0.1:5173",
+    "http://localhost:5174", "http://127.0.0.1:5174",
+    "http://localhost:8080", "http://127.0.0.1:8080",
+]
+origins = [o for o in os.getenv("CORS_ORIGINS", "").split(",") if o] or _default_dev
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1|192\.168\.1\.\d{1,3}):517[0-9]$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
-# Static (opcional)
-try:
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-except Exception:
-    pass
-
-# Health
+# --- Healthcheck ---
 @app.get("/healthz")
-async def healthz():
+def healthz():
     return {"ok": True, "service": "dils-wallet"}
 
-@app.get("/")
-async def root():
-    return {"status": "ok"}
+# --- OPTIONS global (CORS preflight) ---
+@app.options("/{full_path:path}")
+def options_any(full_path: str, request: Request):
+    return Response(status_code=204)
 
-# Startup: cria tabelas
-@app.on_event("startup")
-def on_startup_create_tables():
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("[AUREA DB] create_all(Base) OK")
-    except Exception as e:
-        print("[AUREA DB] erro no create_all(Base):", e)
+# --- AUREA GOLD – PIX SUPER2 ---
+from app.api.v1.routes import pix_balance_super2
+app.include_router(pix_balance_super2.router)
+app.include_router(pix_balance_get.router)
+app.include_router(pix_history_get.router)
+app.include_router(pix_7d.router)
+app.include_router(pix_forecast_get.router)
 
-# Routers
-app.include_router(summary.router)
-app.include_router(pix.router)  # legado
-app.include_router(pix_send_router, prefix="/api/v1")
+# --- Execução local ---
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
+
+# --- AUREA GOLD: IA 3.0 cliente (/api/v1/ai/chat) ---
+from app.api.v1.routes import ai_chat
+app.include_router(ai_chat.router)
+
+# --- Aurea Gold • Painel Receitas & Reservas LAB ---
+from app.api.v1.routes import reservas_lab as reservas_lab_router
+
+app.include_router(reservas_lab_router.router, prefix="/api/v1")
+
+# Painel Receitas & Reservas - endpoint oficial
+# from app.api.v1.routes import reservas as reservas_router  # desativado (arquivo removido)
+
+# app.include_router(reservas_router.router, prefix="/api/v1")
+
+
+# --- IA 3.0 – HEADLINE LAB (endpoint raiz para testes do Painel 3) ---
+from pydantic import BaseModel
+from fastapi import Header
+from app.api.v1.ai.headline import IAHeadlineResponse
+
+
+class IAHeadlineLabPayload(BaseModel):
+    message: str
+
+
+@app.post("/api/v1/ai/headline-lab-root", response_model=IAHeadlineResponse)
+async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str = Header(None)):
+    """Endpoint LAB para o Painel 3 da IA 3.0.
+
+    Aqui usamos números de exemplo para alimentar o painel de Crédito Inteligente • IA 3.0.
+    No futuro, esses valores virão do ledger real do Aurea Gold.
+    """
+
+    # Números LAB para simulação de fluxo PIX / crédito
+    saldo_atual = 1280.0
+    entradas_7d = 4500.0
+    saidas_7d = 4230.0
+    entradas_mes = 4500.0
+    saidas_mes = 4230.0
+    total_contas_7d = 980.0
+    qtd_contas_7d = 3
+    entradas_previstas = 0.0
+
+    return IAHeadlineResponse(
+        nivel="ok",
+        headline="Aurea Gold – Headline LAB funcionando.",
+        subheadline=f"Mensagem recebida: {payload.message}",
+        resumo="Endpoint /api/v1/ai/headline-lab respondeu com sucesso em ambiente LAB.",
+        destaques=[
+            "Status do Painel 3 operacional (LAB)",
+            "Integração backend → IA 3.0 ok.",
+            "Pronto para ligar com dados reais depois",
+        ],
+        recomendacao="Agora é só conectar o Painel 3 e depois evoluir a lógica da IA.",
+        saldo_atual=saldo_atual,
+        entradas_mes=entradas_mes,
+        saidas_mes=saidas_mes,
+        entradas_7d=entradas_7d,
+        saidas_7d=saidas_7d,
+        total_contas_7d=total_contas_7d,
+        qtd_contas_7d=qtd_contas_7d,
+        entradas_previstas=entradas_previstas,
+    )
+
+from app.api.v1.routes import auth as auth_router
+app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["auth"])
+
+# --- healthcheck endpoints ---
+
+@app.get("/health", tags=["infra"])
+def health():
+    return {"status": "ok", "service": "dils-wallet", "ts": datetime.utcnow().isoformat() + "Z"}
+
+@app.get("/ready", tags=["infra"])
+def ready():
+    # pronto pra receber tráfego (db/redis/etc podem ser checados aqui depois)
+    return {"ready": True, "service": "dils-wallet", "ts": datetime.utcnow().isoformat() + "Z"}

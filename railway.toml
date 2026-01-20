@@ -1,10 +1,7 @@
 [build]
-builder = "Nixpacks"
+builder = "NIXPACKS"
+buildCommand = "pip install -r backend/requirements.txt || pip install -r requirements.txt"
 
 [deploy]
-buildCommand = ""
-startCommand = "bash start.sh"
-healthcheckPath = "/healthz"
-healthcheckTimeout = 1200
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+startCommand = "bash backend/start.sh"
+

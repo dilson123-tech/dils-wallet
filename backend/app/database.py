@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 import os
+from pathlib import Path
 
 # ------------------------------------------------------------------------------
 # CONFIGURAÇÃO DO BANCO
@@ -18,7 +19,8 @@ if DATABASE_URL:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=1800)
 else:
     # ambiente local/dev
-    SQLITE_URL = "sqlite:///./app.db"
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    SQLITE_URL = f"sqlite:///{(BASE_DIR / 'app.db').as_posix()}"
     engine = create_engine(
         SQLITE_URL,
         connect_args={"check_same_thread": False}  # só pro sqlite

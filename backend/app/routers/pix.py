@@ -1,5 +1,5 @@
 from decimal import Decimal
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
@@ -13,6 +13,40 @@ except Exception:
     def calcular_saldo(db, user_id): return Decimal(0)
     def listar_historico(db, user_id, limit=50): return []
 
+
+from sqlalchemy import text
+import json, base64
+from typing import Optional
+
+def _b64url_decode(s: str) -> bytes:
+    pad = '=' * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + pad)
+
+def _jwt_sub_unverified(token: str) -> Optional[str]:
+    # DEV: pega 'sub' sem validar assinatura
+    try:
+        _h, p, _s = token.split('.', 2)
+    except ValueError:
+        return None
+    try:
+        payload = json.loads(_b64url_decode(p).decode('utf-8'))
+    except Exception:
+        return None
+    return payload.get('sub')
+
+def _resolve_user_id(db, request, x_user_email: Optional[str]):
+    auth = request.headers.get('authorization') or request.headers.get('Authorization')
+    if auth and auth.lower().startswith('bearer '):
+        sub = _jwt_sub_unverified(auth.split(' ',1)[1].strip())
+        if sub:
+            row = db.execute(text('SELECT id FROM users WHERE username=:u LIMIT 1'), {'u': sub}).fetchone()
+            if row:
+                return int(row[0])
+    if x_user_email:
+        row = db.execute(text('SELECT id FROM users WHERE email=:e LIMIT 1'), {'e': x_user_email}).fetchone()
+        if row:
+            return int(row[0])
+    return None
 router = APIRouter()
 
 @router.get("/balance")

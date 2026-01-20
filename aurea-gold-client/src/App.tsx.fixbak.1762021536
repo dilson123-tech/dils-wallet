@@ -1,3 +1,4 @@
+import AureaSuperPanelMount from "../components/AureaSuperPanelMount";
 import "./styles/aurea.css";
 import AureaTopbar from "@/app/customer/components/AureaTopbar";
 import AureaTopbar from "@/app/customer/components/AureaTopbar";
@@ -21,6 +22,8 @@ export default function App() {
   const toggleSom = () => { const nv = !som; setSom(nv); setSomAtivo(nv); };
 
   return (
+  <AureaSuperPanelMount />
+
     <BrowserRouter>
     <AureaTopbar />
      <div style={{ paddingTop: "80px" }}></div>

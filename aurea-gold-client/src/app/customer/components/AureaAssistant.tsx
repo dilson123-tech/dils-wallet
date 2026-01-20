@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { withAuth } from "../../../lib/api";
 
 type AIRequestPayload = {
   message: string;
@@ -27,7 +28,7 @@ export default function AureaAssistant() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resposta, setResposta] = useState<AIResponseData | null>(null);
-  const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
   async function consultarIA(e: React.FormEvent) {
     e.preventDefault();
@@ -42,13 +43,13 @@ export default function AureaAssistant() {
         user_id: 1,
       };
 
-      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      });
+      }));
 
       if (!r.ok) {
         throw new Error("Falha ao consultar IA");

@@ -47,3 +47,12 @@ __pycache__/
 placeholder.db
 *.sqlite
 *.db
+
+# editor backups
+*~
+
+# local LAN helpers (ignore)
+/_lan_links/
+/lan_links/
+/scripts/lan_qr_login.sh
+/scripts/which_api.sh

@@ -1,0 +1,2 @@
+Temporário: Dashboard com estilos explícitos e fetch do resumo de IA/PIX.
+Depois, migrar para componentes definitivos e mover estilos pra CSS.

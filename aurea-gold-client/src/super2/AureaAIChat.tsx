@@ -1,0 +1,352 @@
+import React, { useState, useEffect, useRef } from "react";
+import { API_BASE, USER_EMAIL } from "./api";
+
+type ChatMessage = {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+};
+
+
+function _aureaDecodeJwtSub(tok: string): string | null {
+  try {
+    const parts = tok.split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = atob(b64 + pad);
+    const payload = JSON.parse(json);
+    const sub = payload?.sub;
+    return typeof sub === "string" ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildAureaAuthHeaders(): Record<string, string> {
+  const tok =
+    localStorage.getItem("aurea.access_token") ||
+    localStorage.getItem("aurea.jwt") ||
+    localStorage.getItem("aurea_jwt") ||
+    localStorage.getItem("authToken") ||
+    "";
+
+  const headers: Record<string, string> = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+  };
+
+  if (tok) {
+    const ah = tok.toLowerCase().startsWith("bearer ") ? tok : `Bearer ${tok}`;
+    headers["Authorization"] = ah;
+  }
+
+  const email =
+    localStorage.getItem("aurea.user_email") ||
+    localStorage.getItem("aurea.email") ||
+    _aureaDecodeJwtSub(tok);
+
+  if (email && email.includes("@")) {
+    headers["X-User-Email"] = email;
+    try { localStorage.setItem("aurea.user_email", email); } catch {}
+  }
+
+  return headers;
+}
+
+export default function AureaAIChat() {
+  // Headers oficiais (token + email) para IA 3.0 / PIX
+  function buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
+
+    const rawTok =
+      localStorage.getItem("aurea.access_token") ||
+      localStorage.getItem("aurea.jwt") ||
+      localStorage.getItem("authToken") ||
+      "";
+
+    const tok = (rawTok || "").trim();
+    if (tok) {
+      headers["Authorization"] = tok.toLowerCase().startsWith("bearer ")
+        ? tok
+        : `Bearer ${tok}`;
+    }
+
+    const email =
+      (localStorage.getItem("aurea.user_email") || "").trim() ||
+      (typeof (globalThis as any).USER_EMAIL !== "undefined"
+        ? String((globalThis as any).USER_EMAIL || "").trim()
+        : "");
+
+    if (email) headers["X-User-Email"] = email;
+    return headers;
+  }
+
+
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 1,
+      role: "assistant",
+      text:
+        "Olá! Eu sou a IA 3.0 do Aurea Gold. Pergunte sobre seu PIX, saldo ou " +
+        "movimentação que eu te explico em linguagem simples.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const hasConsultorFinanceiro = messages.some(
+    (m) =>
+      m.role === "assistant" &&
+      m.text.includes("IA 3.0 – Consultor financeiro PIX")
+  );
+
+  // auto-scroll sempre para a última mensagem
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || loading) return;
+
+    await sendMessage(text);
+  }
+
+  // Função central: envia mensagem para a IA 3.0 e adiciona no chat
+  async function sendMessage(text: string) {
+    const userMsg: ChatMessage = {
+      id: Date.now(),
+      role: "user",
+      text,
+    };
+
+    setInput("");
+    setErr(null);
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+        method: "POST",
+        headers: buildHeaders(),
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (!resp.ok) {
+        throw new Error(
+          `IA indisponível no momento (código ${resp.status}). Tente novamente em instantes.`
+        );
+      }
+
+      const data = await resp.json();
+
+      const replyText: string = (
+        data.reply ??
+        data.answer ??
+        data.message ??
+        data.text ??
+        "Recebi sua pergunta, mas não consegui gerar uma resposta detalhada agora."
+      ).toString();
+
+      const aiMsg: ChatMessage = {
+        id: Date.now() + 1,
+        role: "assistant",
+        text: replyText,
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (e: any) {
+      const msg =
+        e?.message ||
+        "Não consegui falar com a IA agora. Verifique sua conexão ou tente de novo em alguns segundos.";
+      setErr(msg);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 2,
+          role: "assistant",
+          text:
+            "Tentei responder sua pergunta, mas a IA está indisponível neste momento. " +
+            "Por favor, tente novamente em alguns instantes.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleClear() {
+    setErr(null);
+    setInput("");
+    // mantém só a primeira mensagem (boas-vindas da IA)
+    setMessages((prev) => (prev.length > 0 ? [prev[0]] : []));
+  }
+
+  // Botões rápidos agora já disparam a IA direto
+  function handleQuick(message: string) {
+    if (loading) return;
+    void sendMessage(message);
+  }
+
+  return (
+    <section className="mt-4 text-[11px]">
+      <div className="rounded-lg border border-[#d4af37]/40 bg-black/80 px-2 py-2 flex flex-col gap-2 shadow-[0_0_14px_rgba(0,0,0,0.85)]">
+        {/* Cabeçalho da IA 3.0 */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-[10px] font-semibold text-[#facc15]">
+              IA 3.0 Aurea Gold — Carteira PIX
+            </div>
+            <div className="text-[9px] text-zinc-400">
+              Consultor focado em saldo, PIX, entradas, saídas e histórico do
+              seu Aurea Gold. Outros assuntos eu não atendo aqui.
+            </div>
+          </div>
+          <span className="text-[9px] px-2 py-0.5 rounded-full border border-[#d4af37]/60 bg-black/70 text-[#d4af37]">
+            IA 3.0
+          </span>
+        </div>
+
+        {/* Selo visual quando modo consultor financeiro estiver ativo */}
+        {hasConsultorFinanceiro && (
+          <div className="mt-1 rounded-md border border-emerald-500/60 bg-black/80 px-2 py-1 text-[9px] text-emerald-300 flex items-center justify-between gap-2">
+            <span className="font-semibold text-emerald-400">
+              Consultor financeiro ativado
+            </span>
+            <span className="text-[8px] text-emerald-200/80">
+              Analisando seu PIX deste mês e sugerindo ajustes.
+            </span>
+          </div>
+        )}
+
+        {/* Lista de mensagens */}
+        <div
+          ref={listRef}
+          className="h-44 max-h-60 md:h-52 md:max-h-64 overflow-y-auto pr-1 space-y-1"
+        >
+          {messages.map((m) => (
+            <div
+              key={m.id}
+              className={`px-2 py-1 rounded-md text-[10px] leading-snug ${
+                m.role === "user"
+                  ? "bg-[#1f2a00] text-zinc-50 self-end border border-[#d4af37]/50 text-right"
+                  : "bg-[#050505] text-zinc-200 border border-[#444]/60 text-left"
+              }`}
+            >
+              <span className="block text-[9px] opacity-60 mb-0.5">
+                {m.role === "user" ? "Você" : "IA 3.0 Aurea Gold"}
+              </span>
+              <div className="whitespace-pre-line">{m.text}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Erro, se houver */}
+        {err && (
+          <div className="text-[10px] text-red-400">
+            {err}
+          </div>
+        )}
+
+        {/* Sugestões rápidas */}
+{/* Gerente Financeiro */}
+<div className="mt-2 rounded-md border border-amber-500/50 bg-black/70 p-2">
+  <div className="text-[9px] uppercase tracking-widest text-amber-300 mb-1">
+    Gerente Financeiro • IA 3.0
+  </div>
+  <div className="flex flex-wrap gap-1 text-[9px]">
+    <button onClick={() => handleQuick("resumo do mes no pix")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Análise do mês</button>
+    <button onClick={() => handleQuick("gastos do mes no pix")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Onde gasto mais</button>
+    <button onClick={() => handleQuick("o que voce me recomenda fazer com meu pix")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Economizar agora</button>
+    <button onClick={() => handleQuick("previsao de saldo do pix ate o fim do mes")} className="px-2 py-1 rounded-md border border-[#d4af37]/70 bg-[#111] text-zinc-100 hover:border-amber-400 active:scale-[0.97] transition">Previsão de saldo</button>
+    <button onClick={() => handleQuick("to gastando muito no pix")} className="px-2 py-1 rounded-md border border-red-600 bg-red-900 text-red-100 hover:border-red-400 active:scale-[0.97] transition">Risco do mês</button>
+  </div>
+</div>
+
+        <div className="flex flex-wrap gap-1 text-[9px]">
+          <button
+            type="button"
+            onClick={() => handleQuick("meu saldo hoje")}
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Saldo hoje (PIX)
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              handleQuick("entradas do mês no pix")
+            }
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Entradas do mês no PIX
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              handleQuick("saídas do mês no pix")
+            }
+            className="px-2 py-1 rounded-md border border-[#333]/80 bg-[#111]/80 hover:border-[#d4af37]/70 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Saídas do mês (PIX)
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              handleQuick("to gastando muito no pix")
+            }
+            className="px-2 py-1 rounded-md border border-emerald-600/80 bg-emerald-900/80 text-emerald-100 hover:border-emerald-400/80 active:scale-[0.97] transition"
+            disabled={loading}
+          >
+            Modo consultor (PIX)
+          </button>
+        </div>
+
+        {/* Input + botões */}
+        <form onSubmit={handleSend} className="flex gap-1 items-center">
+          <input
+            className="flex-1 h-7 rounded-md border border-[#333] bg-black/70 px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#d4af37]"
+            placeholder="Pergunte algo sobre seu Aurea Gold..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={loading}
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="h-7 px-3 rounded-md border border-[#d4af37]/70 bg-gradient-to-r from-[#3f7b00] to-[#47a51b] text-[10px] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition"
+          >
+            {loading ? "Enviando..." : "Perguntar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuick("resumo do mes no pix")}
+            disabled={loading}
+            className="h-7 px-3 rounded-md border border-[#d4af37]/40 bg-[#111]/80 text-[10px] hover:border-[#d4af37]/80 active:scale-[0.97] transition"
+          >
+            Resumo do mês
+          </button>
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={loading}
+            className="h-7 px-3 rounded-md border border-[#333]/80 bg-[#111]/80 text-[10px] text-zinc-200 hover:border-red-400 hover:text-red-200 active:scale-[0.97] transition"
+          >
+            Limpar
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}

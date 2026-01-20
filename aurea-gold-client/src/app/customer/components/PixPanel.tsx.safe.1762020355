@@ -102,7 +102,6 @@ export default function PixPanel(){
             onClick={() => { setShowModal(true); ping(); }}
             disabled={loading}
           >
-            ▶ Enviar PIX
           </button>
           <button
             className="btn btn-outline"

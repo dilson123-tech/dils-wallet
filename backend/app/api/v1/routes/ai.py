@@ -1,98 +1,95 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+
 from app.database import get_db
-from app.models.pix_transaction import PixTransaction
+
+# Modelos podem variar; tratamos campos ausentes com getattr(...)
+try:
+    from app.models.pix_transaction import PixTransaction  # id, user_id, tipo, valor, descricao, created_at
+except Exception:
+    PixTransaction = None  # fallback para não quebrar import em fase de build
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
-class UserMessage(BaseModel):
-    message: str
-    user_id: int = 1
-
-class AIResponse(BaseModel):
-    answer: str
-    saldo_atual: float | None = None
-    resumo_pix: dict | None = None
-
-def get_pix_context(db: Session, user_id: int):
-    """
-    Busca todas as transações PIX do usuário, calcula saldo e gera resumo.
-    """
-    txs = (
-        db.query(PixTransaction)
-        .filter(PixTransaction.user_id == user_id)
-        .order_by(PixTransaction.id.desc())
-        .all()
-    )
-
-    saldo = 0.0
-    enviados_total = 0.0
-    recebidos_total = 0.0
-    ultimas_transacoes = []
-
-    for t in txs:
-        valor = float(t.valor)
-        if t.tipo == "entrada":
-            saldo += valor
-            recebidos_total += valor
-        else:
-            saldo -= valor
-            enviados_total += valor
-
-        ultimas_transacoes.append({
-            "id": t.id,
-            "tipo": t.tipo,
-            "valor": valor,
-            "descricao": t.descricao,
-            "timestamp": getattr(t, "timestamp", None)
+def _rows_to_dicts(rows: List[Any]) -> List[Dict[str, Any]]:
+    out = []
+    for r in rows:
+        out.append({
+            "id": getattr(r, "id", None),
+            "tipo": getattr(r, "tipo", None),
+            "valor": float(getattr(r, "valor", 0) or 0),
+            "descricao": getattr(r, "descricao", "") or "",
+            "created_at": (
+                getattr(r, "created_at", None).isoformat()
+                if hasattr(r, "created_at") and isinstance(getattr(r, "created_at"), datetime)
+                else getattr(r, "created_at", None)
+            ),
+            "user_id": getattr(r, "user_id", None),
         })
+    return out
 
-    resumo = {
-        "saldo_atual": round(saldo, 2),
-        "total_enviado": round(enviados_total, 2),
-        "total_recebido": round(recebidos_total, 2),
-        "qtd_transacoes": len(txs),
-        "ultimas_transacoes": ultimas_transacoes[:5],
+def _is_envio(tipo: Optional[str]) -> bool:
+    if not tipo: return False
+    t = tipo.lower()
+    return t in ("envio", "send", "debito", "saída", "saida")
+
+def _is_receb(tipo: Optional[str]) -> bool:
+    if not tipo: return False
+    t = tipo.lower()
+    # no teu histórico as entradas apareceram como "PIX"
+    return t in ("pix", "recebimento", "credito", "entrada", "in")
+
+@router.get("/summary")
+def summary(
+    db: Session = Depends(get_db),
+    x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
+    limit: int = 50,
+):
+    """
+    Resposta padronizada para o front:
+
+    {
+      "total_envios": number,
+      "total_transacoes": number,
+      "recebimentos": number,
+      "entradas": number,
+      "saldo_estimado": number,
+      "txs": [{ id, tipo, valor, descricao, created_at }]
     }
-
-    return resumo
-
-@router.post("/chat", response_model=AIResponse)
-def chat_with_ai(body: UserMessage, db: Session = Depends(get_db)):
     """
-    VERSÃO MOCK / OFFLINE
-    - Não chama OpenAI.
-    - Gera resposta sozinha usando o histórico PIX.
-    - Serve pra ativar Aurea IA 3.0 no front mesmo sem chave.
-    """
+    if PixTransaction is None:
+        # ambiente sem modelos carregados: responde vazio, mas padronizado
+        return {
+            "total_envios": 0.0,
+            "total_transacoes": 0,
+            "recebimentos": 0.0,
+            "entradas": 0,
+            "saldo_estimado": 0.0,
+            "txs": [],
+        }
 
-    try:
-        contexto_pix = get_pix_context(db, body.user_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao gerar contexto PIX: {e}"
-        )
+    q = db.query(PixTransaction)
+    # Se você filtra por usuário por e-mail em outra tabela, dá pra adaptar aqui.
+    # Por ora retorna geral. (Se quiser, depois mapeamos X-User-Email -> user_id.)
 
-    saldo = contexto_pix["saldo_atual"]
-    total_enviado = contexto_pix["total_enviado"]
-    total_recebido = contexto_pix["total_recebido"]
-    qtd = contexto_pix["qtd_transacoes"]
+    # últimas transações (mais recentes primeiro)
+    q = q.order_by(PixTransaction.id.desc()).limit(limit)
+    rows = q.all() or []
+    txs = _rows_to_dicts(rows)
 
-    resposta_ia = (
-        f"Análise financeira Aurea IA 3.0 ✅\n\n"
-        f"Saldo atual disponível via PIX: R$ {saldo:.2f}.\n"
-        f"Total recebido: R$ {total_recebido:.2f}.\n"
-        f"Total enviado: R$ {total_enviado:.2f}.\n"
-        f"Movimentações registradas: {qtd}.\n\n"
-        f"Pergunta do usuário: \"{body.message}\"\n\n"
-        f"Visão: você está ok, mas monitora os envios. "
-        f"Se quiser, posso projetar gasto médio diário e avisar quando você exagerar."
-    )
+    total_envios = sum(t["valor"] for t in txs if _is_envio(t.get("tipo")))
+    recebimentos = sum(t["valor"] for t in txs if _is_receb(t.get("tipo")))
+    entradas = sum(1 for t in txs if _is_receb(t.get("tipo")))
+    total_transacoes = len(txs)
+    saldo_estimado = recebimentos - total_envios
 
-    return AIResponse(
-        answer=resposta_ia,
-        saldo_atual=saldo,
-        resumo_pix=contexto_pix,
-    )
+    return {
+        "total_envios": round(total_envios, 2),
+        "total_transacoes": int(total_transacoes),
+        "recebimentos": round(recebimentos, 2),
+        "entradas": int(entradas),
+        "saldo_estimado": round(saldo_estimado, 2),
+        "txs": txs[:10],  # o front usa só as 10 últimas
+    }

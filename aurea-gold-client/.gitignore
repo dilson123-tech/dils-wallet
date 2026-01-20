@@ -17,3 +17,35 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# backups gerados por scripts
+*.bak_*
+dev_backups/
+
+# snapshots/rascunhos
+*.safe.*
+*.ui.*
+*.corrompido.*
+
+# arquivos zumbi
+*.corrompido.*
+
+# allow tracked env template
+!.env.example
+
+# local LAN helpers (ignore)
+/_lan_links/
+/lan_links/
+/scripts/lan_qr_login.sh
+/scripts/which_api.sh
+
+# backups / patches locais
+*.bak_*
+*.BROKEN_*
+.uvicorn*.log
+
+# backups / broken
+src/**/.bak*
+src/**/*.BROKEN_*
+**/*.BROKEN_*
+**/*.bak_*

@@ -6,11 +6,11 @@ function rewriteRelative(p: string): string {
 
   if (p === '/balance' || p.startsWith('/balance?')) {
     const qs = p.includes('?') ? p.slice(p.indexOf('?')) : '';
-    return `${API_BASE}/api/v1/pix/balance${qs}`;
+    return `${API_BASE}/balance${qs}`;
   }
   if (p === '/history' || p.startsWith('/history?')) {
     const qs = p.includes('?') ? p.slice(p.indexOf('?')) : '';
-    return `${API_BASE}/api/v1/pix/history${qs}`;
+    return `${API_BASE}/api/v1/pix/list${qs}`;
   }
   if (p.startsWith('/pix/')) return `${API_BASE}${p.replace(/^\/pix\//, '/api/v1/pix/')}`;
 
@@ -28,11 +28,11 @@ function rewrite(input: string): string {
 
     // normaliza balance/history absolutos
     if (u.pathname === '/balance' || u.pathname.startsWith('/balance')) {
-      u.pathname = '/api/v1/pix/balance';
+      u.pathname = '/balance';
       return u.toString();
     }
     if (u.pathname === '/history' || u.pathname.startsWith('/history')) {
-      u.pathname = '/api/v1/pix/history';
+      u.pathname = '/api/v1/pix/list';
       return u.toString();
     }
 

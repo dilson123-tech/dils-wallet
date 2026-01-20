@@ -1,0 +1,53 @@
+name: smoke-pix
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
+
+    env:
+      PORT: "8090"
+      API_BASE: "http://127.0.0.1:8090"
+      AUREA_USER: ${{ secrets.AUREA_USER }}
+      AUREA_PASS: ${{ secrets.AUREA_PASS }}
+
+    steps:
+      - name: Gate smoke-pix (secrets present?)
+        id: gate
+        run: |
+          if [ -n "${AUREA_USER:-}" ] && [ -n "${AUREA_PASS:-}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "SMOKE-PIX: SKIP (missing AUREA_USER/AUREA_PASS secrets)"
+          fi
+
+      - name: Checkout
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create venv + install deps
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run smoke (PIX)
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        run: |
+          bash ./smoke.sh

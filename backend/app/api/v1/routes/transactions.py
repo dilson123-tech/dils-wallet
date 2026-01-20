@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -34,6 +34,40 @@ class BalanceOut(BaseModel):
     saldo: Union[float, str]
 
 
+
+from sqlalchemy import text
+import json, base64
+from typing import Optional
+
+def _b64url_decode(s: str) -> bytes:
+    pad = '=' * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + pad)
+
+def _jwt_sub_unverified(token: str) -> Optional[str]:
+    # DEV: pega 'sub' sem validar assinatura
+    try:
+        _h, p, _s = token.split('.', 2)
+    except ValueError:
+        return None
+    try:
+        payload = json.loads(_b64url_decode(p).decode('utf-8'))
+    except Exception:
+        return None
+    return payload.get('sub')
+
+def _resolve_user_id(db, request, x_user_email: Optional[str]):
+    auth = request.headers.get('authorization') or request.headers.get('Authorization')
+    if auth and auth.lower().startswith('bearer '):
+        sub = _jwt_sub_unverified(auth.split(' ',1)[1].strip())
+        if sub:
+            row = db.execute(text('SELECT id FROM users WHERE username=:u LIMIT 1'), {'u': sub}).fetchone()
+            if row:
+                return int(row[0])
+    if x_user_email:
+        row = db.execute(text('SELECT id FROM users WHERE email=:e LIMIT 1'), {'e': x_user_email}).fetchone()
+        if row:
+            return int(row[0])
+    return None
 router = APIRouter(tags=["transactions"])
 ALLOWED_TYPES = {"deposito", "saque", "transferencia"}
 

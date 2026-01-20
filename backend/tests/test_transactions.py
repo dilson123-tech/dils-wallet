@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.database import Base, engine, SessionLocal
-from app.utils import hash_password
 from app import models
 import pytest
+from app.utils.security import hash_password
 
 client = TestClient(app)
 
@@ -12,38 +12,38 @@ def setup_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     # cria usuário de teste direto no banco
-    if not db.query(models.User).filter(models.User.email == "test@local").first():
-        db.add(models.User(
+    u = db.query(models.User).filter(models.User.email == "test@local").first()
+    if not u:
+        u = models.User(
+            username="test",
             email="test@local",
-            full_name="Test User",
-            password_hash=hash_password("test123"),
-            type="pf"
-        ))
-        db.commit()
+            hashed_password=hash_password("test123"),
+            role="user",
+        )
+        db.add(u)
+    else:
+        u.hashed_password = hash_password("test123")
+        if not getattr(u, "username", None):
+            u.username = "test"
+        if not getattr(u, "role", None):
+            u.role = "user"
+    db.commit()
     db.close()
     yield
 
 def test_login_and_balance_flow():
-    resp = client.post(
-        "/api/v1/auth/login",
-        data={"username": "test@local", "password": "test123"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    resp = client.post("/api/v1/auth/login", json={"username": "test@local", "password": "test123"})
     assert resp.status_code == 200
     token = resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+    # contrato real atual: PIX
+    rbal = client.get("/api/v1/pix/balance?days=7", headers=headers)
+    assert rbal.status_code == 200, rbal.text
+    jbal = rbal.json()
+    assert "saldo" in jbal
+    assert "ultimos_7d" in jbal
 
-    payload = {
-        "tipo": "deposito",
-        "valor": 123.45,
-        "descricao": "pytest depósito",
-        "referencia": "PYTEST-001",
-    }
-    r2 = client.post("/api/v1/transactions", json=payload, headers=headers)
-    assert r2.status_code == 200
-    body = r2.json()
-    assert body["referencia"] == "PYTEST-001"
-
-    r3 = client.get("/api/v1/transactions/balance", headers=headers)
-    assert r3.status_code == 200
-    assert "saldo" in r3.json()
+    rh = client.get("/api/v1/pix/history", headers=headers)
+    assert rh.status_code == 200, rh.text
+    jh = rh.json()
+    assert isinstance(jh, (list, dict)), type(jh)

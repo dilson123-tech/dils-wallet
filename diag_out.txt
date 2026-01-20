@@ -1,0 +1,57 @@
+===== RAILWAY STATUS =====
+Project: sincere-amazement
+Environment: production
+Service: dils-wallet
+
+===== VARS (dils-wallet) =====
+║ CORS_ORIGINS                          │ https://aurea-gold-client-           ║
+║ DATABASE_URL                          │ postgresql://                        ║
+║ RAILWAY_ENVIRONMENT                   │ production                           ║
+║ RAILWAY_ENVIRONMENT_ID                │ 8469d171-80b7-43a4-b31a-248138052f1a ║
+║ RAILWAY_ENVIRONMENT_NAME              │ production                           ║
+║ RAILWAY_PROJECT_NAME                  │ sincere-amazement                    ║
+
+===== HEALTH =====
+# back /healthz
+{
+  "ok": true,
+  "service": "dils-wallet"
+}
+
+# openapi pix paths
+/api/v1/pix/list
+/api/v1/pix/send
+
+===== PIX LIST (com header de usuário) =====
+[]
+
+===== CORS PROBE (OPTIONS do client->back) =====
+HTTP/2 405 
+allow: GET
+content-type: application/json
+date: Sat, 08 Nov 2025 02:39:57 GMT
+server: railway-edge
+x-railway-edge: railway/us-east4-eqdc4a
+x-railway-request-id: _QtrhWRsQ6m2C0jPezItjw
+content-length: 31
+
+{"detail":"Method Not Allowed"}
+===== LOGS RECENTES (dils-wallet) =====
+Starting Container
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+INFO:     100.64.0.2:42177 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     100.64.0.3:55180 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     100.64.0.4:33220 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     100.64.0.4:22604 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     100.64.0.5:62654 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     100.64.0.4:30154 - "POST /api/v1/pix/send HTTP/1.1" 500 Internal Server Error
+INFO:     100.64.0.6:15486 - "GET /api/v1/pix/list HTTP/1.1" 200 OK
+INFO:     100.64.0.6:57400 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     100.64.0.7:34428 - "GET /healthz HTTP/1.1" 200 OK
+
+===== RESUMO =====
+BACK:  https://dils-wallet-production.up.railway.app
+CLIENT:https://aurea-gold-client-production.up.railway.app
