@@ -45,6 +45,9 @@ jobs:
           ls -lahR artifacts || true
 
       - name: Sanity TG env
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
         if: always()
         run: |
           [ -n "${TG_BOT_TOKEN:-}" ] || { echo "FALTA TG_BOT_TOKEN"; exit 1; }

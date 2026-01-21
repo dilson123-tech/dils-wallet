@@ -10,27 +10,6 @@ send_tg(){
     --data-urlencode text="$MSG") || true
   echo "HTTP=$HTTP" | tee "$ARTDIR/tg.http"
 }
-trap 'send_tg "❌ Smoke Prod falhou em ${GITHUB_REPOSITORY}
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
-
-
-# --- removed duplicate send_tg() ---
-# --- end removed ---
-
-
-# --- removed duplicate send_tg() ---
-# --- end removed ---
-
-
-### === Config ===
-: "${BASE:=https://dils-wallet-production.up.railway.app}"
-EMAIL="${EMAIL:-smoke@dilswallet.com}"
-PASS="${PASS:-123456}"
-AMOUNT="${AMOUNT:-37.50}"
-DESC="${DESC:-smoke-test $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
-
-### === Helpers ===
-need() { command -v "$1" >/dev/null 2>&1 || { echo "ERRO: comando '$1' não encontrado"; exit 1; }; }
 say() { printf "\n\033[1;36m▶ %s\033[0m\n" "$*"; }
 ok()  { printf "\033[1;32m✔ %s\033[0m\n" "$*"; }
 warn(){ printf "\033[1;33m⚠ %s\033[0m\n" "$*"; }
@@ -44,6 +23,20 @@ need jq
 
 # === Modo estrito para CI (falha em avisos críticos) ===
 STRICT="${STRICT:-false}"
+
+# === Handler de erro (sem aspas simples; à prova de unicode) ===
+run="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-}/actions/runs/${GITHUB_RUN_ID:-}"
+on_err() {
+  echo
+  msg="Último passo falhou. Verifique logs acima. Run: ${run}"
+  if declare -F warn >/dev/null 2>&1; then warn "$msg"; else echo "$msg"; fi
+  if declare -F send_tg >/dev/null 2>&1; then
+    send_tg "$(printf "%s\nRun: %s" "❌ Smoke Prod falhou em ${GITHUB_REPOSITORY:-?}" "${run}")"
+  fi
+}
+trap on_err ERR
+# =========================================================
+
 die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
   if [[ "$STRICT" == "true" ]]; then
     fail "$*"
@@ -51,8 +44,6 @@ die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
     warn "$*"
   fi
 }
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"" ERR
 
 say "Ping /health"
 curl -fsS "$BASE/health" | jq . && ok "Health OK"
@@ -73,8 +64,8 @@ if [[ "$LOGIN_CODE" != "200" ]]; then
   fail "Login falhou ($LOGIN_CODE): $(cat /tmp/login.json)"
 fi
 
-ACCESS=$(jq -r '.access_token // .access // empty' /tmp/login.json)
-REFRESH=$(jq -r '.refresh_token // .refresh // empty' /tmp/login.json)
+ACCESS=$(jq -r ".access_token // .access // empty" /tmp/login.json)
+REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json)
 [[ -n "${ACCESS:-}" ]] || fail "Sem access_token na resposta de login"
 LEN_A=${#ACCESS}
 LEN_R=0; [[ -n "${REFRESH:-}" ]] && LEN_R=${#REFRESH}
@@ -87,7 +78,8 @@ AUTH=(-H "Authorization: Bearer $ACCESS")
 say "Sanity: /users/me (se existir)"
 ME_CODE=$(curl -s -o /tmp/me.json -w "%{http_code}" "$BASE/api/v1/users/me" "${AUTH[@]}" || true)
 if [[ "$ME_CODE" == "200" ]]; then
-  ok "users/me OK: $(jq -r '.email // .username // "unknown"' /tmp/me.json)"
+  ME_IDENT=$(jq -r ".email // .username // \"unknown\"" /tmp/me.json 2>/dev/null || echo unknown)
+  ok "users/me OK: ${ME_IDENT}"
 else
   die_or_warn "users/me -> $ME_CODE"
 fi
@@ -113,14 +105,14 @@ else
 fi
 
 # === Validação de persistência: listar e confirmar que o ID recém-criado aparece ===
-TX_ID=$(jq -r '.id // empty' /tmp/tx_post.json 2>/dev/null || true)
+TX_ID=$(jq -r ".id // empty" /tmp/tx_post.json 2>/dev/null || true)
 
 say "Validar persistência: conferir se a transação $TX_ID aparece na listagem"
 LIST2_CODE=$(curl -s -o /tmp/tx_list2.json -w "%{http_code}" "$BASE/api/v1/transactions" "${AUTH[@]}" || true)
 if [[ "$LIST2_CODE" == "200" ]]; then
   # Procura pelo ID (string-safe)
-  FOUND=$(jq --arg id "$TX_ID" 'map(select((.id|tostring)==$id)) | length' /tmp/tx_list2.json 2>/dev/null || echo 0)
-  COUNT2=$(jq 'length' /tmp/tx_list2.json 2>/dev/null || echo 0)
+  FOUND=$(jq --arg id "$TX_ID" "[.[] | select((.id|tostring)==\$id)] | length" /tmp/tx_list2.json 2>/dev/null || echo 0)
+  COUNT2=$(jq "length" /tmp/tx_list2.json 2>/dev/null || echo 0)
   echo "— Lista pós-insert: total=$COUNT2, encontrados_com_id=$FOUND"
   if [[ -n "$TX_ID" && "$FOUND" -ge 1 ]]; then
     ok "Transação $TX_ID encontrada na listagem 🎯"
@@ -136,14 +128,8 @@ WITHDRAW="${WITHDRAW:-5.00}"
 
 saldo_from_file() {
   # Soma depósitos e subtrai saques; default 0 se lista vazia
-  jq -r '[ .[] 
-           | if (.tipo=="deposito") then (.valor)
-             elif (.tipo=="saque") then (-(.valor))
-             else 0 end ] 
-         | add // 0' "$1" 2>/dev/null
+  jq -r "[.[] | if (.tipo==\"deposito\") then (.valor) elif (.tipo==\"saque\") then (-(.valor)) else 0 end] | add // 0" "$1" 2>/dev/null
 }
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"; echo; warn "Último passo falhou. Verifique logs acima."' ERR
-run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"" ERR
 
 say "Saldo (antes do saque) — somando lista atual"
 # Recarrega lista atual para saldo base (caso a anterior não exista)
@@ -173,9 +159,9 @@ SALDO_AFTER=$(saldo_from_file /tmp/tx_list_after_wd.json)
 printf "— SALDO_AFTER: %s\n" "$SALDO_AFTER"
 
 # Verificação aritmética com tolerância de centavos
-DELTA=$(awk -v a="$SALDO_BEFORE" -v w="$WITHDRAW" -v b="$SALDO_AFTER" 'BEGIN{printf "%.2f", (a - w - b)}')
-ABS_DELTA=$(awk -v d="$DELTA" 'BEGIN{if (d<0) d=-d; printf "%.2f", d}')
-if awk -v d="$ABS_DELTA" 'BEGIN{exit !(d <= 0.01)}'; then
+  DELTA=$(python3 -c "from decimal import Decimal as D; a=D(\"$SALDO_BEFORE\"); w=D(\"$WITHDRAW\"); b=D(\"$SALDO_AFTER\"); print(f\"{(a-w-b):.2f}\")")
+  ABS_DELTA=$(python3 -c "from decimal import Decimal as D; d=D(\"$DELTA\"); print(f\"{abs(d):.2f}\")")
+  if python3 -c "from decimal import Decimal as D; import sys; sys.exit(0 if D(\"$ABS_DELTA\") <= D(\"0.01\") else 1)"; then
   ok "Saldo validado: BEFORE - WITHDRAW ≈ AFTER (dif=$ABS_DELTA)"
 else
   die_or_warn "Saldo divergente: BEFORE=$SALDO_BEFORE, WITHDRAW=$WITHDRAW, AFTER=$SALDO_AFTER (dif=$ABS_DELTA)"
@@ -188,13 +174,13 @@ jq -n --arg base "$BASE" \
       --arg desc "$DESC" \
       --arg health "OK" \
       --arg tx_post_code "$POST_CODE" \
-      '{base:$base,email:$email,amount:$amount,desc:$desc,tx_post_code:$tx_post_code,health:$health}' | jq .
+      "{base:\$base,email:\$email,amount:\$amount,desc:\$desc,tx_post_code:\$tx_post_code,health:\$health}" | jq .
 
 ok "Smoke de produção finalizado 🎯"
 
 # --- Notificação opcional no Slack ----------------------
 if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
-  TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+  TS="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   STATUS="OK"
   # Monta texto resumido (sem vazar token):
   MSG="[$STATUS] smoke_prod • $TS
@@ -206,9 +192,9 @@ tx_post_code=${TX_POST_CODE:-${POST_CODE:-}}
 withdraw=${WITHDRAW:-0}
 health=${health:-OK}"
 
-  JSON_PAYLOAD=$(printf '{"text":"%s"}' "$MSG")
+  JSON_PAYLOAD=$(jq -n --arg text "$MSG" "{text:\$text}")
   CODE=$(curl -sS -L --max-redirs 5 -o /tmp/slack_smoke.txt -w "%{http_code}" \
-         -X POST -H 'Content-type: application/json' \
+         -X POST -H "Content-type: application/json" \
          --data "$JSON_PAYLOAD" "$SLACK_WEBHOOK_URL" || true)
   echo "Slack notify HTTP=$CODE"
 fi
