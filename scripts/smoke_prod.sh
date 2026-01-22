@@ -53,6 +53,8 @@ die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
 BASE="${BASE:-${SMOKE_BASE:-}}"
 [[ -n "${BASE:-}" ]] || fail "FALTA SMOKE_BASE (base URL do backend)"
 BASE="${BASE%/}"
+if [[ "$BASE" == */api/v1 ]]; then BASE="${BASE%/api/v1}"; fi
+API_BASE="${BASE}/api/v1"
 EMAIL="${EMAIL:-smoke+${GITHUB_RUN_ID:-local}@dils-wallet.dev}"
 PASS="${PASS:-123456}"
 AMOUNT="${AMOUNT:-37.50}"
@@ -74,7 +76,7 @@ health_call(){
 }
 
 HEALTH_OK=0
-for ep in "$BASE/health" "$BASE/api/v1/health" "$BASE/healthz" "$BASE/api/v1/healthz"; do
+for ep in "$BASE/health" "$API_BASE/health" "$BASE/healthz" "$API_BASE/healthz"; do
   H_CODE=$(health_call "$ep" GET)
   if [[ "$H_CODE" == "200" ]]; then
     (jq . /tmp/health.json >/dev/null 2>&1 && jq . /tmp/health.json) || cat /tmp/health.json
@@ -99,97 +101,98 @@ fi
 
 say "Registrar usuário (idempotente)"
 REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
-  -X POST "$BASE/api/v1/auth/register" \
+  -X POST "$API_BASE/auth/register" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
 
-say "Login (autodetect endpoint/payload)"
-LOGIN_OK=0
+say "Login (autodetect via OpenAPI)"
+OPENAPI_FILE="/tmp/openapi.json"
+OPENAPI_OK="0"
+OPENAPI_URL=""
+for u in "$BASE/openapi.json" "$API_BASE/openapi.json" "$BASE/api/openapi.json"; do
+  code=$(curl -sS -o "$OPENAPI_FILE" -w "%{http_code}" "$u" || true)
+  if [[ "$code" == "200" ]]; then OPENAPI_OK="1"; OPENAPI_URL="$u"; break; fi
+done
+
+CAND_URLS=""
+if [[ "$OPENAPI_OK" == "1" ]]; then
+  # pega paths que tenham POST e pareçam auth/login/token
+  paths=$(jq -r ".paths | to_entries[] | select(.value.post != null) | .key | select(test(\"auth\";\"i\") and test(\"(login|token)\";\"i\"))" "$OPENAPI_FILE" 2>/dev/null || true)
+  for path in $paths; do
+    CAND_URLS="$CAND_URLS $BASE$path"
+  done
+fi
+
+# fallback (se OpenAPI estiver off)
+if [[ -z "${CAND_URLS// }" ]]; then
+  CAND_URLS="$API_BASE/auth/login $API_BASE/auth/token $API_BASE/token $BASE/auth/login $BASE/auth/token $BASE/token"
+fi
+
+LOGIN_OK="0"
 LOGIN_USED_URL=""
 LOGIN_USED_MODE=""
 LAST_CODE=""
 LAST_BODY=""
+LAST_ALLOW=""
 
-# Lista base de paths (vamos testar com e sem /api/v1)
-BASE_PATHS=(
-  "/auth/login"
-  "/auth/token"
-  "/auth/jwt/login"
-  "/auth/access-token"
-  "/token"
-  "/login"
-  "/api/v1/auth/login"
-  "/api/v1/auth/token"
-  "/api/v1/auth/jwt/login"
-  "/api/v1/auth/access-token"
-  "/api/v1/token"
-)
+JSON_EMAIL=$(jq -nc --arg email "$EMAIL" --arg password "$PASS" "{email:\$email,password:\$password}")
+JSON_USER=$(jq -nc --arg username "$EMAIL" --arg password "$PASS" "{username:\$username,password:\$password}")
 
-add_url(){
-  local u="$1"
-  for e in "${URLS[@]:-}"; do [[ "$e" == "$u" ]] && return 0; done
-  URLS+=("$u")
-}
-
-URLS=()
-for P in "${BASE_PATHS[@]}"; do
-  add_url "$BASE$P"
-  # variações pra evitar “prefixo duplicado” ou “prefixo faltando”
-  if [[ "$P" == /api/v1/* ]]; then
-    add_url "$BASE${P#/api/v1}"
-  else
-    add_url "$BASE/api/v1$P"
-  fi
-done
-
-for URL in "${URLS[@]}"; do
-  # 1) FORM (OAuth2PasswordRequestForm / x-www-form-urlencoded)
-  CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+for URL in $CAND_URLS; do
+  # form
+  CODE=$(curl -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "username=$EMAIL&password=$PASS" || true)
-  ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
-  REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-  if [[ ("$CODE" == "200" || "$CODE" == "201") && -n "${ACCESS:-}" ]]; then
-    LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="form"; break
+    --data-urlencode "username=$EMAIL" --data-urlencode "password=$PASS" || true)
+  if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
+    ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
+    REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
+    if [[ -n "${ACCESS:-}" ]]; then LOGIN_OK="1"; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="form"; break; fi
   fi
-  LAST_CODE="$CODE"; LAST_BODY="$(cat /tmp/login.json 2>/dev/null || true)"
+  if [[ "$CODE" == "405" ]]; then
+    LAST_ALLOW=$(curl -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
+  fi
+  LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
 
-  # 2) JSON com email
-  CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+  # json (email)
+  CODE=$(curl -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
     -H "Content-Type: application/json" \
-    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" || true)
-  ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
-  REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-  if [[ ("$CODE" == "200" || "$CODE" == "201") && -n "${ACCESS:-}" ]]; then
-    LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_email"; break
+    --data "$JSON_EMAIL" || true)
+  if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
+    ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
+    REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
+    if [[ -n "${ACCESS:-}" ]]; then LOGIN_OK="1"; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_email"; break; fi
   fi
-  LAST_CODE="$CODE"; LAST_BODY="$(cat /tmp/login.json 2>/dev/null || true)"
+  if [[ "$CODE" == "405" ]]; then
+    LAST_ALLOW=$(curl -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
+  fi
+  LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
 
-  # 3) JSON com username
-  CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+  # json (username)
+  CODE=$(curl -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
     -H "Content-Type: application/json" \
-    -d "{\"username\":\"$EMAIL\",\"password\":\"$PASS\"}" || true)
-  ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
-  REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-  if [[ ("$CODE" == "200" || "$CODE" == "201") && -n "${ACCESS:-}" ]]; then
-    LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_username"; break
+    --data "$JSON_USER" || true)
+  if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
+    ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
+    REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
+    if [[ -n "${ACCESS:-}" ]]; then LOGIN_OK="1"; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_user"; break; fi
   fi
-  LAST_CODE="$CODE"; LAST_BODY="$(cat /tmp/login.json 2>/dev/null || true)"
+  if [[ "$CODE" == "405" ]]; then
+    LAST_ALLOW=$(curl -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
+  fi
+  LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
 done
 
 if [[ "$LOGIN_OK" != "1" ]]; then
-  fail "Login falhou (tentou vários endpoints/payloads). Último HTTP=${LAST_CODE} body=${LAST_BODY}"
+  fail "Login falhou. Último HTTP=${LAST_CODE} allow=${LAST_ALLOW:-?} body=${LAST_BODY}"
 fi
-
-ok "Login OK via ${LOGIN_USED_URL} (${LOGIN_USED_MODE})"
 LEN_A=${#ACCESS}
 LEN_R=0; [[ -n "${REFRESH:-}" ]] && LEN_R=${#REFRESH}
-ok "Token recebido (access: ${LEN_A} chars, refresh: ${LEN_R} chars)"
+ok "Login OK via ${LOGIN_USED_URL} (${LOGIN_USED_MODE}) (access: ${LEN_A} chars, refresh: ${LEN_R} chars)"
 
 AUTH=(-H "Authorization: Bearer $ACCESS")
 
 say "Sanity: /users/me (se existir)"
-ME_CODE=$(curl -s -o /tmp/me.json -w "%{http_code}" "$BASE/api/v1/users/me" "${AUTH[@]}" || true)
+ME_CODE=$(curl -s -o /tmp/me.json -w "%{http_code}" "$API_BASE/users/me" "${AUTH[@]}" || true)
 if [[ "$ME_CODE" == "200" ]]; then
   ME_IDENT=$(jq -r ".email // .username // \"unknown\"" /tmp/me.json 2>/dev/null || echo unknown)
   ok "users/me OK: ${ME_IDENT}"
@@ -198,14 +201,14 @@ else
 fi
 
 say "DB: /users/test-db (verifica conexão/persistência)"
-TDB_CODE=$(curl -s -o /tmp/tdb.json -w "%{http_code}" "$BASE/api/v1/users/test-db" "${AUTH[@]}" || true)
+TDB_CODE=$(curl -s -o /tmp/tdb.json -w "%{http_code}" "$API_BASE/users/test-db" "${AUTH[@]}" || true)
 
 say "Listar transações (baseline antes do insert)"
-LIST1_CODE=$(curl -s -o /tmp/tx_list1.json -w "%{http_code}" "$BASE/api/v1/transactions" "${AUTH[@]}" || true)
+LIST1_CODE=$(curl -s -o /tmp/tx_list1.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
 
 say "Criar transação (POST /transactions) — depósito fictício"
 POST_CODE=$(curl -s -o /tmp/tx_post.json -w "%{http_code}" \
-  -X POST "$BASE/api/v1/transactions" "${AUTH[@]}" \
+  -X POST "$API_BASE/transactions" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d "{\"tipo\":\"deposito\",\"valor\":$AMOUNT,\"descricao\":\"$DESC\",\"type\":\"deposit\",\"amount\":$AMOUNT,\"description\":\"$DESC\"}" || true)
 
@@ -221,7 +224,7 @@ fi
 TX_ID=$(jq -r ".id // empty" /tmp/tx_post.json 2>/dev/null || true)
 
 say "Validar persistência: conferir se a transação $TX_ID aparece na listagem"
-LIST2_CODE=$(curl -s -o /tmp/tx_list2.json -w "%{http_code}" "$BASE/api/v1/transactions" "${AUTH[@]}" || true)
+LIST2_CODE=$(curl -s -o /tmp/tx_list2.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
 if [[ "$LIST2_CODE" == "200" ]]; then
   # Procura pelo ID (string-safe)
   FOUND=$(jq --arg id "$TX_ID" "[.[] | select((.id|tostring)==\$id)] | length" /tmp/tx_list2.json 2>/dev/null || echo 0)
@@ -246,14 +249,14 @@ saldo_from_file() {
 
 say "Saldo (antes do saque) — somando lista atual"
 # Recarrega lista atual para saldo base (caso a anterior não exista)
-curl -s -o /tmp/tx_list_bal.json "$BASE/api/v1/transactions" "${AUTH[@]}" >/dev/null || true
+curl -s -o /tmp/tx_list_bal.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
 SALDO_BEFORE=$(saldo_from_file /tmp/tx_list_bal.json)
 printf "— SALDO_BEFORE: %s\n" "$SALDO_BEFORE"
 
 say "Efetuar saque fictício de R$ ${WITHDRAW}"
 WD_DESC="smoke-withdraw $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 WD_CODE=$(curl -s -o /tmp/tx_wd.json -w "%{http_code}" \
-  -X POST "$BASE/api/v1/transactions" "${AUTH[@]}" \
+  -X POST "$API_BASE/transactions" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d "{\"tipo\":\"saque\",\"valor\":${WITHDRAW},\"descricao\":\"${WD_DESC}\",\"type\":\"withdraw\",\"amount\":${WITHDRAW},\"description\":\"${WD_DESC}\"}" || true)
 
@@ -267,7 +270,7 @@ else
 fi
 
 say "Saldo (após saque) — recomputando da listagem"
-curl -s -o /tmp/tx_list_after_wd.json "$BASE/api/v1/transactions" "${AUTH[@]}" >/dev/null || true
+curl -s -o /tmp/tx_list_after_wd.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
 SALDO_AFTER=$(saldo_from_file /tmp/tx_list_after_wd.json)
 printf "— SALDO_AFTER: %s\n" "$SALDO_AFTER"
 
