@@ -53,8 +53,49 @@ die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
 BASE="${BASE:-${SMOKE_BASE:-}}"
 [[ -n "${BASE:-}" ]] || fail "FALTA SMOKE_BASE (base URL do backend)"
 BASE="${BASE%/}"
-say "Ping /health"
-curl -fsS "$BASE/health" | jq . && ok "Health OK"
+EMAIL="${EMAIL:-smoke+${GITHUB_RUN_ID:-local}@dils-wallet.dev}"
+PASS="${PASS:-123456}"
+AMOUNT="${AMOUNT:-37.50}"
+DESC="${DESC:-smoke-test $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+WITHDRAW="${WITHDRAW:-5.00}"
+say "Ping health"
+H_AUTH=()
+if [[ -n "${HEALTH_TOKEN:-}" ]]; then
+  H_AUTH=(-H "Authorization: Bearer $HEALTH_TOKEN")
+fi
+
+health_call(){
+  local url="$1" method="${2:-GET}"
+  if [[ "$method" == "POST" ]]; then
+    curl -sS -o /tmp/health.json -w "%{http_code}" -X POST "${H_AUTH[@]}" "$url" || true
+  else
+    curl -sS -o /tmp/health.json -w "%{http_code}" "${H_AUTH[@]}" "$url" || true
+  fi
+}
+
+HEALTH_OK=0
+for ep in "$BASE/health" "$BASE/api/v1/health" "$BASE/healthz" "$BASE/api/v1/healthz"; do
+  H_CODE=$(health_call "$ep" GET)
+  if [[ "$H_CODE" == "200" ]]; then
+    (jq . /tmp/health.json >/dev/null 2>&1 && jq . /tmp/health.json) || cat /tmp/health.json
+    ok "Health OK (GET ${ep})"
+    HEALTH_OK=1
+    break
+  fi
+  if [[ "$H_CODE" == "405" ]]; then
+    H2_CODE=$(health_call "$ep" POST)
+    if [[ "$H2_CODE" == "200" ]]; then
+      (jq . /tmp/health.json >/dev/null 2>&1 && jq . /tmp/health.json) || cat /tmp/health.json
+      ok "Health OK (POST ${ep})"
+      HEALTH_OK=1
+      break
+    fi
+  fi
+done
+
+if [[ "$HEALTH_OK" != "1" ]]; then
+  fail "Health falhou em todos endpoints testados (ultimo HTTP ${H_CODE:-?})"
+fi
 
 say "Registrar usuário (idempotente)"
 REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
