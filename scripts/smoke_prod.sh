@@ -153,6 +153,73 @@ fi
 # ===================================================================
 
 if [[ "${PIX_ONLY:-0}" != "1" ]]; then
+
+# === PIX-ONLY fastpath (OpenAPI sem /auth) ===
+# PROD atual (Railway) pode expor só PIX + health. Se não houver /auth no OpenAPI, não tenta login.
+OPENAPI_URL="${OPENAPI_URL:-${ORIGIN:-$BASE}/openapi.json}"
+OPENAPI="/tmp/openapi.json"
+O_CODE=$(curl -sS -o "$OPENAPI" -w "%{http_code}" "$OPENAPI_URL" || true)
+
+AUTH_PRESENT=0
+if [[ "$O_CODE" == "200" ]] && jq -e '.paths|keys|map(test("/api/v1/auth/|/auth/|/token$|/login$"))|any' "$OPENAPI" >/dev/null 2>&1; then
+  AUTH_PRESENT=1
+fi
+
+try_get_json() {
+  local url="$1" out="$2" code
+  code=$(curl -sS -o "$out" -w "%{http_code}" "$url" || true)
+  if [[ "$code" == "200" ]]; then return 0; fi
+
+  # Se exigir token, tenta HEALTH_TOKEN em headers comuns
+  if [[ ("$code" == "401" || "$code" == "403") && -n "${HEALTH_TOKEN:-}" ]]; then
+    code=$(curl -sS -o "$out" -w "%{http_code}" -H "X-Health-Token: $HEALTH_TOKEN" "$url" || true)
+    if [[ "$code" == "200" ]]; then return 0; fi
+    code=$(curl -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer $HEALTH_TOKEN" "$url" || true)
+    if [[ "$code" == "200" ]]; then return 0; fi
+  fi
+
+  echo "HTTP=$code url=$url" >&2
+  (head -c 400 "$out" 2>/dev/null || true) >&2
+  return 1
+}
+
+if [[ "$AUTH_PRESENT" != "1" ]]; then
+  warn "OpenAPI sem AUTH (PIX-only). Smoke vai validar apenas health + PIX endpoints."
+  ORIGIN="${ORIGIN:-$BASE}"; ORIGIN="${ORIGIN%/}"
+  API_BASE="${API_BASE:-$ORIGIN/api/v1}"
+
+  # escolhe balance/saldo existente no OpenAPI
+  BAL_PATH="/api/v1/pix/balance"
+  SAL_PATH="/api/v1/pix/saldo"
+  LIST_PATH="/api/v1/pix/list"
+
+  if jq -e --arg p "$BAL_PATH" '.paths[$p]!=null' "$OPENAPI" >/dev/null 2>&1; then
+    say "PIX: balance"
+    try_get_json "$API_BASE/pix/balance" /tmp/pix_balance.json || fail "PIX balance falhou"
+    (jq . /tmp/pix_balance.json >/dev/null 2>&1 && jq . /tmp/pix_balance.json) || cat /tmp/pix_balance.json
+    ok "PIX balance OK"
+  elif jq -e --arg p "$SAL_PATH" '.paths[$p]!=null' "$OPENAPI" >/dev/null 2>&1; then
+    say "PIX: saldo"
+    try_get_json "$API_BASE/pix/saldo" /tmp/pix_saldo.json || fail "PIX saldo falhou"
+    (jq . /tmp/pix_saldo.json >/dev/null 2>&1 && jq . /tmp/pix_saldo.json) || cat /tmp/pix_saldo.json
+    ok "PIX saldo OK"
+  else
+    fail "OpenAPI não tem /pix/balance nem /pix/saldo — não dá pra validar PIX"
+  fi
+
+  if jq -e --arg p "$LIST_PATH" '.paths[$p]!=null' "$OPENAPI" >/dev/null 2>&1; then
+    say "PIX: list"
+    try_get_json "$API_BASE/pix/list" /tmp/pix_list.json || fail "PIX list falhou"
+    ok "PIX list OK"
+  else
+    warn "OpenAPI sem /pix/list — pulando"
+  fi
+
+  ok "PIX-only smoke OK ✅"
+  exit 0
+fi
+# === END PIX-ONLY fastpath ===
+
 say "Registrar usuário (idempotente)"
 REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
   -X POST "$API_BASE/auth/register" \
