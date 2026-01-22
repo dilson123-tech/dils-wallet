@@ -104,13 +104,39 @@ REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
 
 say "Login → access + refresh"
-LOGIN_CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" \
-  -X POST "$BASE/api/v1/auth/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=$EMAIL&password=$PASS")
+# Tentativas: /auth/login e /auth/token, com form e com json (robusto contra mudanças)
+LOGIN_BODY_FORM="username=$EMAIL&password=$PASS"
+LOGIN_BODY_JSON="{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"username\":\"$EMAIL\",\"senha\":\"$PASS\"}"
 
-if [[ "$LOGIN_CODE" != "200" ]]; then
-  fail "Login falhou ($LOGIN_CODE): $(cat /tmp/login.json)"
+try_login() {
+  local url="$1"
+  local mode="$2"
+  if [[ "$mode" == "form" ]]; then
+    curl -s -o /tmp/login.json -w "%{http_code}" \
+      -X POST "$url" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "$LOGIN_BODY_FORM"
+  else
+    curl -s -o /tmp/login.json -w "%{http_code}" \
+      -X POST "$url" \
+      -H "Content-Type: application/json" \
+      -d "$LOGIN_BODY_JSON"
+  fi
+}
+
+LOGIN_CODE=""
+for ep in "$BASE/api/v1/auth/login" "$BASE/api/v1/auth/token"; do
+  for mode in form json; do
+    LOGIN_CODE=$(try_login "$ep" "$mode" || true)
+    if [[ "$LOGIN_CODE" == "200" ]]; then
+      ok "Login OK via ${ep} (${mode})"
+      break 2
+    fi
+  done
+done
+
+if [[ "${LOGIN_CODE:-}" != "200" ]]; then
+  fail "Login falhou (${LOGIN_CODE:-?}): $(cat /tmp/login.json 2>/dev/null || echo '<sem body>')"
 fi
 
 ACCESS=$(jq -r ".access_token // .access // empty" /tmp/login.json)
