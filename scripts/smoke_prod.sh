@@ -103,6 +103,56 @@ if [[ "$HEALTH_OK" != "1" ]]; then
   fail "Health falhou em todos endpoints testados (ultimo HTTP ${H_CODE:-?})"
 fi
 
+
+# === PIX_ONLY_MODE_AUTODETECT =====================================
+# Se o OpenAPI não expõe /api/v1/auth/login, este deploy é PIX-only.
+OPENAPI_FILE="${OPENAPI_FILE:-/tmp/openapi.json}"
+API_BASE="${API_BASE:-${BASE%/}/api/v1}"
+POST_CODE="${POST_CODE:-SKIPPED}"
+WD_CODE="${WD_CODE:-SKIPPED}"
+
+# garante openapi local pra inspeção
+if [[ ! -s "$OPENAPI_FILE" ]]; then
+  curl -sS -o "$OPENAPI_FILE" "${BASE%/}/openapi.json" || true
+fi
+
+HAS_AUTH=$(jq -r ".paths | has(\"/api/v1/auth/login\")" "$OPENAPI_FILE" 2>/dev/null || echo false)
+PIX_ONLY="${PIX_ONLY:-0}"
+if [[ "$HAS_AUTH" != "true" ]]; then
+  PIX_ONLY=1
+  warn "OpenAPI sem /api/v1/auth/login → modo PIX-only (pula register/login/transactions)"
+
+  pix_get(){
+    local url="$1" out="$2" code
+    code=$(curl -sS -o "$out" -w "%{http_code}" "$url" || true)
+    [[ "$code" == "200" ]] && { echo "$code"; return 0; }
+    if [[ -n "${HEALTH_TOKEN:-}" ]]; then
+      code=$(curl -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer $HEALTH_TOKEN" "$url" || true)
+      [[ "$code" == "200" ]] && { echo "$code"; return 0; }
+      code=$(curl -sS -o "$out" -w "%{http_code}" -H "X-Health-Token: $HEALTH_TOKEN" "$url" || true)
+      [[ "$code" == "200" ]] && { echo "$code"; return 0; }
+    fi
+    echo "$code"; return 1
+  }
+
+  say "PIX: list"
+  PIX_LIST_CODE=$(pix_get "$API_BASE/pix/list" /tmp/pix_list.json) || {
+    fail "PIX list falhou (HTTP $PIX_LIST_CODE): $(cat /tmp/pix_list.json 2>/dev/null || true)"
+  }
+  ok "PIX list OK (HTTP $PIX_LIST_CODE)"
+
+  say "PIX: balance (tenta /balance e /saldo)"
+  PIX_BAL_CODE=$(pix_get "$API_BASE/pix/balance" /tmp/pix_balance.json) || true
+  if [[ "$PIX_BAL_CODE" != "200" ]]; then
+    PIX_BAL_CODE=$(pix_get "$API_BASE/pix/saldo" /tmp/pix_balance.json) || {
+      fail "PIX balance/saldo falhou (último HTTP $PIX_BAL_CODE): $(cat /tmp/pix_balance.json 2>/dev/null || true)"
+    }
+  fi
+  ok "PIX balance/saldo OK (HTTP $PIX_BAL_CODE)"
+fi
+# ===================================================================
+
+if [[ "${PIX_ONLY:-0}" != "1" ]]; then
 say "Registrar usuário (idempotente)"
 REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
   -X POST "$API_BASE/auth/register" \
@@ -306,6 +356,8 @@ printf "— SALDO_AFTER: %s\n" "$SALDO_AFTER"
 else
   die_or_warn "Saldo divergente: BEFORE=$SALDO_BEFORE, WITHDRAW=$WITHDRAW, AFTER=$SALDO_AFTER (dif=$ABS_DELTA)"
 fi
+fi
+
 
 say "Resumo final"
 jq -n --arg base "$BASE" \
