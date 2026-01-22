@@ -15,6 +15,9 @@ ok()  { printf "\033[1;32m✔ %s\033[0m\n" "$*"; }
 warn(){ printf "\033[1;33m⚠ %s\033[0m\n" "$*"; }
 fail(){ printf "\033[1;31m✘ %s\033[0m\n" "$*"; exit 1; }
 
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERRO: comando \"$1\" não encontrado"; exit 1; }; }
+
+
 echo "FORCE_FAIL_SMOKE_PROD=${FORCE_FAIL_SMOKE_PROD:-unset}"
 [ "${FORCE_FAIL_SMOKE_PROD:-0}" = "1" ] && { echo "[TEST] Forçando falha (FORCE_FAIL_SMOKE_PROD=1)"; false; }
 
