@@ -122,6 +122,22 @@ echo "DEBUG base=$BASE"
 echo "DEBUG origin=$ORIGIN"
 echo "DEBUG api_base=$API_BASE"
 echo "DEBUG openapi_ok=$OPENAPI_OK openapi_url=${OPENAPI_URL:-unset}"
+
+# === API_BASE auto (from openapi) ===
+# Se o OpenAPI tiver paths começando com /api/v1, usamos prefixo. Senão, API_BASE=ORIGIN puro.
+OPENAPI_PATH="${OPENAPI_PATH:-/tmp/openapi.json}"
+if [[ "${openapi_ok:-0}" = "1" ]] && [[ -s "${OPENAPI_PATH}" ]]; then
+  if jq -e '.paths | keys[] | select(startswith("/api/v1/"))' "${OPENAPI_PATH}" >/dev/null 2>&1; then
+    API_BASE="${ORIGIN%/}/api/v1"
+  else
+    API_BASE="${ORIGIN%/}"
+  fi
+  echo "DEBUG api_base_auto=${API_BASE}"
+  echo "DEBUG openapi_auth_paths:"
+  jq -r '.paths | to_entries[] | select(.key|test("auth|token|login";"i")) | "\(.key) methods=\(.value|keys|join(","))"' \
+    "${OPENAPI_PATH}" | head -n 40 || true
+fi
+# ================================
 CAND_URLS=""
 if [[ "$OPENAPI_OK" == "1" ]]; then
   # pega paths que tenham POST e pareçam auth/login/token
