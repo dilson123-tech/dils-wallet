@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+
+# === curl timeouts (evita job pendurado) ===
+CURL_CONNECT_TIMEOUT="${CURL_CONNECT_TIMEOUT:-5}"
+CURL_MAX_TIME="${CURL_MAX_TIME:-20}"
+curlx(){ command curl --connect-timeout "${CURL_CONNECT_TIMEOUT}" --max-time "${CURL_MAX_TIME}" "$@"; }
+# ===========================================
+
 send_tg(){
   local MSG="$1"
   ARTDIR="${GITHUB_WORKSPACE:-.}/artifacts/tg/smoke_prod"
   mkdir -p "$ARTDIR"
-  HTTP=$(curl -s -o "$ARTDIR/tg.txt" -w "%{http_code}" \
+  HTTP=$(curlx -s -o "$ARTDIR/tg.txt" -w "%{http_code}" \
     -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
     -d chat_id="${TG_CHAT_ID}" \
     --data-urlencode text="$MSG") || true
@@ -21,8 +28,7 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "ERRO: comando \"$1\" não en
 echo "FORCE_FAIL_SMOKE_PROD=${FORCE_FAIL_SMOKE_PROD:-unset}"
 [ "${FORCE_FAIL_SMOKE_PROD:-0}" = "1" ] && { echo "[TEST] Forçando falha (FORCE_FAIL_SMOKE_PROD=1)"; false; }
 
-need curl
-need jq
+need curlx need jq
 
 # === Modo estrito para CI (falha em avisos críticos) ===
 STRICT="${STRICT:-false}"
@@ -73,9 +79,9 @@ fi
 health_call(){
   local url="$1" method="${2:-GET}"
   if [[ "$method" == "POST" ]]; then
-    curl -sS -o /tmp/health.json -w "%{http_code}" -X POST "${H_AUTH[@]}" "$url" || true
+    curlx -sS -o /tmp/health.json -w "%{http_code}" -X POST "${H_AUTH[@]}" "$url" || true
   else
-    curl -sS -o /tmp/health.json -w "%{http_code}" "${H_AUTH[@]}" "$url" || true
+    curlx -sS -o /tmp/health.json -w "%{http_code}" "${H_AUTH[@]}" "$url" || true
   fi
 }
 
@@ -113,7 +119,7 @@ WD_CODE="${WD_CODE:-SKIPPED}"
 
 # garante openapi local pra inspeção
 if [[ ! -s "$OPENAPI_FILE" ]]; then
-  curl -sS -o "$OPENAPI_FILE" "${BASE%/}/openapi.json" || true
+  curlx -sS -o "$OPENAPI_FILE" "${BASE%/}/openapi.json" || true
 fi
 
 HAS_AUTH=$(jq -r ".paths | has(\"/api/v1/auth/login\")" "$OPENAPI_FILE" 2>/dev/null || echo false)
@@ -124,12 +130,12 @@ if [[ "$HAS_AUTH" != "true" ]]; then
 
   pix_get(){
     local url="$1" out="$2" code
-    code=$(curl -sS -o "$out" -w "%{http_code}" "$url" || true)
+    code=$(curlx -sS -o "$out" -w "%{http_code}" "$url" || true)
     [[ "$code" == "200" ]] && { echo "$code"; return 0; }
     if [[ -n "${HEALTH_TOKEN:-}" ]]; then
-      code=$(curl -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer $HEALTH_TOKEN" "$url" || true)
+      code=$(curlx -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer $HEALTH_TOKEN" "$url" || true)
       [[ "$code" == "200" ]] && { echo "$code"; return 0; }
-      code=$(curl -sS -o "$out" -w "%{http_code}" -H "X-Health-Token: $HEALTH_TOKEN" "$url" || true)
+      code=$(curlx -sS -o "$out" -w "%{http_code}" -H "X-Health-Token: $HEALTH_TOKEN" "$url" || true)
       [[ "$code" == "200" ]] && { echo "$code"; return 0; }
     fi
     echo "$code"; return 1
@@ -158,7 +164,7 @@ if [[ "${PIX_ONLY:-0}" != "1" ]]; then
 # PROD atual (Railway) pode expor só PIX + health. Se não houver /auth no OpenAPI, não tenta login.
 OPENAPI_URL="${OPENAPI_URL:-${ORIGIN:-$BASE}/openapi.json}"
 OPENAPI="/tmp/openapi.json"
-O_CODE=$(curl -sS -o "$OPENAPI" -w "%{http_code}" "$OPENAPI_URL" || true)
+O_CODE=$(curlx -sS -o "$OPENAPI" -w "%{http_code}" "$OPENAPI_URL" || true)
 
 AUTH_PRESENT=0
 if [[ "$O_CODE" == "200" ]] && jq -e '.paths|keys|map(test("/api/v1/auth/|/auth/|/token$|/login$"))|any' "$OPENAPI" >/dev/null 2>&1; then
@@ -167,14 +173,14 @@ fi
 
 try_get_json() {
   local url="$1" out="$2" code
-  code=$(curl -sS -o "$out" -w "%{http_code}" "$url" || true)
+  code=$(curlx -sS -o "$out" -w "%{http_code}" "$url" || true)
   if [[ "$code" == "200" ]]; then return 0; fi
 
   # Se exigir token, tenta HEALTH_TOKEN em headers comuns
   if [[ ("$code" == "401" || "$code" == "403") && -n "${HEALTH_TOKEN:-}" ]]; then
-    code=$(curl -sS -o "$out" -w "%{http_code}" -H "X-Health-Token: $HEALTH_TOKEN" "$url" || true)
+    code=$(curlx -sS -o "$out" -w "%{http_code}" -H "X-Health-Token: $HEALTH_TOKEN" "$url" || true)
     if [[ "$code" == "200" ]]; then return 0; fi
-    code=$(curl -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer $HEALTH_TOKEN" "$url" || true)
+    code=$(curlx -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer $HEALTH_TOKEN" "$url" || true)
     if [[ "$code" == "200" ]]; then return 0; fi
   fi
 
@@ -221,7 +227,7 @@ fi
 # === END PIX-ONLY fastpath ===
 
 say "Registrar usuário (idempotente)"
-REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
+REG_CODE=$(curlx -s -o /tmp/reg.json -w "%{http_code}" \
   -X POST "$API_BASE/auth/register" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
@@ -231,7 +237,7 @@ OPENAPI_FILE="/tmp/openapi.json"
 OPENAPI_OK="0"
 OPENAPI_URL=""
 for u in "$ORIGIN/openapi.json" "$API_BASE/openapi.json" "$ORIGIN/api/openapi.json" "$ORIGIN/api/v1/openapi.json" "$BASE/openapi.json"; do
-  code=$(curl -sS -o "$OPENAPI_FILE" -w "%{http_code}" "$u" || true)
+  code=$(curlx -sS -o "$OPENAPI_FILE" -w "%{http_code}" "$u" || true)
   if [[ "$code" == "200" ]]; then OPENAPI_OK="1"; OPENAPI_URL="$u"; break; fi
 done
 
@@ -281,7 +287,7 @@ JSON_USER=$(jq -nc --arg username "$EMAIL" --arg password "$PASS" "{username:\$u
 
 for URL in $CAND_URLS; do
   # form
-  CODE=$(curl -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+  CODE=$(curlx -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --data-urlencode "username=$EMAIL" --data-urlencode "password=$PASS" || true)
   if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
@@ -290,12 +296,12 @@ for URL in $CAND_URLS; do
     if [[ -n "${ACCESS:-}" ]]; then LOGIN_OK="1"; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="form"; break; fi
   fi
   if [[ "$CODE" == "405" ]]; then
-    LAST_ALLOW=$(curl -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
+    LAST_ALLOW=$(curlx -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
   fi
   LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
 
   # json (email)
-  CODE=$(curl -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+  CODE=$(curlx -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
     -H "Content-Type: application/json" \
     --data "$JSON_EMAIL" || true)
   if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
@@ -304,12 +310,12 @@ for URL in $CAND_URLS; do
     if [[ -n "${ACCESS:-}" ]]; then LOGIN_OK="1"; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_email"; break; fi
   fi
   if [[ "$CODE" == "405" ]]; then
-    LAST_ALLOW=$(curl -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
+    LAST_ALLOW=$(curlx -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
   fi
   LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
 
   # json (username)
-  CODE=$(curl -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+  CODE=$(curlx -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
     -H "Content-Type: application/json" \
     --data "$JSON_USER" || true)
   if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
@@ -318,7 +324,7 @@ for URL in $CAND_URLS; do
     if [[ -n "${ACCESS:-}" ]]; then LOGIN_OK="1"; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_user"; break; fi
   fi
   if [[ "$CODE" == "405" ]]; then
-    LAST_ALLOW=$(curl -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
+    LAST_ALLOW=$(curlx -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
   fi
   LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
 done
@@ -333,7 +339,7 @@ ok "Login OK via ${LOGIN_USED_URL} (${LOGIN_USED_MODE}) (access: ${LEN_A} chars,
 AUTH=(-H "Authorization: Bearer $ACCESS")
 
 say "Sanity: /users/me (se existir)"
-ME_CODE=$(curl -s -o /tmp/me.json -w "%{http_code}" "$API_BASE/users/me" "${AUTH[@]}" || true)
+ME_CODE=$(curlx -s -o /tmp/me.json -w "%{http_code}" "$API_BASE/users/me" "${AUTH[@]}" || true)
 if [[ "$ME_CODE" == "200" ]]; then
   ME_IDENT=$(jq -r ".email // .username // \"unknown\"" /tmp/me.json 2>/dev/null || echo unknown)
   ok "users/me OK: ${ME_IDENT}"
@@ -342,13 +348,13 @@ else
 fi
 
 say "DB: /users/test-db (verifica conexão/persistência)"
-TDB_CODE=$(curl -s -o /tmp/tdb.json -w "%{http_code}" "$API_BASE/users/test-db" "${AUTH[@]}" || true)
+TDB_CODE=$(curlx -s -o /tmp/tdb.json -w "%{http_code}" "$API_BASE/users/test-db" "${AUTH[@]}" || true)
 
 say "Listar transações (baseline antes do insert)"
-LIST1_CODE=$(curl -s -o /tmp/tx_list1.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
+LIST1_CODE=$(curlx -s -o /tmp/tx_list1.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
 
 say "Criar transação (POST /transactions) — depósito fictício"
-POST_CODE=$(curl -s -o /tmp/tx_post.json -w "%{http_code}" \
+POST_CODE=$(curlx -s -o /tmp/tx_post.json -w "%{http_code}" \
   -X POST "$API_BASE/transactions" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d "{\"tipo\":\"deposito\",\"valor\":$AMOUNT,\"descricao\":\"$DESC\",\"type\":\"deposit\",\"amount\":$AMOUNT,\"description\":\"$DESC\"}" || true)
@@ -365,7 +371,7 @@ fi
 TX_ID=$(jq -r ".id // empty" /tmp/tx_post.json 2>/dev/null || true)
 
 say "Validar persistência: conferir se a transação $TX_ID aparece na listagem"
-LIST2_CODE=$(curl -s -o /tmp/tx_list2.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
+LIST2_CODE=$(curlx -s -o /tmp/tx_list2.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
 if [[ "$LIST2_CODE" == "200" ]]; then
   # Procura pelo ID (string-safe)
   FOUND=$(jq --arg id "$TX_ID" "[.[] | select((.id|tostring)==\$id)] | length" /tmp/tx_list2.json 2>/dev/null || echo 0)
@@ -390,13 +396,13 @@ saldo_from_file() {
 
 say "Saldo (antes do saque) — somando lista atual"
 # Recarrega lista atual para saldo base (caso a anterior não exista)
-curl -s -o /tmp/tx_list_bal.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
+curlx -s -o /tmp/tx_list_bal.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
 SALDO_BEFORE=$(saldo_from_file /tmp/tx_list_bal.json)
 printf "— SALDO_BEFORE: %s\n" "$SALDO_BEFORE"
 
 say "Efetuar saque fictício de R$ ${WITHDRAW}"
 WD_DESC="smoke-withdraw $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-WD_CODE=$(curl -s -o /tmp/tx_wd.json -w "%{http_code}" \
+WD_CODE=$(curlx -s -o /tmp/tx_wd.json -w "%{http_code}" \
   -X POST "$API_BASE/transactions" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d "{\"tipo\":\"saque\",\"valor\":${WITHDRAW},\"descricao\":\"${WD_DESC}\",\"type\":\"withdraw\",\"amount\":${WITHDRAW},\"description\":\"${WD_DESC}\"}" || true)
@@ -411,7 +417,7 @@ else
 fi
 
 say "Saldo (após saque) — recomputando da listagem"
-curl -s -o /tmp/tx_list_after_wd.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
+curlx -s -o /tmp/tx_list_after_wd.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
 SALDO_AFTER=$(saldo_from_file /tmp/tx_list_after_wd.json)
 printf "— SALDO_AFTER: %s\n" "$SALDO_AFTER"
 
@@ -452,7 +458,7 @@ withdraw=${WITHDRAW:-0}
 health=${health:-OK}"
 
   JSON_PAYLOAD=$(jq -n --arg text "$MSG" "{text:\$text}")
-  CODE=$(curl -sS -L --max-redirs 5 -o /tmp/slack_smoke.txt -w "%{http_code}" \
+  CODE=$(curlx -sS -L --max-redirs 5 -o /tmp/slack_smoke.txt -w "%{http_code}" \
          -X POST -H "Content-type: application/json" \
          --data "$JSON_PAYLOAD" "$SLACK_WEBHOOK_URL" || true)
   echo "Slack notify HTTP=$CODE"
