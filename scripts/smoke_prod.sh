@@ -54,7 +54,11 @@ BASE="${BASE:-${SMOKE_BASE:-}}"
 [[ -n "${BASE:-}" ]] || fail "FALTA SMOKE_BASE (base URL do backend)"
 BASE="${BASE%/}"
 if [[ "$BASE" == */api/v1 ]]; then BASE="${BASE%/api/v1}"; fi
-API_BASE="${BASE}/api/v1"
+ORIGIN="$BASE"
+for suf in "/api/v1" "/api" "/v1"; do
+  [[ "$ORIGIN" == *"$suf" ]] && ORIGIN="${ORIGIN%$suf}"
+done
+API_BASE="${ORIGIN}/api/v1"
 EMAIL="${EMAIL:-smoke+${GITHUB_RUN_ID:-local}@dils-wallet.dev}"
 PASS="${PASS:-123456}"
 AMOUNT="${AMOUNT:-37.50}"
@@ -109,17 +113,21 @@ say "Login (autodetect via OpenAPI)"
 OPENAPI_FILE="/tmp/openapi.json"
 OPENAPI_OK="0"
 OPENAPI_URL=""
-for u in "$BASE/openapi.json" "$API_BASE/openapi.json" "$BASE/api/openapi.json"; do
+for u in "$ORIGIN/openapi.json" "$API_BASE/openapi.json" "$ORIGIN/api/openapi.json" "$ORIGIN/api/v1/openapi.json" "$BASE/openapi.json"; do
   code=$(curl -sS -o "$OPENAPI_FILE" -w "%{http_code}" "$u" || true)
   if [[ "$code" == "200" ]]; then OPENAPI_OK="1"; OPENAPI_URL="$u"; break; fi
 done
 
+echo "DEBUG base=$BASE"
+echo "DEBUG origin=$ORIGIN"
+echo "DEBUG api_base=$API_BASE"
+echo "DEBUG openapi_ok=$OPENAPI_OK openapi_url=${OPENAPI_URL:-unset}"
 CAND_URLS=""
 if [[ "$OPENAPI_OK" == "1" ]]; then
   # pega paths que tenham POST e pareçam auth/login/token
   paths=$(jq -r ".paths | to_entries[] | select(.value.post != null) | .key | select(test(\"auth\";\"i\") and test(\"(login|token)\";\"i\"))" "$OPENAPI_FILE" 2>/dev/null || true)
   for path in $paths; do
-    CAND_URLS="$CAND_URLS $BASE$path"
+    CAND_URLS="$CAND_URLS $ORIGIN$path"
   done
 fi
 
