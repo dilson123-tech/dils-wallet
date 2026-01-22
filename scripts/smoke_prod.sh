@@ -103,69 +103,76 @@ REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
 
-say "Login (robust): tentando endpoints comuns"
+say "Login (autodetect endpoint/payload)"
+
+OPENAPI_FILE=/tmp/openapi.json
+OPENAPI_URL=""
+for u in "$BASE/openapi.json" "$BASE/api/v1/openapi.json"; do
+  O_CODE=$(curl -sS -o "$OPENAPI_FILE" -w "%{http_code}" "$u" || true)
+  if [[ "$O_CODE" == "200" ]]; then
+    OPENAPI_URL="$u"
+    break
+  fi
+done
+
+LOGIN_EPS=()
+if [[ -n "${OPENAPI_URL:-}" ]]; then
+  while IFS= read -r ep; do
+    [[ -n "$ep" ]] && LOGIN_EPS+=("$ep")
+  done < <(jq -r '.paths
+      | to_entries[]
+      | select(.value.post != null)
+      | select(.key|test("auth|login|token";"i"))
+      | .key' "$OPENAPI_FILE" 2>/dev/null || true)
+fi
+
+# Fallbacks se OpenAPI não ajudar
+LOGIN_EPS+=(
+  "/api/v1/auth/login"
+  "/api/v1/auth/token"
+  "/api/v1/token"
+  "/auth/login"
+  "/auth/token"
+  "/token"
+)
+
 LOGIN_OK=0
 LOGIN_USED_URL=""
 LOGIN_USED_MODE=""
+ACCESS=""
+REFRESH=""
 
-# tenta bases alternativas (caso SMOKE_BASE já venha com /api ou /api/v1)
-BASE_RAW="${BASE%/}"
-ROOT1="${BASE_RAW%/api/v1}"
-ROOT2="${BASE_RAW%/api}"
-BASE_CANDIDATES=("$BASE_RAW")
-[[ "$ROOT1" != "$BASE_RAW" ]] && BASE_CANDIDATES+=("$ROOT1")
-[[ "$ROOT2" != "$BASE_RAW" && "$ROOT2" != "$ROOT1" ]] && BASE_CANDIDATES+=("$ROOT2")
+for EP in "${LOGIN_EPS[@]}"; do
+  URL="$BASE$EP"
+  for MODE in "form_username" "form_email" "json_username" "json_email"; do
+    rm -f /tmp/login.json >/dev/null 2>&1 || true
 
-LOGIN_ENDPOINTS=(
-  "api/v1/auth/login"
-  "api/v1/auth/token"
-  "api/v1/token"
-  "auth/login"
-  "auth/token"
-  "token"
-  "login"
-)
-
-for B in "${BASE_CANDIDATES[@]}"; do
-  for EP in "${LOGIN_ENDPOINTS[@]}"; do
-    URL="${B%/}/${EP}"
-
-    # 1) form (username/password)
-    CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" \
-      -X POST "$URL" \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      -d "username=$EMAIL&password=$PASS" || true)
-    if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
-      ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
-      REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-      if [[ -n "${ACCESS:-}" && "$ACCESS" != "null" ]]; then
-        LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="form"; break 2
-      fi
+    if [[ "$MODE" == "form_username" ]]; then
+      CT="Content-Type: application/x-www-form-urlencoded"
+      DATA="username=$EMAIL&password=$PASS"
+    elif [[ "$MODE" == "form_email" ]]; then
+      CT="Content-Type: application/x-www-form-urlencoded"
+      DATA="email=$EMAIL&password=$PASS"
+    elif [[ "$MODE" == "json_username" ]]; then
+      CT="Content-Type: application/json"
+      DATA="{\"username\":\"$EMAIL\",\"password\":\"$PASS\"}"
+    else
+      CT="Content-Type: application/json"
+      DATA="{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}"
     fi
 
-    # 2) json (email/password)
-    CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" \
-      -X POST "$URL" \
-      -H "Content-Type: application/json" \
-      -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" || true)
-    if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
-      ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
-      REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-      if [[ -n "${ACCESS:-}" && "$ACCESS" != "null" ]]; then
-        LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_email"; break 2
-      fi
-    fi
+    CODE=$(curl -sS -L --post301 --post302 --post303 --max-redirs 5 \
+      -o /tmp/login.json -w "%{http_code}" \
+      -X POST "$URL" -H "$CT" --data "$DATA" || true)
 
-    # 3) json (username/password)
-    CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" \
-      -X POST "$URL" \
-      -H "Content-Type: application/json" \
-      -d "{\"username\":\"$EMAIL\",\"password\":\"$PASS\"}" || true)
     if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
       ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
       REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-      if [[ -n "${ACCESS:-}" && "$ACCESS" != "null" ]]; then
-        LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_user"; break 2
+      if [[ -n "${ACCESS:-}" ]]; then
+        LOGIN_OK=1
+        LOGIN_USED_URL="$EP"
+        LOGIN_USED_MODE="$MODE"
+        break 2
       fi
     fi
   done
@@ -173,13 +180,14 @@ done
 
 if [[ "$LOGIN_OK" != "1" ]]; then
   BODY=$(cat /tmp/login.json 2>/dev/null || true)
-  fail "Login falhou (tentou vários endpoints). Última resposta: ${BODY}"
+  fail "Login falhou (autodetect). Última resposta: ${BODY}"
 fi
 
 ok "Login OK via ${LOGIN_USED_URL} (${LOGIN_USED_MODE})"
 LEN_A=${#ACCESS}
 LEN_R=0; [[ -n "${REFRESH:-}" ]] && LEN_R=${#REFRESH}
 ok "Token recebido (access: ${LEN_A} chars, refresh: ${LEN_R} chars)"
+
 
 
 # Header de auth para os próximos requests
