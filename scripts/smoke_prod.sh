@@ -104,83 +104,81 @@ REG_CODE=$(curl -s -o /tmp/reg.json -w "%{http_code}" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
 
 say "Login (autodetect endpoint/payload)"
-
-OPENAPI_FILE=/tmp/openapi.json
-OPENAPI_URL=""
-for u in "$BASE/openapi.json" "$BASE/api/v1/openapi.json"; do
-  O_CODE=$(curl -sS -o "$OPENAPI_FILE" -w "%{http_code}" "$u" || true)
-  if [[ "$O_CODE" == "200" ]]; then
-    OPENAPI_URL="$u"
-    break
-  fi
-done
-
-LOGIN_EPS=()
-if [[ -n "${OPENAPI_URL:-}" ]]; then
-  while IFS= read -r ep; do
-    [[ -n "$ep" ]] && LOGIN_EPS+=("$ep")
-  done < <(jq -r '.paths
-      | to_entries[]
-      | select(.value.post != null)
-      | select(.key|test("auth|login|token";"i"))
-      | .key' "$OPENAPI_FILE" 2>/dev/null || true)
-fi
-
-# Fallbacks se OpenAPI não ajudar
-LOGIN_EPS+=(
-  "/api/v1/auth/login"
-  "/api/v1/auth/token"
-  "/api/v1/token"
-  "/auth/login"
-  "/auth/token"
-  "/token"
-)
-
 LOGIN_OK=0
 LOGIN_USED_URL=""
 LOGIN_USED_MODE=""
-ACCESS=""
-REFRESH=""
+LAST_CODE=""
+LAST_BODY=""
 
-for EP in "${LOGIN_EPS[@]}"; do
-  URL="$BASE$EP"
-  for MODE in "form_username" "form_email" "json_username" "json_email"; do
-    rm -f /tmp/login.json >/dev/null 2>&1 || true
+# Lista base de paths (vamos testar com e sem /api/v1)
+BASE_PATHS=(
+  "/auth/login"
+  "/auth/token"
+  "/auth/jwt/login"
+  "/auth/access-token"
+  "/token"
+  "/login"
+  "/api/v1/auth/login"
+  "/api/v1/auth/token"
+  "/api/v1/auth/jwt/login"
+  "/api/v1/auth/access-token"
+  "/api/v1/token"
+)
 
-    if [[ "$MODE" == "form_username" ]]; then
-      CT="Content-Type: application/x-www-form-urlencoded"
-      DATA="username=$EMAIL&password=$PASS"
-    elif [[ "$MODE" == "form_email" ]]; then
-      CT="Content-Type: application/x-www-form-urlencoded"
-      DATA="email=$EMAIL&password=$PASS"
-    elif [[ "$MODE" == "json_username" ]]; then
-      CT="Content-Type: application/json"
-      DATA="{\"username\":\"$EMAIL\",\"password\":\"$PASS\"}"
-    else
-      CT="Content-Type: application/json"
-      DATA="{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}"
-    fi
+add_url(){
+  local u="$1"
+  for e in "${URLS[@]:-}"; do [[ "$e" == "$u" ]] && return 0; done
+  URLS+=("$u")
+}
 
-    CODE=$(curl -sS -L --post301 --post302 --post303 --max-redirs 5 \
-      -o /tmp/login.json -w "%{http_code}" \
-      -X POST "$URL" -H "$CT" --data "$DATA" || true)
+URLS=()
+for P in "${BASE_PATHS[@]}"; do
+  add_url "$BASE$P"
+  # variações pra evitar “prefixo duplicado” ou “prefixo faltando”
+  if [[ "$P" == /api/v1/* ]]; then
+    add_url "$BASE${P#/api/v1}"
+  else
+    add_url "$BASE/api/v1$P"
+  fi
+done
 
-    if [[ "$CODE" == "200" || "$CODE" == "201" ]]; then
-      ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
-      REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
-      if [[ -n "${ACCESS:-}" ]]; then
-        LOGIN_OK=1
-        LOGIN_USED_URL="$EP"
-        LOGIN_USED_MODE="$MODE"
-        break 2
-      fi
-    fi
-  done
+for URL in "${URLS[@]}"; do
+  # 1) FORM (OAuth2PasswordRequestForm / x-www-form-urlencoded)
+  CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "username=$EMAIL&password=$PASS" || true)
+  ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
+  REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
+  if [[ ("$CODE" == "200" || "$CODE" == "201") && -n "${ACCESS:-}" ]]; then
+    LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="form"; break
+  fi
+  LAST_CODE="$CODE"; LAST_BODY="$(cat /tmp/login.json 2>/dev/null || true)"
+
+  # 2) JSON com email
+  CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" || true)
+  ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
+  REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
+  if [[ ("$CODE" == "200" || "$CODE" == "201") && -n "${ACCESS:-}" ]]; then
+    LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_email"; break
+  fi
+  LAST_CODE="$CODE"; LAST_BODY="$(cat /tmp/login.json 2>/dev/null || true)"
+
+  # 3) JSON com username
+  CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$EMAIL\",\"password\":\"$PASS\"}" || true)
+  ACCESS=$(jq -r ".access_token // .access // .token // empty" /tmp/login.json 2>/dev/null || true)
+  REFRESH=$(jq -r ".refresh_token // .refresh // empty" /tmp/login.json 2>/dev/null || true)
+  if [[ ("$CODE" == "200" || "$CODE" == "201") && -n "${ACCESS:-}" ]]; then
+    LOGIN_OK=1; LOGIN_USED_URL="$URL"; LOGIN_USED_MODE="json_username"; break
+  fi
+  LAST_CODE="$CODE"; LAST_BODY="$(cat /tmp/login.json 2>/dev/null || true)"
 done
 
 if [[ "$LOGIN_OK" != "1" ]]; then
-  BODY=$(cat /tmp/login.json 2>/dev/null || true)
-  fail "Login falhou (autodetect). Última resposta: ${BODY}"
+  fail "Login falhou (tentou vários endpoints/payloads). Último HTTP=${LAST_CODE} body=${LAST_BODY}"
 fi
 
 ok "Login OK via ${LOGIN_USED_URL} (${LOGIN_USED_MODE})"
@@ -188,9 +186,6 @@ LEN_A=${#ACCESS}
 LEN_R=0; [[ -n "${REFRESH:-}" ]] && LEN_R=${#REFRESH}
 ok "Token recebido (access: ${LEN_A} chars, refresh: ${LEN_R} chars)"
 
-
-
-# Header de auth para os próximos requests
 AUTH=(-H "Authorization: Bearer $ACCESS")
 
 say "Sanity: /users/me (se existir)"
