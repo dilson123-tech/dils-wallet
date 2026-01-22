@@ -48,6 +48,11 @@ die_or_warn() {  # se STRICT=true, falha; senão, apenas avisa
   fi
 }
 
+
+# === Base URL (workflow usa SMOKE_BASE) ===
+BASE="${BASE:-${SMOKE_BASE:-}}"
+[[ -n "${BASE:-}" ]] || fail "FALTA SMOKE_BASE (base URL do backend)"
+BASE="${BASE%/}"
 say "Ping /health"
 curl -fsS "$BASE/health" | jq . && ok "Health OK"
 
