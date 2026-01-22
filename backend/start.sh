@@ -15,4 +15,4 @@ PORT="${PORT:-${RAILWAY_TCP_PROXY_PORT:-8080}}"
 echo "[AUREA] Porta final detectada: ${PORT}"
 
 # Sobe direto no PORT (sem socat)
-exec ./.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT}"
+exec python -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT}"
