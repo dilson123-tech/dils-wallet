@@ -8,3 +8,5 @@ alembic
 psycopg2-binary
 psycopg2-binary
 passlib[bcrypt]
+python-jose[cryptography]
+httpx
