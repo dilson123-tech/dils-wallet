@@ -19,4 +19,7 @@ COPY start.sh /app/start.sh
 EXPOSE 8000
 
 # start — bind 0.0.0.0 e porta da Railway
-CMD bash -lc 'exec /app/start.sh'
+
+RUN chmod +x backend/start.sh
+
+CMD ["bash","backend/start.sh"]
