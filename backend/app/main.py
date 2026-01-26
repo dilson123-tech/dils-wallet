@@ -176,7 +176,23 @@ async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str 
     )
 
 from app.api.v1.routes import auth as auth_router
-app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(auth_router.router, prefix="/api/v1/auth"
+# --- DB bootstrap (idempotente): garante tabelas antes de atender requests ---
+try:
+    from app.utils.init_db import main as _init_db
+    @app.on_event("startup")
+    def _startup_init_db():
+        try:
+            _init_db()
+            print("[BOOT] init_db OK ✅")
+        except Exception as e:
+            import sys
+            print(f"[BOOT] init_db FAILED: {e}", file=sys.stderr)
+except Exception as e:
+    import sys
+    print(f"[BOOT] init_db import FAILED: {e}", file=sys.stderr)
+# --- end DB bootstrap ---
+, tags=["auth"])
 
 # --- healthcheck endpoints ---
 
