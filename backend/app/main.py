@@ -198,7 +198,7 @@ except Exception as e:
 
 @app.get("/health", tags=["infra"])
 def health():
-    return {"status": "ok", "service": "dils-wallet", "ts": datetime.utcnow().isoformat() + "Z"}
+    return {"status":"ok","service":"dils-wallet","boot": os.getenv("BOOT_MODE","unknown"), "ts": datetime.utcnow().isoformat() + "Z"}
 
 @app.get("/ready", tags=["infra"])
 def ready():

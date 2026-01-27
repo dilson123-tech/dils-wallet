@@ -8,6 +8,7 @@ export PYTHONUNBUFFERED=1
 
 cd "$(dirname "$0")"
 export PYTHONPATH="$(pwd)"
+export BOOT_MODE="startsh"
 
 # Porta real do ambiente (Railway define $PORT)
 PORT="${PORT:-${RAILWAY_TCP_PROXY_PORT:-8080}}"
