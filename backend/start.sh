@@ -2,6 +2,7 @@
 set -euo pipefail
 
 echo "[AUREA] Boot de produção iniciando..."
+echo "[AUREA] SHA=${RAILWAY_GIT_COMMIT_SHA:-unknown}"
 export PYTHONFAULTHANDLER=1
 export PYTHONUNBUFFERED=1
 
