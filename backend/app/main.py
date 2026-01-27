@@ -196,6 +196,11 @@ except Exception as e:
 
 # --- healthcheck endpoints ---
 
+@app.get("/", include_in_schema=False)
+def root():
+    import os
+    return {"ok": True, "service": "dils-wallet", "boot": os.getenv("BOOT_MODE","unknown")}
+
 @app.get("/health", tags=["infra"])
 def health():
     return {"status":"ok","service":"dils-wallet","boot": os.getenv("BOOT_MODE","unknown"), "ts": datetime.utcnow().isoformat() + "Z"}
