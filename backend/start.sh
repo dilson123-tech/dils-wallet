@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+echo "[AUREA] BOOT_MODE=${BOOT_MODE} SHA=${RAILWAY_GIT_COMMIT_SHA:-unknown}"
 
 echo "[AUREA] Boot de produção iniciando..."
 echo "[AUREA] SHA=${RAILWAY_GIT_COMMIT_SHA:-unknown}"
