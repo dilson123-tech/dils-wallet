@@ -5,6 +5,10 @@ from app import database as db
 
 def main():
     engine = db.engine
+    try:
+        print("ENGINE_URL =", engine.url.render_as_string(hide_password=True))
+    except Exception:
+        print("ENGINE_URL =", str(engine.url))
     Base = getattr(db, "Base", None)
     if not Base:
         raise RuntimeError("app.database.Base não existe")
