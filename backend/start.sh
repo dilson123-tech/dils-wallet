@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# evita crash com 'set -u' quando BOOT_MODE não vem do ambiente
+: "${BOOT_MODE:=startsh}"
+export BOOT_MODE
 echo "[AUREA] BOOT_MODE=${BOOT_MODE} SHA=${RAILWAY_GIT_COMMIT_SHA:-unknown}"
 
 echo "[AUREA] Boot de produção iniciando..."
