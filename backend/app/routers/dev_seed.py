@@ -1,6 +1,7 @@
 import os
 import secrets
 from fastapi import APIRouter, Header, HTTPException
+from sqlalchemy import inspect
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/dev-seed", tags=["dev-seed"])
@@ -33,6 +34,7 @@ def seed(
     ledger_seed_name = None
 
     from app.utils import seed_user as seed_user_mod
+from app.database import engine
     from app.utils import ledger_seed as ledger_seed_mod
 
     # tenta vários nomes comuns pra reduzir atrito
@@ -51,3 +53,35 @@ def seed(
             break
 
     return SeedResult(ok=True, user_seed=user_seed_name, ledger_seed=ledger_seed_name)
+
+
+@router.get("/schema", include_in_schema=False)
+def schema(
+    x_admin_seed_token: str | None = Header(default=None, alias="X-Admin-Seed-Token"),
+):
+    _check_seed_token(x_admin_seed_token)
+    insp = inspect(engine)
+    tables = sorted(insp.get_table_names())
+    focus = {}
+    for tn in ("user_main", "users", "pix_ledger", "pix_ledger_main"):
+        if tn in tables:
+            cols = [c.get("name") for c in insp.get_columns(tn)]
+            focus[tn] = cols
+    return {
+        "dialect": engine.url.get_backend_name(),
+        "tables_count": len(tables),
+        "tables_focus": focus,
+    }
+
+
+@router.post("/seed-ledger", include_in_schema=False)
+def seed_ledger(
+    x_admin_seed_token: str | None = Header(default=None, alias="X-Admin-Seed-Token"),
+):
+    _check_seed_token(x_admin_seed_token)
+    from app.utils.ledger_seed import seed_ledger_from_users
+    try:
+        seed_ledger_from_users()
+        return {"ok": True, "ran": "seed_ledger_from_users"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
