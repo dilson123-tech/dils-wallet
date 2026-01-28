@@ -1,7 +1,6 @@
 import os
 import secrets
 from fastapi import APIRouter, Header, HTTPException
-from sqlalchemy import inspect
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/dev-seed", tags=["dev-seed"])
@@ -34,7 +33,6 @@ def seed(
     ledger_seed_name = None
 
     from app.utils import seed_user as seed_user_mod
-from app.database import engine
     from app.utils import ledger_seed as ledger_seed_mod
 
     # tenta vários nomes comuns pra reduzir atrito
@@ -60,6 +58,8 @@ def schema(
     x_admin_seed_token: str | None = Header(default=None, alias="X-Admin-Seed-Token"),
 ):
     _check_seed_token(x_admin_seed_token)
+    from sqlalchemy import inspect
+    from app.database import engine
     insp = inspect(engine)
     tables = sorted(insp.get_table_names())
     focus = {}
