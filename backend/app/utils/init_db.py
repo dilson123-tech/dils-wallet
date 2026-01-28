@@ -19,6 +19,29 @@ def main():
         importlib.import_module(m.name)
 
     Base.metadata.create_all(bind=engine)
+
+
+    # --- schema drift fix: users.email (Railway PG estava sem coluna) ---
+
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+
+    if "users" in insp.get_table_names():
+
+        cols = {c["name"] for c in insp.get_columns("users")}
+
+        if "email" not in cols:
+
+            with engine.begin() as conn:
+
+                conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(320)"))
+
+                conn.execute(text("UPDATE users SET email = username WHERE email IS NULL AND username LIKE '%@%'"))
+
+            print("[BOOT] migrated: users.email added/backfilled ✅")
+
+    # --- end schema drift fix ---
     print("✅ init_db ok. tables:", sorted(Base.metadata.tables.keys()))
 
 if __name__ == "__main__":

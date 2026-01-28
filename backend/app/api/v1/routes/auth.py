@@ -45,7 +45,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     # aceita email OU username
     if hasattr(User, "email") and ident:
-        user = db.query(User).filter(User.email == ident).first()
+        user = db.query(User).filter((User.email == ident) | (User.username == ident)).first()
 
     if not user and hasattr(User, "username") and ident:
         user = db.query(User).filter(User.username == ident).first()
