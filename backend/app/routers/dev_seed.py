@@ -43,7 +43,7 @@ def seed(
             user_seed_name = name
             break
 
-    for name in ("seed_ledger", "seed_initial_ledger", "ledger_seed", "run", "main"):
+    for name in ("seed_ledger_from_users", "seed_ledger", "seed_initial_ledger", "ledger_seed", "run", "main"):
         fn = getattr(ledger_seed_mod, name, None)
         if callable(fn):
             fn()
