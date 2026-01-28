@@ -81,7 +81,7 @@ def seed_ledger(
     _check_seed_token(x_admin_seed_token)
     from app.utils.ledger_seed import seed_ledger_from_users
     try:
-        seed_ledger_from_users()
-        return {"ok": True, "ran": "seed_ledger_from_users"}
+        result = seed_ledger_from_users()
+        return {"ok": True, "ran": "seed_ledger_from_users", "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
