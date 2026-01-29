@@ -85,3 +85,28 @@ def seed_ledger(
         return {"ok": True, "ran": "seed_ledger_from_users", "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
+
+@router.get("/admin-check", include_in_schema=False)
+def admin_check(
+    x_admin_seed_token: str | None = Header(default=None, alias="X-Admin-Seed-Token"),
+):
+    _check_seed_token(x_admin_seed_token)
+    from sqlalchemy import text
+    from app.database import engine
+
+    q = text("SELECT id, email, username, role FROM users WHERE role='admin' ORDER BY id LIMIT 10;")
+    with engine.begin() as conn:
+        rows = [dict(r._mapping) for r in conn.execute(q).fetchall()]
+
+    def mask(s):
+        if not s: return None
+        if "@" in s:
+            a,b = s.split("@",1)
+            return (a[:2] + "***@" + b)
+        return s[:2] + "***"
+
+    return {
+        "admins": len(rows),
+        "items": [{"id": r["id"], "email": mask(r.get("email")), "username": mask(r.get("username")), "role": r.get("role")} for r in rows],
+    }
