@@ -110,3 +110,30 @@ def admin_check(
         "admins": len(rows),
         "items": [{"id": r["id"], "email": mask(r.get("email")), "username": mask(r.get("username")), "role": r.get("role")} for r in rows],
     }
+
+
+@router.post("/admin-reset-password", include_in_schema=False)
+def admin_reset_password(
+    x_admin_seed_token: str | None = Header(default=None, alias="X-Admin-Seed-Token"),
+):
+    _check_seed_token(x_admin_seed_token)
+
+    # senha vem do ENV (não passa no curl)
+    new_pw = os.getenv("ADMIN_TEMP_PASSWORD", "").strip()
+    if not new_pw:
+        # sem senha configurada, endpoint "não existe"
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    from passlib.context import CryptContext
+    from sqlalchemy import text
+    from app.database import engine
+
+    ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hp = ctx.hash(new_pw)
+
+    q = text("UPDATE users SET hashed_password = :hp WHERE role = 'admin';")
+    with engine.begin() as conn:
+        res = conn.execute(q, {"hp": hp})
+        updated = getattr(res, "rowcount", None)
+
+    return {"ok": True, "updated": updated}
