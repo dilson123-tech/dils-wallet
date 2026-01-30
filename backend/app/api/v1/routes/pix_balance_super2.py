@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from pydantic import BaseModel, Field
 
 from app.database import get_db
@@ -22,11 +22,11 @@ from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 try:
     from pydantic import field_validator as _pyd_field_validator  # v2
     def _fv(*fields):
-        return _pyd_field_validator(*fields, mode="before")
+      return _pyd_field_validator(*fields, mode="before")
 except Exception:
     from pydantic import validator as _pyd_validator  # v1
     def _fv(*fields):
-        return _pyd_validator(*fields, pre=True, always=True)
+      return _pyd_validator(*fields, pre=True, always=True)
 
 
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
@@ -60,20 +60,20 @@ try:
     from pydantic import model_validator as _mv  # v2
 except Exception:
     def _mv(*args, **kwargs):
-        def deco(fn): return fn
-        return deco
+      def deco(fn): return fn
+      return deco
 
 
 class PixForecastResponse(BaseModel):
     # AUREA_MONEY_ROUND
     @_mv(mode="after")
     def _round_money(self):
-        for f in ("saldo_atual", "saldo_previsto"):
-            if hasattr(self, f):
-                v = getattr(self, f)
-                if isinstance(v, float):
-                    setattr(self, f, round(v, 2))
-        return self
+      for f in ("saldo_atual", "saldo_previsto"):
+          if hasattr(self, f):
+              v = getattr(self, f)
+              if isinstance(v, float):
+                  setattr(self, f, round(v, 2))
+      return self
 
     saldo_atual: float
     entradas_mes: float
@@ -92,54 +92,149 @@ class PixForecastResponse(BaseModel):
 
 def _sf(x: float) -> float:
     try:
-        v = float(x)
-        return v if math.isfinite(v) else 0.0
+      v = float(x)
+      return v if math.isfinite(v) else 0.0
     except Exception:
-        return 0.0
+      return 0.0
+
+
+# --- prod-first: usar pix_ledger quando existir; fallback: PixTransaction (dev) ---
+LEDGER_CREDIT_KINDS = ("credit", "recebimento", "entrada")
+LEDGER_DEBIT_KINDS  = ("debit", "envio", "saida")
+
+def _table_names(db: Session) -> set[str]:
+    try:
+      insp = inspect(db.get_bind())
+      return set(insp.get_table_names())
+    except Exception:
+      return set()
+
+def _pick_table(db: Session, candidates: tuple[str, ...]) -> Optional[str]:
+    names = _table_names(db)
+    for c in candidates:
+      if c in names:
+          return c
+    return None
+
+def _empty_7d() -> List[Dict[str, Any]]:
+    hoje = date.today()
+    out: List[Dict[str, Any]] = []
+    for i in range(6, -1, -1):
+      d = hoje - timedelta(days=i)
+      out.append({"dia": d.isoformat(), "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0})
+    return out
+
+def _balance_from_ledger(db: Session, tbl: str, user_id: int) -> tuple[float, float, List[Dict[str, Any]], int]:
+    # totais (rápido e barato)
+    row = db.execute(
+      text(f"""
+      SELECT
+        COALESCE(SUM(CASE WHEN kind IN ('credit','recebimento','entrada') THEN amount ELSE 0 END), 0) AS entradas,
+        COALESCE(SUM(CASE WHEN kind IN ('debit','envio','saida') THEN amount ELSE 0 END), 0) AS saidas,
+        COUNT(1) AS total
+      FROM {tbl}
+      WHERE user_id = :uid
+      """),
+      {"uid": user_id},
+    ).first() or (0.0, 0.0, 0)
+
+    entradas = _sf(row[0] or 0.0)
+    saidas = _sf(row[1] or 0.0)
+    total = int(row[2] or 0)
+
+    # últimos 7 dias (agrega em Python -> funciona em Postgres e SQLite)
+    hoje = date.today()
+    day_map: Dict[str, Dict[str, Any]] = {}
+    for i in range(6, -1, -1):
+      d = hoje - timedelta(days=i)
+      k = d.isoformat()
+      day_map[k] = {"dia": k, "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
+
+    rows = db.execute(
+      text(f"""
+      SELECT id, created_at, kind, amount
+      FROM {tbl}
+      WHERE user_id = :uid
+      ORDER BY id DESC
+      LIMIT 500
+      """),
+      {"uid": user_id},
+    ).mappings().all()
+
+    for r in rows:
+      dt = r.get("created_at")
+      if not dt:
+          dt = datetime.combine(hoje, datetime.min.time())
+      if isinstance(dt, str):
+          try:
+              dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+          except Exception:
+              dt = datetime.combine(hoje, datetime.min.time())
+      try:
+          dia = dt.date().isoformat()
+      except Exception:
+          continue
+      if dia not in day_map:
+          continue
+
+      kind = str(r.get("kind") or "").lower()
+      amt = _sf(r.get("amount") or 0.0)
+
+      if kind in LEDGER_CREDIT_KINDS:
+          day_map[dia]["entradas"] += amt
+      elif kind in LEDGER_DEBIT_KINDS:
+          day_map[dia]["saidas"] += amt
+
+    for k in list(day_map.keys()):
+      day_map[k]["entradas"] = _sf(day_map[k]["entradas"])
+      day_map[k]["saidas"] = _sf(day_map[k]["saidas"])
+      day_map[k]["saldo_dia"] = _sf(day_map[k]["entradas"] - day_map[k]["saidas"])
+
+    return entradas, saidas, list(day_map.values()), total
 
 
 def _ultimos_7d(db: Session, user_id: int) -> List[Dict[str, Any]]:
     hoje = date.today()
     day_map: Dict[str, Dict[str, Any]] = {}
     for i in range(6, -1, -1):
-        d = hoje - timedelta(days=i)
-        k = d.isoformat()
-        day_map[k] = {"dia": k, "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
+      d = hoje - timedelta(days=i)
+      k = d.isoformat()
+      day_map[k] = {"dia": k, "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
 
     rows = (
-        db.query(PixTransaction)
-        .filter(PixTransaction.user_id == user_id)
-        .order_by(PixTransaction.id.desc())
-        .limit(500)
-        .all()
+      db.query(PixTransaction)
+      .filter(PixTransaction.user_id == user_id)
+      .order_by(PixTransaction.id.desc())
+      .limit(500)
+      .all()
     )
 
     for tx in rows:
-        dt = getattr(tx, "timestamp", None) or getattr(tx, "created_at", None)
-        if not dt:
-            dt = datetime.combine(hoje, datetime.min.time())
-        try:
-            dia = dt.date().isoformat()
-        except Exception:
-            try:
-                dia = datetime.fromisoformat(str(dt)).date().isoformat()
-            except Exception:
-                continue
+      dt = getattr(tx, "timestamp", None) or getattr(tx, "created_at", None)
+      if not dt:
+          dt = datetime.combine(hoje, datetime.min.time())
+      try:
+          dia = dt.date().isoformat()
+      except Exception:
+          try:
+              dia = datetime.fromisoformat(str(dt)).date().isoformat()
+          except Exception:
+              continue
 
-        if dia not in day_map:
-            continue
+      if dia not in day_map:
+          continue
 
-        v = _sf(getattr(tx, "valor", 0.0) or 0.0)
-        tipo = str(getattr(tx, "tipo", "") or "").lower()
-        if tipo in ("recebimento", "entrada"):
-            day_map[dia]["entradas"] += v
-        elif tipo in ("envio", "saida"):
-            day_map[dia]["saidas"] += v
+      v = _sf(getattr(tx, "valor", 0.0) or 0.0)
+      tipo = str(getattr(tx, "tipo", "") or "").lower()
+      if tipo in ("recebimento", "entrada"):
+          day_map[dia]["entradas"] += v
+      elif tipo in ("envio", "saida"):
+          day_map[dia]["saidas"] += v
 
     for k in list(day_map.keys()):
-        day_map[k]["entradas"] = _sf(day_map[k]["entradas"])
-        day_map[k]["saidas"] = _sf(day_map[k]["saidas"])
-        day_map[k]["saldo_dia"] = _sf(day_map[k]["entradas"] - day_map[k]["saidas"])
+      day_map[k]["entradas"] = _sf(day_map[k]["entradas"])
+      day_map[k]["saidas"] = _sf(day_map[k]["saidas"])
+      day_map[k]["saldo_dia"] = _sf(day_map[k]["entradas"] - day_map[k]["saidas"])
 
     return list(day_map.values())
 
@@ -156,45 +251,61 @@ def get_pix_balance(
     Sem X-User-Email. Sem decode unverified. Sem USER_FIXO_ID.
     """
     user_id = int(current_user.id)
+    ledger_tbl = _pick_table(db, ("pix_ledger", "pix_ledger_main"))
 
-    entradas = (
-        db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
-        .filter(
-            PixTransaction.user_id == user_id,
-            PixTransaction.tipo.in_(["recebimento", "entrada"]),
-        )
-        .scalar()
-        or 0.0
-    )
+    debug_tx_total = None
+    try:
+        if ledger_tbl:
+            entradas, saidas, ult7, debug_tx_total = _balance_from_ledger(db, ledger_tbl, user_id)
+        else:
+            entradas = (
+                db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
+                .filter(
+                    PixTransaction.user_id == user_id,
+                    PixTransaction.tipo.in_(["recebimento", "entrada"]),
+                )
+                .scalar()
+                or 0.0
+            )
+            saidas = (
+                db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
+                .filter(
+                    PixTransaction.user_id == user_id,
+                    PixTransaction.tipo.in_(["envio", "saida"]),
+                )
+                .scalar()
+                or 0.0
+            )
+            ult7 = _ultimos_7d(db, user_id)
+            debug_tx_total = int(
+                db.query(func.count(PixTransaction.id)).filter(PixTransaction.user_id == user_id).scalar() or 0
+            )
 
-    saidas = (
-        db.query(func.coalesce(func.sum(PixTransaction.valor), 0.0))
-        .filter(
-            PixTransaction.user_id == user_id,
-            PixTransaction.tipo.in_(["envio", "saida"]),
-        )
-        .scalar()
-        or 0.0
-    )
-
-    saldo = _sf(float(entradas)) - _sf(float(saidas))
-    ult7 = _ultimos_7d(db, user_id)
+        saldo = _sf(float(entradas)) - _sf(float(saidas))
+        source = "real"
+    except Exception as e:
+        print("[AUREA PIX] balance error:", type(e).__name__, e)
+        entradas = 0.0
+        saidas = 0.0
+        saldo = 0.0
+        ult7 = _empty_7d()
+        source = "lab"
 
     payload = {
-        "saldo": saldo,
-        "saldo_atual": saldo,  # compat
-        "entradas_mes": _sf(entradas),
-        "saidas_mes": _sf(saidas),
-        "ultimos_7d": ult7,
-        "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
-        "source": "real",
+      "saldo": saldo,
+      "saldo_atual": saldo,  # compat
+      "entradas_mes": _sf(entradas),
+      "saidas_mes": _sf(saidas),
+      "ultimos_7d": ult7,
+      "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+      "source": "real",
     }
 
     if AUREA_DEBUG and request.query_params.get("debug") == "1":
-        payload["debug_user_id"] = user_id
-        payload["debug_tx_total"] = int(
-            db.query(func.count(PixTransaction.id)).filter(PixTransaction.user_id == user_id).scalar() or 0
-        )
+      payload["debug_user_id"] = user_id
+      payload["debug_tx_total"] = int(
+          db.query(func.count(PixTransaction.id)).filter(PixTransaction.user_id == user_id).scalar() or 0
+      )
 
     return payload
 
@@ -216,12 +327,12 @@ def get_pix_forecast(
     entradas = 0.0
     saidas = 0.0
     for t in rows:
-        valor = _sf(getattr(t, "valor", 0.0) or 0.0)
-        tipo = str(getattr(t, "tipo", "") or "").lower()
-        if tipo in ("recebimento", "entrada"):
-            entradas += valor
-        elif tipo in ("envio", "saida"):
-            saidas += valor
+      valor = _sf(getattr(t, "valor", 0.0) or 0.0)
+      tipo = str(getattr(t, "tipo", "") or "").lower()
+      if tipo in ("recebimento", "entrada"):
+          entradas += valor
+      elif tipo in ("envio", "saida"):
+          saidas += valor
 
     saldo_atual = _sf(entradas - saidas)
 
@@ -234,57 +345,57 @@ def get_pix_forecast(
     previsao_fim_mes = _sf(entradas - previsao_saidas_total)
 
     if previsao_fim_mes >= 0:
-        if entradas > 0 and previsao_fim_mes >= 0.2 * entradas:
-            nivel_risco = "ok"
-        else:
-            nivel_risco = "atencao"
+      if entradas > 0 and previsao_fim_mes >= 0.2 * entradas:
+          nivel_risco = "ok"
+      else:
+          nivel_risco = "atencao"
     else:
-        if previsao_fim_mes >= -200:
-            nivel_risco = "alerta"
-        else:
-            nivel_risco = "critico"
+      if previsao_fim_mes >= -200:
+          nivel_risco = "alerta"
+      else:
+          nivel_risco = "critico"
 
     if nivel_risco == "ok":
-        analise = "Projeção saudável até o fim do mês. Você está gastando abaixo do que entra via PIX."
-        recomendacoes = [
-            "Continue acompanhando entradas e saídas pelo painel.",
-            "Mantenha uma reserva mínima para imprevistos.",
-            "Se possível, direcione parte do saldo para uma reserva recorrente.",
-        ]
+      analise = "Projeção saudável até o fim do mês. Você está gastando abaixo do que entra via PIX."
+      recomendacoes = [
+          "Continue acompanhando entradas e saídas pelo painel.",
+          "Mantenha uma reserva mínima para imprevistos.",
+          "Se possível, direcione parte do saldo para uma reserva recorrente.",
+      ]
     elif nivel_risco == "atencao":
-        analise = "Você fecha positivo, mas apertado. O ritmo de gastos está perto do limite do que entra."
-        recomendacoes = [
-            "Evite gastos não essenciais nos próximos dias.",
-            "Revise as principais saídas do mês e reduza o que der.",
-            "Acompanhe a IA 3.0 para ajustar o ritmo de gastos.",
-        ]
+      analise = "Você fecha positivo, mas apertado. O ritmo de gastos está perto do limite do que entra."
+      recomendacoes = [
+          "Evite gastos não essenciais nos próximos dias.",
+          "Revise as principais saídas do mês e reduza o que der.",
+          "Acompanhe a IA 3.0 para ajustar o ritmo de gastos.",
+      ]
     elif nivel_risco == "alerta":
-        analise = "Cenário de alerta: mantendo o ritmo, você pode fechar no vermelho ou muito próximo de zero."
-        recomendacoes = [
-            "Reduza imediatamente gastos variáveis e de lazer.",
-            "Segure compras não essenciais.",
-            "Use a IA 3.0 para identificar onde cortar gastos.",
-        ]
+      analise = "Cenário de alerta: mantendo o ritmo, você pode fechar no vermelho ou muito próximo de zero."
+      recomendacoes = [
+          "Reduza imediatamente gastos variáveis e de lazer.",
+          "Segure compras não essenciais.",
+          "Use a IA 3.0 para identificar onde cortar gastos.",
+      ]
     else:
-        analise = "Cenário crítico: pelo ritmo atual, a projeção indica fechamento no negativo de forma mais pesada."
-        recomendacoes = [
-            "Corte tudo que não for essencial até recuperar o equilíbrio.",
-            "Avalie renegociar parcelamentos/dívidas, se houver.",
-            "Busque aumentar entradas (serviços extras, recebíveis).",
-        ]
+      analise = "Cenário crítico: pelo ritmo atual, a projeção indica fechamento no negativo de forma mais pesada."
+      recomendacoes = [
+          "Corte tudo que não for essencial até recuperar o equilíbrio.",
+          "Avalie renegociar parcelamentos/dívidas, se houver.",
+          "Busque aumentar entradas (serviços extras, recebíveis).",
+      ]
 
     payload = {
-        "saldo_atual": saldo_atual,
-        "entradas_mes": _sf(entradas),
-        "saidas_mes": _sf(saidas),
-        "previsao_fim_mes": previsao_fim_mes,
-        "nivel_risco": nivel_risco,
-        "analise": analise,
-        "recomendacoes": recomendacoes,
-        "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+      "saldo_atual": saldo_atual,
+      "entradas_mes": _sf(entradas),
+      "saidas_mes": _sf(saidas),
+      "previsao_fim_mes": previsao_fim_mes,
+      "nivel_risco": nivel_risco,
+      "analise": analise,
+      "recomendacoes": recomendacoes,
+      "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     }
 
     if AUREA_DEBUG and request.query_params.get("debug") == "1":
-        payload["debug_user_id"] = user_id
+      payload["debug_user_id"] = user_id
 
     return payload
