@@ -1,36 +1,50 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone, date
+from typing import Optional, List, Dict, Any, Tuple
 
-from fastapi import APIRouter, Depends, Query, Header, Request, HTTPException
+from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import DateTime, Date
+from sqlalchemy import text
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
-from app.utils.authz import require_customer
+from app.models import User
+from app.utils.authz import get_current_user
 from app.api.v1.schemas.errors import ErrorResponse, OPENAPI_422
 
 
 router = APIRouter(prefix="/api/v1/pix", tags=["PIX"])
 
+AUREA_DEBUG = os.getenv("AUREA_DEBUG", "0").strip().lower() in ("1","true","yes","on")
+
+def _as_dia(dt) -> str:
+    if dt is None:
+        return "sem-data"
+    if isinstance(dt, (datetime, date)):
+        try:
+            return dt.strftime("%Y-%m-%d")
+        except Exception:
+            return getattr(dt, "isoformat", lambda: "sem-data")()[:10]
+    if isinstance(dt, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(dt), tz=timezone.utc).date().isoformat()
+        except Exception:
+            return "sem-data"
+    s = str(dt).strip()
+    if not s:
+        return "sem-data"
+    try:
+        s2 = s.replace("Z", "+00:00")
+        return datetime.fromisoformat(s2).date().isoformat()
+    except Exception:
+        return "sem-data"
+
+
 
 def _sf(x: Any) -> float:
-    """safe-float: aceita Decimal/str/None, tolera '20%' e '0,2'."""
-    if x is None:
-        return 0.0
-    if isinstance(x, str):
-        s = x.strip().replace("%", "").replace(",", ".")
-        if not s:
-            return 0.0
-        try:
-            v = float(s)
-            return v if math.isfinite(v) else 0.0
-        except Exception:
-            return 0.0
     try:
         v = float(x)
         return v if math.isfinite(v) else 0.0
@@ -38,84 +52,116 @@ def _sf(x: Any) -> float:
         return 0.0
 
 
-def _to_day_key(val: Any) -> str:
-    """Converte datetime/date/str/int -> 'YYYY-MM-DD' (bem tolerante)."""
-    if val is None:
-        return "sem-data"
-
-    # datetime/date
+def _dialect(db: Session) -> str:
     try:
-        # datetime tem .date()
-        if hasattr(val, "date"):
-            d = val.date() if hasattr(val, "hour") else val  # date não tem hour
-            return d.isoformat()
+        return (db.get_bind().dialect.name or "").lower()
     except Exception:
-        pass
-
-    # epoch seconds (int/float)
-    if isinstance(val, (int, float)):
-        try:
-            return datetime.fromtimestamp(val, tz=timezone.utc).date().isoformat()
-        except Exception:
-            return "sem-data"
-
-    # string ISO
-    if isinstance(val, str):
-        s = val.strip()
-        if not s:
-            return "sem-data"
-        s2 = s.replace("Z", "+00:00")
-        try:
-            return datetime.fromisoformat(s2).date().isoformat()
-        except Exception:
-            # fallback: tenta usar só o prefixo YYYY-MM-DD
-            return s[:10] if len(s) >= 10 else s
-
-    return str(val)[:10]
+        return ""
 
 
-def _to_ts(val: Any) -> Optional[str]:
-    """Converte datetime/date/str/int -> ISO string (ou None)."""
-    if val is None:
+def _pick_table(db: Session, candidates: Tuple[str, ...]) -> Optional[str]:
+    d = _dialect(db)
+    try:
+        if d == "postgresql":
+            for t in candidates:
+                # to_regclass retorna NULL se não existe
+                r = db.execute(text("select to_regclass(:n)"), {"n": f"public.{t}"}).scalar()
+                if r:
+                    return t
+            return None
+
+        if d == "sqlite":
+            for t in candidates:
+                r = db.execute(
+                    text("select name from sqlite_master where type='table' and name=:n"),
+                    {"n": t},
+                ).scalar()
+                if r:
+                    return t
+            return None
+    except Exception:
         return None
 
-    try:
-        if hasattr(val, "isoformat"):
-            return val.isoformat()
-    except Exception:
-        pass
-
-    if isinstance(val, (int, float)):
-        try:
-            return datetime.fromtimestamp(val, tz=timezone.utc).isoformat()
-        except Exception:
-            return str(val)
-
-    if isinstance(val, str):
-        s = val.strip()
-        return s or None
-
-    return str(val)
-
-
-def _pick_date_col():
-    """
-    Escolhe uma coluna de data *de verdade* (Date/DateTime) se existir.
-    Evita pegar coluna 'timestamp' string e depois quebrar em strftime().
-    """
-    candidates = ["created_at", "created", "timestamp", "data", "dia", "date"]
-    cols = PixTransaction.__table__.columns
-    for name in candidates:
-        col = cols.get(name)
-        if col is None:
-            continue
-        # só aceita tipos Date/DateTime (ou subclasses)
-        if isinstance(col.type, (DateTime, Date)):
-            return getattr(PixTransaction, name)
+    # fallback genérico (não garante)
     return None
 
 
-DATE_COL = _pick_date_col()
+def _get_cols(db: Session, table: str) -> List[str]:
+    d = _dialect(db)
+    cols: List[str] = []
+    try:
+        if d == "postgresql":
+            rows = db.execute(
+                text(
+                    """
+                    select column_name
+                    from information_schema.columns
+                    where table_schema='public' and table_name=:t
+                    """
+                ),
+                {"t": table},
+            ).all()
+            cols = [r[0] for r in rows if r and r[0]]
+
+        elif d == "sqlite":
+            rows = db.execute(text(f"pragma table_info({table})")).all()
+            # pragma table_info: cid, name, type, notnull, dflt_value, pk
+            cols = [r[1] for r in rows if r and len(r) > 1]
+    except Exception:
+        cols = []
+    return cols
+
+
+def _pick_col(cols: List[str], candidates: Tuple[str, ...]) -> Optional[str]:
+    cset = set(cols)
+    for name in candidates:
+        if name in cset:
+            return name
+    return None
+
+
+def _order_clause(cols: List[str], dialect: str) -> str:
+    # tenta ordenar por data, senão por id
+    date_col = _pick_col(cols, ("created_at", "timestamp", "created", "date", "dia", "data"))
+    id_col = _pick_col(cols, ("id", "tx_id", "ledger_id"))
+    if date_col and id_col:
+        if dialect == "postgresql":
+            return f'"{date_col}" desc nulls last, "{id_col}" desc'
+        return f'"{date_col}" desc, "{id_col}" desc'
+    if date_col:
+        if dialect == "postgresql":
+            return f'"{date_col}" desc nulls last'
+        return f'"{date_col}" desc'
+    if id_col:
+        return f'"{id_col}" desc'
+    return "1"
+
+
+def _ledger_fetch(
+    db: Session,
+    table: str,
+    user_id: int,
+    limit: int,
+    offset: int,
+) -> Tuple[List[Dict[str, Any]], str]:
+    d = _dialect(db)
+    cols = _get_cols(db, table)
+
+    order_by = _order_clause(cols, d)
+
+    # tabela é escolhida de uma allowlist, então ok usar f-string aqui
+    sql = text(
+        f"""
+        select *
+        from "{table}"
+        where user_id = :uid
+        order by {order_by}
+        limit :lim offset :off
+        """
+    )
+
+    rows = db.execute(sql, {"uid": int(user_id), "lim": int(limit), "off": int(offset)}).mappings().all()
+    return [dict(r) for r in rows], d
 
 
 class PixHistoryDay(BaseModel):
@@ -132,15 +178,29 @@ class PixHistoryItem(BaseModel):
     taxa_percentual: Optional[float] = None
     taxa_valor: Optional[float] = None
     timestamp: Optional[str] = None
-    descricao: Optional[Any] = None
+    descricao: Optional[str] = None
     valor_liquido: Optional[float] = None
 
 
 class PixHistoryResponse(BaseModel):
-    dias: List[PixHistoryDay]
-    history: List[PixHistoryItem]
+    dias: List[PixHistoryDay] = []
+    history: List[PixHistoryItem] = []
+    # compat com front antigo
+    items: Optional[List[PixHistoryItem]] = None
+
     updated_at: str = Field(..., description="ISO8601 UTC")
     source: str = Field(default="real")
+
+
+def _dt_to_iso(dt: Any) -> Optional[str]:
+    if dt is None:
+        return None
+    try:
+        if hasattr(dt, "isoformat"):
+            return dt.isoformat()
+        return str(dt)
+    except Exception:
+        return str(dt)
 
 
 @router.get(
@@ -156,83 +216,144 @@ def get_pix_history(
     request: Request,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
     db: Session = Depends(get_db),
-    current_user=Depends(require_customer),
+    current_user: User = Depends(get_current_user),  # ✅ permite admin + customer
 ):
     user_id = getattr(current_user, "id", None)
     if user_id is None:
         raise HTTPException(status_code=401, detail="Token ausente.")
 
-    try:
-        q = db.query(PixTransaction).filter(PixTransaction.user_id == int(user_id))
-        if DATE_COL is not None:
-            q = q.order_by(DATE_COL.desc())
+    # 1) tenta PixTransaction (se existir dado)
+    q = db.query(PixTransaction).filter(PixTransaction.user_id == int(user_id))
+
+    # ordenação tolerante
+    cols_tx = set(PixTransaction.__table__.columns.keys())
+    date_col_name = None
+    for c in ("created_at", "timestamp", "created", "date", "dia", "data"):
+        if c in cols_tx:
+            date_col_name = c
+            break
+    if date_col_name:
+        q = q.order_by(getattr(PixTransaction, date_col_name).desc())
+    else:
+        q = q.order_by(PixTransaction.id.desc())
+
+    transactions = q.offset(offset).limit(limit).all()
+
+    dias_map: Dict[str, Dict[str, float]] = {}
+    history_items: List[Dict[str, Any]] = []
+
+    def _accumulate(dia: str, tipo: str, valor: float):
+        if dia not in dias_map:
+            dias_map[dia] = {"entradas": 0.0, "saidas": 0.0}
+        if tipo in ("recebimento", "entrada", "recebido"):
+            dias_map[dia]["entradas"] += valor
         else:
-            # fallback: tenta por id (mais previsível)
-            if "id" in PixTransaction.__table__.columns.keys():
-                q = q.order_by(PixTransaction.id.desc())
+            dias_map[dia]["saidas"] += valor
 
-        transactions = q.offset(offset).limit(limit).all()
-
-        dias_map: Dict[str, Dict[str, float]] = {}
-
+    if transactions:
         for t in transactions:
-            dt_val = None
-            if DATE_COL is not None:
-                dt_val = getattr(t, DATE_COL.key, None)
-            else:
-                dt_val = getattr(t, "dia", None) or getattr(t, "data", None) or getattr(t, "timestamp", None) or getattr(t, "created_at", None)
-
-            dia = _to_day_key(dt_val)
-            if dia not in dias_map:
-                dias_map[dia] = {"entradas": 0.0, "saidas": 0.0}
+            dt = None
+            if date_col_name:
+                dt = getattr(t, date_col_name, None)
+            dt = dt or getattr(t, "timestamp", None) or getattr(t, "created_at", None)
+            dia = dt.strftime("%Y-%m-%d") if dt and hasattr(dt, "strftime") else "sem-data"
 
             tipo = str(getattr(t, "tipo", "") or "").lower()
-            v = _sf(getattr(t, "valor", 0.0))
-
-            if tipo in ("recebimento", "entrada", "recebido"):
-                dias_map[dia]["entradas"] += v
-            else:
-                dias_map[dia]["saidas"] += v
-
-        dias_out = [
-            {"dia": k, "entradas": float(v["entradas"]), "saidas": float(v["saidas"])}
-            for k, v in dias_map.items()
-        ]
-
-        history_items: List[Dict[str, Any]] = []
-        for tx in transactions:
-            dt2 = None
-            if DATE_COL is not None:
-                dt2 = getattr(tx, DATE_COL.key, None)
-            else:
-                dt2 = getattr(tx, "timestamp", None) or getattr(tx, "created_at", None) or getattr(tx, "dia", None) or getattr(tx, "data", None)
+            valor = _sf(getattr(t, "valor", 0.0) or 0.0)
+            _accumulate(dia, tipo, valor)
 
             history_items.append(
                 {
-                    "user_id": getattr(tx, "user_id", None),
-                    "id": int(getattr(tx, "id", 0) or 0),
-                    "tipo": str(getattr(tx, "tipo", "") or ""),
-                    "valor": _sf(getattr(tx, "valor", 0.0)),
-                    "taxa_percentual": _sf(getattr(tx, "taxa_percentual", None)) if hasattr(tx, "taxa_percentual") else None,
-                    "taxa_valor": _sf(getattr(tx, "taxa_valor", None)) if hasattr(tx, "taxa_valor") else None,
-                    "timestamp": _to_ts(dt2),
-                    "descricao": getattr(tx, "descricao", None),
-                    "valor_liquido": _sf(getattr(tx, "valor_liquido", getattr(tx, "valor", 0.0))) if hasattr(tx, "valor_liquido") else None,
+                    "user_id": getattr(t, "user_id", None),
+                    "id": int(getattr(t, "id", 0) or 0),
+                    "tipo": str(getattr(t, "tipo", "") or ""),
+                    "valor": valor,
+                    "taxa_percentual": float(getattr(t, "taxa_percentual", 0.0) or 0.0)
+                    if hasattr(t, "taxa_percentual")
+                    else None,
+                    "taxa_valor": float(getattr(t, "taxa_valor", 0.0) or 0.0)
+                    if hasattr(t, "taxa_valor")
+                    else None,
+                    "timestamp": _dt_to_iso(dt),
+                    "descricao": getattr(t, "descricao", None),
+                    "valor_liquido": float(getattr(t, "valor_liquido", getattr(t, "valor", 0.0)) or 0.0)
+                    if hasattr(t, "valor_liquido")
+                    else None,
                 }
             )
 
-        return {
-            "dias": dias_out,
-            "history": history_items,
-            "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "source": "real",
-        }
+        source = "real"
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        rid = request.headers.get("x-request-id") or request.headers.get("X-Request-Id") or ""
-        print(f"[PIX_HISTORY] error rid={rid} user_id={user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    else:
+        # 2) fallback: ledger (pix_ledger / pix_ledger_main)
+        ledger_tbl = _pick_table(db, ("pix_ledger", "pix_ledger_main"))
+        if ledger_tbl:
+            rows, d = _ledger_fetch(db, ledger_tbl, int(user_id), limit, offset)
+            cols = _get_cols(db, ledger_tbl)
+
+            id_col = _pick_col(cols, ("id", "tx_id", "ledger_id"))
+            tipo_col = _pick_col(cols, ("tipo", "kind", "type", "direction"))
+            valor_col = _pick_col(cols, ("amount", "valor", "value", "valor_bruto"))
+            fee_val_col = _pick_col(cols, ("fee_amount", "taxa_valor", "fee", "fee_value"))
+            fee_pct_col = _pick_col(cols, ("fee_percent", "taxa_percentual", "fee_pct", "fee_percentage"))
+            desc_col = _pick_col(cols, ("descricao", "description", "memo", "note"))
+            ts_col = _pick_col(cols, ("created_at", "timestamp", "created", "date", "dia", "data"))
+
+            for i, r in enumerate(rows):
+                dt = r.get(ts_col) if ts_col else None
+                dia = "sem-data"
+                try:
+                    if dt and hasattr(dt, "strftime"):
+                        dia = dt.strftime("%Y-%m-%d")
+                    elif dt:
+                        dia = str(dt)[:10]
+                except Exception:
+                    dia = "sem-data"
+
+                raw_tipo = str(r.get(tipo_col, "") or "").lower() if tipo_col else ""
+                raw_valor = _sf(r.get(valor_col, 0.0) if valor_col else 0.0)
+                # se não tem tipo, tenta inferir pelo sinal
+                if not raw_tipo:
+                    raw_tipo = "entrada" if raw_valor >= 0 else "saida"
+
+                valor_abs = abs(raw_valor)
+                _accumulate(dia, raw_tipo, valor_abs)
+
+                fee_val = _sf(r.get(fee_val_col, 0.0)) if fee_val_col else None
+                fee_pct = _sf(r.get(fee_pct_col, 0.0)) if fee_pct_col else None
+                valor_liq = None
+                if fee_val is not None:
+                    valor_liq = max(0.0, valor_abs - fee_val)
+
+                history_items.append(
+                    {
+                        "user_id": int(user_id),
+                        "id": int(r.get(id_col) or (i + 1)) if id_col else (i + 1),
+                        "tipo": raw_tipo,
+                        "valor": valor_abs,
+                        "taxa_percentual": fee_pct if fee_pct_col else None,
+                        "taxa_valor": fee_val if fee_val_col else None,
+                        "timestamp": _dt_to_iso(dt),
+                        "descricao": r.get(desc_col) if desc_col else None,
+                        "valor_liquido": valor_liq,
+                    }
+                )
+
+            source = "real"
+        else:
+            source = "lab"
+
+    dias_out = [
+        {"dia": k, "entradas": _sf(v["entradas"]), "saidas": _sf(v["saidas"])}
+        for k, v in dias_map.items()
+    ]
+
+    # ✅ sempre retorna listas (nunca null)
+    return {
+        "dias": (dias_out or []),
+        "history": (history_items or []),
+        "items": (history_items or []),  # compat
+        "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source": "real",
+    }
