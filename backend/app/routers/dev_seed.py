@@ -3,6 +3,11 @@ import secrets
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
+import re
+from fastapi import APIRouter, Request, HTTPException
+from sqlalchemy import text
+from app.database import engine
+
 router = APIRouter(prefix="/dev-seed", tags=["dev-seed"])
 
 class SeedResult(BaseModel):
@@ -137,3 +142,83 @@ def admin_reset_password(
         updated = getattr(res, "rowcount", None)
 
     return {"ok": True, "updated": updated}
+
+def _env_pick(*keys: str) -> str:
+    for k in keys:
+        v = os.getenv(k)
+        if v is not None:
+            v = v.strip()
+            if v:
+                return v
+    return ""
+
+@router.post("/admin-reset-passwd")
+def admin_reset_passwd(request: Request):
+    """
+    Reseta a senha do admin usando uma ENV (não retorna senha).
+    Proteção: header X-Admin-Seed-Token deve bater com ADMIN_SEED_TOKEN (ou AUREA_DEV_SECRET).
+    """
+
+    expected = _env_pick("ADMIN_SEED_TOKEN", "admin_seed_token", "AUREA_DEV_SECRET", "aurea_dev_secret")
+    if not expected:
+        # se não tem seed token configurado, a rota "não existe"
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    got = (request.headers.get("X-Admin-Seed-Token") or "").strip()
+    if got != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    new_pass = _env_pick("ADMIN_TEMP_PASSWORD", "admin_temp_password", "adm_temp_password", "ADM_TEMP_PASSWORD")
+    if not new_pass:
+        raise HTTPException(status_code=400, detail="ADMIN_TEMP_PASSWORD missing")
+
+    admin_email = _env_pick("ADMIN_EMAIL", "admin_email") or "admin@aurea.local"
+
+    # hashing compat (tenta funções do projeto; fallback passlib)
+    try:
+        from app.utils.security import get_password_hash  # type: ignore
+        hp = get_password_hash(new_pass)
+    except Exception:
+        try:
+            from app.security import get_password_hash  # type: ignore
+            hp = get_password_hash(new_pass)
+        except Exception:
+            from passlib.context import CryptContext
+            hp = CryptContext(schemes=["bcrypt"], deprecated="auto").hash(new_pass)
+
+    table = _env_pick("USER_TABLE", "user_table") or "user_main"
+    if not re.match(r"^[A-Za-z0-9_]+$", table):
+        raise HTTPException(status_code=400, detail="Invalid USER_TABLE")
+
+    cols_pwd = ["hashed_password", "password_hash", "password"]
+    cols_email = ["email", "username"]
+
+    used = None
+    updated = 0
+    last_err = None
+
+    with engine.begin() as conn:
+        for c_email in cols_email:
+            for c_pwd in cols_pwd:
+                if not re.match(r"^[A-Za-z0-9_]+$", c_email) or not re.match(r"^[A-Za-z0-9_]+$", c_pwd):
+                    continue
+                try:
+                    r = conn.execute(
+                        text(f"UPDATE {table} SET {c_pwd} = :hp WHERE {c_email} = :email"),
+                        {"hp": hp, "email": admin_email},
+                    )
+                    if getattr(r, "rowcount", 0) and r.rowcount > 0:
+                        used = f"{table}.{c_pwd} WHERE {c_email}"
+                        updated = int(r.rowcount)
+                        break
+                except Exception as e:
+                    last_err = e
+                    continue
+            if used:
+                break
+
+    if not used:
+        print("[dev-seed] admin-reset-passwd failed:", repr(last_err))
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+    return {"ok": True, "admin_email": admin_email, "updated": updated, "used": used}
