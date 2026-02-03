@@ -5,6 +5,8 @@ import logging
 import uuid
 import time
 
+from app.api.v1.register_auth import register_auth
+
 def _allow_dev_seed() -> bool:
     return os.getenv("ALLOW_DEV_SEED", "0").strip().lower() in ("1","true","yes","on")
 
@@ -27,6 +29,8 @@ from app.api.v1.routes import pix_forecast_get                             # mó
 
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
 
+
+register_auth(app)
 
 # --- Request-ID (produção): correlação de logs por chamada ---
 logger = logging.getLogger("aurea.request")
