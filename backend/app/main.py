@@ -4,6 +4,10 @@ from fastapi import Request
 import logging
 import uuid
 import time
+
+def _allow_dev_seed() -> bool:
+    return os.getenv("ALLOW_DEV_SEED", "0").strip().lower() in ("1","true","yes","on")
+
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -179,8 +183,8 @@ from app.api.v1.routes import auth as auth_router
 # dev-seed (DEV only): some do OpenAPI quando desligado
 if os.getenv("ALLOW_DEV_SEED", "0").strip().lower() in ("1","true","yes","on"):
     from app.routers.dev_seed import router as dev_seed_router
+if _allow_dev_seed():
     app.include_router(dev_seed_router, prefix="/api/v1")
-
 app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["auth"])
 
 # --- DB bootstrap (idempotente): garante tabelas antes de atender requests ---
