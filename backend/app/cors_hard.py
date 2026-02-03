@@ -19,6 +19,10 @@ class _HardCORS(BaseHTTPMiddleware):
         return resp
 
 def init(app):
+    import os
+    if os.getenv("CORS_CATCHALL_OPTIONS","0").strip().lower() not in ("1","true","yes","on"):
+        return
+
     # aplica o middleware
     app.add_middleware(_HardCORS)
 
