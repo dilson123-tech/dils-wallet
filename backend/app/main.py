@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request, Response
-from app.routers.dev_seed import router as dev_seed_router
 from datetime import datetime
 from fastapi import Request
 import logging
@@ -177,7 +176,11 @@ async def ia_headline_lab_root(payload: IAHeadlineLabPayload, x_user_email: str 
     )
 
 from app.api.v1.routes import auth as auth_router
-app.include_router(dev_seed_router, prefix="/api/v1")
+# dev-seed (DEV only): some do OpenAPI quando desligado
+if os.getenv("ALLOW_DEV_SEED", "0").strip().lower() in ("1","true","yes","on"):
+    from app.routers.dev_seed import router as dev_seed_router
+    app.include_router(dev_seed_router, prefix="/api/v1")
+
 app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["auth"])
 
 # --- DB bootstrap (idempotente): garante tabelas antes de atender requests ---

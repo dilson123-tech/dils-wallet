@@ -10,6 +10,15 @@ from app.database import engine
 
 router = APIRouter(prefix="/dev-seed", tags=["dev-seed"])
 
+
+def _allow_dev_seed() -> bool:
+    return os.getenv("ALLOW_DEV_SEED", "0").strip().lower() in ("1","true","yes","on")
+
+def _dev_seed_guard():
+    if not _allow_dev_seed():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 class SeedResult(BaseModel):
     ok: bool
     user_seed: str | None = None
@@ -25,6 +34,7 @@ def _check_seed_token(x_admin_seed_token: str | None) -> None:
 
 @router.get("/ping")
 def ping():
+    _dev_seed_guard()
     return {"ok": True}
 
 @router.post("/seed", response_model=SeedResult, include_in_schema=False)
@@ -154,6 +164,7 @@ def _env_pick(*keys: str) -> str:
 
 @router.post("/admin-reset-passwd")
 def admin_reset_passwd(request: Request):
+    _dev_seed_guard()
     """
     Reseta a senha do admin usando uma ENV (não retorna senha).
     Proteção: header X-Admin-Seed-Token deve bater com ADMIN_SEED_TOKEN (ou AUREA_DEV_SECRET).
@@ -186,7 +197,7 @@ def admin_reset_passwd(request: Request):
             from passlib.context import CryptContext
             hp = CryptContext(schemes=["bcrypt"], deprecated="auto").hash(new_pass)
 
-    table = _env_pick("USER_TABLE", "user_table") or "user_main"
+    table = _env_pick("USER_TABLE", "user_table") or "users"
     if not re.match(r"^[A-Za-z0-9_]+$", table):
         raise HTTPException(status_code=400, detail="Invalid USER_TABLE")
 
