@@ -30,6 +30,7 @@ from jose import jwt
 from jose.exceptions import JWTError
 from app.database import get_db
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app import models
 import os
 
@@ -57,7 +58,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
 
-    user = db.query(models.User).filter(models.User.username == username).first()
+    user = db.query(models.User).filter(or_(models.User.username == username, models.User.email == username)).first()
     if user is None:
         raise credentials_exception
 
