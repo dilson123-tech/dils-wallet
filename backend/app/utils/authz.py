@@ -1,4 +1,46 @@
 from __future__ import annotations
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token inválido ou expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        if not sub:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # aceita sub como email OU username (e id se vier número)
+    conds = []
+    if hasattr(User, "email"):
+        conds.append(User.email == sub)
+    if hasattr(User, "username"):
+        conds.append(User.username == sub)
+    try:
+        sub_id = int(sub)
+        if hasattr(User, "id"):
+            conds.append(User.id == sub_id)
+    except Exception:
+        pass
+
+    if not conds:
+        raise credentials_exception
+
+    user = db.query(User).filter(or_(*conds)).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY", "change-me-aura")
+ALGORITHM = "HS256"
 
 import os
 import logging
@@ -9,6 +51,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from jose.exceptions import JWTError
 
 from app.database import get_db
 from app.models import User
