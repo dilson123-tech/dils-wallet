@@ -30,6 +30,12 @@ from app.api.v1.routes import pix_forecast_get                             # mó
 app = FastAPI(title="Dils Wallet API", version="0.3.0")
 
 
+
+@app.get("/")
+def root():
+    return {"ok": True, "service": "dils-wallet"}
+
+
 register_auth(app)
 
 # --- Request-ID (produção): correlação de logs por chamada ---
