@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -13,6 +13,8 @@ from app.utils.security import (
     hash_refresh_token,
     refresh_token_expiry_dt,
 )
+
+from app.utils.rate_limit import rl_check, rl_client_ip
 
 # AUREA_DEBUG: logs sensíveis só com AUREA_DEBUG=1
 import os
@@ -37,8 +39,22 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     ident = (payload.username or "").strip()
+    # --- Rate limit (anti brute-force) ---
+    rl_on = os.getenv('LOGIN_RL_ENABLED', '1').strip().lower() not in ('0','false','no','off')
+    if rl_on:
+        ip = rl_client_ip(request)
+        win = int(os.getenv('LOGIN_RL_WINDOW_SEC', '60'))
+        max_ip = int(os.getenv('LOGIN_RL_MAX_PER_IP', '10'))
+        max_ident = int(os.getenv('LOGIN_RL_MAX_PER_IDENT', '5'))
+        ok_ip, ra_ip = rl_check(f'login:ip:{ip}', max_ip, win)
+        ok_id, ra_id = (True, 0)
+        if ident:
+            ok_id, ra_id = rl_check(f'login:ident:{ip}:{ident.lower()}', max_ident, win)
+        if (not ok_ip) or (not ok_id):
+            ra = str(max(ra_ip, ra_id))
+            raise HTTPException(status_code=429, detail='Muitas tentativas. Aguarde e tente novamente.', headers={'Retry-After': ra})
     _dbg('[AUTH LOGIN] ident=', repr(ident), 'pwd_len=', len(payload.password))
 
     user = None
