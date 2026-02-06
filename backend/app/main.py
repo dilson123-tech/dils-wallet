@@ -94,23 +94,22 @@ app.include_router(admin_dbfix.router, prefix="/admin")
 
 from app.api.v1.ai import chat_lab_router
 app.include_router(chat_lab_router, prefix="/api/v1/ai")
-# --- CORS ---
-_default_dev = [
-    "http://localhost:5173", "http://127.0.0.1:5173",
-    "http://localhost:5174", "http://127.0.0.1:5174",
-    "http://localhost:8080", "http://127.0.0.1:8080",
-]
-origins = [o for o in os.getenv("CORS_ORIGINS", "").split(",") if o] or _default_dev
+# --- CORS (hardened) ---
+cors_env = os.getenv("CORS_ORIGINS", "").strip()
+origins = [o.strip() for o in cors_env.split(",") if o.strip()]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1|192\.168\.1\.\d{1,3}):517[0-9]$",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+if origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["retry-after"],
+        max_age=600,
+    )
+else:
+    print("[CORS] disabled (CORS_ORIGINS vazio)")
 
 # --- Healthcheck ---
 @app.get("/healthz")
