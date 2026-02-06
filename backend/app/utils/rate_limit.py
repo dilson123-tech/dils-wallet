@@ -29,6 +29,28 @@ def rl_check(key: str, max_hits: int, window_sec: int) -> Tuple[bool, int]:
         q.append(now)
         return True, 0
 
+
+def rl_peek(key: str, max_hits: int, window_sec: int) -> Tuple[bool, int]:
+    """Checa se está bloqueado SEM consumir tentativa."""
+    now = time.monotonic()
+    if max_hits <= 0 or window_sec <= 0:
+        return True, 0
+
+    with _LOCK:
+        q = _BUCKETS.get(key)
+        if q is None:
+            return True, 0
+
+        cutoff = now - window_sec
+        while q and q[0] <= cutoff:
+            q.popleft()
+
+        if len(q) >= max_hits:
+            retry_after = int(max(1, window_sec - (now - q[0])))
+            return False, retry_after
+
+        return True, 0
+
 def rl_client_ip(request) -> str:
     # Railway/proxy normalmente manda X-Forwarded-For
     try:

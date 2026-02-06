@@ -14,7 +14,7 @@ from app.utils.security import (
     refresh_token_expiry_dt,
 )
 
-from app.utils.rate_limit import rl_check, rl_client_ip
+from app.utils.rate_limit import rl_check, rl_peek, rl_client_ip
 
 # AUREA_DEBUG: logs sensíveis só com AUREA_DEBUG=1
 import os
@@ -43,18 +43,31 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     ident = (payload.username or "").strip()
     # --- Rate limit (anti brute-force) ---
     rl_on = os.getenv('LOGIN_RL_ENABLED', '1').strip().lower() not in ('0','false','no','off')
+    ip = rl_client_ip(request)
+    win = int(os.getenv('LOGIN_RL_WINDOW_SEC', '60'))
+    max_ip = int(os.getenv('LOGIN_RL_MAX_PER_IP', '10'))
+    max_ident = int(os.getenv('LOGIN_RL_MAX_PER_IDENT', '5'))
     if rl_on:
-        ip = rl_client_ip(request)
-        win = int(os.getenv('LOGIN_RL_WINDOW_SEC', '60'))
-        max_ip = int(os.getenv('LOGIN_RL_MAX_PER_IP', '10'))
-        max_ident = int(os.getenv('LOGIN_RL_MAX_PER_IDENT', '5'))
-        ok_ip, ra_ip = rl_check(f'login:ip:{ip}', max_ip, win)
+        # Pre-check: se já estourou, bloqueia (SEM consumir tentativa)
+        ok_ip, ra_ip = rl_peek(f'login:ip:{ip}', max_ip, win)
         ok_id, ra_id = (True, 0)
         if ident:
-            ok_id, ra_id = rl_check(f'login:ident:{ip}:{ident.lower()}', max_ident, win)
+            ok_id, ra_id = rl_peek(f'login:ident:{ip}:{ident.lower()}', max_ident, win)
         if (not ok_ip) or (not ok_id):
             ra = str(max(ra_ip, ra_id))
             raise HTTPException(status_code=429, detail='Muitas tentativas. Aguarde e tente novamente.', headers={'Retry-After': ra})
+
+    def _rl_fail():
+        # Só consome tentativa quando a autenticação falha (401)
+        if rl_on:
+            ok_ip2, ra_ip2 = rl_check(f'login:ip:{ip}', max_ip, win)
+            ok_id2, ra_id2 = (True, 0)
+            if ident:
+                ok_id2, ra_id2 = rl_check(f'login:ident:{ip}:{ident.lower()}', max_ident, win)
+            if (not ok_ip2) or (not ok_id2):
+                ra = str(max(ra_ip2, ra_id2))
+                raise HTTPException(status_code=429, detail='Muitas tentativas. Aguarde e tente novamente.', headers={'Retry-After': ra})
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Credenciais inválidas')
     _dbg('[AUTH LOGIN] ident=', repr(ident), 'pwd_len=', len(payload.password))
 
     user = None
@@ -67,20 +80,14 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         user = db.query(User).filter(User.username == ident).first()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas",
-        )
+        _rl_fail()
 
     # hash no campo padrão do projeto
     pwd_hash = getattr(user, "hashed_password", None)
     _dbg('[AUTH LOGIN] user.id=', getattr(user,'id',None), 'username=', getattr(user,'username',None), 'email=', getattr(user,'email',None))
 
     if (not pwd_hash) or (not verify_password(payload.password, pwd_hash)):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas",
-        )
+        _rl_fail()
 
     # sub do token: prioriza username, senão email
     sub = (getattr(user, "username", None) or getattr(user, "email", None) or ident)
