@@ -27,10 +27,21 @@ from app.api.v1.routes import pix_history_get                    # módulo com .
 from app.api.v1.routes import pix_7d
 from app.api.v1.routes import pix_forecast_get                             # módulo com .router
 
-app = FastAPI(title="Dils Wallet API", version="0.3.0")
 
 
+# --- Docs/OpenAPI gate (PROD hardening) ---
+def _env_bool(name: str, default: bool) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    return v.strip().lower() in {"1","true","yes","y","on"}
 
+DOCS_PUBLIC = _env_bool("DOCS_PUBLIC", True)
+app = FastAPI(title="Dils Wallet API", version="0.3.0",
+    docs_url="/docs" if DOCS_PUBLIC else None,
+    redoc_url="/redoc" if DOCS_PUBLIC else None,
+    openapi_url="/openapi.json" if DOCS_PUBLIC else None,
+)
 @app.get("/")
 def root():
     return {"ok": True, "service": "dils-wallet"}
