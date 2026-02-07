@@ -134,12 +134,45 @@ export function withAuth(init: RequestInit = {}): RequestInit {
   return { ...init, headers };
 }
 
+
+export class ApiError extends Error {
+  status: number;
+  retryAfter?: number;
+  bodyText?: string;
+
+  constructor(message: string, status: number, retryAfter?: number, bodyText?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.retryAfter = retryAfter;
+    this.bodyText = bodyText;
+  }
+}
+
+function _retryAfterSeconds(r: Response): number | undefined {
+  const v = r.headers.get("retry-after");
+  if (!v) return undefined;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+async function _readText(r: Response): Promise<string> {
+  try { return await r.text(); } catch { return ""; }
+}
+
 // -----------------------------
 // GET genérico
 // -----------------------------
 export async function apiGet<T>(path: string, init: RequestInit = {}): Promise<T> {
   const r = await fetch(`${API_BASE}${path}`, withAuth(init));
-  if (!r.ok) { if (r.status === 401) clearTokenKeys(); throw new Error(`GET ${path} -> ${r.status}`); }
+
+  if (!r.ok) {
+    const retryAfter = _retryAfterSeconds(r);
+    const txt = await _readText(r);
+    if (r.status === 401) clearTokenKeys();
+    throw new ApiError(`GET ${path} -> ${r.status}`, r.status, retryAfter, txt.slice(0, 500));
+  }
+
   return r.json() as Promise<T>;
 }
 
@@ -161,7 +194,13 @@ export async function apiPost<TReq, TRes>(
     body: JSON.stringify(body),
   }));
 
-  if (!r.ok) { if (r.status === 401) clearTokenKeys(); throw new Error(`POST ${path} -> ${r.status}`); }
+  if (!r.ok) {
+    const retryAfter = _retryAfterSeconds(r);
+    const txt = await _readText(r);
+    if (r.status === 401) clearTokenKeys();
+    throw new ApiError(`POST ${path} -> ${r.status}`, r.status, retryAfter, txt.slice(0, 500));
+  }
+
   return r.json() as Promise<TRes>;
 }
 

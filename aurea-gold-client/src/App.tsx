@@ -6,12 +6,11 @@ import AureaIAPanel from "./super2/AureaIAPanel";
 import AureaPagamentosPanel from "./pagamentos/AureaPagamentosPanel";
 import AureaCreditoIAPanel from "./credito/AureaCreditoIAPanel";
 import PlanosPremium from "./super2-lab/PlanosPremium";
-import {
-  login as loginRequest,
-  saveTokens,
+import {  saveTokens,
   getAccessToken,
   clearTokens,
 } from "./auth/authClient";
+import { login as loginCore } from "./app/lib/auth";
 // import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
 const isPlanosLab =
@@ -167,6 +166,7 @@ function AureaAppWithAuth() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginCooldown, setLoginCooldown] = useState<number>(0);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -174,18 +174,44 @@ function AureaAppWithAuth() {
     setAuthChecking(false);
   }, []);
 
-  async function handleLoginSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (loginCooldown <= 0) return;
+    const t = setInterval(() => {
+      setLoginCooldown((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [loginCooldown]);
+
+
+    async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoginError(null);
+
+    if (loginCooldown > 0) {
+      setLoginError(`Aguarde ${loginCooldown}s antes de tentar de novo.`);
+      return;
+    }
+
     setLoginLoading(true);
 
     try {
-      const tokens = await loginRequest({
-        username: loginUsername.trim(),
-        password: loginPassword,
-      });
+      const r = await loginCore(loginUsername.trim(), loginPassword);
 
-      saveTokens((tokens as any).access_token ?? (tokens as any).token ?? JSON.stringify(tokens));
+      if (!r.ok) {
+        if (typeof (r as any).retryAfter === "number" && (r as any).retryAfter > 0) {
+          setLoginCooldown((r as any).retryAfter);
+        }
+        setLoginError((r as any).message || "Falha ao autenticar. Tente novamente.");
+        return;
+      }
+
+      if (!(r as any).token) {
+        setLoginError("Login OK, mas token não veio.");
+        return;
+      }
+
+      setLoginCooldown(0);
+      saveTokens((r as any).token);
       setIsAuthenticated(true);
     } catch (err: any) {
       setLoginError(err?.message || "Falha ao autenticar. Tente novamente.");
@@ -268,10 +294,10 @@ function AureaAppWithAuth() {
 
             <button
               type="submit"
-              disabled={loginLoading || !loginUsername || !loginPassword}
+              disabled={loginLoading || loginCooldown > 0 || !loginUsername || !loginPassword}
               className="w-full rounded-full border border-amber-500/80 bg-amber-500/20 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {loginLoading ? "Entrando..." : "Entrar na Aurea Gold"}
+              {loginLoading ? "Entrando..." : loginCooldown > 0 ? `Aguarde ${loginCooldown}s` : "Entrar na Aurea Gold"}
             </button>
 
             <p className="text-[10px] text-zinc-500 leading-relaxed">

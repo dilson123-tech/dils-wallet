@@ -1,51 +1,61 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { login } from "../lib/auth";
 
 export default function LoginModal() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState<number>(0);
 
-  const apiBase = import.meta.env.VITE_API_URL;
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => {
+      setCooldown((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+
+    if (cooldown > 0) {
+      setErr(`Aguarde ${cooldown}s antes de tentar de novo.`);
+      return;
+    }
+
     setLoading(true);
-    console.log("[AUREA] tentando login em", apiBase);
 
     try {
-      const res = await fetch(`${apiBase}/api/v1/auth/login`, {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      const r = await login(username, password);
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.warn("[AUREA] falha ao autenticar", res.status, txt);
-        setErr(res.status === 401 ? "Credenciais inválidas." : "Falha no login");
-        setLoading(false);
+      if (!r.ok) {
+        if (typeof r.retryAfter === "number" && r.retryAfter > 0) {
+          setCooldown(r.retryAfter);
+        }
+        setErr(r.message || "Falha no login");
         return;
       }
 
-      const data = await res.json().catch(() => ({}));
-      console.log("[AUREA] login OK", data);
-
-      if (data.access_token || data.token) {
-        localStorage.setItem("access_token", data.access_token || data.token);
+      if (r.token) {
+        // chave oficial (CORE procura essa primeiro)
+        localStorage.setItem("aurea.access_token", r.token);
+        // compat legado
+        localStorage.setItem("access_token", r.token);
       }
 
       alert("Login bem-sucedido 🚀");
       setErr(null);
-    } catch (err) {
-      console.error("[AUREA] erro de conexão", err);
+    } catch (e) {
+      console.error("[AUREA] erro de login", e);
       setErr("Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }
   }
+
+  const disabled = loading || cooldown > 0;
 
   return (
     <div>
@@ -70,8 +80,8 @@ export default function LoginModal() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <button type="submit" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
+        <button type="submit" disabled={disabled}>
+          {loading ? "Entrando..." : cooldown > 0 ? `Aguarde ${cooldown}s` : "Entrar"}
         </button>
       </form>
     </div>
