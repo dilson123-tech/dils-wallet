@@ -104,7 +104,7 @@ if origins:
         allow_origins=origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["*"],  # origins travadas via CORS_ORIGINS
         expose_headers=["retry-after"],
         max_age=600,
     )
