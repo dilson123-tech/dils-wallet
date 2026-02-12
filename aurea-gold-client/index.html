@@ -11,12 +11,12 @@
           https://dils-wallet-production.up.railway.app
           http://localhost:8080
           http://127.0.0.1:8080
-          http://localhost:8000
-          http://127.0.0.1:8000
+          http://localhost:8090
+          http://127.0.0.1:8090
           ws://localhost:8080
           ws://127.0.0.1:8080
-          ws://localhost:8000
-          ws://127.0.0.1:8000;
+          ws://localhost:8090
+          ws://127.0.0.1:8090;
         script-src 'self' 'unsafe-inline' 'unsafe-eval';
         style-src 'self' 'unsafe-inline';
         img-src 'self' data:;
@@ -31,9 +31,39 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  </head>
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+<!-- AUREA_HASH_TOKEN_BOOT -->
+<script>
+(() => {
+  try {
+    const h = location.hash || "";
+    const m = h.match(/(?:^|[#&])at=([^&]+)/);
+    if (!m) return;
+
+    const at = decodeURIComponent(m[1] || "");
+    const looksJwt = at.split(".").length === 3 && at.length > 50;
+    if (!looksJwt) return;
+
+    const pairs = [
+      ["aurea.access_token", at],
+      ["aurea_access_token", at],
+      ["aurea.jwt", at],
+      ["aurea_jwt", at],
+      ["authToken", at],
+    ];
+    for (const [k,v] of pairs) try { localStorage.setItem(k, v); } catch {}
+
+    history.replaceState(null, "", location.pathname + location.search);
+    console.log("[boot] token set from #at");
+  } catch (e) {
+    console.warn("[boot] token hash parse failed", e);
+  }
+})();
+</script>
+
+</head>
   <body class="aurea-mobile">
-  <div class="ag-header" style="max-width:1100px;margin:28px auto 0;padding:0 16px;"><div class="ag-badge">AUREA GOLD • PREMIUM</div><span class="small">v1.0 beta</span></div>
+
     <div id="root"></div>
 
     <!-- Vite entrypoints -->

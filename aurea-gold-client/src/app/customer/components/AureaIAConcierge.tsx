@@ -27,7 +27,7 @@ export default function AureaIAConcierge() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prompt, messages: msgs }),
-            credentials: "include"
+            credentials: "omit"
           });
           if (res.ok) break;
         } catch { /* tenta o próximo */ }

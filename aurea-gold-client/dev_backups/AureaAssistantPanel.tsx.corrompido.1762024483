@@ -1,0 +1,139 @@
+import React, { useEffect, useRef, useState } from "react";
+import { playClick, playError, playSuccess } from "@/app/lib/som";
+
+const API_BASE = (import.meta as any).env.VITE_API_BASE || "http://127.0.0.1:8080"\;
+
+type Msg = { role: "user" | "assistant"; text: string };
+
+export default function AureaAssistantPanel() {
+  const [open, setOpen] = useState(true);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: "assistant", text: "Ola! Posso resumir seu saldo PIX e ultimas movimentacoes." }
+  ]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // mobile inicia fechado
+  useEffect(() => { try { if (typeof window !== "undefined" && window.innerWidth < 992) setOpen(false); } catch {} }, []);
+
+  // toggle global via FAB
+  useEffect(() => {
+    const h = () => { playClick(); setOpen(v => !v); };
+    window.addEventListener("aurea:ia:toggle", h as any);
+    return () => window.removeEventListener("aurea:ia:toggle", h as any);
+  }, []);
+
+  // autoscroll ao final
+  useEffect(() => { try { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; } catch {} }, [msgs]);
+
+  async function send() {
+    if (!input.trim() || busy) return;
+    playClick();
+    const content = input.trim();
+    setInput("");
+    setMsgs(m => [...m, { role: "user", text: content }]);
+    setBusy(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/v1/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: content, user_id: 1 })
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      const reply = j.reply ?? "Sem resposta no momento.";
+      setMsgs(m => [...m, { role: "assistant", text: reply }]);
+      playSuccess();
+    } catch (e) {
+      console.error("[AUREA IA] erro:", e);
+      setMsgs(m => [...m, { role: "assistant", text: "Falha ao consultar IA. Tente novamente." }]);
+      playError();
+    } finally { setBusy(false); }
+  }
+
+  function quickAsk(q: string) {
+    if (busy) return;
+    setInput(q);
+    setTimeout(() => send(), 0);
+  }
+
+  return (
+    <aside
+      className="aurea-assistant"
+      style={{ zIndex: 9999, overflow: "auto", resize: "both",
+        position: "fixed",
+        top: 80,
+        right: 16,
+        width: 340,
+        height: "calc(100vh - 120px)",
+        background: "#141414",
+        border: "1px solid #b88900",
+        borderRadius: 12,
+        boxShadow: "0 0 16px rgba(255, 204, 51, .25)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        zIndex: 40
+      }}
+    >
+      <header style={{
+        height: 46, display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 12px", background: "linear-gradient(90deg, #000 0%, #1a1200 40%, #b88900 100%)",
+        color: "#ffcc33", fontWeight: 700
+      }}>
+        <span>Aurea IA 3.0</span>
+        <button onClick={() => { playClick(); setOpen(!open); }} className="btn" style={{ padding: "4px 10px", fontSize: 12 }}>
+          {open ? "Minimizar" : "Abrir"}
+        </button>
+      </header>
+
+      {open ? (
+        <>
+          <div
+            ref={scrollRef}
+            style={{ flex: 1, padding: 12, overflowY: "auto", background: "#0f0f0f" }}
+          >
+            {msgs.map((m, i) => (
+              <div key={i} style={{ marginBottom: 10, display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{
+                  maxWidth: "88%", padding: "8px 10px", borderRadius: 10,
+                  background: m.role === "user" ? "#1f1f1f" : "rgba(255,204,51,.1)",
+                  border: m.role === "user" ? "1px solid #2a2a2a" : "1px solid #b88900",
+                  color: "#f2f2f2", fontSize: 14, whiteSpace: "pre-wrap"
+                }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: "8px 10px", background: "#121212", borderTop: "1px solid #2b2b2b" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+              <button className="btn" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => quickAsk("Quanto tenho de saldo PIX agora?")}>Saldo agora</button>
+              <button className="btn" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => quickAsk("Resumo PIX das ultimas 24 horas")}>Ultimas 24h</button>
+              <button className="btn" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => quickAsk("Liste os 5 ultimos PIX")}>5 ultimos</button>
+              <button className="btn" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => quickAsk("Total de entradas de hoje no PIX")}>Entradas hoje</button>
+              <button className="btn" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => quickAsk("Total de saidas de hoje no PIX")}>Saidas hoje</button>
+              <button className="btn" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => quickAsk("Resumo do mes no PIX (entradas, saidas, saldo)")}>Resumo do mes</button>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); send(); }} style={{ display: "flex", gap: 8 }}>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={busy ? "Consultando IA..." : "Pergunte sobre seu PIX..."}
+                disabled={busy}
+              />
+              <button type="submit" className="btn" disabled={busy}>
+                {busy ? "..." : "Enviar"}
+              </button>
+            </form>
+          </div>
+        </>
+      ) : (
+        <div style={{ padding: 12, color: "#ccc", fontSize: 13 }}>Painel minimizado.</div>
+      )}
+    </aside>
+  );
+}
