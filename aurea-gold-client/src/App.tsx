@@ -20,7 +20,7 @@ export default function App() {
         <main className="flex-1 p-4 md:p-6 overflow-x-auto">
           <header className="mb-4 md:mb-6">
             <h1 className="text-xl md:text-2xl font-semibold">
-              AUREA GOLD • PREMIUM v1.0 beta
+              AUREA GOLD • PREMIUM v1.0
             </h1>
             <div className="h-px w-40 md:w-64 bg-amber-500 mt-2" />
           </header>
