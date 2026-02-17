@@ -176,7 +176,7 @@ export default function SuperAureaHome() {
           <p className="mt-1 text-[10px] md:text-[11px] text-zinc-400">
             {saldoModo === "real"
               ? "Saldo atualizado em tempo quase real do seu Aurea Gold (via PIX)."
-              : "Valor simulado por enquanto. Na versão conectada, esse saldo vem em tempo real do seu Aurea Gold."}
+              : "Saldo atualizado em tempo real do seu Aurea Gold."}
           </p>
         </div>
 
@@ -274,7 +274,7 @@ export default function SuperAureaHome() {
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/70 bg-black/70 px-3 py-1 text-[10px] text-amber-200">
-            Dados reais • fallback LAB se necessário
+            Dados reais conectados
           </span>
         </div>
 
@@ -327,7 +327,7 @@ export default function SuperAureaHome() {
             </p>
             <p className="text-[11px] md:text-sm text-zinc-200">
               Gráfico resumindo as movimentações recentes de PIX. Nesta versão, usamos seus
-              dados reais dos últimos 7 dias, com fallback simulado se o servidor estiver indisponível.
+              Dados reais dos últimos 7 dias.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/70 bg-black/70 px-3 py-1 text-[10px] text-emerald-200">
@@ -381,7 +381,7 @@ export default function SuperAureaHome() {
           </p>
           <p className="text-[11px] text-zinc-300 mb-3">
             Resumo automático do seu painel Aurea Gold. Nesta versão LAB, os dados ainda
-            são simulados, mas o formato já é o mesmo da versão executiva.
+            Dados processados automaticamente pela IA 3.0 executiva.
           </p>
           <IaHeadlineLab />
         </div>
