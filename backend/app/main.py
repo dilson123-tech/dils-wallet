@@ -56,7 +56,7 @@ def options_any(full_path: str, request: Request):
 
 # --- AUREA GOLD – PIX SUPER2 ---
 from app.api.v1.routes import pix_balance_super2
-app.include_router(pix_balance_super2.router)
+# app.include_router(pix_balance_super2.router)  # DESATIVADO - contrato oficial
 app.include_router(pix_balance_get.router)
 app.include_router(pix_history_get.router)
 app.include_router(pix_7d.router)

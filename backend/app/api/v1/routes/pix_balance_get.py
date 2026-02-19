@@ -73,13 +73,8 @@ def get_pix_balance(
         source = "lab"
 
     return {
-        "saldo": float(saldo),
-        "source": source,
-        "updated_at": datetime.utcnow().isoformat() + "Z",
-        # Campos antigos mantidos para compatibilidade com IA 3.0:
         "saldo_atual": float(saldo),
         "entradas_mes": float(entradas),
         "saidas_mes": float(saidas),
-        # Só pra debugar por enquanto
-        "debug_error": debug_error,
+        "updated_at": datetime.utcnow().isoformat() + "Z"
     }
