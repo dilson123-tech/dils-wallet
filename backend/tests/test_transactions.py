@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.database import Base, engine, SessionLocal
-from app.utils import hash_password
+from app.utils.security import hash_password
 from app import models
 import pytest
 
@@ -9,15 +9,18 @@ client = TestClient(app)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     # cria usuário de teste direto no banco
+    db.query(models.User).filter(models.User.username == "test@local").delete()
+    db.commit()
     if not db.query(models.User).filter(models.User.email == "test@local").first():
-        db.add(models.User(
+        db.add(models.User(username="test@local", 
             email="test@local",
-            full_name="Test User",
-            password_hash=hash_password("test123"),
-            type="pf"
+            
+            hashed_password=hash_password("test123"),
+            role="customer"
         ))
         db.commit()
     db.close()
@@ -26,8 +29,7 @@ def setup_db():
 def test_login_and_balance_flow():
     resp = client.post(
         "/api/v1/auth/login",
-        data={"username": "test@local", "password": "test123"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        json={"username": "test@local", "password": "test123"},
     )
     assert resp.status_code == 200
     token = resp.json()["access_token"]

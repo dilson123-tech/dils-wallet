@@ -15,6 +15,7 @@ class Transaction(Base):
 
     # descrição tipo "PIX recebido de João", "Pagamento QR Code", etc
     description = Column(String(255), nullable=False, default="")
+    reference = Column(String(100), nullable=True)
 
     # valor em centavos ou decimal controlado
     amount = Column(Numeric(scale=2), nullable=False)

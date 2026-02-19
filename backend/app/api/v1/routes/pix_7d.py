@@ -2,24 +2,16 @@ from datetime import date, timedelta
 from typing import Dict, List
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.pix_transaction import PixTransaction
+from app.schemas.pix import Pix7dResponse, PixDia
 
 router = APIRouter(prefix="/api/v1/pix", tags=["pix-7d"])
 
 
-class Pix7dPoint(BaseModel):
-    dia: str
-    entradas: float
-    saidas: float
-    saldo_dia: float
-
-
-class Pix7dResponse(BaseModel):
-    ultimos_7d: List[Pix7dPoint]
 
 
 @router.get("/7d", response_model=Pix7dResponse)
@@ -59,17 +51,19 @@ def get_pix_7d(db: Session = Depends(get_db)) -> Pix7dResponse:
             mapa[dia]["entradas"] += valor
 
     # monta lista ordenada por dia, com saldo acumulado
-    dias_ordenados = sorted(mapa.keys())
-    pontos: List[Pix7dPoint] = []
+
+    # garante sempre os últimos 7 dias, mesmo sem transações
+    pontos: List[PixDia] = []
     saldo_acum = 0.0
 
-    for d in dias_ordenados:
-        entradas = mapa[d]["entradas"]
-        saidas = mapa[d]["saidas"]
+    for i in range(6, -1, -1):
+        d = hoje - timedelta(days=i)
+        entradas = mapa.get(d, {}).get("entradas", 0.0)
+        saidas = mapa.get(d, {}).get("saidas", 0.0)
         saldo_acum += entradas - saidas
 
         pontos.append(
-            Pix7dPoint(
+            PixDia(
                 dia=d.isoformat(),
                 entradas=round(entradas, 2),
                 saidas=round(saidas, 2),

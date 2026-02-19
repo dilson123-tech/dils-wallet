@@ -3,15 +3,9 @@ from datetime import timedelta
 from jose import jwt
 from passlib.hash import bcrypt
 
-SECRET_KEY = os.getenv("JWT_SECRET", "change-me-aura")  # defina em prod
-ALGORITHM = "HS256"
+from app.utils.security import SECRET_KEY, ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MIN", "60"))
 
-def create_access_token(sub: str, extra: t.Optional[dict]=None) -> str:
-    now = int(time.time())
-    payload = {"sub": sub, "iat": now, "exp": now + ACCESS_TOKEN_EXPIRE_MINUTES*60}
-    if extra: payload.update(extra)
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_password(plain: str, hashed: str) -> bool:
     # aceita tanto hash bcrypt quanto senha em texto (para migração)
@@ -34,8 +28,7 @@ from app import models
 import os
 
 # Secret e algoritmo
-SECRET_KEY = os.getenv("JWT_SECRET", "change-me-aura")
-ALGORITHM = "HS256"
+from app.utils.security import SECRET_KEY, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
