@@ -14,9 +14,23 @@ from pathlib import Path
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # Exemplo esperado Railway:
-    # postgres://user:pass@host:port/dbname
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=1800)
+
+    engine = create_engine(
+
+        DATABASE_URL,
+
+        pool_pre_ping=True,
+
+        pool_recycle=1800,
+
+        pool_size=5,
+
+        max_overflow=10,
+
+        pool_timeout=30,
+
+    )
+
 else:
     # ambiente local/dev
     BASE_DIR = Path(__file__).resolve().parents[1]
