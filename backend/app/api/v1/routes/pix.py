@@ -3,7 +3,7 @@ import calendar
 from decimal import Decimal
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from fastapi import APIRouter, Depends, Request
+from fastapi import Request, APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -49,54 +49,46 @@ def _resolve_user_id(db, request, x_user_email: Optional[str]):
     return None
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
-
 @router.get("/balance")
 def get_balance(
     db: Session = Depends(get_db),
     current_user = Depends(require_customer),
 ):
-    """
-    Retorna o saldo PIX calculado:
-    - entradas somam
-    - saídas subtraem
-
-    Normalizado para o painel SuperAureaHome:
-    {
-      "saldo": number,
-      "source": "lab" | "real",
-      "updated_at": ISO8601
-    }
-    """
     try:
-        rows = (
-            db.query(PixTransaction)
-            .filter(PixTransaction.user_id == current_user.id)
-            .all()
+        from app.models.pix_ledger import PixLedger
+        from sqlalchemy import func, case
+        from decimal import Decimal
+
+        result = (
+            db.query(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (PixLedger.kind == "credit", PixLedger.amount),
+                            else_=-PixLedger.amount,
+                        )
+                    ),
+                    0,
+                )
+            )
+            .filter(PixLedger.user_id == current_user.id)
+            .scalar()
         )
 
-        saldo = 0.0
-        for t in rows:
-            valor = float(t.valor)
-            if t.tipo == "entrada":
-                saldo += valor
-            else:
-                saldo -= valor
+        saldo = float(Decimal(result or 0))
 
-        source = "real"
+        return {
+            "saldo": saldo,
+            "source": "real"
+        }
+
     except Exception as e:
         print("[AUREA PIX] erro ao calcular saldo:", e)
-        saldo = 0.0
-        source = "lab"
+        return {
+            "saldo": 0.0,
+            "source": "lab"
+        }
 
-    payload = {
-        "saldo": saldo,
-        "source": source,
-        "updated_at": datetime.utcnow().isoformat() + "Z",
-    }
-
-    return JSONResponse(
-        content=jsonable_encoder(payload, custom_encoder={Decimal: float})
-    )
 
 
 @router.get("/history")
@@ -287,3 +279,48 @@ def get_forecast(
             content=jsonable_encoder(payload, custom_encoder={Decimal: float}),
             status_code=200,
         )
+
+from fastapi import Request, HTTPException
+from app.schemas.pix_send import PixSendRequest, PixSendResponse
+from app.services.pix_service import send_pix
+
+
+@router.post("/send", response_model=PixSendResponse)
+def post_pix_send(
+    request: Request,
+    body: PixSendRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_customer),
+):
+    try:
+        idempotency_key = request.headers.get("Idempotency-Key")
+
+        result = send_pix(
+            db=db,
+            user_id=current_user.id,
+            valor=body.valor,
+            chave_pix=body.chave_pix,
+            descricao=body.descricao or "PIX",
+            idempotency_key=idempotency_key,
+        )
+
+        # Se for replay idempotente, já vem como dict
+        if isinstance(result, dict):
+            return result
+
+        return PixSendResponse(
+            id=result.id,
+            valor=result.valor,
+            taxa_percentual=result.taxa_percentual,
+            taxa_valor=result.taxa_valor,
+            valor_liquido=result.valor_liquido,
+            status="success",
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print("[AUREA PIX] erro em post_pix_send:", e)
+        raise HTTPException(status_code=500, detail="Erro interno ao enviar PIX")
+
+

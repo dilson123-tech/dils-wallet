@@ -20,7 +20,7 @@ def _b64url_decode(s: str) -> bytes:
     pad = '=' * (-len(s) % 4)
     return base64.urlsafe_b64decode(s + pad)
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
 @router.get("/balance")
 def get_pix_balance(request: Request, current_user: User = Depends(get_current_user),

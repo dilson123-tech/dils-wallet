@@ -18,14 +18,15 @@ from app.database import Base, engine
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
 from app.routers import admin_dbfix                              # módulo com .router
-from app.routers.pix_send import router as pix_send_router       # já é APIRouter
 from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRouter
 
 # PIX Super2 (nossas rotas novas)
 from app.api.v1.routes import pix_balance_get                    # módulo com .router
+from app.api.v1.routes.pix import router as pix_router
 from app.api.v1.routes import pix_history_get                    # módulo com .router
 from app.api.v1.routes import pix_7d
 from app.api.v1.routes import pix_forecast_get                             # módulo com .router
+from app.routers import dev_seed
 
 
 
@@ -48,6 +49,8 @@ def root():
 
 
 register_auth(app)
+# app.include_router(pix_balance_get.router)
+app.include_router(pix_router)
 
 # --- Request-ID (produção): correlação de logs por chamada ---
 logger = logging.getLogger("aurea.request")
@@ -88,9 +91,9 @@ async def aurea_trace_pix_balance(request: Request, call_next):
 
 # --- Routers base ---
 app.include_router(assist_router_v1.router)
-app.include_router(pix_send_router)
 app.include_router(ai_router_v1)
 app.include_router(admin_dbfix.router, prefix="/admin")
+app.include_router(dev_seed.router)
 
 from app.api.v1.ai import chat_lab_router
 app.include_router(chat_lab_router, prefix="/api/v1/ai")
