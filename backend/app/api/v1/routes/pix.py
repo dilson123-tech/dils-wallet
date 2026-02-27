@@ -1,3 +1,4 @@
+from app.core.rate_limit import limiter
 from datetime import datetime
 import calendar
 from decimal import Decimal
@@ -283,9 +284,11 @@ def get_forecast(
 from fastapi import Request, HTTPException
 from app.schemas.pix_send import PixSendRequest, PixSendResponse
 from app.services.pix_service import send_pix
+from app.core.rate_limit import Limiter
 
 
 @router.post("/send", response_model=PixSendResponse)
+@limiter.limit("10/minute")
 def post_pix_send(
     request: Request,
     body: PixSendRequest,
