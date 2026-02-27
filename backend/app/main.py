@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from app.database import Base, engine
+from app.core.rate_limit import init_rate_limiter
 
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
@@ -43,6 +44,9 @@ app = FastAPI(title="Dils Wallet API", version="0.3.0",
     redoc_url="/redoc" if DOCS_PUBLIC else None,
     openapi_url="/openapi.json" if DOCS_PUBLIC else None,
 )
+# Init Rate Limiter
+limiter = init_rate_limiter(app)
+
 @app.get("/")
 def root():
     return {"ok": True, "service": "dils-wallet"}
