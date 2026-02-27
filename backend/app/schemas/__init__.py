@@ -21,4 +21,3 @@ class Token(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 # ===== Expor novos schemas do pacote =====
-from .pix_transaction_schema import PixTransactionBase, PixTransactionResponse  # noqa: F401
