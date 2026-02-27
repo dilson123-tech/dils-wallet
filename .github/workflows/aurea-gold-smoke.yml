@@ -1,0 +1,160 @@
+name: aurea-gold-smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/aurea-gold-smoke.yml"
+  push:
+    branches: [ "main" ]
+    paths:
+      - "backend/**"
+      - ".github/workflows/aurea-gold-smoke.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements.lock.txt
+
+      - name: Install deps (minimal)
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+
+      - name: Import/compile check
+        run: |
+          python -m compileall -q app
+          python -m py_compile app/main.py app/api/v1/routes/pix.py app/core/rate_limit.py
+
+      - name: Guard rails (no broken schema exports)
+        run: |
+          rg -n "PixTransactionBase|PixTransactionResponse|pix_transactions_schema" app/schemas/__init__.py && exit 1 || echo "guards ok"
+
+  smoke:
+    needs: lint
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      BASE: http://127.0.0.1:8090
+      LOGIN_USER: customer
+      LOGIN_PASS: dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements.lock.txt
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+
+      - name: Seed sqlite users (customer/dev + admin/dev)
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          from app.utils.security import hash_password
+
+          db = Path("app.db")
+          con = sqlite3.connect(str(db))
+          cur = con.cursor()
+
+          # garante tabela users mínima (se migrations não rodaram)
+          cur.execute("""
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(255) UNIQUE,
+            hashed_password VARCHAR(255),
+            email VARCHAR(255),
+            role VARCHAR(50)
+          )
+          """)
+
+          cols = [r[1] for r in cur.execute("PRAGMA table_info(users);").fetchall()]
+          def upsert(username, password, email, role):
+            hp = hash_password(password)
+            row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+            data = {"username": username, "hashed_password": hp, "email": email, "role": role}
+
+            usable = {k:v for k,v in data.items() if k in cols}
+            if row:
+              sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
+              params = [usable[k] for k in usable.keys() if k != "username"] + [username]
+              if sets:
+                cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
+            else:
+              keys = ", ".join(usable.keys())
+              qs = ", ".join(["?"]*len(usable))
+              cur.execute(f"INSERT INTO users ({keys}) VALUES ({qs})", list(usable.values()))
+
+          upsert("customer","dev","customer@aurea.local","customer")
+          upsert("admin","dev","admin@aurea.local","admin")
+
+          con.commit()
+          con.close()
+          print("seed ok")
+          PY
+
+      - name: Start API
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8090 --log-level info > uvicorn.log 2>&1 &
+          echo $! > uvicorn.pid
+
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/openapi.json" || true)
+            echo "openapi=$code"
+            [ "$code" = "200" ] && break
+            sleep 1
+          done
+
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/openapi.json" || true)
+          if [ "$code" != "200" ]; then
+            echo "FAIL: API não subiu. Tail do log:"
+            tail -n 200 uvicorn.log || true
+            exit 1
+          fi
+
+      - name: Run smoke
+        run: |
+          chmod +x scripts/smoke.sh
+          BASE="$BASE" LOGIN_USER="$LOGIN_USER" LOGIN_PASS="$LOGIN_PASS" bash scripts/smoke.sh
+
+      - name: Stop API + logs
+        if: always()
+        run: |
+          if [ -f uvicorn.pid ]; then kill "$(cat uvicorn.pid)" || true; fi
+          echo "---- uvicorn.log (tail) ----"
+          tail -n 200 uvicorn.log || true
