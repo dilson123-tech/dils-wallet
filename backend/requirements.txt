@@ -10,3 +10,4 @@ passlib[bcrypt]
 python-jose[cryptography]
 httpx
 slowapi==0.1.9
+bcrypt==3.2.2
