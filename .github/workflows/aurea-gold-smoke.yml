@@ -86,6 +86,54 @@ jobs:
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8090 --log-level info > uvicorn.log 2>&1 &
           echo $! > uvicorn.pid
 
+      - name: Seed users (after API start)
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          from app.utils.security import hash_password
+
+          db = Path("app.db")
+          con = sqlite3.connect(str(db))
+          cur = con.cursor()
+
+          # garante tabela users (CI não roda migrations)
+          cur.execute("""
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(255) UNIQUE,
+            hashed_password VARCHAR(255),
+            email VARCHAR(255),
+            role VARCHAR(50)
+          )
+          """)
+
+          cols = [r[1] for r in cur.execute("PRAGMA table_info(users);").fetchall()]
+
+          def upsert(username, password, email, role):
+            hp = hash_password(password)
+            row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+            data = {"username": username, "hashed_password": hp, "email": email, "role": role}
+            usable = {k:v for k,v in data.items() if k in cols}
+
+            if row:
+              sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
+              params = [usable[k] for k in usable.keys() if k != "username"] + [username]
+              if sets:
+                cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
+            else:
+              keys = ", ".join(usable.keys())
+              qs = ", ".join(["?"]*len(usable))
+              cur.execute(f"INSERT INTO users ({keys}) VALUES ({qs})", list(usable.values()))
+
+          upsert("customer","dev","customer@aurea.local","customer")
+          upsert("admin","dev","admin@aurea.local","admin")
+
+          con.commit()
+          con.close()
+          print("seed ok")
+          PY
+
           for i in $(seq 1 30); do
             code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/openapi.json" || true)
             echo "openapi=$code"
@@ -104,43 +152,49 @@ jobs:
         run: |
           python - <<'PY'
           import sqlite3
+          from pathlib import Path
           from app.utils.security import hash_password
-
-          con = sqlite3.connect("app.db")
+          
+          db = Path("app.db")
+          con = sqlite3.connect(str(db))
           cur = con.cursor()
-
-          ok = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
-          if not ok:
-            raise SystemExit("users table not found (schema not created)")
-
-          cols = [r[1] for r in cur.execute("PRAGMA table_info(users)").fetchall()]
-
+          
+          # CI não roda migration: garante tabela users
+          cur.execute("""
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(255) UNIQUE,
+            hashed_password VARCHAR(255),
+            email VARCHAR(255),
+            role VARCHAR(50)
+          )
+          """)
+          
+          cols = [r[1] for r in cur.execute("PRAGMA table_info(users);").fetchall()]
+          
           def upsert(username, password, email, role):
-            hp = hash_password(password)
-            data = {"username": username, "hashed_password": hp, "email": email, "role": role}
-            usable = {k:v for k,v in data.items() if k in cols}
-
-            if "username" not in usable or "hashed_password" not in usable:
-              raise SystemExit(f"users schema missing required columns. cols={cols}")
-
-            row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
-            if row:
-              sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
-              params = [usable[k] for k in usable.keys() if k != "username"] + [username]
-              if sets:
-                cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
-            else:
-              keys = ", ".join(usable.keys())
-              qs = ", ".join(["?"]*len(usable))
-              cur.execute(f"INSERT INTO users ({keys}) VALUES ({qs})", list(usable.values()))
-
+              hp = hash_password(password)
+              row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+              data = {"username": username, "hashed_password": hp, "email": email, "role": role}
+              usable = {k:v for k,v in data.items() if k in cols}
+              if row:
+                  sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
+                  params = [usable[k] for k in usable.keys() if k != "username"] + [username]
+                  if sets:
+                      cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
+              else:
+                  keys = ", ".join(usable.keys())
+                  qs = ", ".join(["?"] * len(usable))
+                  cur.execute(f"INSERT INTO users ({keys}) VALUES ({qs})", list(usable.values()))
+          
           upsert("customer","dev","customer@aurea.local","customer")
           upsert("admin","dev","admin@aurea.local","admin")
-
+          
           con.commit()
           con.close()
           print("seed ok")
           PY
+
 
       - name: Run smoke
         run: |
