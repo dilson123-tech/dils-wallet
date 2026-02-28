@@ -11,3 +11,4 @@ python-jose[cryptography]
 httpx
 slowapi==0.1.9
 bcrypt==3.2.2
+email-validator==2.1.1

@@ -102,3 +102,4 @@ xlrd==2.0.1
 yt-dlp==2024.4.9
 slowapi==0.1.9
 bcrypt==3.2.2
+email-validator==2.1.1
