@@ -81,7 +81,12 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements.txt
 
-      - name: Seed sqlite users (customer/dev + admin/dev)
+      - name: Start API
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8090 --log-level info > uvicorn.log 2>&1 &
+          echo $! > uvicorn.pid
+
+      - name: Seed users (after API start)
         run: |
           python - <<'PY'
           import sqlite3
@@ -92,7 +97,7 @@ jobs:
           con = sqlite3.connect(str(db))
           cur = con.cursor()
 
-          # garante tabela users mínima (se migrations não rodaram)
+          # garante tabela users (CI não roda migrations)
           cur.execute("""
           CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,13 +108,32 @@ jobs:
           )
           """)
 
+
+          cur.execute("""
+
+          CREATE TABLE IF NOT EXISTS refresh_tokens (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            user_id INTEGER NOT NULL,
+
+            token_hash VARCHAR(255) NOT NULL,
+
+            expires_at DATETIME NOT NULL,
+
+            created_at DATETIME NOT NULL
+
+          )
+
+          """)
           cols = [r[1] for r in cur.execute("PRAGMA table_info(users);").fetchall()]
+
           def upsert(username, password, email, role):
             hp = hash_password(password)
             row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
             data = {"username": username, "hashed_password": hp, "email": email, "role": role}
-
             usable = {k:v for k,v in data.items() if k in cols}
+
             if row:
               sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
               params = [usable[k] for k in usable.keys() if k != "username"] + [username]
@@ -128,11 +152,6 @@ jobs:
           print("seed ok")
           PY
 
-      - name: Start API
-        run: |
-          nohup uvicorn app.main:app --host 127.0.0.1 --port 8090 --log-level info > uvicorn.log 2>&1 &
-          echo $! > uvicorn.pid
-
           for i in $(seq 1 30); do
             code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/openapi.json" || true)
             echo "openapi=$code"
@@ -146,6 +165,54 @@ jobs:
             tail -n 200 uvicorn.log || true
             exit 1
           fi
+
+      - name: Seed users (after API start)
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          from app.utils.security import hash_password
+          
+          db = Path("app.db")
+          con = sqlite3.connect(str(db))
+          cur = con.cursor()
+          
+          # CI não roda migration: garante tabela users
+          cur.execute("""
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(255) UNIQUE,
+            hashed_password VARCHAR(255),
+            email VARCHAR(255),
+            role VARCHAR(50)
+          )
+          """)
+          
+          cols = [r[1] for r in cur.execute("PRAGMA table_info(users);").fetchall()]
+          
+          def upsert(username, password, email, role):
+              hp = hash_password(password)
+              row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+              data = {"username": username, "hashed_password": hp, "email": email, "role": role}
+              usable = {k:v for k,v in data.items() if k in cols}
+              if row:
+                  sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
+                  params = [usable[k] for k in usable.keys() if k != "username"] + [username]
+                  if sets:
+                      cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
+              else:
+                  keys = ", ".join(usable.keys())
+                  qs = ", ".join(["?"] * len(usable))
+                  cur.execute(f"INSERT INTO users ({keys}) VALUES ({qs})", list(usable.values()))
+          
+          upsert("customer","dev","customer@aurea.local","customer")
+          upsert("admin","dev","admin@aurea.local","admin")
+          
+          con.commit()
+          con.close()
+          print("seed ok")
+          PY
+
 
       - name: Run smoke
         run: |
