@@ -122,3 +122,16 @@ jobs:
           curl -fsS -H "Authorization: Bearer ${BEARER_TOKEN}" \
 
             "${SMOKE_BASE_URL}/api/v1/transactions/balance" | jq .
+
+lint:
+    name: lint
+    needs: [backend-build, client-build]
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Gate lint -> backend-build + client-build
+        run: |
+          echo "backend-build=${{ needs.backend-build.result }}"
+          echo "client-build=${{ needs.client-build.result }}"
+          test "${{ needs.backend-build.result }}" = "success"
+          test "${{ needs.client-build.result }}" = "success"

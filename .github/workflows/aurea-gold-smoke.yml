@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - "backend/**"
-      - ".github/workflows/aurea-gold-smoke.yml"
+      - ".github/**"
   push:
     branches: [ "main" ]
     paths:

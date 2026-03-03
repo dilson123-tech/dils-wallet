@@ -60,3 +60,14 @@ jobs:
           MSG=$(printf '{"text":"❌ Smoke PR falhou @ %s\nrepo: %s\nrun: %s\njob: %s"}' \
               "$TS" "${{ github.repository }}" "${{ github.run_id }}" "smoke_pr")
           curl -s -L -X POST -H 'Content-type: application/json' --data "$MSG" "$WEBHOOK"
+
+smoke:
+    name: smoke
+    needs: smoke_pr
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Gate smoke -> smoke_pr
+        run: |
+          echo "smoke_pr=${{ needs.smoke_pr.result }}"
+          test "${{ needs.smoke_pr.result }}" = "success"
