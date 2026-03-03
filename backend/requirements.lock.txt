@@ -21,7 +21,7 @@ filelock==3.13.1
 filetype==1.2.0
 gyp==0.1
 html2text==2024.2.26
-httplib2==0.20.4
+httplib2==0.31.2
 idna==3.6
 ifaddr==0.2.0
 IMDbPY==2021.4.18
