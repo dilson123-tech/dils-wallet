@@ -1,20 +1,16 @@
-from fastapi import FastAPI, Request, Response
-from datetime import datetime
-from fastapi import Request
-import logging
-import uuid
-import time
-
+from fastapi import FastAPI, Request, HTTPException
 from app.api.v1.register_auth import register_auth
 
 def _allow_dev_seed() -> bool:
     return os.getenv("ALLOW_DEV_SEED", "0").strip().lower() in ("1","true","yes","on")
 
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 import os
 
 from app.database import Base, engine
 from app.core.rate_limit import init_rate_limiter
+from app.core.observability import setup_logging, observability_middleware, metrics_response
 
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
@@ -46,6 +42,7 @@ app = FastAPI(title="Dils Wallet API", version="0.3.0",
 )
 # Init Rate Limiter
 limiter = init_rate_limiter(app)
+setup_logging()
 
 @app.get("/")
 def root():
@@ -56,42 +53,12 @@ register_auth(app)
 # app.include_router(pix_balance_get.router)
 app.include_router(pix_router)
 
-# --- Request-ID (produção): correlação de logs por chamada ---
-logger = logging.getLogger("aurea.request")
-
+# --- Observability (request_id + logs + metrics) ---
 @app.middleware("http")
-async def aurea_request_id_mw(request: Request, call_next):
-    rid = request.headers.get("X-Request-Id") or uuid.uuid4().hex[:12]
-    start = time.perf_counter()
-    try:
-        response = await call_next(request)
-    except Exception:
-        ms = int((time.perf_counter() - start) * 1000)
-        logger.exception("rid=%s %s %s -> EXC %sms", rid, request.method, request.url.path, ms)
-        raise
-    ms = int((time.perf_counter() - start) * 1000)
-    response.headers["X-Request-Id"] = rid
-    logger.info("rid=%s %s %s -> %s %sms", rid, request.method, request.url.path, response.status_code, ms)
-    return response
-# --- /Request-ID ---
+async def aurea_observability(request: Request, call_next):
+    return await observability_middleware(request, call_next)
+# --- /Observability ---
 
-# AUREA_MW_PIXBAL_TRACE
-@app.middleware("http")
-async def aurea_trace_pix_balance(request: Request, call_next):
-    try:
-        if request.url.path == "/api/v1/pix/balance":
-            auth = request.headers.get("authorization")
-            origin = request.headers.get("origin")
-            referer = request.headers.get("referer")
-            print("[PIX_BAL_TRACE]",
-                  request.method, str(request.url),
-                  "auth=" + ("yes" if auth else "no"),
-                  "auth_head=" + ((auth[:25] + "...") if auth else "None"),
-                  "origin=" + str(origin),
-                  "referer=" + str(referer))
-    except Exception as e:
-        print("[PIX_BAL_TRACE_ERR]", e)
-    return await call_next(request)
 
 # --- Routers base ---
 app.include_router(assist_router_v1.router)
@@ -112,7 +79,7 @@ if origins:
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],  # origins travadas via CORS_ORIGINS
-        expose_headers=["retry-after"],
+        expose_headers=["retry-after", "x-request-id"],
         max_age=600,
     )
 else:
@@ -122,5 +89,27 @@ else:
 @app.get("/healthz")
 def healthz():
     return {"ok": True, "service": "dils-wallet"}
+
+# --- Readiness (DB) ---
+@app.get("/readyz")
+def readyz():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"ok": True, "service": "dils-wallet", "ready": True}
+    except Exception:
+        raise HTTPException(status_code=503, detail="db not ready")
+
+# --- Metrics (Prometheus) ---
+METRICS_PUBLIC = _env_bool("METRICS_PUBLIC", False)
+METRICS_TOKEN = os.getenv("METRICS_TOKEN", "").strip()
+
+@app.get("/metrics")
+def metrics(request: Request):
+    if METRICS_PUBLIC:
+        return metrics_response()
+    if METRICS_TOKEN and request.headers.get("X-Metrics-Token") == METRICS_TOKEN:
+        return metrics_response()
+    raise HTTPException(status_code=404, detail="Not Found")
 
 # --- OPTIONS global (CORS preflight) ---
