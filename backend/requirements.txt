@@ -12,3 +12,7 @@ httpx
 slowapi==0.1.9
 bcrypt==3.2.2
 email-validator==2.1.1
+
+# observability
+prometheus-client==0.20.0
+python-json-logger==2.0.7
