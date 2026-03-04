@@ -88,7 +88,16 @@ else:
 # --- Healthcheck ---
 @app.get("/healthz")
 def healthz():
-    return {"ok": True, "service": "dils-wallet"}
+    payload = {
+        "ok": True,
+        "service": "dils-wallet",
+        "version": app.version,
+        "git_sha": os.getenv("GIT_SHA", "dev"),
+    }
+    bt = os.getenv("BUILD_TIME")
+    if bt:
+        payload["build_time"] = bt
+    return payload
 
 # --- Readiness (DB) ---
 @app.get("/readyz")
