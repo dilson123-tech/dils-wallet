@@ -1,3 +1,4 @@
+import logging
 from app.core.rate_limit import limiter
 from datetime import datetime
 import calendar
@@ -259,7 +260,7 @@ def get_forecast(
             content=jsonable_encoder(payload, custom_encoder={Decimal: float})
         )
     except Exception as e:
-        print("[AUREA PIX] erro ao calcular forecast:", e)
+        logger.exception("pix_forecast_failed")
         payload = {
             "saldo_atual": 0.0,
             "entradas_mes": 0.0,
@@ -282,9 +283,11 @@ def get_forecast(
         )
 
 from fastapi import Request, HTTPException
+from time import perf_counter
 from app.schemas.pix_send import PixSendRequest, PixSendResponse
 from app.services.pix_service import send_pix
 from app.core.rate_limit import Limiter
+from app.core.observability import PIX_SEND_TOTAL, PIX_SEND_DURATION_SECONDS
 
 
 @router.post("/send", response_model=PixSendResponse)
@@ -295,6 +298,8 @@ def post_pix_send(
     db: Session = Depends(get_db),
     current_user = Depends(require_customer),
 ):
+    start = perf_counter()
+    outcome = "error"
     try:
         idempotency_key = request.headers.get("Idempotency-Key")
 
@@ -309,8 +314,10 @@ def post_pix_send(
 
         # Se for replay idempotente, já vem como dict
         if isinstance(result, dict):
+            outcome = "replay"
             return result
 
+        outcome = "success"
         return PixSendResponse(
             id=result.id,
             valor=result.valor,
@@ -322,8 +329,13 @@ def post_pix_send(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print("[AUREA PIX] erro em post_pix_send:", e)
+    except Exception:
+        logger.exception("pix_send_failed")
         raise HTTPException(status_code=500, detail="Erro interno ao enviar PIX")
-
-
+    finally:
+        dur = perf_counter() - start
+        try:
+            PIX_SEND_TOTAL.labels(outcome=outcome).inc()
+            PIX_SEND_DURATION_SECONDS.labels(outcome=outcome).observe(dur)
+        except Exception:
+            pass

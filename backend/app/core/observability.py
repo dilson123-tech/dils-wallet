@@ -66,6 +66,20 @@ def setup_logging() -> None:
 
 
 # ---- Prometheus metrics ----
+
+# ---- Business metrics (PIX/Auth/etc.) ----
+PIX_SEND_TOTAL = Counter(
+    "aurea_pix_send_total",
+    "Total de envios PIX (negócio)",
+    ["outcome"],  # success | replay | error | rate_limited
+)
+
+PIX_SEND_DURATION_SECONDS = Histogram(
+    "aurea_pix_send_duration_seconds",
+    "Duração do envio PIX (negócio) em segundos",
+    ["outcome"],
+)
+
 HTTP_REQUESTS_TOTAL = Counter(
     "aurea_http_requests_total",
     "Total HTTP requests",
@@ -134,6 +148,13 @@ async def observability_middleware(request: Request, call_next):
 
         HTTP_REQUESTS_TOTAL.labels(method=method, route=route, status=status).inc()
         HTTP_REQUEST_DURATION_SECONDS.labels(method=method, route=route).observe(dur)
+
+        # Business metric: rate limit do PIX (/api/v1/pix/send) vindo do slowapi (status 429)
+        try:
+            if status == "429" and (request.url.path == "/api/v1/pix/send" or route == "/api/v1/pix/send"):
+                PIX_SEND_TOTAL.labels(outcome="rate_limited").inc()
+        except Exception:
+            pass
 
         log.info(
             "request",
