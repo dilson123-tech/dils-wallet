@@ -1,13 +1,23 @@
 from sqlalchemy import Column, Integer, String
-from app.models import Base  # Base global declarative_base()
+from sqlalchemy.orm import synonym
+
+from app.database import Base
+
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=False)
-    email = Column(String(255), unique=True, nullable=True, index=True)
 
-    # "admin" ou "customer"
-    role = Column(String(20), nullable=False, default="customer")
+    # DB real (Postgres): email NOT NULL + UNIQUE
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    full_name = Column(String(255), nullable=True)
+
+    # DB real: password_hash (bcrypt)
+    hashed_password = Column("password_hash", String(255), nullable=False)
+
+    # DB real: type (admin/customer)
+    role = Column("type", String(20), nullable=False, default="customer")
+
+    # Compat: código antigo que usa username continua funcionando (aponta pro email)
+    username = synonym("email")
