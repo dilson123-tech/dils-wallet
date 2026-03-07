@@ -1,4 +1,5 @@
 import logging
+logger = logging.getLogger("aurea.pix")
 from app.core.rate_limit import limiter
 from datetime import datetime
 import calendar
@@ -310,12 +311,25 @@ def post_pix_send(
             chave_pix=body.chave_pix,
             descricao=body.descricao or "PIX",
             idempotency_key=idempotency_key,
-        )
-
-        # Se for replay idempotente, já vem como dict
+        )        # Se vier dict, pode ser replay (200) ou conflito/in_progress (409)
         if isinstance(result, dict):
+            code = result.get("code")
+
+            # conflito / em processamento
+            if code in ("IDEMPOTENCY_KEY_REUSE_DIFFERENT_PAYLOAD", "IDEMPOTENCY_IN_PROGRESS"):
+                outcome = "error"
+                return JSONResponse(
+                    content=jsonable_encoder(result, custom_encoder={Decimal: float}),
+                    status_code=409,
+                )
+
+            # replay concluído (não aplicar response_model aqui)
             outcome = "replay"
-            return result
+            return JSONResponse(
+                content=jsonable_encoder(result, custom_encoder={Decimal: float}),
+                status_code=200,
+                headers={"X-Idempotency-Replayed": "true"},
+            )
 
         outcome = "success"
         return PixSendResponse(

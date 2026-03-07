@@ -1,14 +1,22 @@
 from sqlalchemy.exc import IntegrityError
+import hashlib
+import json
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 
-from app.models.pix_transaction import PixTransaction
+from app.models.transaction import Transaction
 from app.models.pix_ledger import PixLedger
 
 
 def _round_money(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _idem_hash(user_id: int, valor: Decimal, chave_pix: str, descricao: str) -> str:
+    # hash estável e auditável (64 hex chars)
+    msg = f"{user_id}|{str(valor)}|{chave_pix}|{descricao}".encode("utf-8")
+    return hashlib.sha256(msg).hexdigest()
 
 
 def _get_user_balance(db: Session, user_id: int) -> Decimal:
@@ -41,22 +49,44 @@ def send_pix(
 ):
     valor = _round_money(Decimal(valor))
     # -----------------------------
-    # Idempotency (atomic insert first)
+    # Idempotency (fintech-grade)
+    # - insert-first + flush (bloqueia concorrência)
+    # - replay se mesma key+payload
+    # - 409 se mesma key com payload diferente
     # -----------------------------
     if idempotency_key:
         from app.models.idempotency import IdempotencyKey
-        import json
+
+        req_hash = _idem_hash(user_id=user_id, valor=valor, chave_pix=chave_pix, descricao=descricao)
 
         try:
-            record = IdempotencyKey(key=idempotency_key)
+            record = IdempotencyKey(key=idempotency_key, request_hash=req_hash)
             db.add(record)
             db.flush()
         except IntegrityError:
             db.rollback()
             existing = db.query(IdempotencyKey).filter_by(key=idempotency_key).first()
-            if existing and existing.response_json:
+            if not existing:
+                raise
+
+            # reuso com payload diferente = conflito
+            if getattr(existing, "request_hash", None) and existing.request_hash != req_hash:
+                return {
+                    "status": "conflict",
+                    "error": "Idempotency-Key reuse com payload diferente",
+                    "code": "IDEMPOTENCY_KEY_REUSE_DIFFERENT_PAYLOAD",
+                }
+
+            # replay (já concluído)
+            if existing.response_json:
                 return json.loads(existing.response_json)
-            raise
+
+            # ainda em processamento (concorrência)
+            return {
+                "status": "in_progress",
+                "error": "Requisição com este Idempotency-Key ainda está em processamento",
+                "code": "IDEMPOTENCY_IN_PROGRESS",
+            }
 
     # -----------------------------
 
@@ -79,14 +109,11 @@ def send_pix(
     if saldo_atual < valor:
         raise ValueError("Saldo insuficiente")
 
-    tx = PixTransaction(
+    tx = Transaction(
         user_id=user_id,
         tipo="saida",
-        valor=valor,
-        descricao=descricao,
-        taxa_percentual=taxa_percentual,
-        taxa_valor=taxa_valor,
-        valor_liquido=valor_liquido,
+        valor=float(valor),  # coluna no Postgres é double precision
+        referencia=chave_pix,
     )
 
     db.add(tx)
@@ -104,20 +131,30 @@ def send_pix(
 
     if idempotency_key:
         from app.models.idempotency import IdempotencyKey
-        import json
+        # import json (module-level)
         record = db.query(IdempotencyKey).filter_by(key=idempotency_key).first()
         if record:
             record.status_code = 200
             record.response_json = json.dumps({
                 "id": tx.id,
                 "valor": str(tx.valor),
-                "taxa_percentual": str(tx.taxa_percentual),
-                "taxa_valor": str(tx.taxa_valor),
-                "valor_liquido": str(tx.valor_liquido),
+                "taxa_percentual": str(taxa_percentual),
+                "taxa_valor": str(taxa_valor),
+                "valor_liquido": str(valor_liquido),
                 "status": "success"
             })
 
     db.commit()
     db.refresh(tx)
 
-    return tx
+    return {
+        "id": tx.id,
+        "user_id": tx.user_id,
+        "tipo": tx.tipo,
+        "valor": str(valor),
+        "referencia": tx.referencia,
+        "taxa_percentual": str(taxa_percentual),
+        "taxa_valor": str(taxa_valor),
+        "valor_liquido": str(valor_liquido),
+        "status": "success",
+    }

@@ -60,7 +60,7 @@ jobs:
 
     env:
       BASE: http://127.0.0.1:8090
-      LOGIN_USER: customer
+      LOGIN_USER: customer@aurea.local
       LOGIN_PASS: dev
 
     steps:
@@ -101,10 +101,10 @@ jobs:
           cur.execute("""
           CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username VARCHAR(255) UNIQUE,
-            hashed_password VARCHAR(255),
+            full_name VARCHAR(255),
+            password_hash VARCHAR(255),
             email VARCHAR(255),
-            role VARCHAR(50)
+            type VARCHAR(50)
           )
           """)
 
@@ -130,15 +130,15 @@ jobs:
 
           def upsert(username, password, email, role):
             hp = hash_password(password)
-            row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
-            data = {"username": username, "hashed_password": hp, "email": email, "role": role}
+            row = cur.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+            data = {"email": email, "full_name": username, "password_hash": hp, "type": role}
             usable = {k:v for k,v in data.items() if k in cols}
 
             if row:
-              sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
-              params = [usable[k] for k in usable.keys() if k != "username"] + [username]
+              sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "email"])
+              params = [usable[k] for k in usable.keys() if k != "email"] + [email]
               if sets:
-                cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
+                cur.execute(f"UPDATE users SET {sets} WHERE email=?", params)
             else:
               keys = ", ".join(usable.keys())
               qs = ", ".join(["?"]*len(usable))
@@ -181,10 +181,10 @@ jobs:
           cur.execute("""
           CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username VARCHAR(255) UNIQUE,
-            hashed_password VARCHAR(255),
+            full_name VARCHAR(255),
+            password_hash VARCHAR(255),
             email VARCHAR(255),
-            role VARCHAR(50)
+            type VARCHAR(50)
           )
           """)
           
@@ -192,14 +192,14 @@ jobs:
           
           def upsert(username, password, email, role):
               hp = hash_password(password)
-              row = cur.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
-              data = {"username": username, "hashed_password": hp, "email": email, "role": role}
+              row = cur.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+              data = {"email": email, "full_name": username, "password_hash": hp, "type": role}
               usable = {k:v for k,v in data.items() if k in cols}
               if row:
-                  sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "username"])
-                  params = [usable[k] for k in usable.keys() if k != "username"] + [username]
+                  sets = ", ".join([f"{k}=?" for k in usable.keys() if k != "email"])
+                  params = [usable[k] for k in usable.keys() if k != "email"] + [email]
                   if sets:
-                      cur.execute(f"UPDATE users SET {sets} WHERE username=?", params)
+                      cur.execute(f"UPDATE users SET {sets} WHERE email=?", params)
               else:
                   keys = ", ".join(usable.keys())
                   qs = ", ".join(["?"] * len(usable))
