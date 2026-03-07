@@ -60,7 +60,7 @@ jobs:
 
     env:
       BASE: http://127.0.0.1:8090
-      LOGIN_USER: customer
+      LOGIN_USER: customer@aurea.local
       LOGIN_PASS: dev
 
     steps:
