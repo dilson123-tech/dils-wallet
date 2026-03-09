@@ -147,14 +147,8 @@ def send_pix(
     db.commit()
     db.refresh(tx)
 
-    return {
-        "id": tx.id,
-        "user_id": tx.user_id,
-        "tipo": tx.tipo,
-        "valor": str(valor),
-        "referencia": tx.referencia,
-        "taxa_percentual": str(taxa_percentual),
-        "taxa_valor": str(taxa_valor),
-        "valor_liquido": str(valor_liquido),
-        "status": "success",
-    }
+    tx.valor = valor
+    tx.taxa_percentual = taxa_percentual
+    tx.taxa_valor = taxa_valor
+    tx.valor_liquido = valor_liquido
+    return tx
