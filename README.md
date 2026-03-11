@@ -1,104 +1,130 @@
 [![Smoke Prod](https://github.com/dilson123-tech/dils-wallet/actions/workflows/smoke_prod.yml/badge.svg)](https://github.com/dilson123-tech/dils-wallet/actions/workflows/smoke_prod.yml)
-
-# Dils Wallet — Backend & Frontend
-
 [![smoke-prod](https://github.com/dilson123-tech/dils-wallet/actions/workflows/smoke.yml/badge.svg?branch=main)](https://github.com/dilson123-tech/dils-wallet/actions/workflows/smoke.yml)
 [![health-prod](https://github.com/dilson123-tech/dils-wallet/actions/workflows/health.yml/badge.svg?branch=main)](https://github.com/dilson123-tech/dils-wallet/actions/workflows/health.yml)
 
-API de carteira minimal + front estático simples. Tokens JWT com **login** + **refresh**, CORS habilitado p/ dev local, smoke/health no GitHub Actions e `/healthz` protegido por token.
+# Aurea Gold
 
----
+**Aurea Gold** is a production-oriented digital wallet and PIX platform designed for real-world financial operations.  
+It combines a FastAPI backend, premium client/admin panels, secure authentication flows, idempotent payment processing, CI automation, and deploy-ready infrastructure.
 
-## 🔗 Endpoints (API)
-**Base (prod):** `https://dils-wallet-production.up.railway.app`
+## Overview
 
-- `POST /api/v1/auth/register` — `{ "email", "password" }`  
-- `POST /api/v1/auth/login` — `Content-Type: application/x-www-form-urlencoded`  
-  - body: `username=<email>&password=<senha>`  
-  - retorna: `access_token`, `refresh_token`
-- `POST /api/v1/auth/refresh` — `Content-Type: application/json`  
-  - body: `{ "refresh_token": "<...>" }`  
-  - retorna: `access_token` novo
-- `GET /api/v1/transactions/balance` — `Authorization: Bearer <access>`  
-- `GET /healthz` — **requer** header `X-Health-Token: <token>` (em prod)
+Aurea Gold was built as a real fintech product foundation — not just a demo API.  
+The project focuses on reliability, payment integrity, operational clarity, and a premium user experience for both customers and administrators.
 
----
+Core goals:
 
-## 🧪 Curl Snippets úteis
+- provide a modern digital wallet foundation
+- support PIX-based payment flows
+- guarantee safe request replay with idempotency
+- offer separate premium panels for client and admin use
+- maintain production discipline with CI, smoke tests, and structured documentation
 
-```bash
-# Login (x-www-form-urlencoded)
-curl -sS -X POST "$BASE/api/v1/auth/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=teste9@dilswallet.com&password=123456"
+## Main Features
 
-# Refresh (JSON)
-curl -sS -X POST "$BASE/api/v1/auth/refresh" \
-  -H "Content-Type: application/json" \
-  -d "{\"refresh_token\":\"<REFRESH>\"}"
+- Digital wallet backend built with **FastAPI**
+- PIX transfer flow with **idempotency protection**
+- JWT-based authentication
+- Premium client-facing interface
+- Admin panel for operational control
+- PostgreSQL-ready environment
+- Railway deployment support
+- CI workflows and smoke test structure
+- Documentation and scripts for local/dev operations
 
-# Saldo
-curl -sS -H "Authorization: Bearer <ACCESS>" "$BASE/api/v1/transactions/balance"
+## Architecture
 
-# Health (prod)
-curl -i -H "X-Health-Token: <TOKEN>" "$BASE/healthz"
+This repository contains the core layers of the Aurea Gold platform:
 
+- `backend/` — FastAPI backend, business rules, auth, wallet and PIX flows
+- `frontend/` — front-end application layer
+- `aurea-gold-client/` — premium client panel
+- `aurea-gold-admin/` — premium admin panel
+- `docs/` — technical and product documentation
+- `.github/` — CI workflows and repository automation
+- `scripts/` — helper scripts for development and operational routines
+- `tests/` — automated validation and reliability checks
 
----
+## Product Positioning
 
-### 🧩 PIX Mock – Histórico e Seed Automático
+Aurea Gold is treated as a **real commercial product** with production mindset:
 
-#### 📜 Endpoints
-- `POST /api/v1/pix/pix/mock-transfer` — cria uma transferência PIX simulada com idempotência.  
-- `GET /api/v1/pix/history` — retorna o histórico de transferências PIX mock, ordenado por data.
+- stability before visual changes
+- deterministic debugging before guesswork
+- controlled payment flows
+- clear separation between validated behavior and future improvements
+- documentation aligned with actual implementation
 
-#### 🧠 Modelo Persistido
-Tabela: `pix_transactions`
-\`\`\`sql
-id | from_account_id | to_account_id | amount | created_at
-\`\`\`
+## PIX Flow Reliability
 
-#### ⚙️ Seed Automático (somente para ambientes vazios)
-O sistema pode criar as contas iniciais `1` e `2` automaticamente quando estas não existirem — **apenas** se a variável de ambiente estiver habilitada:
+One of the key platform concerns is payment integrity.
 
-\`\`\`
-PIX_MOCK_SEED_ENABLED=true
-\`\`\`
+The PIX sending flow is designed to support:
 
-> 🔒 **Por padrão**, o seed está **desativado** (`false`).  
-> Em produção, mantenha `PIX_MOCK_SEED_ENABLED=false`.  
-> Para recriar contas mock em ambientes de teste, ligue temporariamente e execute um `mock-transfer` — as contas serão geradas com saldo inicial seguro (`1000.0` e `100.0`).
+- first execution of a payment request
+- safe replay of the same request using the same `Idempotency-Key`
+- conflict protection when the same key is reused with a different payload
+- response signaling for replayed requests
 
-#### 🩺 Healthchecks
-- `/health` — usado internamente pelo app.  
-- `/healthz` — compatibilidade com Railway (`{"status": "ok"}`).
+This helps prevent duplicated operations and supports safer client integrations.
 
-#### ✅ Boas práticas
-- Evite usar o seed fora de ambientes de teste.  
-- Use idempotência sempre (`Idempotency-Key` único).  
-- Para debugging, combine com `pix/history` e `transactions`.
+## Tech Stack
 
----
+- **Backend:** FastAPI, Python
+- **Database:** PostgreSQL
+- **Auth:** JWT
+- **Frontend:** React / TypeScript
+- **Infra / Deploy:** Railway
+- **Version Control / CI:** GitHub Actions
 
-### 🧪 Smoke Tests – PIX Mock & Health
+## Current Focus
 
-Use estes comandos para testar o ambiente local e de produção:
+The current product phase is focused on:
 
-#### 🖥️ Local
-```bash
-BASE_LOCAL="http://127.0.0.1:8000"
-IDEM="pix-local-$(date +%s)"
+- strengthening public repository presentation
+- improving technical documentation
+- making real platform capabilities visible on GitHub
+- consolidating product governance and roadmap visibility
 
-# Testa mock-transfer
-curl -s -X POST "$BASE_LOCAL/api/v1/pix/pix/mock-transfer" \
-  -H "Content-Type: application/json" \
-  -H "Idempotency-Key: $IDEM" \
-  -d "{\"from_account_id\":1,\"to_account_id\":2,\"amount\":3.33,\"idempotency_key\":\"$IDEM\"}" | jq .
+## Running Locally
 
-# Verifica histórico
-curl -s "$BASE_LOCAL/api/v1/pix/history" | jq .
+Example local backend flow:
 
-# Healthcheck
-curl -s "$BASE_LOCAL/healthz" | jq .
+    cd ~/dils-wallet/backend
+    source .venv/bin/activate
+    export DATABASE_URL='postgresql://aurea:aurea123@127.0.0.1:55440/aurea'
+    uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload --log-level debug
 
-```
+Health check:
+
+    curl -i http://127.0.0.1:8090/healthz
+
+## Development Principles
+
+This repository follows a practical engineering playbook:
+
+- do not debug blindly
+- capture request, response, status, and backend logs first
+- validate health before changing code
+- prefer small patches over large rewrites
+- validate behavior before touching interface
+- treat stable flows as protected assets
+
+## Roadmap
+
+Planned improvements include:
+
+- stronger public product documentation
+- expanded PIX flow documentation
+- repository hygiene and visual organization
+- clearer governance through issues and milestones
+- product-level security and operational hardening
+
+## Status
+
+Aurea Gold is an active, evolving fintech product under structured development, with focus on production readiness, payment reliability, and premium delivery quality.
+
+## Author
+
+Developed by **Dilson Pereira**  
+GitHub: [dilson123-tech](https://github.com/dilson123-tech)
