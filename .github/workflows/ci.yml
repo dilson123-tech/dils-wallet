@@ -123,7 +123,7 @@ jobs:
 
             "${SMOKE_BASE_URL}/api/v1/transactions/balance" | jq .
 
-lint:
+  lint:
     name: lint
     needs: [backend-build, client-build]
     runs-on: ubuntu-latest
