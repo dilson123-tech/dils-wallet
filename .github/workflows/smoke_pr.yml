@@ -32,7 +32,7 @@ jobs:
           fi
       - name: Checkout
         if: ${{ steps.gate.outputs.run == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Deps (jq, curl)
         if: ${{ steps.gate.outputs.run == 'true' }}
