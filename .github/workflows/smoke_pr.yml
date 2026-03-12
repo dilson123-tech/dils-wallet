@@ -2,7 +2,6 @@ name: Smoke PR (Read-only)
 on:
   pull_request:
   workflow_dispatch:
-    branches: [ main ]
 
 jobs:
   smoke_pr:
