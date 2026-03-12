@@ -60,7 +60,7 @@ jobs:
           zip -j "artifacts/tg/smoke_prod/tg-${{ github.run_id }}.zip" artifacts/tg/smoke_prod/tg.* || true
       - name: Upload TG artifacts (smoke_prod)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tg-debug-smoke-prod
           path: artifacts/tg/smoke_prod/**
