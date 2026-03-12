@@ -9,7 +9,7 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Dependências do runner (jq/uuidgen)
         run: sudo apt-get update -y && sudo apt-get install -y jq uuid-runtime
       - name: Rodar smoke contra API
