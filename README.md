@@ -4,78 +4,115 @@
 
 # Aurea Gold
 
-**Aurea Gold** is a production-oriented digital wallet and PIX platform designed for real-world financial operations.  
-It combines a FastAPI backend, premium client/admin panels, secure authentication flows, idempotent payment processing, CI automation, and deploy-ready infrastructure.
+**Aurea Gold** is a production-grade digital wallet and PIX platform built for real financial operations.
 
-## Overview
+Designed with reliability, payment integrity, and operational discipline at its core, Aurea Gold is not a demo system — it is a fintech foundation ready for real-world usage.
 
-Aurea Gold was built as a real fintech product foundation — not just a demo API.  
-The project focuses on reliability, payment integrity, operational clarity, and a premium user experience for both customers and administrators.
+## What Aurea Gold Is
 
-Core goals:
+Aurea Gold is a complete digital wallet platform that enables:
 
-- provide a modern digital wallet foundation
-- support PIX-based payment flows
-- guarantee safe request replay with idempotency
-- offer separate premium panels for client and admin use
-- maintain production discipline with CI, smoke tests, and structured documentation
+- PIX-based payments
+- secure authentication flows
+- controlled financial operations
+- premium interfaces for both clients and administrators
 
-## Main Features
+The system is built with a **production-first mindset**, ensuring that every validated behavior is deterministic and reliable.
 
-- Digital wallet backend built with **FastAPI**
-- PIX transfer flow with **idempotency protection**
-- JWT-based authentication
-- Premium client-facing interface
-- Admin panel for operational control
-- PostgreSQL-ready environment
-- Railway deployment support
-- CI workflows and smoke test structure
-- Documentation and scripts for local/dev operations
+## Why It Matters
 
-## Architecture
+Financial systems cannot afford ambiguity.
 
-This repository contains the core layers of the Aurea Gold platform:
+Aurea Gold focuses on:
 
-- `backend/` — FastAPI backend, business rules, auth, wallet and PIX flows
-- `frontend/` — front-end application layer
+- preventing duplicated transactions
+- ensuring safe request replay
+- delivering clear operational feedback
+- maintaining strict backend validation rules
+
+This approach reduces risk and increases trust for both users and integrators.
+
+## Validated Capabilities
+
+The platform already includes:
+
+- JWT authentication
+- health and readiness endpoints
+- PIX send flow (`/api/v1/pix/send`)
+- idempotency protection
+- replay-safe requests (same key → same response)
+- conflict detection (same key + different payload → `409 Conflict`)
+- CI workflows for lint, tests, smoke, and health validation
+
+## PIX Flow Reliability
+
+The PIX operation supports:
+
+- first execution → `200 OK`
+- replay with same payload → `200 OK` + `x-idempotency-replayed: true`
+- conflict with same key and different payload → `409 Conflict`
+
+No duplicated records are created.
+
+This ensures safer financial operations even under retry scenarios and strengthens integration reliability for client applications.
+
+## Platform Structure
+
+- `backend/` — FastAPI core, wallet logic, PIX, auth
+- `frontend/` — base application layer
 - `aurea-gold-client/` — premium client panel
 - `aurea-gold-admin/` — premium admin panel
 - `docs/` — technical and product documentation
 - `.github/` — CI workflows and repository automation
-- `scripts/` — helper scripts for development and operational routines
-- `tests/` — automated validation and reliability checks
+- `scripts/` — development and operational utilities
+- `tests/` — validation and safety checks
 
-## Product Positioning
+## Documentation
 
-Aurea Gold is treated as a **real commercial product** with production mindset:
+Detailed project documentation is available in:
 
-- stability before visual changes
-- deterministic debugging before guesswork
-- controlled payment flows
-- clear separation between validated behavior and future improvements
-- documentation aligned with actual implementation
-
-## PIX Flow Reliability
-
-One of the key platform concerns is payment integrity.
-
-The PIX sending flow is designed to support:
-
-- first execution of a payment request
-- safe replay of the same request using the same `Idempotency-Key`
-- conflict protection when the same key is reused with a different payload
-- response signaling for replayed requests
-
-This helps prevent duplicated operations and supports safer client integrations.
+- `docs/architecture.md`
+- `docs/deploy.md`
+- `docs/pix-operation.md`
+- `docs/panels.md`
+- `docs/product-maturity.md`
 
 ## Tech Stack
 
-- **Backend:** FastAPI, Python
+- **Backend:** FastAPI / Python
 - **Database:** PostgreSQL
 - **Auth:** JWT
 - **Frontend:** React / TypeScript
 - **Infra / Deploy:** Railway
-- **Version Control / CI:** GitHub Actions
+- **CI/CD:** GitHub Actions
+
+## Running Locally
+
+Example backend flow:
+
+```bash
+cd ~/dils-wallet/backend
+source .venv/bin/activate
+export DATABASE_URL='postgresql://aurea:aurea123@127.0.0.1:55440/aurea'
+uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload --log-level debug
+```
+
+Health check:
+
+```bash
+curl -i http://127.0.0.1:8090/healthz
+```
+
+## Engineering Principles
+
+This repository follows a practical engineering playbook:
+
+- deterministic debugging first
+- no blind fixes
+- validate health before changing code
+- prefer small patches over large rewrites
+- validate backend behavior before touching interface
+- protect stable flows as product assets
 
 ## Current Focus
 
@@ -83,46 +120,12 @@ The current product phase is focused on:
 
 - strengthening public repository presentation
 - improving technical documentation
-- making real platform capabilities visible on GitHub
-- consolidating product governance and roadmap visibility
-
-## Running Locally
-
-Example local backend flow:
-
-    cd ~/dils-wallet/backend
-    source .venv/bin/activate
-    export DATABASE_URL='postgresql://aurea:aurea123@127.0.0.1:55440/aurea'
-    uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload --log-level debug
-
-Health check:
-
-    curl -i http://127.0.0.1:8090/healthz
-
-## Development Principles
-
-This repository follows a practical engineering playbook:
-
-- do not debug blindly
-- capture request, response, status, and backend logs first
-- validate health before changing code
-- prefer small patches over large rewrites
-- validate behavior before touching interface
-- treat stable flows as protected assets
-
-## Roadmap
-
-Planned improvements include:
-
-- stronger public product documentation
-- expanded PIX flow documentation
-- repository hygiene and visual organization
-- clearer governance through issues and milestones
-- product-level security and operational hardening
+- exposing validated platform capabilities more clearly
+- consolidating governance and product visibility
 
 ## Status
 
-Aurea Gold is an active, evolving fintech product under structured development, with focus on production readiness, payment reliability, and premium delivery quality.
+Aurea Gold is an active fintech product under structured development, focused on production readiness, payment reliability, and premium delivery quality.
 
 ## Author
 
