@@ -6,23 +6,20 @@ import AureaIAPanel from "./super2/AureaIAPanel";
 import AureaPagamentosPanel from "./pagamentos/AureaPagamentosPanel";
 import AureaCreditoIAPanel from "./credito/AureaCreditoIAPanel";
 import PlanosPremium from "./super2-lab/PlanosPremium";
-import {  saveTokens,
+import {
+  saveTokens,
   getAccessToken,
   clearTokens,
 } from "./auth/authClient";
 import { login as loginCore } from "./app/lib/auth";
-// import PanelReceitasReservasLab from "./pagamentos/PanelReceitasReservasLab";
 
 const isPlanosLab =
   typeof window !== "undefined" &&
   window.location.pathname.includes("planos");
 
-// ==============================
-// Versão especial: Planos
-// ==============================
 function PlanosLabApp() {
   return (
-    <div className="min-h-screen bg-black text-zinc-50">
+    <div className="min-h-screen text-white">
       <main className="w-full px-4 py-6 mx-auto max-w-6xl">
         <PlanosPremium />
       </main>
@@ -30,9 +27,6 @@ function PlanosLabApp() {
   );
 }
 
-// ==============================
-// App protegido (tabs, PIX, IA, etc)
-// ==============================
 interface AureaAppShellProtectedProps {
   onLogout: () => void;
 }
@@ -76,23 +70,61 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     case "home":
       content = (
         <>
-          {/* HEADER APP OFICIAL */}
           <header className="mb-6 md:mb-8">
-            <div className="text-[10px] md:text-xs border-b border-zinc-800 pb-4 uppercase tracking-wide flex flex-col md:flex-row md:items-center md:justify-between gap-1">
-              <span className="font-bold leading-tight">
-                AUREA GOLD • CARTEIRA DIGITAL
-              </span>
-              <span className="text-[9px] md:text-[10px] text-amber-300">
-                Versão IA 3.0 • Ambiente interno
-              </span>
+            <div className="ag-hero px-4 py-5 md:px-6 md:py-6">
+              <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-2 max-w-2xl">
+                  <span className="text-[10px] md:text-xs uppercase tracking-[0.30em] ag-gold-text">
+                    Aurea Gold • Financial Interface
+                  </span>
+
+                  <h1 className="text-2xl md:text-3xl font-semibold ag-title leading-tight">
+                    Seu centro premium de operações financeiras
+                  </h1>
+
+                  <p className="text-sm md:text-base ag-subtitle leading-relaxed">
+                    Ambiente seguro para saldo, PIX, pagamentos e inteligência aplicada,
+                    com percepção visual premium e operação orientada à confiança.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-[280px] md:min-w-[360px]">
+                  <div className="ag-card px-4 py-3">
+                    <div className="text-[10px] uppercase tracking-[0.22em] ag-soft">
+                      Status da conta
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                      <span className="text-sm font-semibold text-white">
+                        Operacional
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] ag-subtitle">
+                      Ambiente autenticado e pronto para movimentações.
+                    </div>
+                  </div>
+
+                  <div className="ag-card px-4 py-3">
+                    <div className="text-[10px] uppercase tracking-[0.22em] ag-soft">
+                      Segurança
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--ag-gold-strong)]" />
+                      <span className="text-sm font-semibold text-white">
+                        Monitorada
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] ag-subtitle">
+                      Sessão protegida com fluxo controlado de autenticação.
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="h-px w-40 md:w-64 bg-amber-500 mt-2" />
           </header>
 
-          {/* MAIN CONTENT */}
           <main className="w-full pb-4 md:pb-6 overflow-x-auto">
             <SuperAureaHome onPixShortcut={handleHomePixShortcut} />
-            {/* <PanelReceitasReservasLab /> */}
           </main>
         </>
       );
@@ -100,7 +132,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
 
     case "pix":
       content = (
-        <div className="w-full px-4 py-6 mx-auto">
+        <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
           <AureaPixPanel initialAction={pixInitialAction} />
         </div>
       );
@@ -108,7 +140,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
 
     case "ia":
       content = (
-        <div className="w-full px-4 py-6 mx-auto">
+        <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
           <AureaIAPanel />
         </div>
       );
@@ -116,15 +148,15 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
 
     case "pagamentos":
       content = (
-        <div className="w-full px-4 py-6 mx-auto">
-        <AureaPagamentosPanel />
+        <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
+          <AureaPagamentosPanel />
         </div>
       );
       break;
 
     case "credito-ia":
       content = (
-        <div className="w-full px-4 py-6 mx-auto">
+        <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
           <AureaCreditoIAPanel />
         </div>
       );
@@ -142,11 +174,11 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     >
       {content}
 
-      <div className="mt-4 w-full flex justify-end px-4">
+      <div className="mt-4 w-full flex justify-end px-1 md:px-2">
         <button
           type="button"
           onClick={onLogout}
-          className="text-[10px] text-zinc-500 hover:text-zinc-300 underline underline-offset-4"
+          className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.18em]"
         >
           Sair da Aurea Gold
         </button>
@@ -155,9 +187,6 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
   );
 }
 
-// ==============================
-// App com autenticação (login + tokens)
-// ==============================
 function AureaAppWithAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
@@ -182,8 +211,7 @@ function AureaAppWithAuth() {
     return () => clearInterval(t);
   }, [loginCooldown]);
 
-
-    async function handleLoginSubmit(e: React.FormEvent) {
+  async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoginError(null);
 
@@ -229,12 +257,13 @@ function AureaAppWithAuth() {
 
   if (authChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-zinc-200">
-        <div className="text-center space-y-2">
-          <div className="text-xs tracking-[0.28em] text-amber-400 uppercase">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="ag-surface-elevated w-full max-w-md px-8 py-10 text-center">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full border border-[rgba(212,175,55,0.34)] border-t-transparent animate-spin" />
+          <div className="text-[10px] tracking-[0.32em] ag-gold-text uppercase">
             Aurea Gold
           </div>
-          <div className="text-sm text-zinc-300">
+          <div className="mt-3 text-sm ag-subtitle">
             Carregando ambiente seguro da carteira...
           </div>
         </div>
@@ -244,45 +273,47 @@ function AureaAppWithAuth() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-950 via-black to-zinc-900 text-zinc-50 px-4">
-        <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-black/80 p-6 shadow-xl shadow-amber-950/30 space-y-5">
-          <header className="space-y-1">
-            <div className="text-[10px] tracking-[0.3em] uppercase text-amber-400">
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="ag-surface-elevated w-full max-w-md px-6 py-6 md:px-8 md:py-8">
+          <header className="space-y-2">
+            <div className="text-[10px] tracking-[0.30em] uppercase ag-gold-text">
               Aurea Gold • Carteira Digital
             </div>
-            <h1 className="text-xl font-semibold">
+
+            <h1 className="text-2xl font-semibold ag-title">
               Acesso seguro à sua carteira
             </h1>
-            <p className="text-[11px] text-zinc-400">
-              Entre com seu usuário e senha para acessar saldo, PIX, crédito IA
-              3.0 e painel completo da Aurea.
+
+            <p className="text-xs leading-relaxed ag-subtitle">
+              Entre com seu usuário e senha para acessar saldo, PIX, crédito IA 3.0
+              e o painel completo da Aurea Gold.
             </p>
           </header>
 
-          <form className="space-y-4" onSubmit={handleLoginSubmit}>
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-[0.16em] text-zinc-400">
+          <form className="mt-6 space-y-4" onSubmit={handleLoginSubmit}>
+            <div className="space-y-1.5">
+              <label className="text-[11px] uppercase tracking-[0.16em] ag-muted">
                 Usuário
               </label>
               <input
                 type="text"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
-                className="w-full rounded-md border border-zinc-700 bg-black/70 px-3 py-2 text-[12px] outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-[rgba(212,175,55,0.16)] bg-[rgba(255,255,255,0.02)] px-3 py-3 text-[13px] text-white outline-none transition focus:border-[rgba(212,175,55,0.34)]"
                 placeholder="Ex.: cliente.aurea"
                 autoComplete="username"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-[0.16em] text-zinc-400">
+            <div className="space-y-1.5">
+              <label className="text-[11px] uppercase tracking-[0.16em] ag-muted">
                 Senha
               </label>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full rounded-md border border-zinc-700 bg-black/70 px-3 py-2 text-[12px] outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-[rgba(212,175,55,0.16)] bg-[rgba(255,255,255,0.02)] px-3 py-3 text-[13px] text-white outline-none transition focus:border-[rgba(212,175,55,0.34)]"
                 placeholder="●●●●●●●●"
                 autoComplete="current-password"
               />
@@ -295,15 +326,18 @@ function AureaAppWithAuth() {
             <button
               type="submit"
               disabled={loginLoading || loginCooldown > 0 || !loginUsername || !loginPassword}
-              className="w-full rounded-full border border-amber-500/80 bg-amber-500/20 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="ag-btn-primary w-full px-4 py-3 text-[11px] uppercase tracking-[0.22em] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loginLoading ? "Entrando..." : loginCooldown > 0 ? `Aguarde ${loginCooldown}s` : "Entrar na Aurea Gold"}
+              {loginLoading
+                ? "Entrando..."
+                : loginCooldown > 0
+                ? `Aguarde ${loginCooldown}s`
+                : "Entrar na Aurea Gold"}
             </button>
 
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Este acesso é destinado ao ambiente interno da Aurea Gold. As
-              operações exibidas podem estar em modo demonstração e têm caráter
-              consultivo.
+            <p className="pt-1 text-[10px] leading-relaxed ag-soft">
+              Este acesso é destinado ao ambiente interno da Aurea Gold. As operações
+              exibidas podem estar em modo demonstração e têm caráter consultivo.
             </p>
           </form>
         </div>
@@ -314,9 +348,6 @@ function AureaAppWithAuth() {
   return <AureaAppShellProtected onLogout={handleLogout} />;
 }
 
-// ==============================
-// Componente raiz: escolhe LAB x App oficial
-// ==============================
 export default function App() {
   if (isPlanosLab) {
     return <PlanosLabApp />;

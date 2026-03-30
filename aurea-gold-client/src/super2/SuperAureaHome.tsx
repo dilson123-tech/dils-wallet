@@ -684,6 +684,50 @@ const saldoDisplay =
           </span>
         </div>
 
+        {/* ===== SALDO PREMIUM AUREA GOLD ===== */}
+        <div className="ag-hero px-5 py-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-[0.28em] ag-soft">
+              Saldo disponível
+            </span>
+
+            <div className="text-3xl md:text-4xl font-semibold text-white gold-glow">
+              {formatBRL(saldoReal)}
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] ag-subtitle">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  saldoModo === "real" ? "bg-emerald-400" : "bg-yellow-400"
+                }`}
+              />
+              {saldoModo === "real" ? "Saldo real sincronizado" : "Modo simulado"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 min-w-[240px]">
+            <div className="ag-card px-4 py-3">
+              <div className="text-[10px] uppercase ag-soft">
+                Entradas (mês)
+              </div>
+              <div className="text-lg font-semibold text-emerald-400 mt-1">
+                {formatBRL(entradasMes)}
+              </div>
+            </div>
+
+            <div className="ag-card px-4 py-3">
+              <div className="text-[10px] uppercase ag-soft">
+                Saídas (mês)
+              </div>
+              <div className="text-lg font-semibold text-red-400 mt-1">
+                {formatBRL(saidasMes)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
         <div className="rounded-xl border border-emerald-500/40 bg-black/80 px-2 py-2 md:px-3 md:py-3">
           <AureaPixChart />
         </div>
