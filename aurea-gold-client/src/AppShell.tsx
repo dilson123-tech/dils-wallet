@@ -58,15 +58,15 @@ export function AppShell({
       </header>
 
       {/* MAIN */}
-      <main className="flex-1 px-4 pb-24">
-        <div className="max-w-5xl mx-auto">
+      <main className="flex-1 w-full pb-[110px]">
+        <div className="w-full max-w-[520px] mx-auto">
           {children}
         </div>
       </main>
 
       {/* NAV PREMIUM */}
-      <footer className="fixed bottom-0 left-0 right-0 px-3 pb-3">
-        <div className="ag-surface-elevated flex justify-between items-center px-4 py-3">
+      <footer className="fixed bottom-0 left-0 right-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="ag-surface-elevated flex justify-between items-center px-4 py-3 min-h-[72px]">
 
           {tabs.map((tab) => {
             const isActive = tab.key === activeTab;
@@ -75,7 +75,7 @@ export function AppShell({
               <button
                 key={tab.key}
                 onClick={() => !isSplash && onTabChange?.(tab.key)}
-                className="flex flex-col items-center gap-1 flex-1"
+                className="flex flex-col items-center justify-center gap-1 flex-1 min-h-[56px]"
               >
                 <span
                   className={`text-lg ${

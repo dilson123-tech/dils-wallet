@@ -503,59 +503,96 @@ const saldoDisplay =
         </div>
 
         {/* Atalhos rápidos PIX */}
-          <div className="flex flex-col gap-2 text-[10px] md:text-[11px] min-w-[190px]">
-            <p className="text-[10px] text-zinc-400 uppercase tracking-[0.16em]">
-              Atalhos rápidos PIX
+        <div className="min-w-[240px] md:min-w-[280px]">
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-[0.28em] ag-gold-text">
+              Ações rápidas
             </p>
+            <h3 className="mt-1 text-sm md:text-base font-semibold ag-title">
+              PIX e movimentações principais
+            </h3>
+          </div>
 
+          <div className="grid grid-cols-1 gap-3">
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
-              className="px-3 py-2 rounded-lg border border-amber-500/60 bg-amber-500/20 text-amber-100 text-left text-[11px] hover:bg-amber-500/25 active:scale-[0.98] transition"
+              className="ag-card text-left px-4 py-4"
             >
-              Enviar PIX
-              <span className="block text-[9px] text-zinc-300/90">
-                Transferir agora
-              </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-2xl leading-none">↑</span>
+                  <span className="text-sm font-semibold text-white">
+                    Enviar PIX
+                  </span>
+                  <span className="text-[11px] ag-subtitle leading-relaxed">
+                    Transferência imediata com fluxo rápido e seguro.
+                  </span>
+                </div>
+                <span className="text-[10px] uppercase ag-gold-text tracking-[0.2em]">
+                  Enviar
+                </span>
+              </div>
             </button>
 
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
-              className="px-3 py-2 rounded-lg border border-amber-500/60 bg-amber-500/10 text-amber-100 text-left text-[11px] hover:bg-amber-500/18 active:scale-[0.98] transition"
+              className="ag-card text-left px-4 py-4"
             >
-              Receber PIX
-              <span className="block text-[9px] text-zinc-300/90">
-                Mostrar chave/QR (em breve)
-              </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-2xl leading-none">↓</span>
+                  <span className="text-sm font-semibold text-white">
+                    Receber PIX
+                  </span>
+                  <span className="text-[11px] ag-subtitle leading-relaxed">
+                    Gere cobrança, QR Code e recebimentos com agilidade.
+                  </span>
+                </div>
+                <span className="text-[10px] uppercase ag-gold-text tracking-[0.2em]">
+                  Cobrar
+                </span>
+              </div>
             </button>
 
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-              className="px-3 py-2 rounded-lg border border-amber-500/60 bg-amber-500/30 text-amber-50 text-left text-[11px] hover:bg-amber-500/35 active:scale-[0.98] transition"
+              className="ag-card text-left px-4 py-4"
             >
-              Ver extrato PIX
-              <span className="block text-[9px] text-zinc-300/90">
-                Acessar histórico detalhado do mês
-              </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-2xl leading-none">≡</span>
+                  <span className="text-sm font-semibold text-white">
+                    Ver extrato PIX
+                  </span>
+                  <span className="text-[11px] ag-subtitle leading-relaxed">
+                    Consulte lançamentos recentes e acompanhe movimentações.
+                  </span>
+                </div>
+                <span className="text-[10px] uppercase ag-gold-text tracking-[0.2em]">
+                  Extrato
+                </span>
+              </div>
             </button>
           </div>
+        </div>
 
-{/* Resumo rápido do mês */}
+{/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-4 md:p-5 space-y-3">
+      <div className="ag-hero px-5 py-5 mb-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
-              Resumo rápido do mês
+              Resumo financeiro do mês
             </p>
             <p className="text-sm md:text-base text-zinc-100">
-              Visão geral das entradas e saídas do seu Aurea Gold.
+              Leitura consolidada da sua operação financeira no mês, com foco em clareza, resultado e tomada de decisão.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/70 bg-black/70 px-3 py-1 text-[10px] text-amber-200">
-            Dados reais • fallback automático se necessário
+            Base operacional • leitura protegida
           </span>
         </div>
 
@@ -609,7 +646,7 @@ const saldoDisplay =
         <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-zinc-300">
           <div>
             <span className="uppercase tracking-[0.16em] text-amber-300">
-              Plano atual: Free
+              Plano atual: Essencial
             </span>
             <span className="ml-1 text-zinc-400">
               {" "}
