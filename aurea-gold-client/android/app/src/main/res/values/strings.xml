@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aurea Gold</string>
+    <string name="title_activity_main">Aurea Gold</string>
+    <string name="package_name">com.aurea.gold</string>
+    <string name="custom_url_scheme">com.aurea.gold</string>
+</resources>
