@@ -2,128 +2,263 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Aurea Gold theme baseline */
+/* =========================================================
+   Aurea Gold — Premium Theme Foundation
+   Produto real, visual premium, sem exagero e sem cassino.
+   ========================================================= */
+
 :root {
-  --gold: #d4af37;
-  --carbon: #0a0a0a;
-  --carbon-light: #1a1a1a;
+  --ag-bg: #0b0b0f;
+  --ag-bg-elevated: #121218;
+  --ag-surface: rgba(18, 18, 24, 0.88);
+  --ag-surface-2: rgba(24, 24, 32, 0.94);
+  --ag-border: rgba(212, 175, 55, 0.18);
+  --ag-border-strong: rgba(212, 175, 55, 0.34);
+
+  --ag-gold: #c6a756;
+  --ag-gold-strong: #e6c76a;
+  --ag-gold-soft: rgba(198,167,86,0.18);
+
+  --ag-text: #ffffff;
+  --ag-text-muted: #a7a7b5;
+  --ag-text-soft: #7d7d8f;
+
+  --ag-success: #22c55e;
+  --ag-danger: #ef4444;
+  --ag-warning: #f59e0b;
+
+  --ag-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.32);
+  --ag-shadow-gold: 0 0 0 1px rgba(212, 175, 55, 0.12), 0 10px 28px rgba(0, 0, 0, 0.34);
+  --ag-glow: 0 0 24px rgba(212, 175, 55, 0.14);
+
+  --ag-radius-sm: 10px;
+  --ag-radius-md: 16px;
+  --ag-radius-lg: 22px;
+
+  --ag-transition-fast: 180ms ease;
+  --ag-transition-base: 260ms ease;
 }
 
-html, body {
-  background-color: var(--carbon);
-  color: white;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Roboto, "Helvetica Neue", sans-serif;
+html {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(198, 167, 86, 0.10) 0%, transparent 22%),
+    radial-gradient(circle at top right, rgba(230, 199, 106, 0.08), transparent 26%),
+    linear-gradient(180deg, #0b0b0f 0%, #09090d 100%);
+  color: var(--ag-text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ===== Aurea Gold Premium polish ===== */
-.card-gold { border-radius: 8px !important; backdrop-filter: blur(3px); }
-.kpi-saldo { padding: 12px 14px !important; }
-.table-gold { border-radius: 8px; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+  color: var(--ag-text);
+  font-family: inherit;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* ===== Skeleton Aurea Gold ===== */
-.skeleton-gold{
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(212, 175, 55, 0.22);
+  color: #fff;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* =========================================================
+   Premium utility surfaces
+   ========================================================= */
+
+.ag-surface {
+  background: linear-gradient(180deg, rgba(20, 20, 27, 0.96) 0%, rgba(15, 15, 21, 0.96) 100%);
+  border: 1px solid var(--ag-border);
+  border-radius: var(--ag-radius-md);
+  box-shadow: var(--ag-shadow-soft);
+  backdrop-filter: blur(10px);
+}
+
+.ag-surface-elevated {
+  background: linear-gradient(180deg, rgba(24, 24, 32, 0.98) 0%, rgba(16, 16, 22, 0.98) 100%);
+  border: 1px solid var(--ag-border-strong);
+  border-radius: var(--ag-radius-lg);
+  box-shadow: var(--ag-shadow-gold);
+  backdrop-filter: blur(14px);
+}
+
+.ag-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(198,167,86,0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  transition:
+    transform var(--ag-transition-base),
+    border-color var(--ag-transition-base),
+    box-shadow var(--ag-transition-base);
+}
+
+.ag-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(198,167,86,0.34);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.68), 0 0 18px rgba(198,167,86,0.12);
+}
+
+.ag-hero {
+  background:
+    radial-gradient(circle at top right, rgba(255, 215, 0, 0.12), transparent 30%),
+    linear-gradient(135deg, rgba(28, 28, 36, 0.98) 0%, rgba(15, 15, 21, 0.98) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 24px;
+  box-shadow: var(--ag-shadow-gold), 0 0 36px rgba(212, 175, 55, 0.08);
+}
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+
+.ag-btn-primary {
+  background: linear-gradient(135deg, #d4af37 0%, #f1d06b 100%);
+  color: #111214;
+  border: 1px solid rgba(255, 215, 0, 0.32);
+  border-radius: 12px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.22);
+  transition:
+    transform var(--ag-transition-fast),
+    filter var(--ag-transition-fast),
+    box-shadow var(--ag-transition-fast);
+}
+
+.ag-btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 10px 28px rgba(212, 175, 55, 0.28);
+}
+
+.ag-btn-secondary {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--ag-text);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 12px;
+  transition:
+    background var(--ag-transition-fast),
+    border-color var(--ag-transition-fast),
+    transform var(--ag-transition-fast);
+}
+
+.ag-btn-secondary:hover {
+  background: rgba(212, 175, 55, 0.06);
+  border-color: rgba(212, 175, 55, 0.32);
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   Typography helpers
+   ========================================================= */
+
+.ag-title {
+  color: var(--ag-text);
+  letter-spacing: -0.02em;
+}
+
+.ag-subtitle {
+  color: var(--ag-text-muted);
+}
+
+.ag-gold-text {
+  color: var(--ag-gold);
+}
+
+.ag-muted {
+  color: var(--ag-text-muted);
+}
+
+.ag-soft {
+  color: var(--ag-text-soft);
+}
+
+/* =========================================================
+   Skeleton / loading
+   ========================================================= */
+
+.skeleton-gold {
   position: relative;
-  border-radius: 10px;
-  background: linear-gradient(90deg, rgba(255,215,0,0.10) 0%, rgba(255,215,0,0.05) 50%, rgba(255,215,0,0.10) 100%);
   overflow: hidden;
-  border: 1px solid rgba(255,215,0,0.18);
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  background: linear-gradient(90deg, rgba(28, 28, 35, 0.96) 0%, rgba(38, 38, 46, 0.96) 50%, rgba(28, 28, 35, 0.96) 100%);
 }
-.skeleton-gold::after{
-  content:"";
-  position:absolute; inset:0;
+
+.skeleton-gold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%);
-  animation: aurea-shimmer 1.3s infinite;
-}
-@keyframes aurea-shimmer{
-  100% { transform: translateX(100%); }
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 50%, transparent 100%);
+  animation: aurea-shimmer 1.35s infinite;
 }
 
-/* ---- Aurea Gold premium touches ---- */
-@keyframes aureaPulse {
-  0% { box-shadow: 0 0 0px rgba(255,215,0,0.20), inset 0 0 0px rgba(255,215,0,0.10); }
-  50%{ box-shadow: 0 0 12px rgba(255,215,0,0.45), inset 0 0 8px rgba(255,215,0,0.25); }
-  100%{ box-shadow: 0 0 0px rgba(255,215,0,0.20), inset 0 0 0px rgba(255,215,0,0.10); }
-}
-.gold-glow { animation: aureaPulse 2.2s ease-in-out infinite; border-radius: 6px; }
-.skel-gold { background: linear-gradient(90deg,#1a1a1a 0%,#262626 50%,#1a1a1a 100%); height: 14px; border-radius: 4px; }
-
-/* --- Aurea Gold row highlight --- */
-.pixel-gold-row:hover {
-  background: linear-gradient(90deg, rgba(255,215,0,0.15), rgba(255,215,0,0.35));
-  transition: 0.2s ease-in-out;
-}
-.pixel-gold-row {
-  border-bottom: 1px solid rgba(255, 215, 0, 0.40);
+@keyframes aurea-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
-/* --- Aurea Gold: highlight de linha nos TDs (mais específico) --- */
-table .pixel-gold-row:hover td {
-  background: linear-gradient(90deg, rgba(255,215,0,0.16), rgba(255,215,0,0.36)) !important;
-  transition: background 0.2s ease-in-out;
-}
-table .pixel-gold-row td {
-  border-bottom: 1px solid rgba(255, 215, 0, 0.30);
+.gold-glow {
+  box-shadow: 0 0 10px rgba(198,167,86,0.25);
+  transition: 0.3s ease;
 }
 
-/* --- Aurea Gold: hover global em linhas de tabela --- */
-table tbody tr:hover td {
-  background: linear-gradient(90deg, rgba(255,215,0,0.16), rgba(255,215,0,0.36)) !important;
-  transition: background 0.2s ease-in-out;
-}
-table tbody tr td {
-  border-bottom: 1px solid rgba(255, 215, 0, 0.28);
+.gold-glow:hover {
+  box-shadow: 0 0 18px rgba(198,167,86,0.45);
 }
 
-/* Versão com escopo por classe */
-table .pixel-gold-row:hover td {
-  background: linear-gradient(90deg, rgba(255,215,0,0.16), rgba(255,215,0,0.36)) !important;
-}
-table .pixel-gold-row td {
-  border-bottom: 1px solid rgba(255, 215, 0, 0.30);
-}
+/* =========================================================
+   Tables
+   ========================================================= */
 
-/* ===== Aurea Gold — hover visível nas linhas ===== */
-.ag-table tbody tr:hover td {
-  background: linear-gradient(90deg, rgba(255,215,0,0.22), rgba(255,215,0,0.40)) !important;
-  color: #ffd700 !important;
-  transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
-}
 .ag-table tbody tr td {
-  border-bottom: 1px solid rgba(255, 215, 0, 0.32) !important;
-}
-/* debug aurea */ body{outline:2px solid lime !important}
-
-/* --- Aurea Gold: highlight específico da tabela de últimas PIX --- */
-#pix-last-10 tr:hover,
-#pix-last-10 tr:hover td,
-#pix-last-10 tr:hover th {
-  background: linear-gradient(90deg, rgba(255,215,0,0.18), rgba(255,215,0,0.38)) !important;
-  transition: background 0.2s ease-in-out;
-}
-#pix-last-10 tr td,
-#pix-last-10 tr th {
-  border-bottom: 1px solid rgba(255,215,0,0.35) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+  transition: background var(--ag-transition-fast), color var(--ag-transition-fast);
 }
 
-/* --- Aurea Gold: highlight específico da tabela "Últimas PIX (10)" --- */
-#pix-last-10 tbody tr:hover td,
-#pix-last-10 tbody tr:hover th,
-#pix-last-10 tbody tr:hover {
-  background: linear-gradient(90deg, rgba(255,215,0,0.18), rgba(255,215,0,0.38)) !important;
-  transition: background 0.2s ease-in-out;
-}
-#pix-last-10 tbody tr td,
-#pix-last-10 tbody tr th {
-  border-bottom: 1px solid rgba(255,215,0,0.35) !important;
+.ag-table tbody tr:hover td {
+  background: linear-gradient(90deg, rgba(198,167,86,0.15), rgba(198,167,86,0.28)) !important;
+  color: #f5e6b3 !important;
 }
 
+/* =========================================================
+   Compatibility classes already used in the project
+   ========================================================= */
 
-/* ---- alvo da tabela ---- */
-#pix-last-10 tbody tr:hover td,
-#pix-last-10 tbody tr:hover th,
-#pix-last-10 tbody tr:hover{
-  background: linear-gradient(90deg, rgba(255,215,0,0.18), rgba(255,215,0,0.38)) !important;
-  transition: background .2s ease-in-out;
+.card-gold {
+  border-radius: 12px !important;
+  background: linear-gradient(145deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(198,167,86,0.25);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
 }
 
+.kpi-saldo {
+  padding: 12px 14px !important;
+}
+
+.table-gold {
+  border-radius: var(--ag-radius-sm);
+  overflow: hidden;
+}

@@ -8,12 +8,6 @@ interface AppShellProps extends PropsWithChildren {
   isSplash?: boolean;
 }
 
-/**
- * AppShell — estrutura oficial do aplicativo Aurea Gold.
- * - Header premium (muda conforme a aba)
- * - Área de conteúdo (children)
- * - Navegação inferior estilo banco: Conta / Negócio / Pix / Pagamentos / Crédito IA
- */
 export function AppShell({
   children,
   activeTab,
@@ -21,142 +15,100 @@ export function AppShell({
   isSplash = false,
 }: AppShellProps) {
   const tabs: { key: AppTab; label: string; icon: string }[] = [
-    { key: "home",       label: "Conta",        icon: "🏦" },
-    { key: "ia",         label: "Negócio",      icon: "🏪" },
-    { key: "pix",        label: "Pix",          icon: "◎" },
-    { key: "pagamentos", label: "Pagamentos",   icon: "💳" },
-    { key: "credito-ia", label: "Crédito IA",   icon: "📊" },
+    { key: "home", label: "Conta", icon: "🏦" },
+    { key: "ia", label: "Negócio", icon: "🏪" },
+    { key: "pix", label: "Pix", icon: "◎" },
+    { key: "pagamentos", label: "Pagamentos", icon: "💳" },
+    { key: "credito-ia", label: "Crédito IA", icon: "📊" },
   ];
-
-  const headerTitle = "Aurea Gold";
 
   const headerSubtitle =
     activeTab === "home"
-      ? "Visão geral da sua conta Aurea Gold."
+      ? "Visão geral da sua conta"
       : activeTab === "pix"
-      ? "Envios, recebimentos e extratos PIX."
+      ? "Movimentações PIX"
       : activeTab === "ia"
-      ? "AureaIA 3.0 para o seu negócio."
+      ? "Inteligência de negócio"
       : activeTab === "pagamentos"
-      ? "Pagamentos, boletos e assinaturas."
-      : "Simulações de crédito inteligente com IA 3.0.";
+      ? "Pagamentos e cobranças"
+      : "Simulação de crédito";
 
   return (
-    <div
-      className="
-        min-h-screen w-full
-        bg-gradient-to-b from-black via-zinc-900 to-black
-        text-zinc-100
-        flex flex-col
-      "
-    >
+    <div className="min-h-screen flex flex-col text-white">
+      
       {/* HEADER PREMIUM */}
-      <header className="h-16 border-b border-zinc-800/80 bg-black/80 backdrop-blur flex items-center px-4">
-        <div className="w-full flex items-center justify-between gap-3">
-          <div className="flex flex-col">
-          <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400">
-            Aurea Gold
-          </span>
-          <span className="text-sm font-semibold text-zinc-100">
-            {headerTitle}
-          </span>
-          <span className="text-[11px] text-zinc-400">
-            {headerSubtitle}
-          </span>
-        </div>
+      <header className="px-4 pt-4 pb-3">
+        <div className="ag-hero px-4 py-3 flex items-center justify-between">
 
-        <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 border border-zinc-700/70 bg-black/40 px-2 py-1 rounded-full">
-          BETA
-        </span>
+          <div className="flex flex-col">
+            <span className="text-[10px] tracking-[0.3em] ag-gold-text uppercase">
+              AUREA GOLD
+            </span>
+
+            <span className="text-sm font-semibold ag-title">
+              {headerSubtitle}
+            </span>
+          </div>
+
+          <span className="text-[10px] px-2 py-1 rounded-full border ag-muted border-[rgba(212,175,55,0.2)]">
+            BETA
+          </span>
+
         </div>
       </header>
 
-      {/* CONTEÚDO PRINCIPAL */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
+      {/* MAIN */}
+      <main className="flex-1 w-full pb-[110px]">
+        <div className="w-full max-w-[520px] mx-auto">
+          {children}
+        </div>
       </main>
 
-      {/* NAV INFERIOR ESTILO APP DE BANCO */}
-      <footer className="relative border-t border-zinc-800 bg-black/90 backdrop-blur">
-        <nav className="max-w-3xl mx-auto flex items-end justify-between px-4 pt-2 pb-3">
+      {/* NAV PREMIUM */}
+      <footer className="fixed bottom-0 left-0 right-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="ag-surface-elevated flex justify-between items-center px-4 py-3 min-h-[72px]">
+
           {tabs.map((tab) => {
             const isActive = tab.key === activeTab;
-            const isPix = tab.key === "pix";
 
-            if (isPix) {
-              // Botão central flutuante do PIX
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => !isSplash && onTabChange?.(tab.key)}
-                  className="flex flex-col items-center justify-center -translate-y-4"
-                >
-                  <div
-                    className={`
-                      h-12 w-12 rounded-full
-                      flex items-center justify-center
-                      text-xl
-                      shadow-[0_0_24px_rgba(45,212,191,0.9)]
-                      border border-emerald-300/70
-                      ${isActive ? "bg-emerald-400 text-black" : "bg-emerald-500 text-black"}
-                    `}
-                  >
-                    {tab.icon}
-                  </div>
-                  <span
-                    className={`
-                      mt-1 text-[10px] font-medium
-                      ${isActive ? "text-emerald-300" : "text-zinc-400"}
-                    `}
-                  >
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            }
-
-            // Demais abas (Conta / Negócio / Pagamentos / Crédito IA)
             return (
               <button
                 key={tab.key}
-                type="button"
                 onClick={() => !isSplash && onTabChange?.(tab.key)}
-                className="flex-1 flex flex-col items-center justify-center gap-1"
+                className="flex flex-col items-center justify-center gap-1 flex-1 min-h-[56px]"
               >
                 <span
-                  className={`
-                    text-lg leading-none
-                    ${isActive ? "text-amber-300" : "text-zinc-400"}
-                  `}
+                  className={`text-lg ${
+                    isActive ? "ag-gold-text" : "ag-soft"
+                  }`}
                 >
                   {tab.icon}
                 </span>
+
                 <span
-                  className={`
-                    text-[10px] uppercase tracking-wide
-                    ${isActive ? "text-amber-300" : "text-zinc-500"}
-                  `}
+                  className={`text-[10px] uppercase ${
+                    isActive ? "ag-gold-text" : "ag-muted"
+                  }`}
                 >
                   {tab.label}
                 </span>
               </button>
             );
           })}
-        </nav>
+        </div>
       </footer>
 
-      {/* SPLASH / LOADING PREMIUM */}
+      {/* SPLASH */}
       {isSplash && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 rounded-full border border-amber-400/70 border-t-transparent animate-spin" />
-            <div className="text-[11px] uppercase tracking-[0.28em] text-amber-300">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50">
+          <div className="ag-card px-6 py-6 flex flex-col items-center gap-3">
+            <div className="h-10 w-10 rounded-full border border-[rgba(212,175,55,0.4)] border-t-transparent animate-spin" />
+            <span className="text-xs tracking-[0.3em] ag-gold-text uppercase">
               AUREA GOLD
-            </div>
-            <div className="text-[10px] text-zinc-400">
-              Carregando painel...
-            </div>
+            </span>
+            <span className="text-xs ag-muted">
+              Carregando...
+            </span>
           </div>
         </div>
       )}

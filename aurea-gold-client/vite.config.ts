@@ -17,7 +17,6 @@ export default defineConfig({
           if (!id) return;
           if (id.includes("node_modules")) {
             if (id.includes("recharts") || id.includes("/d3-")) return "charts";
-            if (id.includes("react")) return "react-vendor";
             return "vendor";
           }
         },
