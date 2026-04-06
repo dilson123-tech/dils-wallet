@@ -103,7 +103,7 @@ export default function AureaIAPanel() {
         setHeadlineLoading(true);
         setHeadlineError(null);
 
-        const resp = await fetch(`${API_BASE}/api/v1/ai/headline-lab`, {
+        const resp = await fetch(`${API_BASE}/api/v1/ai/headline`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -28,6 +28,7 @@ const LEGACY_KEYS = [
 
 export function setToken(tok: string) {
   try { localStorage.setItem(OFFICIAL, tok); } catch {}
+  try { if (tok) saveAccessToken(tok); } catch {}
 
   // compat (temporário): grava também em alguns legados pra não quebrar telas antigas
   try { localStorage.setItem("aurea_access_token", tok); } catch {}
@@ -36,7 +37,21 @@ export function setToken(tok: string) {
 }
 
 export function getToken() {
-  return getAccessToken();
+  const vault = getAccessToken();
+  if (__isJwt(vault)) return vault;
+
+  try {
+    const legacy = __pickToken(
+      localStorage.getItem(OFFICIAL),
+      ...LEGACY_KEYS.map((k) => localStorage.getItem(k)),
+    );
+    if (legacy) {
+      try { saveAccessToken(legacy); } catch {}
+      return legacy;
+    }
+  } catch {}
+
+  return "";
 }
 
 export function authHeaders(): Record<string, string> {
@@ -47,6 +62,7 @@ export function authHeaders(): Record<string, string> {
 
 
 export function clearToken() {
+  try { clearAccessTokenForThisOrigin(); } catch {}
   // apaga oficial + todos os legados (mata token velho assombrando o app)
   try { localStorage.removeItem(OFFICIAL); } catch {}
   for (const k of LEGACY_KEYS) {
