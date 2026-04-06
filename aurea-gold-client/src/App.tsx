@@ -31,6 +31,30 @@ interface AureaAppShellProtectedProps {
   onLogout: () => void;
 }
 
+function parseJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function isJwtUsable(token: string | null | undefined): boolean {
+  if (!token || typeof token !== "string") return false;
+
+  const payload = parseJwtPayload(token);
+  if (!payload) return false;
+  if (typeof payload.exp !== "number") return true;
+
+  const now = Math.floor(Date.now() / 1000);
+  return payload.exp > now + 5;
+}
+
 function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
   const [activeTab, setActiveTab] = useState<AppTab>("home");
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -199,7 +223,15 @@ function AureaAppWithAuth() {
 
   useEffect(() => {
     const token = getAccessToken();
-    setIsAuthenticated(!!token);
+
+    if (!isJwtUsable(token)) {
+      clearTokens();
+      setIsAuthenticated(false);
+      setAuthChecking(false);
+      return;
+    }
+
+    setIsAuthenticated(true);
     setAuthChecking(false);
   }, []);
 

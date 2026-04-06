@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getAccessToken } from "../auth/authClient";
 import { API_BASE, USER_EMAIL, fetchPixHistory, PixHistoryItem } from "./api";
 import { apiGet } from "../app/lib/http";
 import { withAuth } from "../lib/api";
 import { getToken } from "../lib/auth";
-
-import { authHeaders } from "../lib/auth";
 
 type PixAction = "send" | "charge" | "statement" | null;
 
@@ -175,56 +172,58 @@ const saldo =
     let alive = true;
 
     const loadPixInsight = async () => {
-      try {
-        setPixInsightLoading(true);
-        setPixInsightError(null);
+        try {
+          setPixInsightLoading(true);
+          setPixInsightError(null);
 
-        const accessToken = getAccessToken();
+          const token = getToken();
 
-const headers: Record<string, string> = {
-  "Content-Type": "application/json",
-  ...authHeaders(),
-};
-if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+          if (!token) {
+            if (!alive) return;
+            setPixInsightError("Sessão inválida. Entre novamente na Aurea Gold.");
+            return;
+          }
 
-const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
-  method: "POST",
-  headers,
-  body: JSON.stringify({
-    message: "Analise o PIX do usuário (últimos movimentos/mes). Seja direto: riscos, oportunidades e próximos passos.",
-  }),
-}));
+          const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: "Analise o PIX do usuário (últimos movimentos/mes). Seja direto: riscos, oportunidades e próximos passos.",
+            }),
+          }));
 
-        if (!resp.ok) {
-          console.warn(
-            "[AureaPixPanel] Falha ao buscar /api/v1/ai/chat:",
-            resp.status
+          if (!resp.ok) {
+            console.warn(
+              "[AureaPixPanel] Falha ao buscar /api/v1/ai/chat:",
+              resp.status
+            );
+            if (!alive) return;
+            setPixInsightError(
+              "Não consegui carregar a IA do PIX 3.0 agora. Tente novamente em instantes."
+            );
+            return;
+          }
+
+          const data: any = await resp.json();
+
+          if (!alive) return;
+          setPixInsight(data || null);
+        } catch (err) {
+          console.error(
+            "[AureaPixPanel] Erro ao carregar /api/v1/ai/chat:",
+            err
           );
           if (!alive) return;
           setPixInsightError(
-            "Não consegui carregar a IA do PIX 3.0 agora. Tente novamente em instantes."
+            "Erro ao carregar a IA do PIX 3.0. Tente novamente em instantes."
           );
-          return;
+        } finally {
+          if (!alive) return;
+          setPixInsightLoading(false);
         }
-
-        const data: any = await resp.json();
-
-        if (!alive) return;
-        setPixInsight(data || null);
-      } catch (err) {
-        console.error(
-          "[AureaPixPanel] Erro ao carregar /api/v1/ai/chat:",
-          err
-        );
-        if (!alive) return;
-        setPixInsightError(
-          "Erro ao carregar a IA do PIX 3.0. Tente novamente em instantes."
-        );
-      } finally {
-        if (!alive) return;
-        setPixInsightLoading(false);
-      }
-    };
+      };
 
     loadPixInsight();
 
@@ -242,89 +241,89 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
   };
 
   const handleSubmitSendPix = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSendPixError(null);
-    setSendPixSuccess(null);
+      e.preventDefault();
+      setSendPixError(null);
+      setSendPixSuccess(null);
 
-    const key = sendPixKey.trim();
-    const numeric = sendPixAmount.replace(".", "").replace(",", ".");
-    const amount = Number(numeric);
+      const key = sendPixKey.trim();
+      const numeric = sendPixAmount.replace(".", "").replace(",", ".");
+      const amount = Number(numeric);
 
-    if (!key) {
-      setSendPixError("Informe a chave PIX ou destinatário.");
-      return;
-    }
-
-    if (!amount || !Number.isFinite(amount) || amount <= 0) {
-      setSendPixError("Informe um valor válido para enviar.");
-      return;
-    }
-
-    try {
-      setSendPixLoading(true);
-
-      const idemKey =
-        typeof crypto !== "undefined" &&
-        "randomUUID" in crypto &&
-        typeof crypto.randomUUID === "function"
-          ? crypto.randomUUID()
-          : `pix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const accessToken = getAccessToken();
-
-      if (!accessToken) {
-        setSendPixError("Você precisa entrar na Aurea Gold para enviar PIX.");
+      if (!key) {
+        setSendPixError("Informe a chave PIX ou destinatário.");
         return;
       }
 
-      const resp = await fetch(`${API_BASE}/api/v1/pix/send`, {
-        method: "POST",
-        headers: { ...authHeaders(), 
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": idemKey,
-        },
-        body: JSON.stringify({
-          dest: key,
-          valor: amount,
-          msg: (sendPixDescription || "PIX enviado pelo app Aurea Gold").trim(),
-        }),
-      });
+      if (!amount || !Number.isFinite(amount) || amount <= 0) {
+        setSendPixError("Informe um valor válido para enviar.");
+        return;
+      }
 
-      if (!resp.ok) {
-        console.warn("[AureaPixPanel] Falha ao enviar PIX:", resp.status);
+      try {
+        setSendPixLoading(true);
+
+        const idemKey =
+          typeof crypto !== "undefined" &&
+          "randomUUID" in crypto &&
+          typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `pix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+        const token = getToken();
+
+        if (!token) {
+          setSendPixError("Você precisa entrar na Aurea Gold para enviar PIX.");
+          return;
+        }
+
+        const resp = await fetch(`${API_BASE}/api/v1/pix/send`, withAuth({
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idemKey,
+          },
+          body: JSON.stringify({
+            dest: key,
+            valor: amount,
+            msg: (sendPixDescription || "PIX enviado pelo app Aurea Gold").trim(),
+          }),
+        }));
+
+        if (!resp.ok) {
+          console.warn("[AureaPixPanel] Falha ao enviar PIX:", resp.status);
+          setSendPixError(
+            "Não consegui enviar o PIX agora. Tente novamente em instantes."
+          );
+          return;
+        }
+
+        const result: any = await resp.json().catch(() => null);
+
+        if (result && result.status === "duplicate") {
+          setSendPixSuccess(
+            "PIX já havia sido registrado. Evitamos um envio duplicado."
+          );
+        } else {
+          setSendPixSuccess("PIX registrado com sucesso no backend Aurea Gold.");
+        }
+
+        setTimeout(() => {
+          setSendPixSuccess(null);
+        }, 3000);
+
+        setSendPixKey("");
+        setSendPixAmount("");
+        setSendPixDescription("");
+        handleReloadBalance();
+      } catch (err) {
+        console.error("[AureaPixPanel] Erro inesperado ao enviar PIX:", err);
         setSendPixError(
-          "Não consegui enviar o PIX agora. Tente novamente em instantes."
+          "Erro inesperado ao enviar PIX. Tente novamente em instantes."
         );
-        return;
+      } finally {
+        setSendPixLoading(false);
       }
-
-      const result: any = await resp.json().catch(() => null);
-
-      if (result && result.status === "duplicate") {
-        setSendPixSuccess(
-          "PIX já havia sido registrado. Evitamos um envio duplicado."
-        );
-      } else {
-        setSendPixSuccess("PIX registrado com sucesso no backend Aurea Gold.");
-      }
-
-      setTimeout(() => {
-        setSendPixSuccess(null);
-      }, 3000);
-
-      setSendPixKey("");
-      setSendPixAmount("");
-      setSendPixDescription("");
-      handleReloadBalance();
-    } catch (err) {
-      console.error("[AureaPixPanel] Erro inesperado ao enviar PIX:", err);
-      setSendPixError(
-        "Erro inesperado ao enviar PIX. Tente novamente em instantes."
-      );
-    } finally {
-      setSendPixLoading(false);
-    }
-  };
+    };
 
   const handleGenerateCharge = (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,19 +371,18 @@ const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
         resumoTexto +
         ". Dê um diagnóstico objetivo (alertas, pontos fortes, recomendações práticas).";
 
-      const tok = getToken();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      };
-      if (tok) headers.Authorization = `Bearer ${tok}`;
+        const tok = getToken();
+        if (!tok) {
+          throw new Error("Sessão inválida. Entre novamente na Aurea Gold.");
+        }
 
-
-      const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
-        method: "POST",
-        headers,
-        body: JSON.stringify({ message: mensagem }),
-      }));
+        const resp = await fetch(`${API_BASE}/api/v1/ai/chat`, withAuth({
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message: mensagem }),
+        }));
 
       if (!resp.ok) {
         throw new Error("HTTP " + resp.status);
