@@ -1123,6 +1123,7 @@ async def ia_pix_insight(x_user_email: str = Header(None)):
     finally:
         db.close()
 
+@router.post("/headline")
 @router.post("/headline-lab")
 async def ia_headline_lab(x_user_email: str = Header(None)):
     """Versão LAB do Headline IA 3.0.
