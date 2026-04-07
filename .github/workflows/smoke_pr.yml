@@ -1,38 +1,38 @@
 name: Smoke PR (Read-only)
+
 on:
   pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   smoke_pr:
+    name: smoke_pr
     runs-on: ubuntu-latest
     env:
       SMOKE_BASE: ${{ secrets.SMOKE_BASE }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
-      - name: Gate Smoke PR (secrets present?)
+      - name: Gate Smoke PR
         id: gate
         shell: bash
-        env:
-          GH_EVENT: ${{ github.event_name }}
         run: |
-          if [ "${GH_EVENT:-}" = "pull_request" ]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "SMOKE PR: SKIP on pull_request (read-only safety)"
-          elif [ -n "${SMOKE_BASE:-}" ]; then
+          if [ -n "${SMOKE_BASE:-}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "SMOKE PR: SKIP (missing SMOKE_BASE secret)"
+            echo "SMOKE PR: SKIP real smoke (missing SMOKE_BASE secret)"
           fi
+
           if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
             echo "slack=true" >> "$GITHUB_OUTPUT"
           else
             echo "slack=false" >> "$GITHUB_OUTPUT"
           fi
+
       - name: Checkout
         if: ${{ steps.gate.outputs.run == 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Deps (jq, curl)
         if: ${{ steps.gate.outputs.run == 'true' }}
@@ -43,7 +43,7 @@ jobs:
       - name: Smoke read-only
         if: ${{ steps.gate.outputs.run == 'true' }}
         env:
-          SMOKE_BASE: ${{ env.SMOKE_BASE }} # produção ok porque é somente leitura
+          SMOKE_BASE: ${{ env.SMOKE_BASE }}
           EMAIL: "smoke@dilswallet.com"
           PASS: "123456"
         run: |
@@ -57,13 +57,13 @@ jobs:
         run: |
           TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           MSG=$(printf '{"text":"❌ Smoke PR falhou @ %s\nrepo: %s\nrun: %s\njob: %s"}' \
-              "$TS" "${{ github.repository }}" "${{ github.run_id }}" "smoke_pr")
+            "$TS" "${{ github.repository }}" "${{ github.run_id }}" "smoke_pr")
           curl -s -L -X POST -H 'Content-type: application/json' --data "$MSG" "$WEBHOOK"
 
-smoke:
+  smoke:
     name: smoke
-    needs: smoke_pr
     runs-on: ubuntu-latest
+    needs: [smoke_pr]
     if: ${{ always() }}
     steps:
       - name: Gate smoke -> smoke_pr
