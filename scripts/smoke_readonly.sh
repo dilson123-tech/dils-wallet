@@ -4,22 +4,30 @@ set -euo pipefail
 BASE="${SMOKE_BASE:-https://dils-wallet-production.up.railway.app}"
 EMAIL="${EMAIL:-smoke@dilswallet.com}"
 PASS="${PASS:-123456}"
+HEALTH_TOKEN="${HEALTH_TOKEN:-}"
 
 say(){ printf "\n▶ %s\n" "$*"; }
 ok(){ printf "✔ %s\n" "$*"; }
+warn(){ printf "⚠ %s\n" "$*\n"; }
 fail(){ printf "✖ %s\n" "$*\n"; exit 1; }
 
-say "Ping /health"
-HEALTH_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE/health")
-cat /tmp/health.json || true
-[[ "$HEALTH_CODE" == "200" ]] || fail "Health FAIL ($HEALTH_CODE)"
-ok "Health OK"
+if [[ -n "${HEALTH_TOKEN:-}" ]]; then
+  say "Ping /healthz"
+  HEALTH_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" \
+    -H "X-Health-Token: $HEALTH_TOKEN" \
+    "$BASE/healthz")
+  cat /tmp/health.json || true
+  [[ "$HEALTH_CODE" == "200" ]] || fail "Healthz FAIL ($HEALTH_CODE)"
+  ok "Healthz OK"
+else
+  warn "HEALTH_TOKEN ausente; pulando /healthz no smoke read-only"
+fi
 
-say "Login → access + refresh"
+say "Login → access token"
 LOGIN_CODE=$(curl -s -o /tmp/login.json -w "%{http_code}" \
   -X POST "$BASE/api/v1/auth/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=$EMAIL&password=$PASS")
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"$EMAIL\",\"password\":\"$PASS\"}")
 [[ "$LOGIN_CODE" == "200" ]] || fail "Login FAIL ($LOGIN_CODE): $(cat /tmp/login.json)"
 ACCESS=$(jq -r '.access_token // .access // empty' /tmp/login.json)
 [[ -n "${ACCESS:-}" ]] || fail "Sem access_token"
