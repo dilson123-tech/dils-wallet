@@ -16,6 +16,7 @@ from app.core.observability import setup_logging, observability_middleware, metr
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
 from app.routers import admin_dbfix                              # módulo com .router
 from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRouter
+from app.api.v1.routes.ai_chat import router as ai_chat_router
 
 # PIX Super2 (nossas rotas novas)
 from app.api.v1.routes import pix_balance_get                    # módulo com .router
@@ -63,6 +64,7 @@ async def aurea_observability(request: Request, call_next):
 # --- Routers base ---
 app.include_router(assist_router_v1.router)
 app.include_router(ai_router_v1)
+app.include_router(ai_chat_router)
 app.include_router(admin_dbfix.router, prefix="/admin")
 app.include_router(dev_seed.router)
 
