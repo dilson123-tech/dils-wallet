@@ -10,8 +10,12 @@ import os
 # CONFIG SENSÍVEL
 # ==========================
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-default-change-me")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
+SECRET_KEY = (os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET") or "").strip()
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY/JWT_SECRET ausente no ambiente.")
+if SECRET_KEY in {"dev-insecure-default-change-me", "DEV_SECRET_CHANGE_ME", "change-me-aura", "dev-secret", "dev-secret-override-me"}:
+    raise RuntimeError("SECRET_KEY/JWT_SECRET inseguro no ambiente.")
+ALGORITHM = (os.getenv("ALGORITHM") or os.getenv("JWT_ALGORITHM") or "HS256").strip()
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30         # token curto
 REFRESH_TOKEN_EXPIRE_DAYS = 7            # token longo

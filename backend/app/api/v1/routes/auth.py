@@ -12,6 +12,8 @@ from app.utils.security import (
     generate_refresh_token,
     hash_refresh_token,
     refresh_token_expiry_dt,
+    SECRET_KEY,
+    ALGORITHM,
 )
 
 from app.utils.rate_limit import rl_check, rl_peek, rl_client_ip
@@ -136,8 +138,8 @@ def create_refresh_token(subject: str) -> str:
     import os
     from datetime import datetime, timedelta
 
-    secret = globals().get("SECRET_KEY") or os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET") or "DEV_SECRET_CHANGE_ME"
-    algo = globals().get("ALGORITHM") or os.getenv("JWT_ALGORITHM") or "HS256"
+    secret = SECRET_KEY
+    algo = ALGORITHM
     days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
     exp = datetime.utcnow() + timedelta(days=days)
@@ -146,8 +148,8 @@ def create_refresh_token(subject: str) -> str:
 
 def decode_refresh_token(token: str) -> dict:
     import os
-    secret = globals().get("SECRET_KEY") or os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET") or "DEV_SECRET_CHANGE_ME"
-    algo = globals().get("ALGORITHM") or os.getenv("JWT_ALGORITHM") or "HS256"
+    secret = SECRET_KEY
+    algo = ALGORITHM
     payload = _jwt_decode(token, secret, algo)
     if payload.get("typ") != "refresh":
         raise ValueError("token typ != refresh")
