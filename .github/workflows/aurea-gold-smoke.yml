@@ -63,6 +63,7 @@ jobs:
       BASE: http://127.0.0.1:8090
       LOGIN_USER: customer@aurea.local
       LOGIN_PASS: dev
+      SECRET_KEY: ci-local-smoke-secret-1234567890
 
     steps:
       - name: Checkout
