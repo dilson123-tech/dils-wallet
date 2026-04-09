@@ -24,8 +24,6 @@ export default function ChartSuper2() {
   const [err, setErr] = useState<string | null>(null);
 
     useEffect(() => {
-    console.log("DEBUG_CHART_SUPER2_IA_HEADLINE_LOG");
-    console.log("CHART SUPER2 MOUNTED");
   }, []);
 
 

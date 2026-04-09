@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function CardsPanel() { console.log("[AUREA] CardsPanel render");
+export default function CardsPanel() {
   const [masked, setMasked] = useState(true);
   const [locked, setLocked] = useState(false);
 

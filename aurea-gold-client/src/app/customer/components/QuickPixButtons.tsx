@@ -22,11 +22,9 @@ export default function QuickPixButtons() {
 
   function openPix() {
     window.dispatchEvent(new CustomEvent("aurea:open-pix"));
-    console.log("[Aurea] abrir PIX");
   }
   function clearForm() {
     window.dispatchEvent(new CustomEvent("aurea:clear-pix"));
-    console.log("[Aurea] limpar PIX");
   }
 
   return (

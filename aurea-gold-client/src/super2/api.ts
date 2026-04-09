@@ -1,10 +1,8 @@
 import { authFetch } from "../auth/authClient";
-const DEFAULT_API_BASE = "http://127.0.0.1:8000";
-export const API_BASE = String(import.meta.env.VITE_API_BASE || DEFAULT_API_BASE).replace(/\/+$/, "");
+export const API_BASE = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
 
 
 export const USER_EMAIL: string = String((import.meta as any).env?.VITE_USER_EMAIL || "");
-console.log("SUPER2 API_BASE =>", API_BASE);
 
 // Dia agregado (gráfico + resumos)
 export type PixDayPoint = {

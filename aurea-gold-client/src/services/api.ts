@@ -1,7 +1,7 @@
 import { getToken } from "../lib/auth";
 import { apiGet, type PixHistoryResponse} from "../super2/api";
 
-const RAW_BASE = String(import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const RAW_BASE = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
 const BASE_URL = `${RAW_BASE}/api/v1`;
 
 function authHeaders(): Record<string, string> {
