@@ -1,5 +1,5 @@
 import { saveTokens, getAccessToken, clearTokens } from "../auth/authClient";
-const RAW_BASE = String(import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const RAW_BASE = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
 const BASE_URL = `${RAW_BASE}/api/v1`;
 
 export async function loginRequest(username: string, password: string) {

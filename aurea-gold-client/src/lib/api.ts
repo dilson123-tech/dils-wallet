@@ -4,12 +4,7 @@ import { getToken } from "./auth";
 // Seguro, simples e com Authorization automático
 // ======================================================
 
-const FALLBACK_API_BASE: string =
-  typeof window !== "undefined"
-    ? `http://${window.location.hostname}:8000`
-    : "http://127.0.0.1:8000";
-
-export const API_BASE: string = String(import.meta.env.VITE_API_BASE || FALLBACK_API_BASE).replace(/\/+$|\s+/g, "");
+export const API_BASE: string = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$|\s+/g, "");
 export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || "";
 
 export const DEV_TOKEN: string = String(import.meta.env.VITE_DEV_TOKEN || "").trim();

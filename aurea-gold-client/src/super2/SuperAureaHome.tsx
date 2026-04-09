@@ -13,7 +13,6 @@ type SuperAureaHomeProps = {
 };
 
 function handlePixShortcutFallback(action: PixShortcutAction) {
-  console.log(`[SuperAureaHome] Atalho PIX clicado: ${action}`);
   alert(
     "Atalho em construção. Em breve este botão vai levar direto para o painel correspondente do Aurea Gold. 😉"
   );
@@ -51,7 +50,6 @@ type AureaServiceKey =
   | "config_negocio";
 
 function handleServiceShortcut(service: AureaServiceKey) {
-  console.log(`[SuperAureaHome] Atalho de serviço clicado: ${service}`);
   alert(
     "Funcionalidade em construção.\n\n" +
       "Esta área do Aurea Gold vai ser ligada a fluxos reais (ex.: empréstimos, cartões, investimentos, cofrinhos, etc.).\n" +
@@ -118,7 +116,6 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
         localStorage.setItem("aurea_refresh_token", rt);
       }
 
-      console.log("✅ Dev login OK. AT len=", at.length, "origin=", location.origin);
       location.reload();
     } catch (e: any) {
       console.warn("❌ Dev login falhou:", e);
@@ -359,8 +356,7 @@ const saldoDisplay =
 
   // --- PIX Atalhos (wire definitivo) ---
   function handlePixAtalho(action: "send" | "receive" | "extrato") {
-    console.log(`[SuperAureaHome] Atalho PIX clicado: ${action}`);
-
+  
     const tok = getToken();
     if (!tok) {
       setNeedAuth(true);

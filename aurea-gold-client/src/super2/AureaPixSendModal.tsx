@@ -49,9 +49,7 @@ export default function AureaPixSendModal({
 
     try {
       setLoading(true);
-      console.log("SUPER2 sendPix payload =>", payload);
       const resp = await sendPix(payload as any);
-      console.log("SUPER2 sendPix resp =>", resp);
 
       setSuccess("PIX enviado com sucesso.");
       setDest("");

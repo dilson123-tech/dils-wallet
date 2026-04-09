@@ -6,5 +6,4 @@ if (typeof globalThis !== "undefined") {
     .replace(/^\/+/, "")
     .replace(/\/+$/, "");
   (globalThis as any).BASE_API = cleanBase;
-  console.log("[BOOTSTRAP] BASE_API set to:", cleanBase);
 }

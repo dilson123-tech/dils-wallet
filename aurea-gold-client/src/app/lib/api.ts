@@ -7,10 +7,7 @@
 import { apiGet as coreGet, apiPost as corePost } from "../../lib/api";
 import { getToken } from "../../lib/auth";
 
-// Fallback local (evita API_BASE vazio derrubar calls)
-export const API_BASE: string =
-  (import.meta as any).env?.VITE_API_BASE ||
-  "http://127.0.0.1:8000";
+export const API_BASE: string = String((import.meta as any).env?.VITE_API_BASE || "").replace(/\/+$/, "");
 
 export function toApi(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;

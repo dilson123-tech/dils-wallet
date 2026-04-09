@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { withAuth } from "../../../lib/api";
 
 type Props = { open: boolean; onClose: () => void; };
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+const API_BASE = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
 
 export default function AIChatModal({ open, onClose }: Props) {
   const [msg, setMsg] = useState("");
@@ -56,9 +56,6 @@ export default function AIChatModal({ open, onClose }: Props) {
         setExtra({ saldo_atual: data.resumo_pix.saldo_atual, resumo_pix: data.resumo_pix });
       }
 
-      // debug
-      // eslint-disable-next-line no-console
-      console.log("[AUREA IA][status]", r.status, "[payload]", data);
     } catch (e:any) {
       setError(e?.message || String(e));
       setAnswer("Sem resposta.");

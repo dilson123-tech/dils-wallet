@@ -57,7 +57,6 @@ export default function PanelSuper2() {
     try {
       setErr(null);
       const hist = await fetchPixHistory();
-      console.log("SUPER2 history raw =>", hist);
 
       const arr = Array.isArray((hist as any)?.dias)
         ? ((hist as any).dias as PixHistoryDay[])
@@ -78,7 +77,6 @@ export default function PanelSuper2() {
     setShowHistory(false);
     setErr(null);
     setHistory([]);
-    console.log("Super2: estado local limpo (histórico/erros).");
   }
 
   return (
