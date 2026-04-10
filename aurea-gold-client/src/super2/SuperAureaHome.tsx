@@ -5,6 +5,7 @@ import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
 import { apiGet } from "../lib/api";
 import { getToken } from "../lib/auth";
+import { saveTokens } from "../auth/authClient";
 
 type PixShortcutAction = "enviar" | "receber" | "extrato";
 
@@ -105,16 +106,7 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
 
       if (!at || at.length < 20) throw new Error("access_token vazio/curto");
 
-      // oficial + compat (pro front inteiro, inclusive fetch-refresh.ts)
-      localStorage.setItem("aurea.access_token", at);
-      localStorage.setItem("aurea_access_token", at);
-      localStorage.setItem("aurea.jwt", at);
-      localStorage.setItem("aurea_jwt", at);
-
-      if (rt && rt.length >= 24) {
-        localStorage.setItem("aurea.refresh_token", rt);
-        localStorage.setItem("aurea_refresh_token", rt);
-      }
+      saveTokens(at, rt && rt.length >= 24 ? rt : null);
 
       location.reload();
     } catch (e: any) {
