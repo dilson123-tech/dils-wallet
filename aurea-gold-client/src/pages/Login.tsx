@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { loginRequest } from "../services/auth";
+import { login } from "../auth/authClient";
 
 type Props = {
   onLoggedIn: () => void;
@@ -15,7 +15,7 @@ export default function Login({ onLoggedIn }: Props) {
     setErr("");
 
     try {
-      await loginRequest(username, password);
+      await login({ username, password });
       onLoggedIn();
     } catch (e: any) {
       console.error("login error:", e);

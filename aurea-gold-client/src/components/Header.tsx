@@ -1,5 +1,5 @@
 import React from "react";
-import { clearToken } from "../services/auth";
+import { clearAuth } from "../auth/authClient";
 
 type HeaderProps = {
   name: string;
@@ -8,7 +8,7 @@ type HeaderProps = {
 
 export default function Header({ name, onLogout }: HeaderProps) {
   function handleLogout() {
-    clearToken();
+    clearAuth();
     onLogout();
   }
 
