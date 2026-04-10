@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { login as loginApi } from "@/app/lib/auth";
+import { getAccessToken, saveTokens, clearAuth } from "../../auth/authClient";
 
 type SessionCtx = {
   token: string | null;
@@ -20,7 +21,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = localStorage.getItem("aurea.token");
+    const t = getAccessToken();
     if (t) setToken(t);
   }, []);
 
@@ -35,12 +36,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       throw new Error("Credenciais inválidas.");
     }
 
-    localStorage.setItem("aurea.token", res.token);
+    saveTokens(res.token);
     setToken(res.token);
   };
 
   const logout = () => {
-    localStorage.removeItem("aurea.token");
+    clearAuth();
     setToken(null);
   };
 
