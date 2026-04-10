@@ -128,7 +128,6 @@ def get_history(
             for t in txs
         ]
 
-        from fastapi.responses import JSONResponse  # garante import local se faltar
 
         return JSONResponse(
             content=jsonable_encoder(result, custom_encoder={Decimal: float})
