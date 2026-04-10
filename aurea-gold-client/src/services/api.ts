@@ -40,7 +40,7 @@ export async function getPixHistory(limit = 50): Promise<PixHistoryResponse> {
 // tentativa de identificar usuário logado
 export async function getMe() {
   try {
-    const res = await fetch(`${BASE_URL}/whoami`, {
+    const res = await fetch(`${BASE_URL}/users/me`, {
       method: "GET",
       headers: {
         ...authHeaders(),
@@ -55,6 +55,7 @@ export async function getMe() {
     const data = await res.json();
     return {
       displayName:
+        data.full_name ||
         data.name ||
         data.username ||
         data.user ||
