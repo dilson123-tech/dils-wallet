@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { getToken } from "../lib/auth";
 
 import { API_BASE, USER_EMAIL } from "./api";
 import { authHeaders } from "../lib/auth";
@@ -83,29 +82,12 @@ const AureaPixChart: React.FC<AureaPixChartProps> = ({ summary }) => {
     let alive = true;
 
     async function load() {
-      const pickJWT = (k: string) => {
-      const v =
-        (typeof window !== "undefined" && localStorage.getItem(k)) || "";
-      // JWT real: 3 partes + tamanho mínimo (evita token curto/lixo)
-      return v.split(".").length === 3 && v.length > 120 ? v : "";
-    };
-
-    const accessToken =
-      pickJWT("aurea.jwt") ||
-      pickJWT("aurea_jwt") ||
-      pickJWT("aurea.access_token") ||
-      pickJWT("aurea_access_token") ||
-      pickJWT("authToken") ||
-      "";
-
     try {
         setLoading(true);
         setErr(null);
         const r = await fetch(`${API_BASE}/api/v1/pix/balance?days=7`, {
           method: "GET",
-          headers: { ...authHeaders(), 
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
+          headers: { ...authHeaders() },
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = (await r.json()) as any;
