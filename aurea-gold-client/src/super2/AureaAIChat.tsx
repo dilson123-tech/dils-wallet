@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { API_BASE, USER_EMAIL } from "./api";
+import { getToken } from "../lib/auth";
 
 type ChatMessage = {
   id: number;
@@ -24,12 +25,7 @@ function _aureaDecodeJwtSub(tok: string): string | null {
 }
 
 function buildAureaAuthHeaders(): Record<string, string> {
-  const tok =
-    localStorage.getItem("aurea.access_token") ||
-    localStorage.getItem("aurea.jwt") ||
-    localStorage.getItem("aurea_jwt") ||
-    localStorage.getItem("authToken") ||
-    "";
+  const tok = getToken() || "";
 
   const headers: Record<string, string> = {
     "Accept": "application/json",
@@ -62,11 +58,7 @@ export default function AureaAIChat() {
       "Content-Type": "application/json",
     };
 
-    const rawTok =
-      localStorage.getItem("aurea.access_token") ||
-      localStorage.getItem("aurea.jwt") ||
-      localStorage.getItem("authToken") ||
-      "";
+    const rawTok = getToken() || "";
 
     const tok = (rawTok || "").trim();
     if (tok) {
