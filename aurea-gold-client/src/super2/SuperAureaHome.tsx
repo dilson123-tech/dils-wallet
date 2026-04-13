@@ -378,7 +378,7 @@ const saldoDisplay =
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6 px-[2px] sm:px-0">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col">
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.14em] sm:tracking-[0.22em] text-[#86c0ff]">
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
             Aurea Gold • Conta
           </span>
           <h2 className="mt-1 text-[1.35rem] sm:text-2xl md:text-3xl font-bold text-[#f4f8ff] leading-tight">
@@ -387,7 +387,7 @@ const saldoDisplay =
         </div>
 
         <span
-          className={`self-start sm:self-auto inline-flex items-center rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${
+          className={`self-start sm:self-auto inline-flex items-center rounded-full border px-3 py-1 mb-1 sm:mb-0 text-[10px] uppercase tracking-[0.18em] ${
             saldoModo === "real"
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
               : "border-sky-500/30 bg-sky-500/10 text-sky-200"
@@ -440,7 +440,7 @@ const saldoDisplay =
         )}
 
         {/* Card de saldo principal */}
-      <div className="rounded-[30px] border border-sky-500/40 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.18),transparent_24%),linear-gradient(180deg,rgba(8,18,35,0.98),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-6 shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(90,160,255,0.12)] space-y-4">
+      <div className="rounded-[30px] border border-sky-500/40 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.18),transparent_24%),linear-gradient(180deg,rgba(8,18,35,0.98),rgba(7,15,30,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(90,160,255,0.12)] space-y-4">
         <div>
           <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
             Saldo em conta
@@ -463,7 +463,7 @@ const saldoDisplay =
         <div className="w-full">
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.24em] text-[#86c0ff]">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
                 Ações rápidas
               </p>
               <h3 className="mt-1 text-lg md:text-xl font-bold text-[#f4f8ff]">
@@ -479,7 +479,7 @@ const saldoDisplay =
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
-              className="ag-card rounded-[20px] px-2.5 py-2.5 sm:px-3 sm:py-3 min-h-[96px] sm:min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[96px] sm:min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-300 text-xl">
                 ↑
@@ -493,7 +493,7 @@ const saldoDisplay =
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
-              className="ag-card rounded-[20px] px-2.5 py-2.5 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/12 text-sky-300 text-xl">
                 ↓
@@ -507,7 +507,7 @@ const saldoDisplay =
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-              className="ag-card rounded-[20px] px-2.5 py-2.5 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/12 text-sky-300 text-xl">
                 ≡
@@ -520,7 +520,7 @@ const saldoDisplay =
           </div>
         </div>
 
-        <div className="rounded-[24px] border border-sky-500/28 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 md:p-5">
+        <div className="rounded-[24px] border border-sky-500/28 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
@@ -557,7 +557,7 @@ const saldoDisplay =
 
 {/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className="ag-hero px-4 py-4 sm:px-5 sm:py-5 mb-6 space-y-4 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(47,111,203,0.16),transparent_28%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(90,160,255,0.16)]">
+      <div className="ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(47,111,203,0.16),transparent_28%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(90,160,255,0.16)]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <p className="text-[10px] md:text-[11px] text-sky-200/80 uppercase tracking-[0.16em]">
@@ -641,7 +641,7 @@ const saldoDisplay =
 
       {/* Conta em foco */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 md:p-5">
+        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
             Conta em foco
           </p>
@@ -650,28 +650,28 @@ const saldoDisplay =
           </h3>
 
           <div className="mt-4 space-y-2.5 text-[11px]">
-            <div className="flex items-center justify-between rounded-xl border border-sky-500/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-2.5">
+            <div className="flex items-center justify-between rounded-xl border border-sky-500/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-3">
               <span className="text-[#bfd0ec]">Status da conta</span>
               <span className={`font-medium ${saldoModo === "real" ? "text-emerald-300" : "text-amber-200"}`}>
                 {saldoModo === "real" ? "Conectada" : "Demonstração"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-2.5">
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
               <span className="text-[#bfd0ec]">Resultado do mês</span>
               <span className={`font-medium ${resultadoMes !== null ? resultadoClass : "text-[#f4f8ff]"}`}>
                 {resultadoMes !== null ? formatBRL(resultadoMes) : "R$ 0,00"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-2.5">
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
               <span className="text-[#bfd0ec]">Projeção final</span>
               <span className="font-medium text-[#f4f8ff]">
                 {forecastPrevisaoFimMes !== null ? formatBRL(forecastPrevisaoFimMes) : "Carregando..."}
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-2.5">
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
               <span className="text-[#bfd0ec]">Leitura IA 3.0</span>
               <span className="font-semibold text-[#86c0ff]">
                 {forecastNivel === "critico" && "Crítico"}
@@ -684,7 +684,7 @@ const saldoDisplay =
           </div>
         </div>
 
-        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 md:p-5">
+        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
