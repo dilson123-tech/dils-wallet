@@ -375,33 +375,47 @@ const saldoDisplay =
 
 
   return (
-    <section className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
-      {/* Modo de dados (real vs simulado) */}
-      <div className="mb-2 text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.18em]">
-        {saldoModo === "real"
-          ? "Dados reais carregados do backend Aurea Gold"
-          : "Modo simulado • aguardando conexão completa do PIX"}
+    <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6 px-[2px] sm:px-0">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col">
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
+            Aurea Gold • Conta
+          </span>
+          <h2 className="mt-1 text-[1.35rem] sm:text-2xl md:text-3xl font-bold text-[#f4f8ff] leading-tight">
+            Sua carteira digital
+          </h2>
+        </div>
+
+        <span
+          className={`self-start sm:self-auto inline-flex items-center rounded-full border px-3 py-1 mb-1 sm:mb-0 text-[10px] uppercase tracking-[0.18em] ${
+            saldoModo === "real"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-sky-500/30 bg-sky-500/10 text-sky-200"
+          }`}
+        >
+          {saldoModo === "real" ? "Conta conectada" : "Modo demonstração"}
+        </span>
       </div>
 
       {DEV_LOGIN_ENABLED && saldoModo !== "real" && needAuth && (
-          <div className="rounded-2xl border border-amber-500/40 bg-zinc-950/70 p-4 md:p-5">
-            <p className="text-[11px] md:text-xs text-amber-200/80 uppercase tracking-[0.18em]">
+          <div className="rounded-2xl border border-sky-500/40 bg-[linear-gradient(180deg,rgba(10,20,40,0.94),rgba(7,15,30,0.98))] p-4 md:p-5">
+            <p className="text-[11px] md:text-xs text-sky-200/80 uppercase tracking-[0.18em]">
               Conectar ao backend (DEV)
             </p>
-            <p className="mt-1 text-xs md:text-sm text-zinc-300">
-              Sem token nessa origem (<span className="text-zinc-100">{typeof window !== "undefined" ? window.location.origin : ""}</span>). Faça login e pronto.
+            <p className="mt-1 text-xs md:text-sm text-[#d7e7ff]">
+              Sem token nessa origem (<span className="text-[#f4f8ff]">{typeof window !== "undefined" ? window.location.origin : ""}</span>). Faça login e pronto.
             </p>
 
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
               <input
-                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                className="w-full rounded-xl bg-[rgba(8,18,35,0.88)] border border-sky-500/30 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-[#7f97bb]"
                 placeholder="email/username"
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 autoComplete="username"
               />
               <input
-                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                className="w-full rounded-xl bg-[rgba(8,18,35,0.88)] border border-sky-500/30 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-[#7f97bb]"
                 placeholder="senha"
                 type="password"
                 value={authPass}
@@ -409,7 +423,7 @@ const saldoDisplay =
                 autoComplete="current-password"
               />
               <button
-                className="rounded-xl bg-amber-500/90 hover:bg-amber-500 text-black font-semibold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-xl bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] hover:brightness-110 text-[#06101f] font-semibold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={authBusy || !authEmail || !authPass}
                 onClick={doDevLogin}
               >
@@ -419,45 +433,102 @@ const saldoDisplay =
 
             {authErr && <p className="mt-2 text-xs text-red-300">{authErr}</p>}
 
-            <p className="mt-2 text-[10px] text-zinc-500">
-              Dica: isso aparece só em DEV (Vite) ou se abrir com <span className="text-zinc-300">?devlogin=1</span>.
+            <p className="mt-2 text-[10px] text-[#8fa8cf]">
+              Dica: isso aparece só em DEV (Vite) ou se abrir com <span className="text-[#bfd0ec]">?devlogin=1</span>.
             </p>
           </div>
         )}
 
         {/* Card de saldo principal */}
-      <div className="rounded-2xl border border-amber-500/60 bg-gradient-to-br from-black via-zinc-950 to-zinc-900 p-4 md:p-6 shadow-[0_0_40px_rgba(251,191,36,0.18)] flex flex-col md:flex-row justify-between gap-4">
+      <div className="rounded-[30px] border border-sky-500/40 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.18),transparent_24%),linear-gradient(180deg,rgba(8,18,35,0.98),rgba(7,15,30,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(90,160,255,0.12)] space-y-4">
         <div>
-          <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.18em]">
-            Saldo disponível • Aurea Gold
+          <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+            Saldo em conta
           </p>
-          <p className="mt-1 text-3xl md:text-4xl font-semibold text-amber-300">
+          <p className="mt-2 text-[2.4rem] sm:text-5xl md:text-6xl font-bold text-[#f4f8ff] leading-[0.95]">
             {saldoDisplay}
           </p>
-          <p className="mt-1 text-[10px] md:text-[11px] text-zinc-400">
+          <p className="mt-2 text-[12px] md:text-[13px] text-[#bfd0ec]">
             {saldoModo === "real"
-              ? "Saldo atualizado em tempo quase real do seu Aurea Gold (via PIX)."
-              : "Valor simulado por enquanto. Na versão conectada, esse saldo vem em tempo real do seu Aurea Gold."}
+              ? "Disponível para movimentar agora."
+              : "Prévia visual enquanto a conta roda em modo demonstração."}
           </p>
             {saldoModo === "real" && saldoUpdatedHHMM && (
-              <p className="mt-1 text-[10px] md:text-[11px] text-zinc-500">
+              <p className="mt-1 text-[10px] md:text-[11px] text-[#8fa8cf]">
                 Atualizado às {saldoUpdatedHHMM}
               </p>
             )}
         </div>
 
-        {/* Card de previsão do mês (forecast PIX) */
-        }
-        <div className="rounded-2xl border border-amber-500/40 bg-zinc-950/80 p-4 md:p-5 space-y-2">
-          <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.18em]">
-            Previsão do mês • IA 3.0
-          </p>
-
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="w-full">
+          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs md:text-sm text-zinc-300">
-                Nível de risco atual:&nbsp;
-                <span className="text-xs md:text-sm font-semibold text-zinc-50">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
+                Ações rápidas
+              </p>
+              <h3 className="mt-1 text-lg md:text-xl font-bold text-[#f4f8ff]">
+                Mover dinheiro
+              </h3>
+            </div>
+            <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[10px] text-[#86c0ff]">
+              Pix
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[96px] sm:min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+            >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-300 text-xl">
+                ↑
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Enviar</span>
+                <span className="text-[10px] sm:text-[11px] text-[#bfd0ec]">PIX</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+            >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/12 text-sky-300 text-xl">
+                ↓
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Receber</span>
+                <span className="text-[10px] sm:text-[11px] text-[#bfd0ec]">Cobrar</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+            >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/12 text-sky-300 text-xl">
+                ≡
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Extrato</span>
+                <span className="text-[10px] sm:text-[11px] text-[#bfd0ec]">Histórico</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-[24px] border border-sky-500/28 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+                Previsão do mês • IA 3.0
+              </p>
+              <p className="mt-2 text-sm text-[#f4f8ff]">
+                Risco atual:&nbsp;
+                <span className="font-semibold text-white">
                   {forecastNivel === "critico" && "Crítico"}
                   {forecastNivel === "atencao" && "Atenção"}
                   {forecastNivel === "observacao" && "Observação"}
@@ -465,127 +536,44 @@ const saldoDisplay =
                   {!forecastNivel && "—"}
                 </span>
               </p>
-
-              <p className="text-[11px] md:text-xs text-zinc-400 mt-1">
-                Previsão de saldo ao fim do mês:&nbsp;
-                <span className="block text-[11px] md:text-xs text-zinc-100 font-semibold mt-1">
-                  {forecastPrevisaoFimMes !== null
-                    ? forecastPrevisaoFimMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                    : "Carregando previsão do mês..."}
-                </span>
-                <span className="text-zinc-100 font-medium">
-                </span>
-              </p>
             </div>
 
-            <div className="text-[10px] md:text-xs text-zinc-400 md:text-right">
-              <p>
-                A projeção usa seu histórico PIX do mês para estimar se você termina
-                no positivo ou negativo.
+            <div className="text-left sm:text-right w-full sm:w-auto">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#8fa8cf]">
+                Projeção final
               </p>
-              <p className="mt-1 text-zinc-500">
-                Quanto mais movimentações reais, mais precisa fica a previsão.
+              <p className="mt-1 text-sm font-semibold text-[#f4f8ff]">
+                {forecastPrevisaoFimMes !== null
+                  ? forecastPrevisaoFimMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                  : "Carregando..."}
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Atalhos rápidos PIX */}
-        <div className="min-w-[240px] md:min-w-[280px]">
-          <div className="mb-3">
-            <p className="text-[10px] uppercase tracking-[0.28em] ag-gold-text">
-              Ações rápidas
-            </p>
-            <h3 className="mt-1 text-base md:text-lg font-semibold ag-title">
-              Mover dinheiro
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            <button
-              type="button"
-              onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
-              className="ag-card text-left px-4 py-4 rounded-[22px] border border-[rgba(212,175,55,0.18)] bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(10,10,14,0.98))] shadow-[0_16px_34px_rgba(0,0,0,0.40)] hover:border-[rgba(212,175,55,0.30)]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-2xl leading-none">↑</span>
-                  <span className="text-sm font-semibold text-white">
-                    Enviar PIX
-                  </span>
-                  <span className="text-[10px] ag-subtitle leading-relaxed">
-                    Transferência imediata.
-                  </span>
-                </div>
-                <span className="inline-flex items-center rounded-full border border-[rgba(212,175,55,0.24)] bg-black/50 px-2.5 py-1 text-[10px] uppercase ag-gold-text tracking-[0.18em]">
-                  Enviar
-                </span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
-              className="ag-card text-left px-4 py-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-2xl leading-none">↓</span>
-                  <span className="text-sm font-semibold text-white">
-                    Receber PIX
-                  </span>
-                  <span className="text-[10px] ag-subtitle leading-relaxed">
-                    Cobrança e QR Code.
-                  </span>
-                </div>
-                <span className="inline-flex items-center rounded-full border border-[rgba(212,175,55,0.24)] bg-black/50 px-2.5 py-1 text-[10px] uppercase ag-gold-text tracking-[0.18em]">
-                  Cobrar
-                </span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-              className="ag-card text-left px-4 py-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-2xl leading-none">≡</span>
-                  <span className="text-sm font-semibold text-white">
-                    Ver extrato PIX
-                  </span>
-                  <span className="text-[10px] ag-subtitle leading-relaxed">
-                    Histórico recente.
-                  </span>
-                </div>
-                <span className="inline-flex items-center rounded-full border border-[rgba(212,175,55,0.24)] bg-black/50 px-2.5 py-1 text-[10px] uppercase ag-gold-text tracking-[0.18em]">
-                  Extrato
-                </span>
-              </div>
-            </button>
-          </div>
+          <p className="mt-3 text-[10px] sm:text-[11px] text-[#bfd0ec]">
+            Leitura baseada no histórico PIX do mês.
+          </p>
         </div>
 
 {/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className="ag-hero px-5 py-5 mb-6 space-y-4 rounded-[28px] shadow-[0_20px_48px_rgba(0,0,0,0.42),0_0_36px_rgba(212,175,55,0.08)]">
+      <div className="ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(47,111,203,0.16),transparent_28%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(90,160,255,0.16)]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
+            <p className="text-[10px] md:text-[11px] text-sky-200/80 uppercase tracking-[0.16em]">
               Resumo financeiro do mês
             </p>
-            <p className="text-sm md:text-base text-zinc-100">
+            <p className="text-sm md:text-base text-[#f4f8ff]">
               Entradas, saídas e resultado do mês em uma leitura rápida.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/70 bg-black/70 px-3 py-1 text-[10px] text-amber-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/60 bg-sky-500/10 px-3 py-1 text-[10px] text-sky-200">
             Base operacional • leitura protegida
           </span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[11px]">
-          <div className="ag-card px-4 py-3 border border-emerald-500/28 bg-[linear-gradient(180deg,rgba(10,25,18,0.92),rgba(7,15,11,0.96))]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-[11px]">
+          <div className="ag-card px-4 py-3 border border-[rgba(96,214,159,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(96,214,159,0.10),transparent_26%),linear-gradient(180deg,rgba(25,32,18,0.96),rgba(11,14,10,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
             <p className="text-[10px] text-emerald-200/90 uppercase tracking-[0.14em]">
               Entradas no mês
             </p>
@@ -597,7 +585,7 @@ const saldoDisplay =
             </p>
           </div>
 
-          <div className="ag-card px-4 py-3 border border-red-500/28 bg-[linear-gradient(180deg,rgba(33,14,14,0.92),rgba(16,9,9,0.96))]">
+          <div className="ag-card px-4 py-3 border border-[rgba(255,123,143,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(255,123,143,0.10),transparent_26%),linear-gradient(180deg,rgba(38,18,18,0.96),rgba(15,9,9,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
             <p className="text-[10px] text-red-200/90 uppercase tracking-[0.14em]">
               Saídas no mês
             </p>
@@ -609,8 +597,8 @@ const saldoDisplay =
             </p>
           </div>
 
-          <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-amber-500/24 bg-[linear-gradient(180deg,rgba(28,21,8,0.94),rgba(10,10,12,0.98))]">
-            <p className="text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
+          <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-sky-500/28 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.12),transparent_24%),linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
+            <p className="text-[10px] text-sky-200/90 uppercase tracking-[0.14em]">
               Resultado do mês
             </p>
             <p className="mt-1 text-lg font-semibold">
@@ -619,23 +607,23 @@ const saldoDisplay =
                   {formatBRL(resultadoMes)} ({resultadoLabel})
                 </span>
               ) : (
-                <span className="text-zinc-100">
+                <span className="text-[#f4f8ff]">
                   R$ 2.300,00 (simulação)
                 </span>
               )}
             </p>
-            <p className="mt-1 text-[10px] text-zinc-400">
+            <p className="mt-1 text-[10px] sm:text-[11px] text-[#bfd0ec]">
               Saldo líquido consolidado do período.
             </p>
           </div>
         </div>
 
-        <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-zinc-300">
+        <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-[#bfd0ec]">
           <div>
-            <span className="uppercase tracking-[0.16em] text-amber-300">
+            <span className="uppercase tracking-[0.16em] text-sky-300">
               Plano Essencial
             </span>
-            <span className="ml-1 text-zinc-400">
+            <span className="ml-1 text-[#bfd0ec]">
               {" "}
               — Recursos avançados ficam nos planos Pro, Gold e Empresarial.
             </span>
@@ -643,282 +631,130 @@ const saldoDisplay =
           <button
             type="button"
             onClick={() => (window.location.href = "/planos")}
-            className="inline-flex items-center justify-center rounded-full border border-amber-400/80 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] transition"
+            className="inline-flex items-center justify-center rounded-full border border-sky-400/70 bg-sky-500/10 px-3 py-1 text-[10px] text-sky-100 hover:bg-sky-400/10 active:scale-[0.97] transition"
           >
             Explorar planos
           </button>
         </div>
       </div>
 
-      {/* Insight IA 3.0 • PIX */}
-      <div className="rounded-2xl border border-amber-500/50 bg-gradient-to-br from-black via-zinc-950 to-black p-4 md:p-5 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
-              IA 3.0 • Situação do seu PIX no mês
-            </p>
-            <p className="text-[11px] md:text-sm text-zinc-200">
-              Diagnóstico rápido do seu cenário financeiro.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleHomeInsight}
-            disabled={pixInsightLoading}
-            className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-black/80 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed transition"
-          >
-            {pixInsightLoading ? "Analisando..." : "Atualizar insight do mês"}
-          </button>
-        </div>
 
-        {pixInsightError && (
-          <p className="text-[11px] text-rose-300">
-            {pixInsightError}
+      {/* Conta em foco */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
+            Conta em foco
           </p>
-        )}
+          <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
+            Visão rápida da sua carteira
+          </h3>
 
-        {!pixInsightError && pixInsight && (
-          <p className="text-[11px] text-zinc-100 whitespace-pre-line">
-            {pixInsight}
-          </p>
-        )}
-
-        {!pixInsightError && !pixInsight && !pixInsightLoading && (
-          <p className="text-[10px] text-zinc-400">
-            Toque em "Atualizar insight do mês" para gerar a leitura inteligente do período.
-          </p>
-        )}
-      </div>
-
-      {/* PIX • Visão rápida */}
-      <div className="rounded-2xl border border-emerald-500/50 bg-gradient-to-br from-black via-zinc-950 to-black p-4 md:p-5 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <p className="text-[10px] md:text-[11px] text-emerald-200/80 uppercase tracking-[0.16em]">
-              PIX • Visão rápida
-            </p>
-            <p className="text-[11px] md:text-sm text-zinc-200">
-              Evolução recente do PIX com leitura rápida dos últimos 7 dias.
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/70 bg-black/70 px-3 py-1 text-[10px] text-emerald-200">
-            /api/v1/pix/7d • Somente leitura
-          </span>
-        </div>
-
-        {/* ===== SALDO PREMIUM AUREA GOLD ===== */}
-        <div className="ag-hero px-5 py-6 mb-6 rounded-[30px] shadow-[0_24px_54px_rgba(0,0,0,0.42),0_0_44px_rgba(212,175,55,0.10)]">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex flex-col gap-2">
-            <span className="text-[10px] uppercase tracking-[0.28em] ag-soft">
-              Saldo total disponível
-            </span>
-
-            <div className="text-4xl md:text-5xl font-semibold text-white gold-glow leading-none">
-              {formatBRL(saldoReal)}
+          <div className="mt-4 space-y-2.5 text-[11px]">
+            <div className="flex items-center justify-between rounded-xl border border-sky-500/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-3">
+              <span className="text-[#bfd0ec]">Status da conta</span>
+              <span className={`font-medium ${saldoModo === "real" ? "text-emerald-300" : "text-amber-200"}`}>
+                {saldoModo === "real" ? "Conectada" : "Demonstração"}
+              </span>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] ag-subtitle">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  saldoModo === "real" ? "bg-emerald-400" : "bg-yellow-400"
-                }`}
-              />
-              {saldoModo === "real" ? "Saldo real sincronizado" : "Modo simulado"}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 min-w-[240px]">
-            <div className="ag-card px-4 py-3 rounded-[18px]">
-              <div className="text-[10px] uppercase ag-soft">
-                Entradas (mês)
-              </div>
-              <div className="text-lg font-semibold text-emerald-400 mt-1">
-                {formatBRL(entradasMes)}
-              </div>
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
+              <span className="text-[#bfd0ec]">Resultado do mês</span>
+              <span className={`font-medium ${resultadoMes !== null ? resultadoClass : "text-[#f4f8ff]"}`}>
+                {resultadoMes !== null ? formatBRL(resultadoMes) : "R$ 0,00"}
+              </span>
             </div>
 
-            <div className="ag-card px-4 py-3 rounded-[18px]">
-              <div className="text-[10px] uppercase ag-soft">
-                Saídas (mês)
-              </div>
-              <div className="text-lg font-semibold text-red-400 mt-1">
-                {formatBRL(saidasMes)}
-              </div>
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
+              <span className="text-[#bfd0ec]">Projeção final</span>
+              <span className="font-medium text-[#f4f8ff]">
+                {forecastPrevisaoFimMes !== null ? formatBRL(forecastPrevisaoFimMes) : "Carregando..."}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
+              <span className="text-[#bfd0ec]">Leitura IA 3.0</span>
+              <span className="font-semibold text-[#86c0ff]">
+                {forecastNivel === "critico" && "Crítico"}
+                {forecastNivel === "atencao" && "Atenção"}
+                {forecastNivel === "observacao" && "Observação"}
+                {forecastNivel === "ok" && "Tranquilo"}
+                {!forecastNivel && "Em análise"}
+              </span>
             </div>
           </div>
         </div>
-      </div>
 
-        <div className="rounded-xl border border-emerald-500/40 bg-black/80 px-2 py-2 md:px-3 md:py-3">
-          <AureaPixChart />
-        </div>
-      </div>
-
-      {/* Serviços Aurea Gold (estilo prateleira Mercado Pago / Nubank) */}
-      <div className="rounded-2xl border border-amber-500/40 bg-black/90 p-4 md:p-5 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
-              Serviços Aurea Gold
-            </p>
-            <p className="text-[11px] md:text-sm text-zinc-200">
-              Serviços financeiros e operacionais organizados em um só lugar.
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full border border-zinc-600/80 bg-zinc-950 px-3 py-1 text-[10px] text-zinc-300">
-            Serviços em expansão
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] md:text-[11px]">
-          {/* Coluna 1 */}
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("negocios")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-amber-500/60 bg-zinc-950 px-3 py-2 hover:border-amber-300/80 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-amber-200">Negócio Aurea</span>
-            <span className="text-[9px] text-zinc-400">
-              Conta para MEI, PJ e empreendedores.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("vendas")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">Vendas</span>
-            <span className="text-[9px] text-zinc-400">
-              Acompanhe faturamento, tickets médios e volume diário.
-            </span>
-          </button>
-
-          {/* Coluna 2 */}
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("produtos")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">Produtos</span>
-            <span className="text-[9px] text-zinc-400">
-              Cadastre itens, categorias e controle de estoque.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("relatorios_faturamento")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">
-              Relatórios &amp; faturamento
-            </span>
-            <span className="text-[9px] text-zinc-400">
-              Visão financeira, DRE simplificado e exportações.
-            </span>
-          </button>
-
-          {/* Coluna 3 */}
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("gestao_caixa")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">Gestão de caixa</span>
-            <span className="text-[9px] text-zinc-400">
-              Entradas, saídas, reservas e projeção de fluxo.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("taxas_parcelas")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">Taxas &amp; parcelas</span>
-            <span className="text-[9px] text-zinc-400">
-              Veja quanto paga por venda e simule cenários.
-            </span>
-          </button>
-
-          {/* Coluna 4 */}
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("maquininhas")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">Maquininhas / Tap</span>
-            <span className="text-[9px] text-zinc-400">
-              Conecte sua maquininha ou solução parceira ao Aurea.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("config_negocio")}
-            className="flex flex-col items-start gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 hover:border-amber-300/70 active:scale-[0.98] hover:shadow-[0_0_12px_rgba(251,191,36,0.45)] transition"
-          >
-            <span className="font-semibold text-zinc-100">
-              Configurações do negócio
-            </span>
-            <span className="text-[9px] text-zinc-400">
-              Dados da empresa, colaboradores e permissões.
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Bloco IA 3.0: Headline + Chat */}
-      <div className="grid md:grid-cols-2 gap-4 md:gap-6">
-        {/* Headline executiva */}
-        <div className="rounded-2xl border border-amber-500/40 bg-zinc-950/90 p-3 md:p-4">
-          <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em] mb-2">
-            IA 3.0 • Headline executiva
-          </p>
-          <p className="text-[11px] text-zinc-300 mb-3">
-            Resumo automático do seu painel Aurea Gold. Nesta versão beta, os dados ainda
-            são simulados, mas o formato já é o mesmo da versão executiva.
-          </p>
-          <IaHeadlineLab />
-        </div>
-
-        {/* Chat IA 3.0 completo */}
-        <div className="rounded-2xl border border-amber-500/40 bg-black/90 p-3 md:p-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
+        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
-                Falar com a IA 3.0
+              <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
+                Acessos úteis
               </p>
-              <p className="text-[11px] text-zinc-300">
-                Tire dúvidas sobre saldo, entradas, saídas e histórico do seu Aurea Gold.
-              </p>
+              <h3 className="mt-2 text-lg md:text-xl font-bold text-[#f4f8ff]">
+                Continue sua operação
+              </h3>
             </div>
+
             <button
               type="button"
-              onClick={handleOpenFullIA}
-              className="px-3 py-1.5 rounded-full border border-amber-400/80 bg-black/80 text-[10px] text-amber-100 hover:border-amber-200 active:scale-[0.97] transition"
+              onClick={handleHomeInsight}
+              disabled={pixInsightLoading}
+              className="inline-flex items-center justify-center rounded-full border border-sky-400/50 bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] px-3 py-1.5 text-[11px] font-semibold text-[#06101f] shadow-[0_12px_24px_rgba(2,8,20,0.26)] hover:brightness-110 disabled:opacity-60"
             >
-              Abrir IA completa
+              {pixInsightLoading ? "Lendo..." : "Gerar insight"}
             </button>
           </div>
 
-          <div id="aurea-ai-chat-panel">
-            <AureaAIChat />
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
+              className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
+            >
+              <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Extrato PIX</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">Histórico da conta</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
+              className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
+            >
+              <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Cobrar</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">QR Code e cobrança</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (window.location.href = "/planos")}
+              className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
+            >
+              <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Planos</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">Ver upgrades</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
+              className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
+            >
+              <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Enviar PIX</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">Transferir agora</span>
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-sky-500/16 bg-[rgba(10,20,40,0.58)] px-3 py-3">
+            {pixInsightError ? (
+              <p className="text-[11px] text-rose-300">{pixInsightError}</p>
+            ) : pixInsight ? (
+              <p className="text-[13px] text-[#f4f8ff] whitespace-pre-line">{pixInsight}</p>
+            ) : (
+              <p className="text-[12px] text-[#bfd0ec]">
+                A home agora fica focada em conta. PIX detalhado, gestão e módulos profundos ficam nas outras abas.
+              </p>
+            )}
           </div>
         </div>
-      </div>
-    
-      {/* Acesso a planos Aurea Gold */}
-      <div className="mt-6 text-center">
-        <button
-          type="button"
-          onClick={() => window.open('/planos', '_blank')}
-          className="text-[10px] md:text-[11px] text-amber-300 underline hover:text-amber-200 transition"
-        >
-          Conhecer planos Aurea Gold
-        </button>
       </div>
 
 
@@ -929,7 +765,7 @@ const saldoDisplay =
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-amber-200">Enviar PIX</h3>
               <button
-                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                className="text-[#bfd0ec] hover:text-zinc-200 text-sm"
                 onClick={() => { setPixSendOpen(false); setPixSendErr(null); setPixSendOk(null); }}
               >
                 Fechar
@@ -938,20 +774,20 @@ const saldoDisplay =
 
             <div className="mt-3 space-y-2">
               <input
-                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-zinc-600"
                 placeholder="Destino (chave PIX / conta)"
                 value={pixSendDest}
                 onChange={(e) => setPixSendDest(e.target.value)}
               />
               <input
-                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-zinc-600"
                 placeholder="Valor (ex: 10,50)"
                 value={pixSendValor}
                 onChange={(e) => setPixSendValor(e.target.value)}
                 inputMode="decimal"
               />
               <input
-                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                className="w-full rounded-xl bg-black/40 border border-zinc-700 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-zinc-600"
                 placeholder="Mensagem (opcional)"
                 value={pixSendMsg}
                 onChange={(e) => setPixSendMsg(e.target.value)}
@@ -978,28 +814,28 @@ const saldoDisplay =
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-amber-200">Extrato PIX</h3>
               <button
-                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                className="text-[#bfd0ec] hover:text-zinc-200 text-sm"
                 onClick={() => { setPixExtratoOpen(false); setPixExtratoErr(null); }}
               >
                 Fechar
               </button>
             </div>
 
-            {pixExtratoBusy && <p className="mt-3 text-xs text-zinc-400">Carregando...</p>}
+            {pixExtratoBusy && <p className="mt-3 text-xs text-[#bfd0ec]">Carregando...</p>}
             {pixExtratoErr && <p className="mt-3 text-xs text-red-300">{pixExtratoErr}</p>}
 
             {!pixExtratoBusy && !pixExtratoErr && (
               <div className="mt-3 max-h-[70vh] overflow-auto space-y-2">
                 {(pixExtratoItems || []).length === 0 ? (
-                  <p className="text-xs text-zinc-400">Sem movimentações (ainda).</p>
+                  <p className="text-xs text-[#bfd0ec]">Sem movimentações (ainda).</p>
                 ) : (
                   (pixExtratoItems || []).map((it) => (
                     <div key={it.id} className="flex items-start justify-between gap-3 border-b border-zinc-800/70 pb-2">
                       <div className="min-w-0">
                         <p className="text-xs text-zinc-200">
-                          <span className="text-zinc-400">#{it.id}</span> • {String(it.tipo || "").toUpperCase()}
+                          <span className="text-[#bfd0ec]">#{it.id}</span> • {String(it.tipo || "").toUpperCase()}
                         </p>
-                        {it.descricao && <p className="text-[11px] text-zinc-400 truncate">{it.descricao}</p>}
+                        {it.descricao && <p className="text-[12px] text-[#efe4cf] truncate">{it.descricao}</p>}
                       </div>
                       <div className="text-xs text-amber-200 whitespace-nowrap">
                         {formatBRL(Number(it.valor || 0))}

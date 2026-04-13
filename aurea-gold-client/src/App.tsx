@@ -143,15 +143,17 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     >
       {content}
 
-      <div className="mt-4 w-full flex justify-end px-1 md:px-2">
-        <button
-          type="button"
-          onClick={onLogout}
-          className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.18em]"
-        >
-          Sair da Aurea Gold
-        </button>
-      </div>
+      {activeTab === "mais" && (
+        <div className="mt-4 w-full flex justify-end px-1 md:px-2">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.18em]"
+          >
+            Sair da Aurea Gold
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

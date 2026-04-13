@@ -1,5 +1,6 @@
 import { authFetch } from "../auth/authClient";
-export const API_BASE = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
+import { API_BASE } from "../lib/apiBase";
+export { API_BASE };
 
 
 export const USER_EMAIL: string = String((import.meta as any).env?.VITE_USER_EMAIL || "");
