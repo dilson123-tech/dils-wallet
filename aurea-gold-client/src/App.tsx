@@ -93,64 +93,9 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
   switch (activeTab) {
     case "home":
       content = (
-        <>
-          <header className="mb-6 md:mb-8">
-            <div className="ag-hero px-4 py-5 md:px-6 md:py-6">
-              <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                <div className="flex flex-col gap-2 max-w-2xl">
-                  <span className="text-[10px] md:text-xs uppercase tracking-[0.30em] ag-gold-text">
-                    Aurea Gold • Financial Interface
-                  </span>
-
-                  <h1 className="text-2xl md:text-3xl font-semibold ag-title leading-tight">
-                    Seu centro premium de operações financeiras
-                  </h1>
-
-                  <p className="text-sm md:text-base ag-subtitle leading-relaxed">
-                    Ambiente seguro para saldo, PIX, pagamentos e inteligência aplicada,
-                    com percepção visual premium e operação orientada à confiança.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-[280px] md:min-w-[360px]">
-                  <div className="ag-card px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.22em] ag-soft">
-                      Status da conta
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                      <span className="text-sm font-semibold text-white">
-                        Operacional
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[11px] ag-subtitle">
-                      Ambiente autenticado e pronto para movimentações.
-                    </div>
-                  </div>
-
-                  <div className="ag-card px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.22em] ag-soft">
-                      Segurança
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--ag-gold-strong)]" />
-                      <span className="text-sm font-semibold text-white">
-                        Monitorada
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[11px] ag-subtitle">
-                      Sessão protegida com fluxo controlado de autenticação.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <main className="w-full pb-4 md:pb-6 overflow-x-auto">
-            <SuperAureaHome onPixShortcut={handleHomePixShortcut} />
-          </main>
-        </>
+        <main className="w-full pb-4 md:pb-6">
+          <SuperAureaHome onPixShortcut={handleHomePixShortcut} />
+        </main>
       );
       break;
 
@@ -162,7 +107,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
       );
       break;
 
-    case "ia":
+    case "gestao":
       content = (
         <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
           <AureaIAPanel />
@@ -178,7 +123,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
       );
       break;
 
-    case "credito-ia":
+    case "mais":
       content = (
         <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
           <AureaCreditoIAPanel />

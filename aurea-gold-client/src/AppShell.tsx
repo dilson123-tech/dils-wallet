@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from "react";
 
-export type AppTab = "home" | "pix" | "ia" | "pagamentos" | "credito-ia";
+export type AppTab = "home" | "pix" | "gestao" | "pagamentos" | "mais";
 
 interface AppShellProps extends PropsWithChildren {
   activeTab: AppTab;
@@ -16,22 +16,22 @@ export function AppShell({
 }: AppShellProps) {
   const tabs: { key: AppTab; label: string; icon: string }[] = [
     { key: "home", label: "Conta", icon: "🏦" },
-    { key: "ia", label: "Negócio", icon: "🏪" },
+    { key: "gestao", label: "Gestão", icon: "📈" },
     { key: "pix", label: "Pix", icon: "◎" },
-    { key: "pagamentos", label: "Pagamentos", icon: "💳" },
-    { key: "credito-ia", label: "Crédito IA", icon: "📊" },
+    { key: "pagamentos", label: "Pagar", icon: "💳" },
+    { key: "mais", label: "Mais", icon: "☰" },
   ];
 
   const headerSubtitle =
     activeTab === "home"
-      ? "Visão geral da sua conta"
+      ? "Sua conta digital"
       : activeTab === "pix"
-      ? "Movimentações PIX"
-      : activeTab === "ia"
-      ? "Inteligência de negócio"
+      ? "Área Pix"
+      : activeTab === "gestao"
+      ? "Ferramentas de gestão"
       : activeTab === "pagamentos"
-      ? "Pagamentos e cobranças"
-      : "Simulação de crédito";
+      ? "Pagamentos"
+      : "Mais opções";
 
   return (
     <div className="min-h-screen flex flex-col text-white bg-[radial-gradient(circle_at_top,_rgba(212,175,55,0.08),_transparent_22%),linear-gradient(180deg,#090909_0%,#0d0f13_100%)]">
