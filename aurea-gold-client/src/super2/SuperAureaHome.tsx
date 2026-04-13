@@ -496,8 +496,8 @@ const saldoDisplay =
             <p className="text-[10px] uppercase tracking-[0.28em] ag-gold-text">
               Ações rápidas
             </p>
-            <h3 className="mt-1 text-sm md:text-base font-semibold ag-title">
-              PIX e movimentações principais
+            <h3 className="mt-1 text-base md:text-lg font-semibold ag-title">
+              Mover dinheiro
             </h3>
           </div>
 
@@ -505,7 +505,7 @@ const saldoDisplay =
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
-              className="ag-card text-left px-4 py-4"
+              className="ag-card text-left px-4 py-4 rounded-[22px] border border-[rgba(212,175,55,0.18)] bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(10,10,14,0.98))] shadow-[0_16px_34px_rgba(0,0,0,0.40)] hover:border-[rgba(212,175,55,0.30)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-1">
@@ -513,11 +513,11 @@ const saldoDisplay =
                   <span className="text-sm font-semibold text-white">
                     Enviar PIX
                   </span>
-                  <span className="text-[11px] ag-subtitle leading-relaxed">
-                    Transferência imediata com fluxo rápido e seguro.
+                  <span className="text-[10px] ag-subtitle leading-relaxed">
+                    Transferência imediata.
                   </span>
                 </div>
-                <span className="text-[10px] uppercase ag-gold-text tracking-[0.2em]">
+                <span className="inline-flex items-center rounded-full border border-[rgba(212,175,55,0.24)] bg-black/50 px-2.5 py-1 text-[10px] uppercase ag-gold-text tracking-[0.18em]">
                   Enviar
                 </span>
               </div>
@@ -534,11 +534,11 @@ const saldoDisplay =
                   <span className="text-sm font-semibold text-white">
                     Receber PIX
                   </span>
-                  <span className="text-[11px] ag-subtitle leading-relaxed">
-                    Gere cobrança, QR Code e recebimentos com agilidade.
+                  <span className="text-[10px] ag-subtitle leading-relaxed">
+                    Cobrança e QR Code.
                   </span>
                 </div>
-                <span className="text-[10px] uppercase ag-gold-text tracking-[0.2em]">
+                <span className="inline-flex items-center rounded-full border border-[rgba(212,175,55,0.24)] bg-black/50 px-2.5 py-1 text-[10px] uppercase ag-gold-text tracking-[0.18em]">
                   Cobrar
                 </span>
               </div>
@@ -555,11 +555,11 @@ const saldoDisplay =
                   <span className="text-sm font-semibold text-white">
                     Ver extrato PIX
                   </span>
-                  <span className="text-[11px] ag-subtitle leading-relaxed">
-                    Consulte lançamentos recentes e acompanhe movimentações.
+                  <span className="text-[10px] ag-subtitle leading-relaxed">
+                    Histórico recente.
                   </span>
                 </div>
-                <span className="text-[10px] uppercase ag-gold-text tracking-[0.2em]">
+                <span className="inline-flex items-center rounded-full border border-[rgba(212,175,55,0.24)] bg-black/50 px-2.5 py-1 text-[10px] uppercase ag-gold-text tracking-[0.18em]">
                   Extrato
                 </span>
               </div>
@@ -569,14 +569,14 @@ const saldoDisplay =
 
 {/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className="ag-hero px-5 py-5 mb-6 space-y-4">
+      <div className="ag-hero px-5 py-5 mb-6 space-y-4 rounded-[28px] shadow-[0_20px_48px_rgba(0,0,0,0.42),0_0_36px_rgba(212,175,55,0.08)]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
               Resumo financeiro do mês
             </p>
             <p className="text-sm md:text-base text-zinc-100">
-              Leitura consolidada da sua operação financeira no mês, com foco em clareza, resultado e tomada de decisão.
+              Entradas, saídas e resultado do mês em uma leitura rápida.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/70 bg-black/70 px-3 py-1 text-[10px] text-amber-200">
@@ -585,7 +585,7 @@ const saldoDisplay =
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[11px]">
-          <div className="rounded-xl border border-emerald-500/50 bg-emerald-900/30 px-3 py-2">
+          <div className="ag-card px-4 py-3 border border-emerald-500/28 bg-[linear-gradient(180deg,rgba(10,25,18,0.92),rgba(7,15,11,0.96))]">
             <p className="text-[10px] text-emerald-200/90 uppercase tracking-[0.14em]">
               Entradas no mês
             </p>
@@ -593,11 +593,11 @@ const saldoDisplay =
               {entradasMes !== null ? formatBRL(entradasMes) : "R$ 8.500,00"}
             </p>
             <p className="mt-1 text-[10px] text-emerald-100/80">
-              Somando PIX recebidos e créditos principais.
+              Entradas confirmadas no período.
             </p>
           </div>
 
-          <div className="rounded-xl border border-red-500/50 bg-red-900/20 px-3 py-2">
+          <div className="ag-card px-4 py-3 border border-red-500/28 bg-[linear-gradient(180deg,rgba(33,14,14,0.92),rgba(16,9,9,0.96))]">
             <p className="text-[10px] text-red-200/90 uppercase tracking-[0.14em]">
               Saídas no mês
             </p>
@@ -605,11 +605,11 @@ const saldoDisplay =
               {saidasMes !== null ? formatBRL(saidasMes) : "R$ 6.200,00"}
             </p>
             <p className="mt-1 text-[10px] text-red-100/80">
-              Pagamentos, transferências e débitos recorrentes.
+              Saídas efetivas registradas.
             </p>
           </div>
 
-          <div className="col-span-2 md:col-span-1 rounded-xl border border-amber-500/50 bg-black/60 px-3 py-2 flex flex-col justify-between">
+          <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-amber-500/24 bg-[linear-gradient(180deg,rgba(28,21,8,0.94),rgba(10,10,12,0.98))]">
             <p className="text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
               Resultado do mês
             </p>
@@ -625,8 +625,7 @@ const saldoDisplay =
               )}
             </p>
             <p className="mt-1 text-[10px] text-zinc-400">
-              Diferença entre todas as entradas e saídas do mês. Use este número para ajustar
-              reservas, investimentos e gastos do seu negócio.
+              Saldo líquido consolidado do período.
             </p>
           </div>
         </div>
@@ -634,11 +633,11 @@ const saldoDisplay =
         <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-zinc-300">
           <div>
             <span className="uppercase tracking-[0.16em] text-amber-300">
-              Plano atual: Essencial
+              Plano Essencial
             </span>
             <span className="ml-1 text-zinc-400">
               {" "}
-              — IA financeira completa e relatórios avançados ficam nos planos Pro, Gold e Empresarial.
+              — Recursos avançados ficam nos planos Pro, Gold e Empresarial.
             </span>
           </div>
           <button
@@ -646,7 +645,7 @@ const saldoDisplay =
             onClick={() => (window.location.href = "/planos")}
             className="inline-flex items-center justify-center rounded-full border border-amber-400/80 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] transition"
           >
-            Ver planos e benefícios
+            Explorar planos
           </button>
         </div>
       </div>
@@ -659,7 +658,7 @@ const saldoDisplay =
               IA 3.0 • Situação do seu PIX no mês
             </p>
             <p className="text-[11px] md:text-sm text-zinc-200">
-              Diagnóstico rápido usando saldo, entradas, saídas e previsão do mês.
+              Diagnóstico rápido do seu cenário financeiro.
             </p>
           </div>
           <button
@@ -686,8 +685,7 @@ const saldoDisplay =
 
         {!pixInsightError && !pixInsight && !pixInsightLoading && (
           <p className="text-[10px] text-zinc-400">
-            Toque em "Atualizar insight do mês" para a IA 3.0 ler seu cenário PIX
-            e apontar se o momento é de atenção, risco ou folga de caixa.
+            Toque em "Atualizar insight do mês" para gerar a leitura inteligente do período.
           </p>
         )}
       </div>
@@ -700,8 +698,7 @@ const saldoDisplay =
               PIX • Visão rápida
             </p>
             <p className="text-[11px] md:text-sm text-zinc-200">
-              Gráfico resumindo as movimentações recentes de PIX. Nesta versão, usamos seus
-              dados reais dos últimos 7 dias (se não houver movimentações, o gráfico fica zerado).
+              Evolução recente do PIX com leitura rápida dos últimos 7 dias.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/70 bg-black/70 px-3 py-1 text-[10px] text-emerald-200">
@@ -710,14 +707,14 @@ const saldoDisplay =
         </div>
 
         {/* ===== SALDO PREMIUM AUREA GOLD ===== */}
-        <div className="ag-hero px-5 py-6 mb-6">
+        <div className="ag-hero px-5 py-6 mb-6 rounded-[30px] shadow-[0_24px_54px_rgba(0,0,0,0.42),0_0_44px_rgba(212,175,55,0.10)]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-[0.28em] ag-soft">
-              Saldo disponível
+              Saldo total disponível
             </span>
 
-            <div className="text-3xl md:text-4xl font-semibold text-white gold-glow">
+            <div className="text-4xl md:text-5xl font-semibold text-white gold-glow leading-none">
               {formatBRL(saldoReal)}
             </div>
 
@@ -732,7 +729,7 @@ const saldoDisplay =
           </div>
 
           <div className="grid grid-cols-2 gap-4 min-w-[240px]">
-            <div className="ag-card px-4 py-3">
+            <div className="ag-card px-4 py-3 rounded-[18px]">
               <div className="text-[10px] uppercase ag-soft">
                 Entradas (mês)
               </div>
@@ -741,7 +738,7 @@ const saldoDisplay =
               </div>
             </div>
 
-            <div className="ag-card px-4 py-3">
+            <div className="ag-card px-4 py-3 rounded-[18px]">
               <div className="text-[10px] uppercase ag-soft">
                 Saídas (mês)
               </div>
@@ -766,12 +763,11 @@ const saldoDisplay =
               Serviços Aurea Gold
             </p>
             <p className="text-[11px] md:text-sm text-zinc-200">
-              Tudo o que você espera de uma carteira digital completa, organizado em um
-              só lugar.
+              Serviços financeiros e operacionais organizados em um só lugar.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-zinc-600/80 bg-zinc-950 px-3 py-1 text-[10px] text-zinc-300">
-            Protótipo visual • Em construção
+            Serviços em expansão
           </span>
         </div>
 
