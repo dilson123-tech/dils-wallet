@@ -34,11 +34,11 @@ export function AppShell({
       : "Simulação de crédito";
 
   return (
-    <div className="min-h-screen flex flex-col text-white">
+    <div className="min-h-screen flex flex-col text-white bg-[radial-gradient(circle_at_top,_rgba(212,175,55,0.08),_transparent_22%),linear-gradient(180deg,#090909_0%,#0d0f13_100%)]">
       
       {/* HEADER PREMIUM */}
-      <header className="px-4 pt-4 pb-3">
-        <div className="ag-hero px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 px-3 pt-3 pb-2 backdrop-blur-md">
+        <div className="ag-hero px-4 py-3.5 flex items-center justify-between rounded-[22px]">
 
           <div className="flex flex-col">
             <span className="text-[10px] tracking-[0.3em] ag-gold-text uppercase">
@@ -58,15 +58,15 @@ export function AppShell({
       </header>
 
       {/* MAIN */}
-      <main className="flex-1 w-full pb-[110px]">
-        <div className="w-full max-w-[520px] mx-auto">
+      <main className="flex-1 w-full px-3 pb-[118px]">
+        <div className="w-full max-w-[460px] mx-auto">
           {children}
         </div>
       </main>
 
       {/* NAV PREMIUM */}
-      <footer className="fixed bottom-0 left-0 right-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-        <div className="ag-surface-elevated flex justify-between items-center px-4 py-3 min-h-[72px]">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="ag-surface-elevated mx-auto max-w-[460px] flex justify-between items-center px-2 py-2 min-h-[76px] rounded-[26px]">
 
           {tabs.map((tab) => {
             const isActive = tab.key === activeTab;
@@ -75,10 +75,14 @@ export function AppShell({
               <button
                 key={tab.key}
                 onClick={() => !isSplash && onTabChange?.(tab.key)}
-                className="flex flex-col items-center justify-center gap-1 flex-1 min-h-[56px]"
+                className={`group relative flex flex-col items-center justify-center gap-1 flex-1 min-h-[58px] rounded-[18px] transition-all duration-200 ${
+                  isActive
+                    ? "bg-[linear-gradient(135deg,rgba(212,175,55,0.24),rgba(212,175,55,0.10))] shadow-[inset_0_0_0_1px_rgba(212,175,55,0.34),0_10px_24px_rgba(0,0,0,0.34)]"
+                    : "hover:bg-white/5"
+                }`}
               >
                 <span
-                  className={`text-lg ${
+                  className={`text-[18px] ${
                     isActive ? "ag-gold-text" : "ag-soft"
                   }`}
                 >
@@ -86,7 +90,7 @@ export function AppShell({
                 </span>
 
                 <span
-                  className={`text-[10px] uppercase ${
+                  className={`text-[10px] font-medium tracking-[0.18em] uppercase ${
                     isActive ? "ag-gold-text" : "ag-muted"
                   }`}
                 >
