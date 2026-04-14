@@ -15,11 +15,11 @@ export function AppShell({
   isSplash = false,
 }: AppShellProps) {
   const tabs: { key: AppTab; label: string; icon: string }[] = [
-    { key: "home", label: "Conta", icon: "🏦" },
-    { key: "gestao", label: "Gestão", icon: "📈" },
+    { key: "home", label: "Conta", icon: "⌂" },
+    { key: "gestao", label: "Gestão", icon: "▦" },
     { key: "pix", label: "Pix", icon: "◎" },
-    { key: "pagamentos", label: "Pagar", icon: "💳" },
-    { key: "mais", label: "Mais", icon: "☰" },
+    { key: "pagamentos", label: "Pagar", icon: "▣" },
+    { key: "mais", label: "Mais", icon: "≡" },
   ];
 
   const headerSubtitle =
@@ -75,22 +75,20 @@ export function AppShell({
                 key={tab.key}
                 onClick={() => !isSplash && onTabChange?.(tab.key)}
                 className={`group relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 flex-1 min-h-[54px] sm:min-h-[60px] rounded-[18px] sm:rounded-[20px] transition-all duration-200 ${
-                  isActive
-                    ? "bg-[linear-gradient(180deg,rgba(90,160,255,0.24),rgba(90,160,255,0.08))] shadow-[inset_0_0_0_1px_rgba(90,160,255,0.28),0_10px_26px_rgba(2,8,20,0.32)]"
-                    : "hover:bg-sky-400/8"
+                  isActive ? "bg-[linear-gradient(180deg,rgba(90,160,255,0.24),rgba(90,160,255,0.08))] shadow-[inset_0_0_0_1px_rgba(90,160,255,0.28),0_10px_26px_rgba(2,8,20,0.32)]" : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10),0_8px_18px_rgba(0,0,0,0.20)] hover:brightness-105"
                 }`}
               >
                 <span
-                  className={`text-[15px] sm:text-[19px] ${
-                    isActive ? "ag-gold-text" : "ag-soft"
+                  className={`text-[16px] sm:text-[18px] leading-none ${
+                    isActive ? "text-[#f4f8ff]" : "text-[#06101f]"
                   }`}
                 >
                   {tab.icon}
                 </span>
 
                 <span
-                  className={`text-[8px] sm:text-[9px] font-medium tracking-[0.12em] sm:tracking-[0.16em] uppercase ${
-                    isActive ? "ag-gold-text" : "ag-muted"
+                  className={`text-[9px] sm:text-[10px] font-bold tracking-[0.04em] sm:tracking-[0.08em] uppercase ${
+                    isActive ? "text-[#f4f8ff]" : "text-[#06101f]"
                   }`}
                 >
                   {tab.label}

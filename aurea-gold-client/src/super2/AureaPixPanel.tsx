@@ -555,24 +555,23 @@ const saldo =
     saidasMes !== null ? formatBRL(saidasMes) : "R$ 0,00";
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
       {/* HEADER */}
-      <header className="mb-4">
-        <div className="text-[10px] uppercase tracking-wide text-zinc-400">
+      <header className="ag-surface-elevated px-4 py-5 sm:px-5 sm:py-6">
+        <div className="text-[10px] uppercase tracking-wide text-[#8fa8cf]">
           Aurea Gold • Área PIX oficial
         </div>
-        <h1 className="text-lg md:text-xl font-semibold text-amber-300 mt-1">
+        <h1 className="text-lg md:text-xl font-semibold text-[#86c0ff] mt-1">
           PIX • Carteira Aurea Gold
         </h1>
-        <p className="text-xs text-zinc-400 mt-1 max-w-xl">
-          Essa é a visão dedicada do PIX no app Aurea Gold. Vamos evoluir este
-          painel para ser a central de transferências, extrato rápido e atalhos.
+        <p className="text-xs text-[#8fa8cf] mt-1 max-w-xl">
+          Central de transferências, cobranças, extrato e leitura operacional do PIX dentro da Aurea Gold.
         </p>
 
         <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-zinc-950/80 px-3 py-1">
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-[rgba(8,18,35,0.88)] px-3 py-1">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] uppercase tracking-wide text-amber-200">
+            <span className="text-[10px] uppercase tracking-wide text-sky-100">
               {saldoSource === "real"
                 ? "Dados reais carregados do backend Aurea Gold"
                 : "Conectando PIX • aguardando sincronização completa"}
@@ -581,14 +580,14 @@ const saldo =
 
           <div className="flex items-center gap-2">
             {balanceLoading && (
-              <span className="text-[10px] text-zinc-400">
+              <span className="text-[10px] text-[#8fa8cf]">
                 Atualizando dados do PIX...
               </span>
             )}
             <button
               type="button"
               onClick={handleReloadBalance}
-              className="rounded-full border border-amber-500/60 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200 hover:bg-amber-500/10 active:scale-[0.97] transition"
+              className="rounded-full border border-amber-500/60 bg-[rgba(8,18,35,0.88)] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100 hover:bg-amber-500/10 active:scale-[0.97] transition"
             >
               Atualizar dados PIX
             </button>
@@ -599,26 +598,26 @@ const saldo =
           <p className="mt-2 text-[11px] text-rose-300">{balanceError}</p>
         )}
 
-        <div className="h-px w-32 bg-amber-500 mt-3" />
+        <div className="h-px w-32 bg-sky-500/60 mt-3" />
       </header>
 
       {/* CARDS PRINCIPAIS */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-        <div className="rounded-xl border border-amber-500/40 bg-zinc-950/80 p-3">
-          <div className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">
+        <div className="rounded-xl border border-amber-500/40 bg-[rgba(8,18,35,0.88)] p-3">
+          <div className="text-[10px] uppercase tracking-wide text-[#8fa8cf] mb-1">
             Saldo PIX
           </div>
-          <div className="text-2xl font-semibold text-amber-300">
+          <div className="text-2xl font-semibold text-[#86c0ff]">
             {saldoPixDisplay}
           </div>
-          <p className="text-[11px] text-zinc-500 mt-1">
+          <p className="text-[11px] text-[#bfd0ec] mt-1">
             {saldoSource === "real"
               ? "Saldo carregado diretamente do backend Aurea Gold."
               : "Saldo provisório enquanto o PIX sincroniza. Na versão completa, esse card mostra o saldo real da carteira."}
           </p>
         </div>
 
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-3">
+        <div className="ag-card rounded-[22px] border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(8,34,34,0.96),rgba(7,22,22,0.98))] p-4">
           <div className="text-[10px] uppercase tracking-wide text-emerald-300 mb-1">
             Entradas do mês
           </div>
@@ -631,7 +630,7 @@ const saldo =
           </p>
         </div>
 
-        <div className="rounded-xl border border-rose-500/40 bg-rose-950/40 p-3">
+        <div className="ag-card rounded-[22px] border border-rose-500/20 bg-[linear-gradient(180deg,rgba(40,14,24,0.96),rgba(24,10,16,0.98))] p-4">
           <div className="text-[10px] uppercase tracking-wide text-rose-300 mb-1">
             Saídas do mês
           </div>
@@ -646,9 +645,9 @@ const saldo =
       </section>
 
       {/* AÇÕES RÁPIDAS */}
-      <section className="mb-4">
-        <h2 className="text-[11px] uppercase tracking-wide text-zinc-400 mb-2">
-          Ações rápidas
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+        <h2 className="text-[11px] uppercase tracking-wide text-[#8fa8cf] mb-2">
+          Comandos PIX
         </h2>
 
         <div className="flex flex-wrap gap-2">
@@ -657,8 +656,8 @@ const saldo =
             onClick={() => setActiveAction("send")}
             className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-wide transition active:scale-[0.97] ${
               activeAction === "send"
-                ? "bg-amber-500 text-black shadow-[0_0_18px_rgba(251,191,36,0.6)]"
-                : "bg-amber-500 text-black/90"
+                ? "bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] text-[#06101f] shadow-[0_0_18px_rgba(90,160,255,0.35)]"
+                : "border border-sky-500/40 bg-sky-500/10 text-sky-100"
             }`}
           >
             Enviar PIX
@@ -669,8 +668,8 @@ const saldo =
             onClick={() => setActiveAction("charge")}
             className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
               activeAction === "charge"
-                ? "border border-amber-400 bg-black text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.5)]"
-                : "border border-amber-500/60 text-amber-300 bg-transparent"
+                ? "border border-amber-400 bg-black text-sky-100 shadow-[0_0_14px_rgba(251,191,36,0.5)]"
+                : "border border-amber-500/60 text-[#86c0ff] bg-transparent"
             }`}
           >
             Cobrar via PIX
@@ -681,8 +680,8 @@ const saldo =
             onClick={() => setActiveAction("statement")}
             className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
               activeAction === "statement"
-                ? "border border-zinc-200 bg-zinc-900 text-zinc-50"
-                : "border border-zinc-700 text-zinc-200 bg-transparent"
+                ? "border border-sky-400/50 bg-sky-500/12 text-sky-50"
+                : "border border-sky-500/24 text-[#f4f8ff] bg-transparent"
             }`}
           >
             Ver extrato PIX
@@ -690,22 +689,20 @@ const saldo =
         </div>
 
         {/* PAINEL DE AÇÃO SELECIONADA */}
-        <div className="mt-3 rounded-xl border border-zinc-800 bg-black/50 p-3 text-[11px] text-zinc-200">
+        <div className="mt-3 rounded-xl border border-sky-500/18 bg-[rgba(8,18,35,0.74)] p-3 text-[11px] text-[#f4f8ff]">
           {!activeAction && (
-            <p className="text-zinc-400">
-              Selecione uma ação acima para ver os detalhes aqui. Nesta área
-              vamos colocar, na próxima fase, os formulários e integrações
-              reais de PIX do Aurea Gold.
+            <p className="text-[#8fa8cf]">
+              Selecione uma ação para abrir os fluxos operacionais do PIX. Esta área concentra envio, cobrança e extrato da carteira.
             </p>
           )}
 
           {activeAction === "send" && (
             <div className="space-y-3">
               <div>
-                <h3 className="font-semibold text-amber-300 mb-1">
+                <h3 className="font-semibold text-[#86c0ff] mb-1">
                   Enviar PIX
                 </h3>
-                <p className="text-zinc-300">
+                <p className="text-[#bfd0ec]">
                   Preencha os campos abaixo para testar o envio. Usamos o
                   endpoint real quando disponível e bloqueamos duplicidades via
                   Idempotency-Key.
@@ -717,11 +714,11 @@ const saldo =
                 onSubmit={handleSubmitSendPix}
               >
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                  <span className="text-[10px] uppercase tracking-wide text-[#8fa8cf]">
                     Chave PIX ou destinatário
                   </span>
                   <input
-                    className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-500"
+                    className="rounded-lg border border-sky-500/24 bg-black px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-500"
                     value={sendPixKey}
                     onChange={(e) => setSendPixKey(e.target.value)}
                     placeholder="CPF, CNPJ, telefone, e-mail ou chave aleatória"
@@ -729,11 +726,11 @@ const saldo =
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                  <span className="text-[10px] uppercase tracking-wide text-[#8fa8cf]">
                     Valor
                   </span>
                   <input
-                    className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-500"
+                    className="rounded-lg border border-sky-500/24 bg-black px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-500"
                     value={sendPixAmount}
                     onChange={(e) => setSendPixAmount(e.target.value)}
                     placeholder="Ex: 125,90"
@@ -741,11 +738,11 @@ const saldo =
                 </label>
 
                 <label className="md:col-span-2 flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                  <span className="text-[10px] uppercase tracking-wide text-[#8fa8cf]">
                     Descrição (opcional)
                   </span>
                   <input
-                    className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-500"
+                    className="rounded-lg border border-sky-500/24 bg-black px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-500"
                     value={sendPixDescription}
                     onChange={(e) => setSendPixDescription(e.target.value)}
                     placeholder="Ex: pagamento da mensalidade Aurea Gold"
@@ -756,7 +753,7 @@ const saldo =
                   <button
                     type="submit"
                     disabled={sendPixLoading}
-                    className="rounded-full border border-amber-500/60 bg-amber-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-amber-200 hover:bg-amber-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="rounded-full border border-amber-500/60 bg-amber-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-sky-100 hover:bg-amber-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {sendPixLoading ? "Enviando..." : "Enviar agora"}
                   </button>
@@ -778,10 +775,10 @@ const saldo =
           {activeAction === "charge" && (
             <div className="space-y-3">
               <div>
-                <h3 className="font-semibold text-amber-300 mb-1">
+                <h3 className="font-semibold text-[#86c0ff] mb-1">
                   Cobrar via PIX
                 </h3>
-                <p className="text-zinc-300">
+                <p className="text-[#bfd0ec]">
                   Simulamos a criação da cobrança. Quando o backend estiver
                   plugado, este fluxo vai gerar QR Code/BR Code real e escutar o
                   status do pagamento.
@@ -793,7 +790,7 @@ const saldo =
                 onSubmit={handleGenerateCharge}
               >
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                  <span className="text-[10px] uppercase tracking-wide text-[#8fa8cf]">
                     Valor da cobrança
                   </span>
                   <input
@@ -805,7 +802,7 @@ const saldo =
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                  <span className="text-[10px] uppercase tracking-wide text-[#8fa8cf]">
                     Descrição/identificador
                   </span>
                   <input
@@ -819,7 +816,7 @@ const saldo =
                 <div className="md:col-span-2 flex flex-wrap items-center gap-2">
                   <button
                     type="submit"
-                    className="rounded-full border border-amber-500/60 bg-amber-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-amber-200 hover:bg-amber-500/20 active:scale-[0.98]"
+                    className="rounded-full border border-amber-500/60 bg-amber-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-sky-100 hover:bg-amber-500/20 active:scale-[0.98]"
                   >
                     Gerar cobrança simulada
                   </button>
@@ -831,7 +828,7 @@ const saldo =
                   )}
 
                   {chargePixRef && (
-                    <span className="text-[10px] text-amber-300">
+                    <span className="text-[10px] text-[#86c0ff]">
                       Ref: {chargePixRef}
                     </span>
                   )}
@@ -845,13 +842,13 @@ const saldo =
               {/* Cards premium de resumo do período */}
               <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
                 <div className="rounded-2xl border border-amber-500/70 bg-gradient-to-br from-black via-zinc-950 to-amber-950/30 px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80 mb-1">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-sky-100/80 mb-1">
                     Envios do período
                   </p>
                   <p className="text-sm md:text-base font-semibold text-amber-100">
                     {formatBRL(resumo.totalEnvios)}
                   </p>
-                  <p className="text-[9px] text-zinc-400 mt-1">
+                  <p className="text-[9px] text-[#8fa8cf] mt-1">
                     Somando todos os PIX enviados pela carteira Aurea Gold.
                   </p>
                 </div>
@@ -869,7 +866,7 @@ const saldo =
                 </div>
 
                 <div className="rounded-2xl border border-amber-400/80 bg-gradient-to-br from-black via-zinc-950 to-amber-800/40 px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200 mb-1">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-sky-100 mb-1">
                     Resultado líquido
                   </p>
                   <p
@@ -878,7 +875,7 @@ const saldo =
                   >
                     {formatBRL(resumo.liquido)}
                   </p>
-                  <p className="text-[9px] text-zinc-300 mt-1">
+                  <p className="text-[9px] text-[#bfd0ec] mt-1">
                     Diferença entre o que saiu e o que entrou no período.
                   </p>
                 </div>
@@ -888,12 +885,12 @@ const saldo =
               <div className="mb-3 rounded-2xl border border-amber-500/60 bg-gradient-to-br from-zinc-950 via-black to-amber-950/40 p-3 md:p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-sky-100/80">
                       IA 3.0 • Analisar extrato
                     </p>
 
                     {pixInsightLoading && (
-                      <p className="text-[10px] text-zinc-400 mt-1">
+                      <p className="text-[10px] text-[#8fa8cf] mt-1">
                         Carregando análise oficial do PIX...
                       </p>
                     )}
@@ -909,17 +906,17 @@ const saldo =
                         <p className="text-sm md:text-base font-semibold text-amber-100 mt-1">
                           {pixInsight.headline}
                         </p>
-                        <p className="text-[11px] text-zinc-200 mt-1">
+                        <p className="text-[11px] text-[#f4f8ff] mt-1">
                           {pixInsight.subheadline}
                         </p>
-                        <p className="text-[10px] text-zinc-400 mt-1">
+                        <p className="text-[10px] text-[#8fa8cf] mt-1">
                           {pixInsight.resumo}
                         </p>
                       </>
                     )}
 
                     {!pixInsightLoading && !pixInsightError && !pixInsight && (
-                      <p className="text-[10px] text-zinc-400 mt-1">
+                      <p className="text-[10px] text-[#8fa8cf] mt-1">
                         Assim que o histórico oficial de PIX começar a ser
                         registrado na carteira, a IA 3.0 passa a analisar os
                         dados reais das suas movimentações.
@@ -930,7 +927,7 @@ const saldo =
                   <button
                     type="button"
                     onClick={handleReloadPixInsight}
-                    className="self-start rounded-full border border-amber-500/70 bg-black/40 px-2.5 py-1 text-[10px] font-medium text-amber-200 hover:bg-amber-500/10 transition"
+                    className="self-start rounded-full border border-amber-500/70 bg-black/40 px-2.5 py-1 text-[10px] font-medium text-sky-100 hover:bg-amber-500/10 transition"
                   >
                     Atualizar IA do PIX
                   </button>
@@ -939,7 +936,7 @@ const saldo =
                 {pixInsight && !pixInsightLoading && !pixInsightError && (
                   <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
                     <div>
-                      <div className="text-zinc-500 uppercase tracking-wide">
+                      <div className="text-[#bfd0ec] uppercase tracking-wide">
                         Saldo líquido estimado
                       </div>
                       <div
@@ -950,7 +947,7 @@ const saldo =
                     </div>
 
                     <div>
-                      <div className="text-zinc-500 uppercase tracking-wide">
+                      <div className="text-[#bfd0ec] uppercase tracking-wide">
                         Entradas mês
                       </div>
                       <div className="font-semibold text-emerald-300">
@@ -959,7 +956,7 @@ const saldo =
                     </div>
 
                     <div>
-                      <div className="text-zinc-500 uppercase tracking-wide">
+                      <div className="text-[#bfd0ec] uppercase tracking-wide">
                         Saídas mês
                       </div>
                       <div className="font-semibold text-rose-300">
@@ -968,10 +965,10 @@ const saldo =
                     </div>
 
                     <div>
-                      <div className="text-zinc-500 uppercase tracking-wide">
+                      <div className="text-[#bfd0ec] uppercase tracking-wide">
                         Movimentação 7 dias
                       </div>
-                      <div className="font-semibold text-amber-200">
+                      <div className="font-semibold text-sky-100">
                         {formatBRL(
                           pixInsightMetrics.entradas_7d -
                             pixInsightMetrics.saidas_7d
@@ -982,17 +979,17 @@ const saldo =
                 )}
               </div>
 
-              <h3 className="font-semibold text-amber-300 mb-1">
+              <h3 className="font-semibold text-[#86c0ff] mb-1">
                 Extrato PIX
               </h3>
-              <p className="text-zinc-300 mb-2">
+              <p className="text-[#bfd0ec] mb-2">
                 Aqui você acompanha os envios e recebimentos de PIX e os detalhes de cada operação.
               </p>
 
               {/* RESUMO FINANCEIRO COM TAXAS */}
-              <div className="mt-1 rounded-lg border border-zinc-700 bg-black/60 p-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
+              <div className="mt-1 rounded-lg border border-sky-500/24 bg-[rgba(8,18,35,0.88)] p-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px]">
                 <div>
-                  <div className="text-zinc-500 uppercase tracking-wide">
+                  <div className="text-[#bfd0ec] uppercase tracking-wide">
                     Envios do período
                   </div>
                   <div className="font-semibold text-rose-300">
@@ -1001,7 +998,7 @@ const saldo =
                 </div>
 
                 <div>
-                  <div className="text-zinc-500 uppercase tracking-wide">
+                  <div className="text-[#bfd0ec] uppercase tracking-wide">
                     Recebimentos
                   </div>
                   <div className="font-semibold text-emerald-300">
@@ -1011,13 +1008,13 @@ const saldo =
 
                 {/* Bloco interno de taxas do período (escondido para o cliente final) */}
                 <div className="hidden">
-                  <div className="text-zinc-500 uppercase tracking-wide">
+                  <div className="text-[#bfd0ec] uppercase tracking-wide">
                     Taxas do período
                   </div>
-                  <div className="font-semibold text-amber-300">
+                  <div className="font-semibold text-[#86c0ff]">
                     {formatBRL(resumo.totalTaxas)}
                   </div>
-                  <div className="text-[9px] text-zinc-500">
+                  <div className="text-[9px] text-[#bfd0ec]">
                     {resumo.totalEnvios > 0
                       ? `${resumo.taxaMediaPercentual.toLocaleString("pt-BR", {
                           minimumFractionDigits: 1,
@@ -1028,7 +1025,7 @@ const saldo =
                 </div>
 
                 <div>
-                  <div className="text-zinc-500 uppercase tracking-wide">
+                  <div className="text-[#bfd0ec] uppercase tracking-wide">
                     Resultado líquido
                   </div>
                   <div
@@ -1040,16 +1037,16 @@ const saldo =
               </div>
 
               {/* IA 3.0 insight sobre o extrato PIX */}
-              <div className="mt-2 rounded-lg border border-amber-500/40 bg-black/70 p-2 text-[10px] space-y-1">
+              <div className="mt-3 rounded-[18px] border border-sky-500/20 bg-[rgba(8,18,35,0.76)] p-4 text-[10px] space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="uppercase tracking-wide text-amber-200">
+                  <p className="uppercase tracking-wide text-sky-100">
                     IA 3.0 • Analisar extrato
                   </p>
                   <button
                     type="button"
                     onClick={handleAskPixInsight}
                     disabled={iaPixLoading}
-                    className="rounded-full border border-amber-500/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200 hover:bg-amber-500/20 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100 hover:bg-sky-400/10 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {iaPixLoading ? "Analisando..." : "Pedir análise"}
                   </button>
@@ -1060,13 +1057,13 @@ const saldo =
                 )}
 
                 {iaPixInsight && !iaPixError && (
-                  <p className="text-[11px] text-zinc-100 whitespace-pre-line">
+                  <p className="text-[11px] text-[#f4f8ff] whitespace-pre-line">
                     {iaPixInsight}
                   </p>
                 )}
 
                 {!iaPixInsight && !iaPixError && !iaPixLoading && (
-                  <p className="text-[10px] text-zinc-400">
+                  <p className="text-[10px] text-[#8fa8cf]">
                     Use a IA 3.0 para interpretar o extrato, apontar riscos,
                     oportunidades de economia e sugerir ajustes no uso do PIX.
                   </p>
@@ -1074,7 +1071,7 @@ const saldo =
               </div>
 
               {historyLoading && (
-                <p className="mt-2 text-[10px] text-zinc-400">
+                <p className="mt-2 text-[10px] text-[#8fa8cf]">
                   Carregando extrato do PIX...
                 </p>
               )}
@@ -1086,7 +1083,7 @@ const saldo =
               {!historyLoading && !historyError && (
                 <div>
                   {(!history || history.length === 0) && (
-                    <p className="mt-2 text-[10px] text-zinc-400">
+                    <p className="mt-2 text-[10px] text-[#8fa8cf]">
                       Ainda não encontramos movimentações de PIX registradas
                       para este usuário. Assim que o backend começar a salvar as
                       transações, elas aparecerão aqui.
@@ -1094,12 +1091,12 @@ const saldo =
                   )}
 
                   {history && history.length > 0 && (
-                    <div className="mt-3 space-y-1.5 max-h-64 md:max-h-72 lg:max-h-80 overflow-y-auto pr-1 border border-zinc-800/80 rounded-lg bg-black/40">
-                      <div className="flex items-center justify-between text-[10px] text-zinc-300 mb-2 pb-1 border-b border-zinc-700/70 pr-1">
-                        <span className="uppercase tracking-[0.16em] text-amber-200">
+                    <div className="mt-3 space-y-1.5 max-h-64 md:max-h-72 lg:max-h-80 overflow-y-auto pr-1 border border-sky-500/20 rounded-[18px] bg-[rgba(8,18,35,0.62)] p-2">
+                      <div className="flex items-center justify-between text-[10px] text-[#bfd0ec] mb-2 pb-2 border-b border-sky-500/20 pr-1">
+                        <span className="uppercase tracking-[0.16em] text-sky-100">
                           Movimentações recentes
                         </span>
-                        <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[9px] text-amber-100">
+                        <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[9px] text-sky-100">
                           {history.length > 30
                             ? "Mostrando 30 de " + history.length + " lançamentos"
                             : history.length + (history.length === 1 ? " lançamento" : " lançamentos")}
@@ -1153,8 +1150,8 @@ const saldo =
                           "transform",
                           "shadow-sm",
                           "hover:shadow-xl",
-                          "hover:border-amber-400",
-                          "hover:bg-amber-500/10",
+                          "hover:border-sky-400/40",
+                          "hover:bg-sky-500/10",
                           "hover:-translate-y-[1px]",
                           "cursor-default",
                         ].join(" ");
@@ -1169,11 +1166,11 @@ const saldo =
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <span className="inline-flex h-5 px-2 items-center rounded-full border border-zinc-600 bg-black/60 text-[9px] uppercase tracking-wide text-zinc-200">
+                                <span className="inline-flex h-5 px-2 items-center rounded-full border border-sky-500/22 bg-[rgba(8,18,35,0.88)] text-[9px] uppercase tracking-[0.12em] text-[#f4f8ff]">
                                   {chipLabel}
                                 </span>
                                 {created && (
-                                  <span className="text-[9px] text-zinc-500">
+                                  <span className="text-[9px] text-[#bfd0ec]">
                                     {created}
                                   </span>
                                 )}
@@ -1183,11 +1180,11 @@ const saldo =
                               </div>
                             </div>
 
-                            <div className="text-[11px] text-zinc-200">
+                            <div className="text-[11px] text-[#f4f8ff]">
                               {formatDescricaoPublicaPix(item.descricao) || "PIX"}
                             </div>
 
-                            <div className="text-[9px] text-zinc-500 mt-1">
+                            <div className="text-[9px] text-[#bfd0ec] mt-1">
                               Movimento registrado pela carteira PIX Aurea Gold.
                             </div>
                           </div>
@@ -1201,6 +1198,6 @@ const saldo =
           )}
         </div>
       </section>
-    </div>
+    </section>
   );
 }
