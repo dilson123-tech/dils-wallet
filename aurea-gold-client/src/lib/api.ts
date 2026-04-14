@@ -1,10 +1,11 @@
 import { getToken } from "./auth";
+import { API_BASE } from "./apiBase";
+export { API_BASE };
 // ======================================================
 // AUREA GOLD • CORE HTTP LIB
 // Seguro, simples e com Authorization automático
 // ======================================================
 
-export const API_BASE: string = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$|\s+/g, "");
 export const USER_EMAIL = import.meta.env.VITE_USER_EMAIL || "";
 
 export const DEV_TOKEN: string = String(import.meta.env.VITE_DEV_TOKEN || "").trim();

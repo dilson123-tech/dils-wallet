@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { AppShell, AppTab } from "./AppShell";
 import SuperAureaHome from "./super2/SuperAureaHome";
 import AureaPixPanel from "./super2/AureaPixPanel";
-import AureaIAPanel from "./super2/AureaIAPanel";
+import AureaGestaoPanel from "./gestao/AureaGestaoPanel";
 import AureaPagamentosPanel from "./pagamentos/AureaPagamentosPanel";
-import AureaCreditoIAPanel from "./credito/AureaCreditoIAPanel";
+import AureaMaisPanel from "./mais/AureaMaisPanel";
 import PlanosPremium from "./super2-lab/PlanosPremium";
 import {
   saveTokens,
@@ -110,7 +110,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     case "gestao":
       content = (
         <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
-          <AureaIAPanel />
+          <AureaGestaoPanel />
         </div>
       );
       break;
@@ -126,7 +126,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     case "mais":
       content = (
         <div className="w-full px-1 py-4 md:px-2 md:py-6 mx-auto">
-          <AureaCreditoIAPanel />
+          <AureaMaisPanel />
         </div>
       );
       break;
@@ -143,15 +143,17 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     >
       {content}
 
-      <div className="mt-4 w-full flex justify-end px-1 md:px-2">
-        <button
-          type="button"
-          onClick={onLogout}
-          className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.18em]"
-        >
-          Sair da Aurea Gold
-        </button>
-      </div>
+      {activeTab === "mais" && (
+        <div className="mt-4 w-full flex justify-end px-1 md:px-2">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.18em]"
+          >
+            Sair da Aurea Gold
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

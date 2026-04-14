@@ -8,28 +8,28 @@
    ========================================================= */
 
 :root {
-  --ag-bg: #0b0b0f;
-  --ag-bg-elevated: #121218;
-  --ag-surface: rgba(18, 18, 24, 0.88);
-  --ag-surface-2: rgba(24, 24, 32, 0.94);
-  --ag-border: rgba(212, 175, 55, 0.18);
-  --ag-border-strong: rgba(212, 175, 55, 0.34);
+  --ag-bg: #06101f;
+  --ag-bg-elevated: #0a1830;
+  --ag-surface: rgba(8, 18, 35, 0.84);
+  --ag-surface-2: rgba(11, 23, 46, 0.94);
+  --ag-border: rgba(90, 160, 255, 0.18);
+  --ag-border-strong: rgba(134, 192, 255, 0.34);
 
-  --ag-gold: #c6a756;
-  --ag-gold-strong: #e6c76a;
-  --ag-gold-soft: rgba(198,167,86,0.18);
+  --ag-gold: #5aa0ff;
+  --ag-gold-strong: #86c0ff;
+  --ag-gold-soft: rgba(90, 160, 255, 0.18);
 
-  --ag-text: #ffffff;
-  --ag-text-muted: #a7a7b5;
-  --ag-text-soft: #7d7d8f;
+  --ag-text: #f4f8ff;
+  --ag-text-muted: #bfd0ec;
+  --ag-text-soft: #7f97bb;
 
-  --ag-success: #22c55e;
-  --ag-danger: #ef4444;
-  --ag-warning: #f59e0b;
+  --ag-success: #34d399;
+  --ag-danger: #fb7185;
+  --ag-warning: #fbbf24;
 
-  --ag-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.32);
-  --ag-shadow-gold: 0 0 0 1px rgba(212, 175, 55, 0.12), 0 10px 28px rgba(0, 0, 0, 0.34);
-  --ag-glow: 0 0 24px rgba(212, 175, 55, 0.14);
+  --ag-shadow-soft: 0 22px 48px rgba(2, 8, 20, 0.42);
+  --ag-shadow-gold: 0 0 0 1px rgba(90, 160, 255, 0.14), 0 24px 52px rgba(2, 8, 20, 0.50);
+  --ag-glow: 0 0 34px rgba(90, 160, 255, 0.18);
 
   --ag-radius-sm: 10px;
   --ag-radius-md: 16px;
@@ -41,9 +41,10 @@
 
 html {
   background:
-    radial-gradient(circle at 20% 20%, rgba(198, 167, 86, 0.10) 0%, transparent 22%),
-    radial-gradient(circle at top right, rgba(230, 199, 106, 0.08), transparent 26%),
-    linear-gradient(180deg, #0b0b0f 0%, #09090d 100%);
+    radial-gradient(circle at 14% 12%, rgba(90, 160, 255, 0.14) 0%, transparent 20%),
+    radial-gradient(circle at top right, rgba(52, 120, 246, 0.16), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(17, 76, 153, 0.18), transparent 26%),
+    linear-gradient(180deg, #06101f 0%, #09162a 42%, #040b16 100%);
   color: var(--ag-text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -64,7 +65,7 @@ body {
 }
 
 ::selection {
-  background: rgba(212, 175, 55, 0.22);
+  background: rgba(90, 160, 255, 0.28);
   color: #fff;
 }
 
@@ -85,55 +86,61 @@ textarea {
    ========================================================= */
 
 .ag-surface {
-  background: linear-gradient(180deg, rgba(20, 20, 27, 0.96) 0%, rgba(15, 15, 21, 0.96) 100%);
+  background:
+    radial-gradient(circle at top right, rgba(134,192,255,0.10), transparent 28%),
+    linear-gradient(180deg, rgba(10,20,40,0.96) 0%, rgba(7,14,28,0.98) 100%);
   border: 1px solid var(--ag-border);
   border-radius: var(--ag-radius-md);
   box-shadow: var(--ag-shadow-soft);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
 }
 
 .ag-surface-elevated {
-  background: linear-gradient(180deg, rgba(24, 24, 32, 0.98) 0%, rgba(16, 16, 22, 0.98) 100%);
+  background:
+    radial-gradient(circle at top right, rgba(134,192,255,0.12), transparent 26%),
+    linear-gradient(180deg, rgba(12,24,46,0.98) 0%, rgba(7,15,30,0.98) 100%);
   border: 1px solid var(--ag-border-strong);
   border-radius: var(--ag-radius-lg);
   box-shadow: var(--ag-shadow-gold);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
 }
 
 .ag-card {
   background:
-    linear-gradient(180deg, rgba(21,21,27,0.94) 0%, rgba(12,12,16,0.96) 100%);
-  border: 1px solid rgba(212,175,55,0.14);
+    radial-gradient(circle at top right, rgba(134,192,255,0.10), transparent 28%),
+    linear-gradient(180deg, rgba(12,24,46,0.96) 0%, rgba(8,16,31,0.98) 100%);
+  border: 1px solid rgba(90,160,255,0.16);
   border-radius: 18px;
   box-shadow:
-    0 12px 34px rgba(0,0,0,0.48),
-    inset 0 1px 0 rgba(255,255,255,0.03);
-  backdrop-filter: blur(10px);
+    0 22px 46px rgba(2,8,20,0.48),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
   transition:
     transform var(--ag-transition-base),
     border-color var(--ag-transition-base),
-    box-shadow var(--ag-transition-base);
+    box-shadow var(--ag-transition-base),
+    background var(--ag-transition-base);
 }
 
 .ag-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(212,175,55,0.26);
+  border-color: rgba(134,192,255,0.34);
   box-shadow:
-    0 18px 40px rgba(0,0,0,0.56),
-    0 0 22px rgba(212,175,55,0.10);
+    0 26px 50px rgba(2,8,20,0.54),
+    0 0 28px rgba(90,160,255,0.16);
 }
 
 .ag-hero {
   background:
-    radial-gradient(circle at top right, rgba(255, 215, 0, 0.16), transparent 28%),
-    radial-gradient(circle at left center, rgba(255, 255, 255, 0.035), transparent 22%),
-    linear-gradient(135deg, rgba(20, 20, 26, 0.98) 0%, rgba(10, 10, 14, 0.98) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.18);
+    radial-gradient(circle at top right, rgba(134,192,255,0.20), transparent 22%),
+    radial-gradient(circle at left top, rgba(47,111,203,0.16), transparent 22%),
+    linear-gradient(135deg, rgba(12,24,46,0.98) 0%, rgba(7,15,30,0.98) 100%);
+  border: 1px solid rgba(90,160,255,0.20);
   border-radius: 28px;
   box-shadow:
-    0 18px 48px rgba(0,0,0,0.42),
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 0 42px rgba(212,175,55,0.08);
+    0 26px 58px rgba(2,8,20,0.46),
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 0 46px rgba(90,160,255,0.12);
 }
 
 /* =========================================================
@@ -141,12 +148,12 @@ textarea {
    ========================================================= */
 
 .ag-btn-primary {
-  background: linear-gradient(135deg, #d4af37 0%, #f1d06b 100%);
-  color: #111214;
-  border: 1px solid rgba(255, 215, 0, 0.32);
+  background: linear-gradient(135deg, #5aa0ff 0%, #86c0ff 100%);
+  color: #06101f;
+  border: 1px solid rgba(134, 192, 255, 0.30);
   border-radius: 12px;
   font-weight: 700;
-  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.22);
+  box-shadow: 0 14px 30px rgba(90, 160, 255, 0.22);
   transition:
     transform var(--ag-transition-fast),
     filter var(--ag-transition-fast),
@@ -155,14 +162,14 @@ textarea {
 
 .ag-btn-primary:hover {
   transform: translateY(-1px);
-  filter: brightness(1.03);
-  box-shadow: 0 10px 28px rgba(212, 175, 55, 0.28);
+  filter: brightness(1.05);
+  box-shadow: 0 18px 36px rgba(90, 160, 255, 0.28);
 }
 
 .ag-btn-secondary {
   background: rgba(255, 255, 255, 0.03);
   color: var(--ag-text);
-  border: 1px solid rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(90, 160, 255, 0.14);
   border-radius: 999px;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
@@ -174,10 +181,10 @@ textarea {
 }
 
 .ag-btn-secondary:hover {
-  background: rgba(212, 175, 55, 0.09);
-  border-color: rgba(212, 175, 55, 0.28);
+  background: rgba(90, 160, 255, 0.10);
+  border-color: rgba(134, 192, 255, 0.24);
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.24);
+  box-shadow: 0 12px 24px rgba(2,8,20,0.24);
 }
 
 /* =========================================================
@@ -194,7 +201,8 @@ textarea {
 }
 
 .ag-gold-text {
-  color: var(--ag-gold);
+  color: var(--ag-gold-strong);
+  text-shadow: 0 0 14px rgba(224,185,96,0.12);
 }
 
 .ag-muted {
@@ -213,8 +221,8 @@ textarea {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid rgba(212, 175, 55, 0.14);
-  background: linear-gradient(90deg, rgba(28, 28, 35, 0.96) 0%, rgba(38, 38, 46, 0.96) 50%, rgba(28, 28, 35, 0.96) 100%);
+  border: 1px solid rgba(90, 160, 255, 0.14);
+  background: linear-gradient(90deg, rgba(10, 20, 40, 0.96) 0%, rgba(16, 30, 56, 0.96) 50%, rgba(10, 20, 40, 0.96) 100%);
 }
 
 .skeleton-gold::after {
@@ -233,12 +241,12 @@ textarea {
 }
 
 .gold-glow {
-  box-shadow: 0 0 10px rgba(198,167,86,0.25);
+  box-shadow: 0 0 16px rgba(90,160,255,0.24);
   transition: 0.3s ease;
 }
 
 .gold-glow:hover {
-  box-shadow: 0 0 18px rgba(198,167,86,0.45);
+  box-shadow: 0 0 24px rgba(90,160,255,0.42);
 }
 
 /* =========================================================
@@ -246,7 +254,7 @@ textarea {
    ========================================================= */
 
 .ag-table tbody tr td {
-  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+  border-bottom: 1px solid rgba(90, 160, 255, 0.18);
   transition: background var(--ag-transition-fast), color var(--ag-transition-fast);
 }
 

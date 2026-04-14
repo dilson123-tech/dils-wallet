@@ -1,3 +1,5 @@
+import { API_BASE } from "../lib/apiBase";
+
 const ACCESS_TOKEN_KEYS = [
   "aurea.access_token",  // padrão novo
   "aurea_access_token",  // legado
@@ -42,27 +44,6 @@ export interface LoginRequest {
   password: string;
 }
 
-function getApiBase(): string {
-  const raw = (import.meta as any)?.env?.VITE_API_BASE ?? (import.meta as any)?.env?.VITE_API_BASE_URL ?? "";
-  const envBase = String(raw || "").replace(/\/+$/, "");
-
-  // Se o front abriu por IP na rede (ex: 192.168.x.x:5173),
-  // o backend está no mesmo host na porta 8000.
-  try {
-    if (typeof window !== "undefined" && window.location?.hostname) {
-      const h = window.location.hostname;
-      if (h && h !== "localhost" && h !== "127.0.0.1") {
-        if (!envBase || /localhost|127\.0\.0\.1/.test(envBase)) {
-          return `http://${h}:8000`;
-        }
-      }
-    }
-  } catch {}
-
-  return envBase;
-}
-
-
 function maybeInjectDevToken(): void {
   // --- AUREA LAB (DEV): injeta token via ?token=... ou VITE_DEV_TOKEN ---
 const DEV_RT: string = String(((import.meta as any)?.env?.VITE_DEV_REFRESH_TOKEN as string) || "").trim();
@@ -92,8 +73,6 @@ try { if (DEV_RT) { localStorage.setItem("aurea.refresh_token", DEV_RT); localSt
   // --- /AUREA LAB (DEV) ---
 }
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
-  const API_BASE = getApiBase();
-
   const url = API_BASE
     ? `${API_BASE}/api/v1/auth/login`
     : "/api/v1/auth/login";

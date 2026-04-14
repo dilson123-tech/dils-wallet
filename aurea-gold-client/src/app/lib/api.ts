@@ -6,8 +6,8 @@
 
 import { apiGet as coreGet, apiPost as corePost } from "../../lib/api";
 import { getToken } from "../../lib/auth";
+import { API_BASE } from "../../lib/apiBase";
 
-export const API_BASE: string = String((import.meta as any).env?.VITE_API_BASE || "").replace(/\/+$/, "");
 
 export function toApi(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;

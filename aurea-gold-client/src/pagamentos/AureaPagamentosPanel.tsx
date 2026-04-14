@@ -1,211 +1,165 @@
 import React, { useState } from "react";
 
-/**
- * AureaPagamentosPanel
- *
- * Painel oficial de Pagamentos dentro do app Aurea Gold.
- * Aqui vamos concentrar:
- *  - contas a pagar
- *  - assinaturas
- *  - boletos
- *  - histórico de pagamentos
- */
 type PagAction = "add-bill" | "subscription" | "boleto" | null;
 
 export default function AureaPagamentosPanel() {
   const [activeAction, setActiveAction] = useState<PagAction>(null);
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      {/* HEADER */}
-      <header className="mb-4">
-        <div className="text-[10px] uppercase tracking-wide text-zinc-400">
-          Aurea Gold • Pagamentos & Contas
+    <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
+      <header className="ag-surface-elevated px-4 py-5 sm:px-5 sm:py-6">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+          Aurea Gold • Pagamentos
         </div>
-        <h1 className="text-lg md:text-xl font-semibold text-amber-300 mt-1">
-          Pagamentos • Central Aurea Gold
+        <h1 className="mt-2 text-[1.45rem] sm:text-2xl md:text-3xl font-bold text-[#f4f8ff] leading-tight">
+          Central de pagamentos da carteira
         </h1>
-        <p className="text-xs text-zinc-400 mt-1 max-w-xl">
-          Esta é a área dedicada a contas, boletos, assinaturas e histórico de
-          pagamentos. Aqui o cliente organiza o que precisa pagar e acompanha
-          tudo em um só lugar.
+        <p className="mt-2 text-sm text-[#bfd0ec] max-w-2xl">
+          Contas, boletos, assinaturas e rotinas financeiras do cliente em uma
+          área única, com base pronta para evolução operacional real.
         </p>
-        <div className="h-px w-32 bg-amber-500 mt-3" />
       </header>
 
-      {/* CARDS PRINCIPAIS */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-        <div className="rounded-xl border border-amber-500/40 bg-zinc-950/80 p-3">
-          <div className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <article className="ag-card rounded-[22px] px-4 py-4 sm:px-5 sm:py-5 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+          <div className="text-[10px] uppercase tracking-[0.14em] text-[#86c0ff]">
             Contas deste mês
           </div>
-          <div className="text-2xl font-semibold text-amber-300">
+          <div className="mt-2 text-2xl font-semibold text-[#f4f8ff]">
             R$ 0,00
           </div>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Vamos listar aqui as contas com vencimento no mês atual, com
-            integração futura ao backend de pagamentos e à IA 3.0.
+          <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            Aqui vamos concentrar vencimentos, alertas e compromissos do mês.
           </p>
-        </div>
+        </article>
 
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-3">
-          <div className="text-[10px] uppercase tracking-wide text-emerald-300 mb-1">
-            Assinaturas ativas
+        <article className="ag-card rounded-[22px] px-4 py-4 sm:px-5 sm:py-5 border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(8,34,34,0.96),rgba(7,22,22,0.98))]">
+          <div className="text-[10px] uppercase tracking-[0.14em] text-emerald-300">
+            Assinaturas
           </div>
-          <div className="text-lg font-semibold text-emerald-300">
-            0 serviços
+          <div className="mt-2 text-xl font-semibold text-[#f4f8ff]">
+            0 serviços ativos
           </div>
-          <p className="text-[11px] text-emerald-100/80 mt-1">
-            Espaço reservado para Netflix, Spotify, ferramentas de trabalho e
-            outras assinaturas recorrentes.
+          <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            Streaming, ferramentas de trabalho e despesas recorrentes.
           </p>
-        </div>
+        </article>
 
-        <div className="rounded-xl border border-sky-500/40 bg-sky-950/40 p-3">
-          <div className="text-[10px] uppercase tracking-wide text-sky-300 mb-1">
+        <article className="ag-card rounded-[22px] px-4 py-4 sm:px-5 sm:py-5 border border-sky-400/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+          <div className="text-[10px] uppercase tracking-[0.14em] text-sky-300">
             Boletos gerados
           </div>
-          <div className="text-lg font-semibold text-sky-300">
+          <div className="mt-2 text-xl font-semibold text-[#f4f8ff]">
             0 em aberto
           </div>
-          <p className="text-[11px] text-sky-100/80 mt-1">
-            Aqui vamos mostrar boletos emitidos pelo Aurea Gold, com status de
-            pago, em aberto e vencido.
+          <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            Emissão, acompanhamento e histórico de cobrança da carteira.
           </p>
-        </div>
+        </article>
       </section>
 
-      {/* AÇÕES RÁPIDAS */}
-      <section className="mb-4">
-        <h2 className="text-[11px] uppercase tracking-wide text-zinc-400 mb-2">
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
           Ações rápidas
-        </h2>
-        <div className="flex flex-wrap gap-2">
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveAction("add-bill")}
-            className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-wide transition active:scale-[0.97] ${
+            className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] transition active:scale-[0.97] ${
               activeAction === "add-bill"
-                ? "bg-amber-500 text-black shadow-[0_0_18px_rgba(251,191,36,0.6)]"
-                : "bg-amber-500 text-black/90"
+                ? "bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] text-[#06101f] shadow-[0_0_18px_rgba(90,160,255,0.35)]"
+                : "border border-sky-500/40 bg-sky-500/10 text-sky-100"
             }`}
           >
             Adicionar conta
           </button>
+
           <button
             type="button"
             onClick={() => setActiveAction("subscription")}
-            className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
+            className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] transition active:scale-[0.97] ${
               activeAction === "subscription"
-                ? "border border-emerald-400 bg-black text-emerald-200 shadow-[0_0_14px_rgba(52,211,153,0.5)]"
-                : "border border-amber-500/60 text-amber-300 bg-transparent"
+                ? "bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] text-[#06101f] shadow-[0_0_18px_rgba(90,160,255,0.35)]"
+                : "border border-sky-500/40 bg-sky-500/10 text-sky-100"
             }`}
           >
-            Registrar assinatura
+            Assinaturas
           </button>
+
           <button
             type="button"
             onClick={() => setActiveAction("boleto")}
-            className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
+            className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] transition active:scale-[0.97] ${
               activeAction === "boleto"
-                ? "border border-sky-300 bg-zinc-900 text-sky-200"
-                : "border border-zinc-700 text-zinc-200 bg-transparent"
+                ? "bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] text-[#06101f] shadow-[0_0_18px_rgba(90,160,255,0.35)]"
+                : "border border-sky-500/40 bg-sky-500/10 text-sky-100"
             }`}
           >
-            Gerar boleto (futuro)
+            Cobrança por boleto
           </button>
         </div>
 
-        {/* DETALHES DA AÇÃO SELECIONADA */}
-        <div className="mt-3 rounded-xl border border-zinc-800 bg-black/50 p-3 text-[11px] text-zinc-200">
+        <div className="mt-4 rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4 text-sm text-[#bfd0ec]">
           {!activeAction && (
-            <p className="text-zinc-400">
-              Toque em uma das ações rápidas para ver os detalhes aqui. Este
-              bloco será a base dos formulários e fluxos reais de pagamento do
-              Aurea Gold.
+            <p>
+              Selecione uma ação para abrir a base operacional desta área. Aqui
+              vamos concentrar formulários, alertas e rotinas de pagamento da
+              Aurea.
             </p>
           )}
 
           {activeAction === "add-bill" && (
-            <>
-              <h3 className="font-semibold text-amber-300 mb-1">
-                Adicionar conta (modo LAB)
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold text-[#f4f8ff]">
+                Adicionar conta
               </h3>
-              <p className="text-zinc-300 mb-1">
-                Aqui o cliente vai poder cadastrar contas a pagar:
+              <p>
+                Fluxo para cadastrar conta a pagar, valor, vencimento, lembrete
+                e status de pagamento.
               </p>
-              <ul className="list-disc list-inside text-zinc-300 space-y-1">
-                <li>nome da conta (água, luz, internet, fornecedor etc.);</li>
-                <li>valor e data de vencimento;</li>
-                <li>opção de lembrete antecipado;</li>
-                <li>marcar como paga depois do pagamento.</li>
-              </ul>
-              <p className="text-zinc-400 mt-2">
-                Na próxima fase, vamos integrar isso ao backend e à IA 3.0 para
-                avisar sobre risco de atraso.
-              </p>
-            </>
+            </div>
           )}
 
           {activeAction === "subscription" && (
-            <>
-              <h3 className="font-semibold text-emerald-300 mb-1">
-                Registrar assinatura (modo LAB)
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold text-[#f4f8ff]">
+                Assinaturas recorrentes
               </h3>
-              <p className="text-zinc-300 mb-1">
-                Espaço dedicado para assinaturas recorrentes:
+              <p>
+                Espaço para organizar serviços mensais, acompanhar impacto no
+                caixa e preparar alertas automáticos.
               </p>
-              <ul className="list-disc list-inside text-zinc-300 space-y-1">
-                <li>serviços como streaming, SaaS, ferramentas de trabalho;</li>
-                <li>valor mensal, data de cobrança e forma de pagamento;</li>
-                <li>status ativa/pausada/cancelada;</li>
-                <li>resumo mensal do impacto no fluxo de caixa.</li>
-              </ul>
-              <p className="text-zinc-400 mt-2">
-                A IA 3.0 poderá sugerir cortes, renegociações ou alertar sobre
-                assinaturas pouco usadas.
-              </p>
-            </>
+            </div>
           )}
 
           {activeAction === "boleto" && (
-            <>
-              <h3 className="font-semibold text-sky-300 mb-1">
-                Gerar boleto (futuro)
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold text-[#f4f8ff]">
+                Cobrança com boleto
               </h3>
-              <p className="text-zinc-300 mb-1">
-                Nesta área vamos integrar com o parceiro financeiro para:
+              <p>
+                Base da emissão e acompanhamento de boletos para clientes,
+                conectada ao recebimento da carteira.
               </p>
-              <ul className="list-disc list-inside text-zinc-300 space-y-1">
-                <li>emitir boletos para clientes;</li>
-                <li>acompanhar status (pago, em aberto, vencido);</li>
-                <li>ligar o recebimento direto na carteira Aurea Gold;</li>
-                <li>gerar relatórios de cobrança.</li>
-              </ul>
-              <p className="text-zinc-400 mt-2">
-                Tudo pensado para empresas que querem usar o Aurea Gold como
-                hub de recebimentos.
-              </p>
-            </>
+            </div>
           )}
         </div>
       </section>
 
-      {/* MODO LAB / ROADMAP */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-        <div className="text-[11px] font-semibold text-zinc-200 mb-1">
-          Modo LAB de Pagamentos
+      <section className="ag-hero px-4 py-5 sm:px-5 sm:py-6 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+          Direção do produto
         </div>
-        <p className="text-[11px] text-zinc-400 mb-1">
-          Este painel ainda está em modo laboratório. Os dados são estáticos e
-          servem como guia visual do produto final.
-        </p>
-        <p className="text-[11px] text-zinc-400">
-          Próximos passos: integração com backend de pagamentos, IA 3.0
-          analisando risco de atraso e avisos pro cliente diretamente nesta
-          tela.
+        <h2 className="mt-2 text-xl font-semibold text-[#f4f8ff]">
+          Pagamentos como módulo real da Aurea
+        </h2>
+        <p className="mt-2 text-sm text-[#bfd0ec] max-w-3xl">
+          Esta aba deixa de ser painel de rascunho e passa a ser a central de
+          contas, boletos, rotinas recorrentes e gestão financeira do cliente.
         </p>
       </section>
-    </div>
+    </section>
   );
 }
