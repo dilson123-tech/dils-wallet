@@ -46,7 +46,7 @@ onboard==1.4.1
 packaging==24.0
 PAM==0.4.2
 pexpect==4.9.0
-pillow==10.2.0
+pillow==12.1.1
 pipx==1.4.3
 platformdirs==4.2.0
 psutil==5.9.8
