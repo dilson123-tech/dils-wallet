@@ -4,10 +4,11 @@ import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
 import { apiGet } from "../lib/api";
-import { getToken } from "../lib/auth";
+import { getToken, getSessionUserDisplayName } from "../lib/auth";
 import { saveTokens } from "../auth/authClient";
 
 type PixShortcutAction = "enviar" | "receber" | "extrato";
+type HomeOpeningLayer = "saldo" | "cofrinhos" | "investimentos" | "cripto";
 
 type SuperAureaHomeProps = {
   onPixShortcut?: (action: PixShortcutAction) => void;
@@ -67,8 +68,74 @@ function handleServiceShortcut(service: AureaServiceKey) {
   }
 
 export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSessionDisplayName() {
+      const token = getToken();
+
+      if (!token) {
+        if (alive) setSessionDisplayName(getSessionUserDisplayName());
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${API_BASE}/api/v1/users/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+
+          const fullName =
+            typeof data?.full_name === "string"
+              ? data.full_name.trim()
+              : "";
+
+          const email =
+            typeof data?.email === "string"
+              ? data.email.trim()
+              : "";
+
+          if (alive && fullName) {
+            setSessionDisplayName(fullName);
+            return;
+          }
+
+          if (alive && email) {
+            const clean = email
+              .split("@")[0]
+              .replace(/[._-]+/g, " ")
+              .trim()
+              .replace(/\b\w/g, (m: string) => m.toUpperCase());
+
+            if (clean) {
+              setSessionDisplayName(clean);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[SuperAureaHome] users/me falhou, usando fallback do token", err);
+      }
+
+      if (alive) {
+        setSessionDisplayName(getSessionUserDisplayName());
+      }
+    }
+
+    loadSessionDisplayName();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const [saldoReal, setSaldoReal] = useState<number | null>(null);
   const [saldoModo, setSaldoModo] = useState<"simulado" | "real">("simulado");
+  const [sessionDisplayName, setSessionDisplayName] = useState<string>("Cliente Aurea");
 
   const DEV_LOGIN_ENABLED =
     (import.meta as any).env?.DEV ||
@@ -139,6 +206,8 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   const [pixExtratoBusy, setPixExtratoBusy] = useState(false);
   const [pixExtratoErr, setPixExtratoErr] = useState<string | null>(null);
   const [pixExtratoItems, setPixExtratoItems] = useState<PixListItem[] | null>(null);
+  const [homeRecentItems, setHomeRecentItems] = useState<PixListItem[] | null>(null);
+  const [homeRecentLoading, setHomeRecentLoading] = useState(false);
 
     const [forecastNivel, setForecastNivel] = useState<
       | "ok"
@@ -151,6 +220,8 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
     >(null);
     const [forecastPrevisaoFimMes, setForecastPrevisaoFimMes] =
       useState<number | null>(null);
+    const [homeOpeningLayer, setHomeOpeningLayer] =
+      useState<HomeOpeningLayer>("saldo");
 
     useEffect(() => {
   let alive = true;
@@ -219,6 +290,42 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
     alive = false;
   };
 }, [reloadKey]);
+
+useEffect(() => {
+  let alive = true;
+  const tok = getToken();
+
+  if (!tok) {
+    setHomeRecentItems(null);
+    return () => {
+      alive = false;
+    };
+  }
+
+  async function loadHomeRecent() {
+    try {
+      setHomeRecentLoading(true);
+      const items = await fetchPixList(4);
+
+      if (!alive) return;
+      setHomeRecentItems(Array.isArray(items) ? items.slice(0, 4) : []);
+    } catch (e) {
+      if (!alive) return;
+      setHomeRecentItems([]);
+    } finally {
+      if (alive) {
+        setHomeRecentLoading(false);
+      }
+    }
+  }
+
+  loadHomeRecent();
+
+  return () => {
+    alive = false;
+  };
+}, [reloadKey]);
+
 async function handleHomeInsight() {
     if (pixInsightLoading) return;
     setPixInsightError(null);
@@ -374,9 +481,129 @@ const saldoDisplay =
   }
 
 
+  const openingLayerMeta: Record<
+    HomeOpeningLayer,
+    {
+      eyebrow: string;
+      title: string;
+      description: string;
+      primaryLabel: string;
+      primaryAction: AureaServiceKey;
+      secondaryLabel: string;
+      secondaryAction: AureaServiceKey;
+    }
+  > = {
+    saldo: {
+      eyebrow: "Saldo",
+      title: "Sua carteira em movimento",
+      description:
+        "Saldo, extrato, PIX e visão operacional da conta em uma leitura rápida.",
+      primaryLabel: "Ver extrato",
+      primaryAction: "ajuda",
+      secondaryLabel: "Abrir cartões",
+      secondaryAction: "cartoes",
+    },
+    cofrinhos: {
+      eyebrow: "Cofrinhos",
+      title: "Organize metas e reservas",
+      description:
+        "Separe objetivos, acompanhe evolução e crie camadas de reserva dentro da Aurea.",
+      primaryLabel: "Abrir cofrinhos",
+      primaryAction: "cofrinhos",
+      secondaryLabel: "Ver metas",
+      secondaryAction: "cofrinhos",
+    },
+    investimentos: {
+      eyebrow: "Investimentos",
+      title: "Crescimento financeiro da conta",
+      description:
+        "Acompanhe oportunidades de evolução patrimonial e produtos de crescimento da Aurea.",
+      primaryLabel: "Ver investimentos",
+      primaryAction: "investimentos",
+      secondaryLabel: "Informe de rendimentos",
+      secondaryAction: "informe_rendimentos",
+    },
+    cripto: {
+      eyebrow: "Cripto",
+      title: "Nova camada de ativos digitais",
+      description:
+        "A Aurea vai evoluir para expor criptoativos com leitura clara, segurança e contexto patrimonial.",
+      primaryLabel: "Explorar cripto",
+      primaryAction: "criptomoedas",
+      secondaryLabel: "Abrir benefícios",
+      secondaryAction: "seguros_assistencias",
+    },
+  };
+
+  const currentOpeningLayer = openingLayerMeta[homeOpeningLayer];
+  const mobilePerformanceCopy =
+    resultadoMes !== null
+      ? resultadoMes >= 0
+        ? `Resultado do mês ${formatBRL(resultadoMes)}`
+        : `Mês em ajuste ${formatBRL(Math.abs(resultadoMes))}`
+      : "Conta pronta para movimentar";
+
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6 px-[2px] sm:px-0">
-      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="md:hidden ag-surface-elevated px-4 pt-4 pb-3 rounded-[28px]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-11 w-11 shrink-0 rounded-full border border-sky-400/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.22),transparent_30%),linear-gradient(180deg,rgba(12,24,46,0.98),rgba(7,15,30,0.98))] flex items-center justify-center text-[12px] font-bold text-[#f4f8ff] shadow-[0_12px_24px_rgba(2,8,20,0.22)]">
+              AG
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-[#86c0ff]">
+                Aurea Gold
+              </p>
+              <h2 className="mt-1 text-[1.35rem] leading-tight font-bold text-[#f4f8ff]">
+                Olá, {sessionDisplayName}
+              </h2>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("ajuda")}
+            className="shrink-0 rounded-[16px] border border-sky-500/24 bg-sky-500/10 px-3 py-2 text-[10px] font-semibold text-sky-100"
+          >
+            Ajuda
+          </button>
+        </div>
+
+        <p className="mt-3 text-[11px] text-[#8fa8cf]">
+          Sua carteira digital abre por produtos, com leitura rápida e estrutura de app real.
+        </p>
+
+
+          <div className="mt-4 -mx-1 px-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {([
+                { key: "saldo", label: "Saldo" },
+                { key: "cofrinhos", label: "Cofrinhos" },
+                { key: "investimentos", label: "Investimentos" },
+                { key: "cripto", label: "Cripto" },
+              ] as const).map((item) => {
+                const isSelected = homeOpeningLayer === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setHomeOpeningLayer(item.key)}
+                    className={`shrink-0 rounded-[18px] px-4 py-2 text-[10px] font-semibold transition ${
+                      isSelected
+                        ? "bg-[#eef3ff] text-[#06101f] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
+                        : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] text-[#08111f]"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+      </div>
+      <div className="hidden md:flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col">
           <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
             Aurea Gold • Conta
@@ -387,7 +614,7 @@ const saldoDisplay =
         </div>
 
         <span
-          className={`self-start sm:self-auto inline-flex items-center rounded-full border px-3 py-1 mb-1 sm:mb-0 text-[10px] uppercase tracking-[0.18em] ${
+          className={`hidden md:inline-flex self-start sm:self-auto items-center rounded-full border px-3 py-1 mb-1 sm:mb-0 text-[10px] uppercase tracking-[0.18em] ${
             saldoModo === "real"
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
               : "border-sky-500/30 bg-sky-500/10 text-sky-200"
@@ -396,6 +623,48 @@ const saldoDisplay =
           {saldoModo === "real" ? "Conta conectada" : "Modo demonstração"}
         </span>
       </div>
+
+      {homeOpeningLayer !== "saldo" && (
+          <section className="md:hidden ag-hero -mt-2 rounded-t-[18px] border border-sky-500/30 border-t-0 px-4 py-5 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_18px_36px_rgba(2,8,20,0.34)]">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+            {currentOpeningLayer.eyebrow}
+          </p>
+          <h3 className="mt-2 text-[1.45rem] font-bold text-[#f4f8ff] leading-tight">
+            {currentOpeningLayer.title}
+          </h3>
+          <p className="mt-2 text-sm text-[#bfd0ec]">
+            {currentOpeningLayer.description}
+          </p>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.62)] px-4 py-4">
+              <p className="text-sm font-semibold text-[#f4f8ff]">
+                Camada ativa da conta
+              </p>
+              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                Esta abertura mobile organiza a carteira por produtos, como o cliente espera em um app real.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut(currentOpeningLayer.primaryAction)}
+              className="ag-btn-primary px-4 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              {currentOpeningLayer.primaryLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut(currentOpeningLayer.secondaryAction)}
+              className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              {currentOpeningLayer.secondaryLabel}
+            </button>
+          </div>
+        </section>
+      )}
 
       {DEV_LOGIN_ENABLED && saldoModo !== "real" && needAuth && (
           <div className="rounded-2xl border border-sky-500/40 bg-[linear-gradient(180deg,rgba(10,20,40,0.94),rgba(7,15,30,0.98))] p-4 md:p-5">
@@ -440,9 +709,26 @@ const saldoDisplay =
         )}
 
         {/* Card de saldo principal */}
-      <div className="rounded-[30px] border border-sky-500/40 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.18),transparent_24%),linear-gradient(180deg,rgba(8,18,35,0.98),rgba(7,15,30,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(90,160,255,0.12)] space-y-4">
+        <div className={`rounded-[30px] border border-sky-500/40 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.18),transparent_24%),linear-gradient(180deg,rgba(8,18,35,0.98),rgba(7,15,30,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(90,160,255,0.12)] space-y-4 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "-mt-2 rounded-t-[18px] border-t-0 md:mt-0 md:rounded-[30px] md:border-t" : ""}`}>
+        <div className="md:hidden flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#86c0ff]">
+              Conta conectada
+            </p>
+            <p className="mt-1 text-[11px] text-[#8fa8cf]">
+              {mobilePerformanceCopy}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
+            className="shrink-0 text-[12px] font-semibold text-sky-300"
+          >
+            Extrato →
+          </button>
+        </div>
         <div>
-          <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+          <p className="hidden md:block text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
             Saldo em conta
           </p>
           <p className="mt-2 text-[2.4rem] sm:text-5xl md:text-6xl font-bold text-[#f4f8ff] leading-[0.95]">
@@ -557,7 +843,7 @@ const saldoDisplay =
 
 {/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className="ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(47,111,203,0.16),transparent_28%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(90,160,255,0.16)]">
+      <div className={`ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(47,111,203,0.16),transparent_28%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(90,160,255,0.16)] ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""}`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <p className="text-[10px] md:text-[11px] text-sky-200/80 uppercase tracking-[0.16em]">
@@ -638,6 +924,297 @@ const saldoDisplay =
         </div>
       </div>
 
+
+      <section className="space-y-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+            Produtos da conta
+          </p>
+          <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
+            Aurea além do saldo
+          </h3>
+          <p className="mt-1 text-sm text-[#bfd0ec] max-w-3xl">
+            Cartões, benefícios, objetivos financeiros e crescimento patrimonial
+            na mesma carteira.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <article className="ag-card rounded-[22px] px-4 py-4 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+            <div className="inline-flex items-center rounded-full border border-sky-500/28 bg-sky-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-sky-200">
+              Cartões
+            </div>
+            <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
+              Cartões Aurea
+            </h4>
+            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+              Virtual, físico e controle inteligente das compras da carteira.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("cartoes")}
+              className="mt-3 ag-btn-secondary px-3 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Ver cartões
+            </button>
+          </article>
+
+          <article className="ag-card rounded-[22px] px-4 py-4 border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(8,34,34,0.96),rgba(7,22,22,0.98))]">
+            <div className="inline-flex items-center rounded-full border border-emerald-500/28 bg-emerald-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-emerald-200">
+              Objetivos
+            </div>
+            <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
+              Cofrinhos Aurea
+            </h4>
+            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+              Separe metas, organize reservas e acompanhe evolução por objetivo.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("cofrinhos")}
+              className="mt-3 ag-btn-secondary px-3 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Abrir cofrinhos
+            </button>
+          </article>
+
+          <article className="ag-card rounded-[22px] px-4 py-4 border border-sky-400/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+            <div className="inline-flex items-center rounded-full border border-sky-400/28 bg-sky-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-sky-200">
+              Investimentos
+            </div>
+            <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
+              Crescimento financeiro
+            </h4>
+            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+              Área pensada para investimentos, renda e evolução patrimonial.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("investimentos")}
+              className="mt-3 ag-btn-secondary px-3 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Ver investimentos
+            </button>
+          </article>
+
+          <article className="ag-card rounded-[22px] px-4 py-4 border border-violet-400/20 bg-[linear-gradient(180deg,rgba(26,18,46,0.96),rgba(16,10,30,0.98))]">
+            <div className="inline-flex items-center rounded-full border border-violet-400/28 bg-violet-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-violet-200">
+              Benefícios
+            </div>
+            <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
+              Clube Aurea
+            </h4>
+            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+              Vantagens, condições especiais e serviços premium da carteira.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("seguros_assistencias")}
+              className="mt-3 ag-btn-secondary px-3 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Ver benefícios
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.95fr] gap-4 md:gap-5">
+        <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+                Últimas atividades
+              </p>
+              <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
+                Ritmo recente da sua conta
+              </h3>
+            </div>
+            <span className="inline-flex items-center rounded-full border border-sky-500/28 bg-sky-500/10 px-3 py-1 text-[10px] text-sky-200">
+              Conta viva
+            </span>
+          </div>
+
+          {homeRecentLoading ? (
+            <p className="mt-4 text-sm text-[#bfd0ec]">
+              Carregando as movimentações mais recentes da carteira...
+            </p>
+          ) : homeRecentItems && homeRecentItems.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {homeRecentItems.slice(0, 4).map((item, index) => {
+                const rawValue = Number(
+                  (item as any).valor ??
+                    (item as any).amount ??
+                    (item as any).value ??
+                    0
+                );
+                const safeValue = Number.isFinite(rawValue) ? rawValue : 0;
+                const tipo = String(
+                  (item as any).tipo ??
+                    (item as any).type ??
+                    (item as any).kind ??
+                    ""
+                ).toLowerCase();
+
+                const isOutput =
+                  tipo.includes("envio") ||
+                  tipo.includes("saida") ||
+                  tipo.includes("send") ||
+                  safeValue < 0;
+
+                const descricao = String(
+                  (item as any).descricao ??
+                    (item as any).description ??
+                    (isOutput ? "Saída PIX" : "Entrada PIX")
+                );
+
+                const dateRaw =
+                  (item as any).created_at ??
+                  (item as any).createdAt ??
+                  (item as any).timestamp ??
+                  (item as any).date ??
+                  null;
+
+                let activityAt = "Agora";
+                if (dateRaw) {
+                  const parsed = new Date(dateRaw);
+                  if (!Number.isNaN(parsed.getTime())) {
+                    activityAt = parsed.toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                  }
+                }
+
+                return (
+                  <div
+                    key={`${descricao}-${activityAt}-${index}`}
+                    className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[#f4f8ff]">
+                          {descricao}
+                        </p>
+                        <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                          {isOutput ? "Saída da carteira" : "Entrada na carteira"} • {activityAt}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-sm font-semibold ${
+                          isOutput ? "text-rose-300" : "text-emerald-300"
+                        }`}
+                      >
+                        {formatBRL(Math.abs(safeValue))}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4">
+                <p className="text-sm font-semibold text-[#f4f8ff]">
+                  Status operacional da conta
+                </p>
+                <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                  {saldoModo === "real"
+                    ? "Conta conectada e pronta para operar."
+                    : "Conta em demonstração até sincronizar com o backend."}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4">
+                <p className="text-sm font-semibold text-[#f4f8ff]">
+                  Entradas e saídas do mês
+                </p>
+                <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                  Entradas: {entradasMes !== null ? formatBRL(entradasMes) : "R$ 0,00"} •
+                  Saídas: {saidasMes !== null ? formatBRL(saidasMes) : "R$ 0,00"}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4">
+                <p className="text-sm font-semibold text-[#f4f8ff]">
+                  Extrato em evolução
+                </p>
+                <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                  As últimas movimentações reais vão aparecer aqui conforme a
+                  carteira consolidar mais eventos de conta e PIX.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="ag-hero px-4 py-5 sm:px-5 sm:py-6 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))]">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+            Benefícios e crescimento
+          </p>
+          <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
+            Construa mais dentro da Aurea
+          </h3>
+          <p className="mt-2 text-sm text-[#bfd0ec]">
+            A conta da Aurea não para em saldo e PIX. Ela evolui para benefícios,
+            organização, reserva e crescimento financeiro real.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.62)] px-4 py-4">
+              <p className="text-sm font-semibold text-[#f4f8ff]">
+                Cartão virtual e físico
+              </p>
+              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                Compras, segurança e gestão do cartão no mesmo ecossistema.
+              </p>
+            </div>
+
+            <div className="rounded-[18px] border border-emerald-500/18 bg-[rgba(8,34,34,0.40)] px-4 py-4">
+              <p className="text-sm font-semibold text-[#f4f8ff]">
+                Cofrinhos e metas
+              </p>
+              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                Organize reserva, objetivos e prioridades de forma visual.
+              </p>
+            </div>
+
+            <div className="rounded-[18px] border border-violet-400/18 bg-[rgba(26,18,46,0.40)] px-4 py-4">
+              <p className="text-sm font-semibold text-[#f4f8ff]">
+                Investimentos e benefícios
+              </p>
+              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                Crescimento financeiro com vantagens da plataforma Aurea.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("cartoes")}
+              className="ag-btn-primary px-4 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Ver cartões
+            </button>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("cofrinhos")}
+              className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Abrir cofrinhos
+            </button>
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("investimentos")}
+              className="ag-btn-secondary px-4 py-2 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Ver crescimento
+            </button>
+          </div>
+        </section>
+      </div>
 
       {/* Conta em foco */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">

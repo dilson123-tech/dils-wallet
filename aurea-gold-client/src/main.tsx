@@ -1,13 +1,35 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import "./styles/aurea-mobile.css";
 import "./styles/aurea.css";
 import "./index.css";
 import { devLanAuthBootstrap } from "./dev/devLanAuthBootstrap";
 import "./lib/aurea_hash_boot";
 
 console.log("[main] start", location.href);
+
+function stripLegacyAureaMobile() {
+  try {
+    document.body?.classList.remove("aurea-mobile");
+    document.documentElement?.classList.remove("aurea-mobile");
+  } catch {}
+}
+
+stripLegacyAureaMobile();
+
+try {
+  const observerConfig: MutationObserverInit = { attributes: true, attributeFilter: ["class"] };
+
+  if (document.body) {
+    new MutationObserver(() => stripLegacyAureaMobile()).observe(document.body, observerConfig);
+  }
+
+  if (document.documentElement) {
+    new MutationObserver(() => stripLegacyAureaMobile()).observe(document.documentElement, observerConfig);
+  }
+} catch (e) {
+  console.warn("[main] legacy mobile observer failed", e);
+}
 
 const el = document.getElementById("root");
 if (!el) {

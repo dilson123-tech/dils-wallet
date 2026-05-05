@@ -136,6 +136,47 @@ def get_history(
         print("[AUREA PIX] erro ao carregar histórico:", e)
         return JSONResponse(content=[], status_code=200)
 
+@router.get("/list")
+def get_list(
+    limit: int = 50,
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+):
+    """Lista curta de movimentações PIX para home/painéis rápidos."""
+    try:
+        safe_limit = max(1, min(int(limit or 50), 100))
+
+        txs = (
+            db.query(PixTransaction)
+            .filter(PixTransaction.user_id == current_user.id)
+            .order_by(PixTransaction.id.desc())
+            .limit(safe_limit)
+            .all()
+        )
+
+        result = [
+            {
+                "id": t.id,
+                "tipo": t.tipo,
+                "valor": float(getattr(t, "valor", 0) or 0),
+                "descricao": getattr(t, "descricao", None) or "",
+                "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
+                "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
+                "valor_liquido": float(
+                    getattr(t, "valor_liquido", getattr(t, "valor", 0)) or 0
+                ),
+                "created_at": getattr(t, "created_at", None),
+            }
+            for t in txs
+        ]
+
+        return JSONResponse(
+            content=jsonable_encoder(result, custom_encoder={Decimal: float})
+        )
+    except Exception as e:
+        print("[AUREA PIX] erro ao carregar lista PIX:", e)
+        return JSONResponse(content=[], status_code=200)
+
 @router.get("/forecast")
 def get_forecast(
     db: Session = Depends(get_db),
