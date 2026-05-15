@@ -20,21 +20,21 @@ export default function AureaMaisPanel() {
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
       <header className="ag-surface-elevated px-4 py-5 sm:px-5 sm:py-6">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Aurea Gold • Mais
         </div>
         <h1 className="mt-2 text-[1.45rem] sm:text-2xl md:text-3xl font-bold text-[#f4f8ff] leading-tight">
           Ajuda, suporte e serviços
         </h1>
-        <p className="mt-2 text-sm text-[#bfd0ec] max-w-2xl">
+        <p className="mt-2 text-sm text-[#D7D0BE] max-w-2xl">
           Busca, suporte, assistente Aurea, histórico de consultas e recursos
           adicionais do aplicativo.
         </p>
 
         <div className="mt-4">
-          <div className="flex items-center gap-3 rounded-[18px] border border-sky-500/26 bg-[rgba(8,18,35,0.88)] px-4 py-3">
-            <span className="text-lg text-sky-300">⌕</span>
-            <span className="text-sm text-[#8fa8cf]">
+          <div className="flex items-center gap-3 rounded-[18px] border border-amber-500/14 bg-[rgba(12,30,42,0.88)] px-4 py-3">
+            <span className="text-lg text-amber-300">⌕</span>
+            <span className="text-sm text-[#B8AD95]">
               Busque ajuda, pagamentos e serviços
             </span>
           </div>
@@ -43,7 +43,7 @@ export default function AureaMaisPanel() {
 
       <section className="space-y-3">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
             Sugestões
           </div>
           <h2 className="mt-2 text-xl font-semibold text-[#f4f8ff]">
@@ -55,9 +55,9 @@ export default function AureaMaisPanel() {
           {sugestoes.map((item) => (
             <article
               key={item}
-              className="ag-card rounded-[20px] px-4 py-4 text-center border border-sky-500/16 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-4 py-4 text-center border border-amber-500/10 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]"
             >
-              <div className="text-sky-300 text-lg">✦</div>
+              <div className="text-amber-300 text-lg">✦</div>
               <div className="mt-2 text-sm font-medium text-[#f4f8ff] leading-snug">
                 {item}
               </div>
@@ -66,28 +66,28 @@ export default function AureaMaisPanel() {
         </div>
       </section>
 
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Assistente Aurea
         </div>
         <h2 className="mt-2 text-xl font-semibold text-[#f4f8ff]">
           Atendimento inteligente da carteira
         </h2>
-        <p className="mt-2 text-sm text-[#bfd0ec]">
+        <p className="mt-2 text-sm text-[#D7D0BE]">
           O assistente da Aurea vai concentrar ajuda contextual, dúvidas sobre
           pagamentos, orientações rápidas e fluxos guiados dentro do app.
         </p>
       </section>
 
       <section className="space-y-3">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Suporte e utilidades
         </div>
         <div className="grid grid-cols-1 gap-3">
           {atalhos.map((item) => (
             <article
               key={item}
-              className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4 text-sm text-[#f4f8ff]"
+              className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-4 text-sm text-[#f4f8ff]"
             >
               {item}
             </article>

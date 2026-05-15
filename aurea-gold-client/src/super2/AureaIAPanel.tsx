@@ -293,11 +293,11 @@ export default function AureaIAPanel() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-sky-500/40 bg-sky-950/40 p-3">
-          <div className="text-[10px] uppercase tracking-wide text-sky-300 mb-1">
+        <div className="rounded-xl border border-amber-500/18 bg-amber-950/40 p-3">
+          <div className="text-[10px] uppercase tracking-wide text-amber-300 mb-1">
             Alertas
           </div>
-          <p className="text-[11px] text-sky-100/80">
+          <p className="text-[11px] text-amber-100/80">
             Alertas de risco de atrasos, concentração de gastos e comportamentos
             fora do padrão.
           </p>

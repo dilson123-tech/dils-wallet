@@ -536,6 +536,41 @@ const saldoDisplay =
   };
 
   const currentOpeningLayer = openingLayerMeta[homeOpeningLayer];
+
+  const patrimonioGuardado =
+    forecastPrevisaoFimMes !== null ? Math.max(0, forecastPrevisaoFimMes * 0.22) : 1850;
+
+  const patrimonioInvestido =
+    entradasMes !== null ? Math.max(0, entradasMes * 0.18) : 2400;
+
+  const patrimonioComprometido =
+    saidasMes !== null ? Math.max(0, saidasMes * 0.32) : 1980;
+
+  const limiteCarteira =
+    entradasMes !== null ? Math.max(0, entradasMes * 0.4) : 3500;
+
+  const entradasPrevistas =
+    entradasMes !== null ? Math.max(0, entradasMes * 0.12) : 850;
+
+  const saidasPrevistas =
+    saidasMes !== null ? Math.max(0, saidasMes * 0.08) : 620;
+
+  const contasProximas = Math.max(
+    1,
+    Math.min(6, Math.round((saidasMes ?? 6200) / 1550))
+  );
+
+  const riscoCarteiraLabel =
+    forecastNivel === "critico"
+      ? "Risco alto"
+      : forecastNivel === "atencao"
+      ? "Risco moderado"
+      : forecastNivel === "observacao"
+      ? "Sob observação"
+      : "Operação estável";
+
+  const segurancaCarteiraLabel =
+    saldoModo === "real" ? "Conta protegida" : "Ambiente validado";
   const mobilePerformanceCopy =
     resultadoMes !== null
       ? resultadoMes >= 0
@@ -548,11 +583,11 @@ const saldoDisplay =
       <div className="md:hidden ag-surface-elevated px-4 pt-4 pb-3 rounded-[28px]">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-11 w-11 shrink-0 rounded-full border border-sky-400/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.22),transparent_30%),linear-gradient(180deg,rgba(12,24,46,0.98),rgba(7,15,30,0.98))] flex items-center justify-center text-[12px] font-bold text-[#f4f8ff] shadow-[0_12px_24px_rgba(2,8,20,0.22)]">
+            <div className="h-11 w-11 shrink-0 rounded-full border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.16),transparent_30%),linear-gradient(180deg,rgba(16,42,55,0.98),rgba(10,24,34,0.98))] flex items-center justify-center text-[12px] font-bold text-[#f4f8ff] shadow-[0_12px_24px_rgba(2,8,20,0.22)]">
               AG
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-[#86c0ff]">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
                 Aurea Gold
               </p>
               <h2 className="mt-1 text-[1.35rem] leading-tight font-bold text-[#f4f8ff]">
@@ -564,13 +599,13 @@ const saldoDisplay =
           <button
             type="button"
             onClick={() => handleServiceShortcut("ajuda")}
-            className="shrink-0 rounded-[16px] border border-sky-500/24 bg-sky-500/10 px-3 py-2 text-[10px] font-semibold text-sky-100"
+            className="shrink-0 rounded-[16px] border border-amber-500/12 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold text-amber-100"
           >
             Ajuda
           </button>
         </div>
 
-        <p className="mt-3 text-[11px] text-[#8fa8cf]">
+        <p className="mt-3 text-[11px] text-[#B8AD95]">
           Sua carteira digital abre por produtos, com leitura rápida e estrutura de app real.
         </p>
 
@@ -591,8 +626,8 @@ const saldoDisplay =
                     onClick={() => setHomeOpeningLayer(item.key)}
                     className={`shrink-0 rounded-[18px] px-4 py-2 text-[10px] font-semibold transition ${
                       isSelected
-                        ? "bg-[#eef3ff] text-[#06101f] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
-                        : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] text-[#08111f]"
+                        ? "bg-[#eef3ff] text-[#0E2230] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
+                        : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] text-[#102734]"
                     }`}
                   >
                     {item.label}
@@ -605,7 +640,7 @@ const saldoDisplay =
       </div>
       <div className="hidden md:flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col">
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
             Aurea Gold • Conta
           </span>
           <h2 className="mt-1 text-[1.35rem] sm:text-2xl md:text-3xl font-bold text-[#f4f8ff] leading-tight">
@@ -617,7 +652,7 @@ const saldoDisplay =
           className={`hidden md:inline-flex self-start sm:self-auto items-center rounded-full border px-3 py-1 mb-1 sm:mb-0 text-[10px] uppercase tracking-[0.18em] ${
             saldoModo === "real"
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border-sky-500/30 bg-sky-500/10 text-sky-200"
+              : "border-amber-500/16 bg-amber-500/10 text-amber-200"
           }`}
         >
           {saldoModo === "real" ? "Conta conectada" : "Modo demonstração"}
@@ -625,23 +660,23 @@ const saldoDisplay =
       </div>
 
       {homeOpeningLayer !== "saldo" && (
-          <section className="md:hidden ag-hero -mt-2 rounded-t-[18px] border border-sky-500/30 border-t-0 px-4 py-5 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_18px_36px_rgba(2,8,20,0.34)]">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+          <section className="md:hidden ag-hero -mt-2 rounded-t-[18px] border border-amber-500/16 border-t-0 px-4 py-5 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))] shadow-[0_18px_36px_rgba(2,8,20,0.34)]">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
             {currentOpeningLayer.eyebrow}
           </p>
           <h3 className="mt-2 text-[1.45rem] font-bold text-[#f4f8ff] leading-tight">
             {currentOpeningLayer.title}
           </h3>
-          <p className="mt-2 text-sm text-[#bfd0ec]">
+          <p className="mt-2 text-sm text-[#D7D0BE]">
             {currentOpeningLayer.description}
           </p>
 
           <div className="mt-4 space-y-3">
-            <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.62)] px-4 py-4">
+            <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.62)] px-4 py-4">
               <p className="text-sm font-semibold text-[#f4f8ff]">
                 Camada ativa da conta
               </p>
-              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+              <p className="mt-1 text-[11px] text-[#B8AD95]">
                 Esta abertura mobile organiza a carteira por produtos, como o cliente espera em um app real.
               </p>
             </div>
@@ -667,8 +702,8 @@ const saldoDisplay =
       )}
 
       {DEV_LOGIN_ENABLED && saldoModo !== "real" && needAuth && (
-          <div className="rounded-2xl border border-sky-500/40 bg-[linear-gradient(180deg,rgba(10,20,40,0.94),rgba(7,15,30,0.98))] p-4 md:p-5">
-            <p className="text-[11px] md:text-xs text-sky-200/80 uppercase tracking-[0.18em]">
+          <div className="rounded-2xl border border-amber-500/18 bg-[linear-gradient(180deg,rgba(14,34,48,0.94),rgba(10,24,34,0.98))] p-4 md:p-5">
+            <p className="text-[11px] md:text-xs text-amber-200/80 uppercase tracking-[0.18em]">
               Conectar ao backend (DEV)
             </p>
             <p className="mt-1 text-xs md:text-sm text-[#d7e7ff]">
@@ -677,14 +712,14 @@ const saldoDisplay =
 
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
               <input
-                className="w-full rounded-xl bg-[rgba(8,18,35,0.88)] border border-sky-500/30 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-[#7f97bb]"
+                className="w-full rounded-xl bg-[rgba(12,30,42,0.88)] border border-amber-500/16 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-[#AFA58F]"
                 placeholder="email/username"
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 autoComplete="username"
               />
               <input
-                className="w-full rounded-xl bg-[rgba(8,18,35,0.88)] border border-sky-500/30 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-[#7f97bb]"
+                className="w-full rounded-xl bg-[rgba(12,30,42,0.88)] border border-amber-500/16 px-3 py-2 text-sm text-[#f4f8ff] placeholder:text-[#AFA58F]"
                 placeholder="senha"
                 type="password"
                 value={authPass}
@@ -692,7 +727,7 @@ const saldoDisplay =
                 autoComplete="current-password"
               />
               <button
-                className="rounded-xl bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] hover:brightness-110 text-[#06101f] font-semibold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-xl bg-[linear-gradient(135deg,#C89B2D,#D4AF37)] hover:brightness-110 text-[#0E2230] font-semibold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={authBusy || !authEmail || !authPass}
                 onClick={doDevLogin}
               >
@@ -702,61 +737,120 @@ const saldoDisplay =
 
             {authErr && <p className="mt-2 text-xs text-red-300">{authErr}</p>}
 
-            <p className="mt-2 text-[10px] text-[#8fa8cf]">
-              Dica: isso aparece só em DEV (Vite) ou se abrir com <span className="text-[#bfd0ec]">?devlogin=1</span>.
+            <p className="mt-2 text-[10px] text-[#B8AD95]">
+              Dica: isso aparece só em DEV (Vite) ou se abrir com <span className="text-[#D7D0BE]">?devlogin=1</span>.
             </p>
           </div>
         )}
 
         {/* Card de saldo principal */}
-        <div className={`rounded-[30px] border border-sky-500/40 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.18),transparent_24%),linear-gradient(180deg,rgba(8,18,35,0.98),rgba(7,15,30,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(90,160,255,0.12)] space-y-4 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "-mt-2 rounded-t-[18px] border-t-0 md:mt-0 md:rounded-[30px] md:border-t" : ""}`}>
+        <div className={`rounded-[30px] border border-amber-500/18 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_24%),linear-gradient(180deg,rgba(12,30,42,0.98),rgba(10,24,34,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(212,175,55,0.10)] space-y-4 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "-mt-2 rounded-t-[18px] border-t-0 md:mt-0 md:rounded-[30px] md:border-t" : ""}`}>
         <div className="md:hidden flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#86c0ff]">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
               Conta conectada
             </p>
-            <p className="mt-1 text-[11px] text-[#8fa8cf]">
+            <p className="mt-1 text-[11px] text-[#B8AD95]">
               {mobilePerformanceCopy}
             </p>
           </div>
           <button
             type="button"
             onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-            className="shrink-0 text-[12px] font-semibold text-sky-300"
+            className="shrink-0 text-[12px] font-semibold text-amber-300"
           >
             Extrato →
           </button>
         </div>
         <div>
-          <p className="hidden md:block text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+          <p className="hidden md:block text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
             Saldo em conta
           </p>
           <p className="mt-2 text-[2.4rem] sm:text-5xl md:text-6xl font-bold text-[#f4f8ff] leading-[0.95]">
             {saldoDisplay}
           </p>
-          <p className="mt-2 text-[12px] md:text-[13px] text-[#bfd0ec]">
+          <p className="mt-2 text-[12px] md:text-[13px] text-[#D7D0BE]">
             {saldoModo === "real"
               ? "Disponível para movimentar agora."
               : "Prévia visual enquanto a conta roda em modo demonstração."}
           </p>
             {saldoModo === "real" && saldoUpdatedHHMM && (
-              <p className="mt-1 text-[10px] md:text-[11px] text-[#8fa8cf]">
+              <p className="mt-1 text-[10px] md:text-[11px] text-[#B8AD95]">
                 Atualizado às {saldoUpdatedHHMM}
               </p>
             )}
         </div>
 
+
+          <div className="space-y-2.5">
+            <div>
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
+                Patrimônio rápido
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Guardado</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioGuardado)}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Reserva projetada</p>
+                </div>
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Investido</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioInvestido)}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Crescimento da carteira</p>
+                </div>
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Comprometido</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioComprometido)}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Saídas já pressionando</p>
+                </div>
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Espaço</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(limiteCarteira)}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Fôlego operacional</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
+                Agenda financeira
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Entradas previstas</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(entradasPrevistas)}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Movimento aguardado</p>
+                </div>
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Saídas previstas</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(saidasPrevistas)}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Pagamentos próximos</p>
+                </div>
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Contas próximas</p>
+                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{contasProximas}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Lançamentos no radar</p>
+                </div>
+                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Risco & segurança</p>
+                  <p className="mt-1.5 text-[0.98rem] sm:text-base font-bold text-[#f4f8ff]">{riscoCarteiraLabel}</p>
+                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">{segurancaCarteiraLabel}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         <div className="w-full">
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#86c0ff]">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
                 Ações rápidas
               </p>
               <h3 className="mt-1 text-lg md:text-xl font-bold text-[#f4f8ff]">
                 Mover dinheiro
               </h3>
             </div>
-            <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[10px] text-[#86c0ff]">
+            <span className="inline-flex items-center rounded-full border border-amber-500/16 bg-amber-500/10 px-3 py-1 text-[10px] text-[#D4AF37]">
               Pix
             </span>
           </div>
@@ -765,51 +859,51 @@ const saldoDisplay =
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
-              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[96px] sm:min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[96px] sm:min-h-[112px] flex flex-col justify-between text-left border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-300 text-xl">
                 ↑
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Enviar</span>
-                <span className="text-[10px] sm:text-[11px] text-[#bfd0ec]">PIX</span>
+                <span className="text-[10px] sm:text-[11px] text-[#D7D0BE]">PIX</span>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
-              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]"
             >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/12 text-sky-300 text-xl">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/12 text-amber-300 text-xl">
                 ↓
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Receber</span>
-                <span className="text-[10px] sm:text-[11px] text-[#bfd0ec]">Cobrar</span>
+                <span className="text-[10px] sm:text-[11px] text-[#D7D0BE]">Cobrar</span>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]"
+              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]"
             >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/12 text-sky-300 text-xl">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/12 text-amber-300 text-xl">
                 ≡
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Extrato</span>
-                <span className="text-[10px] sm:text-[11px] text-[#bfd0ec]">Histórico</span>
+                <span className="text-[10px] sm:text-[11px] text-[#D7D0BE]">Histórico</span>
               </div>
             </button>
           </div>
         </div>
 
-        <div className="rounded-[24px] border border-sky-500/28 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
+        <div className="rounded-[24px] border border-amber-500/14 bg-[linear-gradient(180deg,rgba(14,34,48,0.96),rgba(10,24,34,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#86c0ff] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+              <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
                 Previsão do mês • IA 3.0
               </p>
               <p className="mt-2 text-sm text-[#f4f8ff]">
@@ -825,7 +919,7 @@ const saldoDisplay =
             </div>
 
             <div className="text-left sm:text-right w-full sm:w-auto">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-[#8fa8cf]">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#B8AD95]">
                 Projeção final
               </p>
               <p className="mt-1 text-sm font-semibold text-[#f4f8ff]">
@@ -836,24 +930,24 @@ const saldoDisplay =
             </div>
           </div>
 
-          <p className="mt-3 text-[10px] sm:text-[11px] text-[#bfd0ec]">
+          <p className="mt-3 text-[10px] sm:text-[11px] text-[#D7D0BE]">
             Leitura baseada no histórico PIX do mês.
           </p>
         </div>
 
 {/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className={`ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(47,111,203,0.16),transparent_28%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(90,160,255,0.16)] ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""}`}>
+      <div className={`ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,124,137,0.16),transparent_28%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(212,175,55,0.14)] ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""}`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <p className="text-[10px] md:text-[11px] text-sky-200/80 uppercase tracking-[0.16em]">
+            <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
               Resumo financeiro do mês
             </p>
             <p className="text-sm md:text-base text-[#f4f8ff]">
               Entradas, saídas e resultado do mês em uma leitura rápida.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/60 bg-sky-500/10 px-3 py-1 text-[10px] text-sky-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/60 bg-amber-500/10 px-3 py-1 text-[10px] text-amber-200">
             Base operacional • leitura protegida
           </span>
         </div>
@@ -883,8 +977,8 @@ const saldoDisplay =
             </p>
           </div>
 
-          <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-sky-500/28 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.12),transparent_24%),linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="text-[10px] text-sky-200/90 uppercase tracking-[0.14em]">
+          <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-amber-500/14 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.10),transparent_24%),linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
+            <p className="text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
               Resultado do mês
             </p>
             <p className="mt-1 text-lg font-semibold">
@@ -898,18 +992,18 @@ const saldoDisplay =
                 </span>
               )}
             </p>
-            <p className="mt-1 text-[10px] sm:text-[11px] text-[#bfd0ec]">
+            <p className="mt-1 text-[10px] sm:text-[11px] text-[#D7D0BE]">
               Saldo líquido consolidado do período.
             </p>
           </div>
         </div>
 
-        <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-[#bfd0ec]">
+        <div className="mt-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[10px] text-[#D7D0BE]">
           <div>
-            <span className="uppercase tracking-[0.16em] text-sky-300">
+            <span className="uppercase tracking-[0.16em] text-amber-300">
               Plano Essencial
             </span>
-            <span className="ml-1 text-[#bfd0ec]">
+            <span className="ml-1 text-[#D7D0BE]">
               {" "}
               — Recursos avançados ficam nos planos Pro, Gold e Empresarial.
             </span>
@@ -917,7 +1011,7 @@ const saldoDisplay =
           <button
             type="button"
             onClick={() => (window.location.href = "/planos")}
-            className="inline-flex items-center justify-center rounded-full border border-sky-400/70 bg-sky-500/10 px-3 py-1 text-[10px] text-sky-100 hover:bg-sky-400/10 active:scale-[0.97] transition"
+            className="inline-flex items-center justify-center rounded-full border border-white/70 bg-amber-500/10 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-400/10 active:scale-[0.97] transition"
           >
             Explorar planos
           </button>
@@ -927,27 +1021,27 @@ const saldoDisplay =
 
       <section className="space-y-3">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
             Produtos da conta
           </p>
           <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
             Aurea além do saldo
           </h3>
-          <p className="mt-1 text-sm text-[#bfd0ec] max-w-3xl">
+          <p className="mt-1 text-sm text-[#D7D0BE] max-w-3xl">
             Cartões, benefícios, objetivos financeiros e crescimento patrimonial
             na mesma carteira.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <article className="ag-card rounded-[22px] px-4 py-4 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
-            <div className="inline-flex items-center rounded-full border border-sky-500/28 bg-sky-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-sky-200">
+          <article className="ag-card rounded-[22px] px-4 py-4 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]">
+            <div className="inline-flex items-center rounded-full border border-amber-500/14 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-amber-200">
               Cartões
             </div>
             <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
               Cartões Aurea
             </h4>
-            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            <p className="mt-2 text-[11px] text-[#D7D0BE]">
               Virtual, físico e controle inteligente das compras da carteira.
             </p>
             <button
@@ -966,7 +1060,7 @@ const saldoDisplay =
             <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
               Cofrinhos Aurea
             </h4>
-            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            <p className="mt-2 text-[11px] text-[#D7D0BE]">
               Separe metas, organize reservas e acompanhe evolução por objetivo.
             </p>
             <button
@@ -978,14 +1072,14 @@ const saldoDisplay =
             </button>
           </article>
 
-          <article className="ag-card rounded-[22px] px-4 py-4 border border-sky-400/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
-            <div className="inline-flex items-center rounded-full border border-sky-400/28 bg-sky-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-sky-200">
+          <article className="ag-card rounded-[22px] px-4 py-4 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]">
+            <div className="inline-flex items-center rounded-full border border-amber-500/14 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-amber-200">
               Investimentos
             </div>
             <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
               Crescimento financeiro
             </h4>
-            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            <p className="mt-2 text-[11px] text-[#D7D0BE]">
               Área pensada para investimentos, renda e evolução patrimonial.
             </p>
             <button
@@ -1004,7 +1098,7 @@ const saldoDisplay =
             <h4 className="mt-3 text-base font-semibold text-[#f4f8ff]">
               Clube Aurea
             </h4>
-            <p className="mt-2 text-[11px] text-[#bfd0ec]">
+            <p className="mt-2 text-[11px] text-[#D7D0BE]">
               Vantagens, condições especiais e serviços premium da carteira.
             </p>
             <button
@@ -1019,23 +1113,23 @@ const saldoDisplay =
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.95fr] gap-4 md:gap-5">
-        <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-sky-500/20 bg-[linear-gradient(180deg,rgba(12,24,46,0.96),rgba(7,15,30,0.98))]">
+        <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
                 Últimas atividades
               </p>
               <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
                 Ritmo recente da sua conta
               </h3>
             </div>
-            <span className="inline-flex items-center rounded-full border border-sky-500/28 bg-sky-500/10 px-3 py-1 text-[10px] text-sky-200">
+            <span className="inline-flex items-center rounded-full border border-amber-500/14 bg-amber-500/10 px-3 py-1 text-[10px] text-amber-200">
               Conta viva
             </span>
           </div>
 
           {homeRecentLoading ? (
-            <p className="mt-4 text-sm text-[#bfd0ec]">
+            <p className="mt-4 text-sm text-[#D7D0BE]">
               Carregando as movimentações mais recentes da carteira...
             </p>
           ) : homeRecentItems && homeRecentItems.length > 0 ? (
@@ -1090,14 +1184,14 @@ const saldoDisplay =
                 return (
                   <div
                     key={`${descricao}-${activityAt}-${index}`}
-                    className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4"
+                    className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-[#f4f8ff]">
                           {descricao}
                         </p>
-                        <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                        <p className="mt-1 text-[11px] text-[#B8AD95]">
                           {isOutput ? "Saída da carteira" : "Entrada na carteira"} • {activityAt}
                         </p>
                       </div>
@@ -1115,32 +1209,32 @@ const saldoDisplay =
             </div>
           ) : (
             <div className="mt-4 space-y-3">
-              <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-4">
                 <p className="text-sm font-semibold text-[#f4f8ff]">
                   Status operacional da conta
                 </p>
-                <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                <p className="mt-1 text-[11px] text-[#B8AD95]">
                   {saldoModo === "real"
                     ? "Conta conectada e pronta para operar."
                     : "Conta em demonstração até sincronizar com o backend."}
                 </p>
               </div>
 
-              <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-4">
                 <p className="text-sm font-semibold text-[#f4f8ff]">
                   Entradas e saídas do mês
                 </p>
-                <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                <p className="mt-1 text-[11px] text-[#B8AD95]">
                   Entradas: {entradasMes !== null ? formatBRL(entradasMes) : "R$ 0,00"} •
                   Saídas: {saidasMes !== null ? formatBRL(saidasMes) : "R$ 0,00"}
                 </p>
               </div>
 
-              <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.74)] px-4 py-4">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-4">
                 <p className="text-sm font-semibold text-[#f4f8ff]">
                   Extrato em evolução
                 </p>
-                <p className="mt-1 text-[11px] text-[#8fa8cf]">
+                <p className="mt-1 text-[11px] text-[#B8AD95]">
                   As últimas movimentações reais vão aparecer aqui conforme a
                   carteira consolidar mais eventos de conta e PIX.
                 </p>
@@ -1149,24 +1243,24 @@ const saldoDisplay =
           )}
         </section>
 
-        <section className="ag-hero px-4 py-5 sm:px-5 sm:py-6 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(circle_at_top_right,rgba(134,192,255,0.16),transparent_20%),linear-gradient(180deg,rgba(10,20,40,0.98),rgba(7,15,30,0.98))]">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-[#86c0ff]">
+        <section className="ag-hero px-4 py-5 sm:px-5 sm:py-6 rounded-[28px] border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))]">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
             Benefícios e crescimento
           </p>
           <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
             Construa mais dentro da Aurea
           </h3>
-          <p className="mt-2 text-sm text-[#bfd0ec]">
+          <p className="mt-2 text-sm text-[#D7D0BE]">
             A conta da Aurea não para em saldo e PIX. Ela evolui para benefícios,
             organização, reserva e crescimento financeiro real.
           </p>
 
           <div className="mt-4 space-y-3">
-            <div className="rounded-[18px] border border-sky-500/18 bg-[rgba(8,18,35,0.62)] px-4 py-4">
+            <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.62)] px-4 py-4">
               <p className="text-sm font-semibold text-[#f4f8ff]">
                 Cartão virtual e físico
               </p>
-              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+              <p className="mt-1 text-[11px] text-[#B8AD95]">
                 Compras, segurança e gestão do cartão no mesmo ecossistema.
               </p>
             </div>
@@ -1175,16 +1269,16 @@ const saldoDisplay =
               <p className="text-sm font-semibold text-[#f4f8ff]">
                 Cofrinhos e metas
               </p>
-              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+              <p className="mt-1 text-[11px] text-[#B8AD95]">
                 Organize reserva, objetivos e prioridades de forma visual.
               </p>
             </div>
 
-            <div className="rounded-[18px] border border-violet-400/18 bg-[rgba(26,18,46,0.40)] px-4 py-4">
+            <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.62)] px-4 py-4">
               <p className="text-sm font-semibold text-[#f4f8ff]">
                 Investimentos e benefícios
               </p>
-              <p className="mt-1 text-[11px] text-[#8fa8cf]">
+              <p className="mt-1 text-[11px] text-[#B8AD95]">
                 Crescimento financeiro com vantagens da plataforma Aurea.
               </p>
             </div>
@@ -1218,7 +1312,7 @@ const saldoDisplay =
 
       {/* Conta em foco */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
+        <div className="rounded-2xl border border-amber-500/10 bg-[linear-gradient(180deg,rgba(12,30,42,0.96),rgba(8,22,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden shadow-[0_18px_36px_rgba(2,8,20,0.26)]">
           <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
             Conta em foco
           </p>
@@ -1227,30 +1321,30 @@ const saldoDisplay =
           </h3>
 
           <div className="mt-4 space-y-2.5 text-[11px]">
-            <div className="flex items-center justify-between rounded-xl border border-sky-500/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-3">
-              <span className="text-[#bfd0ec]">Status da conta</span>
+            <div className="flex items-center justify-between rounded-xl border border-amber-500/8 bg-[rgba(12,30,42,0.54)] px-3 py-3">
+              <span className="text-[#D7D0BE]">Status da conta</span>
               <span className={`font-medium ${saldoModo === "real" ? "text-emerald-300" : "text-amber-200"}`}>
                 {saldoModo === "real" ? "Conectada" : "Demonstração"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-              <span className="text-[#bfd0ec]">Resultado do mês</span>
+            <div className="flex items-center justify-between rounded-xl border border-amber-500/8 bg-[rgba(12,30,42,0.46)] px-3 py-3">
+              <span className="text-[#D7D0BE]">Resultado do mês</span>
               <span className={`font-medium ${resultadoMes !== null ? resultadoClass : "text-[#f4f8ff]"}`}>
                 {resultadoMes !== null ? formatBRL(resultadoMes) : "R$ 0,00"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-              <span className="text-[#bfd0ec]">Projeção final</span>
+            <div className="flex items-center justify-between rounded-xl border border-amber-500/8 bg-[rgba(12,30,42,0.46)] px-3 py-3">
+              <span className="text-[#D7D0BE]">Projeção final</span>
               <span className="font-medium text-[#f4f8ff]">
                 {forecastPrevisaoFimMes !== null ? formatBRL(forecastPrevisaoFimMes) : "Carregando..."}
               </span>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(247,217,142,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-              <span className="text-[#bfd0ec]">Leitura IA 3.0</span>
-              <span className="font-semibold text-[#86c0ff]">
+            <div className="flex items-center justify-between rounded-xl border border-amber-500/8 bg-[rgba(12,30,42,0.46)] px-3 py-3">
+              <span className="text-[#D7D0BE]">Leitura IA 3.0</span>
+              <span className="font-semibold text-[#D4AF37]">
                 {forecastNivel === "critico" && "Crítico"}
                 {forecastNivel === "atencao" && "Atenção"}
                 {forecastNivel === "observacao" && "Observação"}
@@ -1261,7 +1355,7 @@ const saldoDisplay =
           </div>
         </div>
 
-        <div className="rounded-2xl border border-sky-500/24 bg-[linear-gradient(180deg,rgba(10,20,40,0.96),rgba(7,15,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
+        <div className="rounded-2xl border border-amber-500/12 bg-[linear-gradient(180deg,rgba(14,34,48,0.96),rgba(10,24,34,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
@@ -1276,7 +1370,7 @@ const saldoDisplay =
               type="button"
               onClick={handleHomeInsight}
               disabled={pixInsightLoading}
-              className="inline-flex items-center justify-center rounded-full border border-sky-400/50 bg-[linear-gradient(135deg,#5aa0ff,#86c0ff)] px-3 py-1.5 text-[11px] font-semibold text-[#06101f] shadow-[0_12px_24px_rgba(2,8,20,0.26)] hover:brightness-110 disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-full border border-amber-500/24 bg-[linear-gradient(135deg,#C89B2D,#D4AF37)] px-3 py-1.5 text-[11px] font-semibold text-[#0E2230] shadow-[0_12px_24px_rgba(2,8,20,0.26)] hover:brightness-110 disabled:opacity-60"
             >
               {pixInsightLoading ? "Lendo..." : "Gerar insight"}
             </button>
@@ -1289,7 +1383,7 @@ const saldoDisplay =
               className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
             >
               <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Extrato PIX</span>
-              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">Histórico da conta</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#D7D0BE]">Histórico da conta</span>
             </button>
 
             <button
@@ -1298,7 +1392,7 @@ const saldoDisplay =
               className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
             >
               <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Cobrar</span>
-              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">QR Code e cobrança</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#D7D0BE]">QR Code e cobrança</span>
             </button>
 
             <button
@@ -1307,7 +1401,7 @@ const saldoDisplay =
               className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
             >
               <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Planos</span>
-              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">Ver upgrades</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#D7D0BE]">Ver upgrades</span>
             </button>
 
             <button
@@ -1316,17 +1410,17 @@ const saldoDisplay =
               className="ag-card rounded-[18px] px-3 py-3 min-h-[88px] text-left"
             >
               <span className="block text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Enviar PIX</span>
-              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#bfd0ec]">Transferir agora</span>
+              <span className="mt-1 block text-[10px] sm:text-[11px] text-[#D7D0BE]">Transferir agora</span>
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-sky-500/16 bg-[rgba(10,20,40,0.58)] px-3 py-3">
+          <div className="mt-4 rounded-xl border border-amber-500/10 bg-[rgba(10,20,40,0.58)] px-3 py-3">
             {pixInsightError ? (
               <p className="text-[11px] text-rose-300">{pixInsightError}</p>
             ) : pixInsight ? (
-              <p className="text-[13px] text-[#f4f8ff] whitespace-pre-line">{pixInsight}</p>
+              <p className="text-[13px] text-[#B8AD95] whitespace-pre-line">{pixInsight}</p>
             ) : (
-              <p className="text-[12px] text-[#bfd0ec]">
+              <p className="text-[12px] text-[#D7D0BE]">
                 A home agora fica focada em conta. PIX detalhado, gestão e módulos profundos ficam nas outras abas.
               </p>
             )}
@@ -1342,7 +1436,7 @@ const saldoDisplay =
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-amber-200">Enviar PIX</h3>
               <button
-                className="text-[#bfd0ec] hover:text-zinc-200 text-sm"
+                className="text-[#D7D0BE] hover:text-zinc-200 text-sm"
                 onClick={() => { setPixSendOpen(false); setPixSendErr(null); setPixSendOk(null); }}
               >
                 Fechar
@@ -1391,26 +1485,26 @@ const saldoDisplay =
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-amber-200">Extrato PIX</h3>
               <button
-                className="text-[#bfd0ec] hover:text-zinc-200 text-sm"
+                className="text-[#D7D0BE] hover:text-zinc-200 text-sm"
                 onClick={() => { setPixExtratoOpen(false); setPixExtratoErr(null); }}
               >
                 Fechar
               </button>
             </div>
 
-            {pixExtratoBusy && <p className="mt-3 text-xs text-[#bfd0ec]">Carregando...</p>}
+            {pixExtratoBusy && <p className="mt-3 text-xs text-[#D7D0BE]">Carregando...</p>}
             {pixExtratoErr && <p className="mt-3 text-xs text-red-300">{pixExtratoErr}</p>}
 
             {!pixExtratoBusy && !pixExtratoErr && (
               <div className="mt-3 max-h-[70vh] overflow-auto space-y-2">
                 {(pixExtratoItems || []).length === 0 ? (
-                  <p className="text-xs text-[#bfd0ec]">Sem movimentações (ainda).</p>
+                  <p className="text-xs text-[#D7D0BE]">Sem movimentações (ainda).</p>
                 ) : (
                   (pixExtratoItems || []).map((it) => (
                     <div key={it.id} className="flex items-start justify-between gap-3 border-b border-zinc-800/70 pb-2">
                       <div className="min-w-0">
                         <p className="text-xs text-zinc-200">
-                          <span className="text-[#bfd0ec]">#{it.id}</span> • {String(it.tipo || "").toUpperCase()}
+                          <span className="text-[#D7D0BE]">#{it.id}</span> • {String(it.tipo || "").toUpperCase()}
                         </p>
                         {it.descricao && <p className="text-[12px] text-[#efe4cf] truncate">{it.descricao}</p>}
                       </div>

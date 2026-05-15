@@ -186,7 +186,7 @@ export default function PanelReservasIA3Lab() {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             API ON
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-fuchsia-400/40 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-medium text-fuchsia-300">
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
             IA 3.0 • Modo Insight
           </span>
         </div>
@@ -228,7 +228,7 @@ export default function PanelReservasIA3Lab() {
               <p className="text-[11px] text-zinc-400 uppercase tracking-wide">
                 Ticket médio por reserva
               </p>
-              <p className="mt-1 text-lg md:text-xl font-semibold text-cyan-400">
+              <p className="mt-1 text-lg md:text-xl font-semibold text-amber-300">
                 {ticketMedio.toLocaleString("pt-BR", {
                   style: "currency",
                   currency: "BRL",
@@ -250,7 +250,7 @@ export default function PanelReservasIA3Lab() {
                   <p className="mt-1 text-xs font-medium text-zinc-50 line-clamp-2">
                     {maiorReserva.origem}
                   </p>
-                  <p className="mt-1 text-lg md:text-xl font-semibold text-fuchsia-400">
+                  <p className="mt-1 text-lg md:text-xl font-semibold text-amber-400">
                     {maiorReserva.valor.toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
@@ -316,8 +316,8 @@ export default function PanelReservasIA3Lab() {
           </div>
 
           {/* Tendência & Projeção */}
-          <div className="mt-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-900/40 via-zinc-950 to-fuchsia-900/10 px-3 py-3 md:px-4 md:py-3">
-            <p className="text-[11px] text-cyan-200 uppercase tracking-wide mb-1">
+          <div className="mt-3 rounded-xl border border-amber-500/18 bg-gradient-to-r from-amber-900/40 via-zinc-950 to-amber-900/10 px-3 py-3 md:px-4 md:py-3">
+            <p className="text-[11px] text-amber-200 uppercase tracking-wide mb-1">
               Tendência &amp; Projeção
             </p>
             <p className="text-[11px] md:text-xs text-zinc-200">
@@ -349,8 +349,8 @@ export default function PanelReservasIA3Lab() {
           </div>
 
           {/* Card IA 3.0 – Insight textual */}
-          <div className="rounded-2xl border border-fuchsia-500/50 bg-gradient-to-br from-fuchsia-900/60 via-cyan-900/40 to-zinc-950 p-4 md:p-5">
-            <p className="text-[11px] uppercase tracking-[0.25em] text-fuchsia-200 mb-1">
+          <div className="rounded-2xl border border-amber-500/50 bg-gradient-to-br from-amber-900/60 via-amber-900/40 to-zinc-950 p-4 md:p-5">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-amber-200 mb-1">
               IA 3.0 • Análise do dia
             </p>
             <p className="text-sm md:text-base text-zinc-50 leading-relaxed whitespace-pre-line">
