@@ -136,3 +136,4 @@ Somente considerar quando houver:
 - [x] Tag `v0.2.1-wallet-partner-foundation` criada.
 - [x] Dados mínimos para parceiro documentados em `PARTNER_DATA_REQUIREMENTS.md`.
 - [x] Fluxo PIX frontend exibe modo demonstração/partner e deixa claro quando não há dinheiro real.
+- [x] Home/Conta em foco exibe modo demonstração/partner e deixa claro quando não há dinheiro real.
