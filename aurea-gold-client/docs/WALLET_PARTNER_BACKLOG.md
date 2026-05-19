@@ -15,7 +15,7 @@ O parceiro regulado fornece Pix real, conta transacional, saldo, KYC, liquidaç�
 - [ ] Separar claramente modo demo/lab de modo real.
 - [x] Criar configuração `WALLET_MODE=demo|partner`.
 - [x] Criar interface única para provedores financeiros.
-- [ ] Mapear dados mínimos exigidos pelo parceiro.
+- [x] Mapear dados mínimos exigidos pelo parceiro.
 - [x] Documentar fluxos de Pix, saldo, extrato e webhook.
 
 ### Cadastro e KYC
@@ -134,4 +134,4 @@ Somente considerar quando houver:
 - [x] Endpoint `/api/v1/wallet/partner/status` criado e validado.
 - [x] Smoke test `scripts/wallet_partner_smoke.sh` criado e validado.
 - [x] Tag `v0.2.1-wallet-partner-foundation` criada.
-
+- [x] Dados mínimos para parceiro documentados em `PARTNER_DATA_REQUIREMENTS.md`.
