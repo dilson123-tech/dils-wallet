@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { API_BASE, USER_EMAIL, fetchPixHistory, PixHistoryItem } from "./api";
+import { API_BASE, USER_EMAIL, fetchPixHistory, fetchWalletPartnerStatus, type PixHistoryItem, type WalletPartnerStatus } from "./api";
 import { apiGet } from "../app/lib/http";
 import { withAuth } from "../lib/api";
 import { getToken } from "../lib/auth";
@@ -78,6 +78,11 @@ export default function AureaPixPanel({
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [balanceReloadToken, setBalanceReloadToken] = useState(0);
 
+  const [walletPartnerStatus, setWalletPartnerStatus] =
+    useState<WalletPartnerStatus | null>(null);
+  const [walletPartnerStatusError, setWalletPartnerStatusError] =
+    useState<string | null>(null);
+
   // estados para IA 3.0 do PIX (dados oficiais)
   const [pixInsight, setPixInsight] = useState<PixInsightResponse | null>(null);
   const [pixInsightLoading, setPixInsightLoading] = useState(false);
@@ -115,6 +120,26 @@ export default function AureaPixPanel({
       setActiveAction(initialAction);
     }
   }, [initialAction]);
+
+  useEffect(() => {
+    let alive = true;
+
+    fetchWalletPartnerStatus()
+      .then((status) => {
+        if (!alive) return;
+        setWalletPartnerStatus(status);
+        setWalletPartnerStatusError(null);
+      })
+      .catch((err) => {
+        console.error("[AureaPixPanel] Erro ao carregar status do parceiro:", err);
+        if (!alive) return;
+        setWalletPartnerStatusError("Não consegui confirmar o modo da wallet agora.");
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // carrega saldo/entradas/saídas do endpoint /api/v1/pix/balance
   useEffect(() => {
@@ -240,6 +265,16 @@ const saldo =
     setPixInsightReloadToken((prev) => prev + 1);
   };
 
+  const isDemoWallet =
+    walletPartnerStatus?.wallet_mode !== "partner" ||
+    walletPartnerStatus?.real_money !== true;
+
+  const walletModeLabel = walletPartnerStatus
+    ? isDemoWallet
+      ? "Modo demonstração"
+      : "Modo parceiro real"
+    : "Verificando modo da carteira";
+
   const handleSubmitSendPix = async (e: React.FormEvent) => {
       e.preventDefault();
       setSendPixError(null);
@@ -304,7 +339,11 @@ const saldo =
             "PIX já havia sido registrado. Evitamos um envio duplicado."
           );
         } else {
-          setSendPixSuccess("PIX registrado com sucesso no backend Aurea Gold.");
+          setSendPixSuccess(
+            isDemoWallet
+              ? "PIX demo registrado. Não houve movimentação financeira real."
+              : "PIX registrado com sucesso no backend Aurea Gold."
+          );
         }
 
         setTimeout(() => {
@@ -340,7 +379,7 @@ const saldo =
     const ref = `AG-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     setChargePixRef(ref);
     setChargePixSuccess(
-      "Cobrança simulada criada. Quando o backend estiver plugado, vamos gerar QR Code/BR Code real."
+      "Cobrança demo criada. Não houve cobrança real. Quando o parceiro financeiro estiver plugado, vamos gerar QR Code/BR Code real."
     );
   };
 
@@ -690,6 +729,20 @@ const saldo =
 
         {/* PAINEL DE AÇÃO SELECIONADA */}
         <div className="mt-3 rounded-xl border border-amber-500/10 bg-[rgba(12,30,42,0.74)] p-3 text-[11px] text-[#f4f8ff]">
+          <div className="mb-4 rounded-2xl border border-amber-500/20 bg-[linear-gradient(180deg,rgba(212,175,55,0.10),rgba(6,14,18,0.72))] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
+              {walletModeLabel}
+            </div>
+            <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-[#D7D0BE]">
+              {isDemoWallet
+                ? "Fluxos de PIX em demonstração, sem movimentar dinheiro real. A operação real será ativada somente via parceiro financeiro homologado."
+                : `Provedor ${walletPartnerStatus?.provider || "partner"} ativo para operação real.`}
+            </p>
+            {walletPartnerStatusError && (
+              <p className="mt-1 text-[11px] text-rose-300">{walletPartnerStatusError}</p>
+            )}
+          </div>
+
           {!activeAction && (
             <p className="text-[#B8AD95]">
               Selecione uma ação para abrir os fluxos operacionais do PIX. Esta área concentra envio, cobrança e extrato da carteira.
@@ -703,9 +756,9 @@ const saldo =
                   Enviar PIX
                 </h3>
                 <p className="text-[#D7D0BE]">
-                  Preencha os campos abaixo para testar o envio. Usamos o
-                  endpoint real quando disponível e bloqueamos duplicidades via
-                  Idempotency-Key.
+                  Preencha os campos abaixo para registrar o fluxo. No modo
+                  demonstração, isso não movimenta dinheiro real. No modo parceiro,
+                  o envio será roteado pela camada financeira homologada.
                 </p>
               </div>
 
@@ -755,7 +808,7 @@ const saldo =
                     disabled={sendPixLoading}
                     className="rounded-full border border-amber-500/60 bg-amber-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-amber-100 hover:bg-amber-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {sendPixLoading ? "Enviando..." : "Enviar agora"}
+                    {sendPixLoading ? (isDemoWallet ? "Registrando demo..." : "Enviando...") : (isDemoWallet ? "Registrar teste demo" : "Enviar agora")}
                   </button>
                   {sendPixSuccess && (
                     <span className="text-[11px] text-emerald-300">
