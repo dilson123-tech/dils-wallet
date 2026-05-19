@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {API_BASE, USER_EMAIL, sendPix, fetchPixList, type PixListItem} from "./api";
+import {API_BASE, USER_EMAIL, sendPix, fetchPixList, fetchWalletPartnerStatus, type PixListItem, type WalletPartnerStatus} from "./api";
 import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
@@ -135,6 +135,10 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
 
   const [saldoReal, setSaldoReal] = useState<number | null>(null);
   const [saldoModo, setSaldoModo] = useState<"simulado" | "real">("simulado");
+  const [walletPartnerStatus, setWalletPartnerStatus] =
+    useState<WalletPartnerStatus | null>(null);
+  const [walletPartnerStatusError, setWalletPartnerStatusError] =
+    useState<string | null>(null);
   const [sessionDisplayName, setSessionDisplayName] = useState<string>("Cliente Aurea");
 
   const DEV_LOGIN_ENABLED =
@@ -146,6 +150,38 @@ export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
   const [authPass, setAuthPass] = useState("");
   const [authErr, setAuthErr] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    fetchWalletPartnerStatus()
+      .then((status) => {
+        if (!alive) return;
+        setWalletPartnerStatus(status);
+        setWalletPartnerStatusError(null);
+      })
+      .catch((err) => {
+        console.error("[SuperAureaHome] Erro ao carregar status do parceiro:", err);
+        if (!alive) return;
+        setWalletPartnerStatusError("Não consegui confirmar o modo da wallet agora.");
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const isPartnerWalletReal =
+    walletPartnerStatus?.wallet_mode === "partner" &&
+    walletPartnerStatus?.real_money === true;
+
+  const homeWalletModeLabel = isPartnerWalletReal
+    ? "Conta parceira ativa"
+    : "Modo demonstração";
+
+  const homeWalletModeDescription = isPartnerWalletReal
+    ? `Operação real via provedor ${walletPartnerStatus?.provider || "partner"}.`
+    : "Ambiente de demonstração, sem movimentar dinheiro real. A operação real será ativada via parceiro financeiro homologado.";
 
   async function doDevLogin() {
     if (!DEV_LOGIN_ENABLED) return;
@@ -655,9 +691,17 @@ const saldoDisplay =
               : "border-amber-500/16 bg-amber-500/10 text-amber-200"
           }`}
         >
-          {saldoModo === "real" ? "Conta conectada" : "Modo demonstração"}
+          {homeWalletModeLabel}
         </span>
       </div>
+
+        <div className="hidden md:block rounded-2xl border border-amber-500/14 bg-[rgba(12,30,42,0.56)] px-4 py-3 text-[12px] text-[#D7D0BE]">
+          <span className="font-semibold text-[#D4AF37]">{homeWalletModeLabel}</span>
+          <span className="ml-1">{homeWalletModeDescription}</span>
+          {walletPartnerStatusError && (
+            <span className="block pt-1 text-rose-300">{walletPartnerStatusError}</span>
+          )}
+        </div>
 
       {homeOpeningLayer !== "saldo" && (
           <section className="md:hidden ag-hero -mt-2 rounded-t-[18px] border border-amber-500/16 border-t-0 px-4 py-5 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))] shadow-[0_18px_36px_rgba(2,8,20,0.34)]">
@@ -770,9 +814,9 @@ const saldoDisplay =
             {saldoDisplay}
           </p>
           <p className="mt-2 text-[12px] md:text-[13px] text-[#D7D0BE]">
-            {saldoModo === "real"
-              ? "Disponível para movimentar agora."
-              : "Prévia visual enquanto a conta roda em modo demonstração."}
+            {isPartnerWalletReal
+              ? "Disponível para movimentar via parceiro financeiro homologado."
+              : "Prévia visual em modo demonstração, sem movimentar dinheiro real."}
           </p>
             {saldoModo === "real" && saldoUpdatedHHMM && (
               <p className="mt-1 text-[10px] md:text-[11px] text-[#B8AD95]">
@@ -1214,9 +1258,9 @@ const saldoDisplay =
                   Status operacional da conta
                 </p>
                 <p className="mt-1 text-[11px] text-[#B8AD95]">
-                  {saldoModo === "real"
-                    ? "Conta conectada e pronta para operar."
-                    : "Conta em demonstração até sincronizar com o backend."}
+                  {isPartnerWalletReal
+                    ? "Conta conectada ao parceiro financeiro e pronta para operar."
+                    : "Conta em demonstração. Nenhum valor exibido representa saldo financeiro real."}
                 </p>
               </div>
 
@@ -1324,7 +1368,7 @@ const saldoDisplay =
             <div className="flex items-center justify-between rounded-xl border border-amber-500/8 bg-[rgba(12,30,42,0.54)] px-3 py-3">
               <span className="text-[#D7D0BE]">Status da conta</span>
               <span className={`font-medium ${saldoModo === "real" ? "text-emerald-300" : "text-amber-200"}`}>
-                {saldoModo === "real" ? "Conectada" : "Demonstração"}
+                {isPartnerWalletReal ? "Parceiro real" : "Demonstração"}
               </span>
             </div>
 
