@@ -20,3 +20,18 @@ export function resolveApiBase(): string {
 }
 
 export const API_BASE = resolveApiBase();
+
+export type WalletMode = "demo" | "partner";
+
+export function resolveWalletMode(): WalletMode {
+  const raw = String(
+    (import.meta as any)?.env?.VITE_WALLET_MODE ?? "demo"
+  ).trim().toLowerCase();
+
+  return raw === "partner" ? "partner" : "demo";
+}
+
+export const WALLET_MODE = resolveWalletMode();
+export const IS_DEMO_WALLET = WALLET_MODE === "demo";
+export const IS_PARTNER_WALLET = WALLET_MODE === "partner";
+

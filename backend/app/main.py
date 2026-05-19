@@ -11,6 +11,7 @@ import os
 from app.database import Base, engine
 from app.core.rate_limit import init_rate_limiter
 from app.core.observability import setup_logging, observability_middleware, metrics_response
+from app.config import WALLET_MODE
 
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
@@ -99,6 +100,7 @@ def healthz():
         "service": "dils-wallet",
         "version": app.version,
         "git_sha": os.getenv("GIT_SHA", "dev"),
+        "wallet_mode": WALLET_MODE,
     }
     bt = os.getenv("BUILD_TIME")
     if bt:
