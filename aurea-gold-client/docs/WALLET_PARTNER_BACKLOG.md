@@ -135,3 +135,4 @@ Somente considerar quando houver:
 - [x] Smoke test `scripts/wallet_partner_smoke.sh` criado e validado.
 - [x] Tag `v0.2.1-wallet-partner-foundation` criada.
 - [x] Dados mínimos para parceiro documentados em `PARTNER_DATA_REQUIREMENTS.md`.
+- [x] Fluxo PIX frontend exibe modo demonstração/partner e deixa claro quando não há dinheiro real.
