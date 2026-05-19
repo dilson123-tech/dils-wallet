@@ -20,6 +20,7 @@ from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRou
 from app.api.v1.routes.ai_chat import router as ai_chat_router
 from app.api.v1.routes.users import router as users_router
 from app.api.v1.routes.whoami import router as whoami_router
+from app.api.v1.routes.wallet import router as wallet_router
 
 # PIX Super2 (nossas rotas novas)
 from app.api.v1.routes import pix_balance_get                    # módulo com .router
@@ -70,6 +71,7 @@ app.include_router(ai_router_v1)
 app.include_router(ai_chat_router)
 app.include_router(users_router)
 app.include_router(whoami_router)
+app.include_router(wallet_router)
 app.include_router(admin_dbfix.router, prefix="/admin")
 app.include_router(dev_seed.router)
 
