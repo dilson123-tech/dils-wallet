@@ -11,12 +11,12 @@ O parceiro regulado fornece Pix real, conta transacional, saldo, KYC, liquidaç�
 
 ### Produto e arquitetura
 
-- [ ] Definir contrato interno do Partner Adapter.
+- [x] Definir contrato interno do Partner Adapter.
 - [ ] Separar claramente modo demo/lab de modo real.
-- [ ] Criar configuração `WALLET_MODE=demo|partner`.
-- [ ] Criar interface única para provedores financeiros.
+- [x] Criar configuração `WALLET_MODE=demo|partner`.
+- [x] Criar interface única para provedores financeiros.
 - [ ] Mapear dados mínimos exigidos pelo parceiro.
-- [ ] Documentar fluxos de Pix, saldo, extrato e webhook.
+- [x] Documentar fluxos de Pix, saldo, extrato e webhook.
 
 ### Cadastro e KYC
 
@@ -121,3 +121,17 @@ Somente considerar quando houver:
 - termos e privacidade publicados;
 - política Play Store revisada;
 - QA mobile completo.
+
+## Progresso técnico já concluído
+
+- [x] Estratégia oficial de wallet via parceiro documentada.
+- [x] Backlog P0/P1/P2 criado.
+- [x] `WALLET_MODE=demo|partner` implementado no backend e frontend.
+- [x] `/healthz` expõe `wallet_mode`.
+- [x] Partner Adapter criado.
+- [x] Demo Partner Adapter criado.
+- [x] Wallet Partner Service criado.
+- [x] Endpoint `/api/v1/wallet/partner/status` criado e validado.
+- [x] Smoke test `scripts/wallet_partner_smoke.sh` criado e validado.
+- [x] Tag `v0.2.1-wallet-partner-foundation` criada.
+
