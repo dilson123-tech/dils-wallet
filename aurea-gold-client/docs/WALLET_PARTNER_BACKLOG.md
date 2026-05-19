@@ -137,3 +137,9 @@ Somente considerar quando houver:
 - [x] Dados mínimos para parceiro documentados em `PARTNER_DATA_REQUIREMENTS.md`.
 - [x] Fluxo PIX frontend exibe modo demonstração/partner e deixa claro quando não há dinheiro real.
 - [x] Home/Conta em foco exibe modo demonstração/partner e deixa claro quando não há dinheiro real.
+
+## Pendências visuais fora do ciclo atual
+
+- [ ] Redesenhar Planos/Assinaturas no padrão Aurea petróleo + ouro antes de qualquer venda, Play Store ou checkout real.
+- [ ] Manter Planos/Assinaturas como LAB/ilustrativo até existir parceiro financeiro, billing e regra comercial homologada.
+
