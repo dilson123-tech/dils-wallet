@@ -94,7 +94,7 @@ function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
     case "home":
       content = (
         <main className="w-full pb-4 md:pb-6">
-          <SuperAureaHome onPixShortcut={handleHomePixShortcut} />
+          <SuperAureaHome onPixShortcut={handleHomePixShortcut} onLogout={onLogout} />
         </main>
       );
       break;
@@ -253,9 +253,9 @@ function AureaAppWithAuth() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-8">
-        <div className="ag-surface-elevated w-full max-w-md px-6 py-6 md:px-8 md:py-8">
+        <div className="ag-surface-elevated w-full max-w-[420px] px-6 py-6 md:px-8 md:py-8">
           <header className="space-y-2">
-            <div className="text-[10px] tracking-[0.30em] uppercase ag-gold-text">
+            <div className="pl-2 pt-1 text-[10px] tracking-[0.30em] uppercase ag-gold-text">
               Aurea Gold • Carteira Digital
             </div>
 

@@ -12,6 +12,7 @@ type HomeOpeningLayer = "saldo" | "cofrinhos" | "investimentos" | "cripto";
 
 type SuperAureaHomeProps = {
   onPixShortcut?: (action: PixShortcutAction) => void;
+  onLogout?: () => void;
 };
 
 function handlePixShortcutFallback(action: PixShortcutAction) {
@@ -67,7 +68,7 @@ function handleServiceShortcut(service: AureaServiceKey) {
     return "R$ " + value.toFixed(2).replace(".", ",");
   }
 
-export default function SuperAureaHome({ onPixShortcut }: SuperAureaHomeProps) {
+export default function SuperAureaHome({ onPixShortcut, onLogout }: SuperAureaHomeProps) {
   useEffect(() => {
     let alive = true;
 
@@ -632,13 +633,25 @@ const saldoDisplay =
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleServiceShortcut("ajuda")}
-            className="shrink-0 rounded-[16px] border border-amber-500/12 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold text-amber-100"
-          >
-            Ajuda
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleServiceShortcut("ajuda")}
+              className="rounded-[16px] border border-amber-500/12 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold text-amber-100"
+            >
+              Ajuda
+            </button>
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-[16px] border border-amber-500/12 bg-[rgba(16,42,55,0.88)] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#f4f8ff]"
+              >
+                Sair
+              </button>
+            )}
+          </div>
         </div>
 
         <p className="mt-3 text-[11px] text-[#B8AD95]">
@@ -684,15 +697,27 @@ const saldoDisplay =
           </h2>
         </div>
 
-        <span
-          className={`hidden md:inline-flex self-start sm:self-auto items-center rounded-full border px-3 py-1 mb-1 sm:mb-0 text-[10px] uppercase tracking-[0.18em] ${
-            saldoModo === "real"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border-amber-500/16 bg-amber-500/10 text-amber-200"
-          }`}
-        >
-          {homeWalletModeLabel}
-        </span>
+        <div className="hidden md:flex items-center gap-2">
+          <span
+            className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${
+              saldoModo === "real"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : "border-amber-500/16 bg-amber-500/10 text-amber-200"
+            }`}
+          >
+            {homeWalletModeLabel}
+          </span>
+
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="inline-flex items-center rounded-full border border-amber-500/16 bg-[rgba(16,42,55,0.88)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#f4f8ff] transition hover:border-amber-400/40 hover:bg-[rgba(212,175,55,0.12)]"
+            >
+              Sair
+            </button>
+          )}
+        </div>
       </div>
 
         <div className="hidden md:block rounded-2xl border border-amber-500/14 bg-[rgba(12,30,42,0.56)] px-4 py-3 text-[12px] text-[#D7D0BE]">
