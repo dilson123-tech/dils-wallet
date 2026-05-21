@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from decimal import Decimal
+from datetime import datetime, timezone
 
 from app.database import get_db
 from app.utils.authz import require_customer
@@ -273,6 +274,95 @@ def get_wallet_structured_statement(
             if not IS_PARTNER_WALLET
             else "Extrato obtido via parceiro financeiro configurado."
         ),
+    }
+
+
+def _safe_receipt_part(value: str | None) -> str:
+    raw = str(value or "not-provided").strip() or "not-provided"
+    safe = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in raw)
+    return safe[:80] or "not-provided"
+
+
+@router.get("/api/v1/wallet/receipt-reconciliation")
+def get_wallet_receipt_reconciliation(
+    provider_reference: str | None = None,
+    current_user: User = Depends(require_customer),
+):
+    """
+    Fundação de comprovante, auditoria e reconciliação da wallet.
+
+    Este endpoint NÃO gera comprovante financeiro real.
+    Ele prepara o contrato de rastreabilidade para quando houver:
+    - transação real via parceiro;
+    - provider_reference real;
+    - auditoria;
+    - reconciliação;
+    - emissão de comprovante confiável.
+
+    Em modo demo, retorna status explícito de demonstração.
+    """
+    safe_reference = _safe_receipt_part(provider_reference)
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+        adapter_error = None
+    except Exception as exc:
+        provider = "not_configured"
+        adapter_error = str(exc)
+
+    real_money_enabled = bool(IS_PARTNER_WALLET and adapter_error is None)
+    source = "partner" if real_money_enabled else "demo"
+
+    if real_money_enabled:
+        transaction_status = "provider_pending_lookup"
+        audit_status = "pending"
+        reconciliation_status = "pending"
+        notice = "Fundação de comprovante pronta para consultar transação via parceiro financeiro."
+        next_steps = [
+            "Consultar transação pelo provider_reference no parceiro.",
+            "Validar status financeiro da transação.",
+            "Registrar trilha de auditoria.",
+            "Conciliar valor, status e identificador do provedor.",
+            "Emitir comprovante somente após confirmação do parceiro.",
+        ]
+    else:
+        transaction_status = "demo_only"
+        audit_status = "demo_recorded"
+        reconciliation_status = "not_applicable_demo"
+        notice = "Modo demonstração: comprovante e reconciliação não representam movimentação financeira real."
+        next_steps = [
+            "Conectar adapter sandbox do parceiro financeiro.",
+            "Registrar provider_reference real das transações.",
+            "Implementar consulta de status no parceiro.",
+            "Implementar trilha de auditoria e reconciliação.",
+            "Liberar emissão de comprovante apenas para transações confirmadas.",
+        ]
+
+    receipt_id = f"aurea-{source}-receipt-{getattr(current_user, 'id', 'user')}-{safe_reference}"
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "receipt": {
+            "receipt_id": receipt_id,
+            "provider_reference": provider_reference or "not_provided",
+            "transaction_status": transaction_status,
+            "audit_status": audit_status,
+            "reconciliation_status": reconciliation_status,
+            "issued_at": datetime.now(timezone.utc).isoformat(),
+            "currency": "BRL",
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": source,
+            "real_money_enabled": real_money_enabled,
+            "adapter_error": adapter_error,
+        },
+        "notice": notice,
+        "next_steps": next_steps,
     }
 
 
