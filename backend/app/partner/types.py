@@ -20,6 +20,8 @@ PartnerTransactionStatus = Literal[
 class PartnerBalance:
     user_id: int
     available: Decimal
+    blocked: Decimal = Decimal("0.00")
+    pending: Decimal = Decimal("0.00")
     currency: str = "BRL"
     provider: str = "demo"
     mode: WalletMode = "demo"
