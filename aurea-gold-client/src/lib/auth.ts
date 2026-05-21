@@ -59,6 +59,55 @@ export function authHeaders(): Record<string, string> {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+export function decodeJwtPayload(token?: string | null): Record<string, any> | null {
+  const raw = typeof token === "string" && token ? token : getToken();
+  if (!raw || raw.split(".").length != 3) return null;
+
+  try {
+    const base64Url = raw.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+export function getSessionUserDisplayName(): string {
+  const payload = decodeJwtPayload();
+
+  const candidates = [
+    payload?.full_name,
+    payload?.fullName,
+    payload?.name,
+    payload?.display_name,
+    payload?.displayName,
+    payload?.given_name,
+    payload?.first_name,
+    payload?.username,
+    payload?.preferred_username,
+    payload?.email,
+    payload?.sub,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      const clean = value.trim();
+      if (clean.includes("@")) {
+        const base = clean.split("@")[0].replace(/[._-]+/g, " ").trim();
+        return base
+          .split(" ")
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ");
+      }
+      return clean;
+    }
+  }
+
+  return "Cliente Aurea";
+}
+
 
 
 export function clearToken() {

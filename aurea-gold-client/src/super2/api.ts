@@ -71,6 +71,19 @@ const r = await authFetch(`${API_BASE}${path}`, {
   return (await r.json()) as T;
 }
 
+
+export type WalletPartnerStatus = {
+  ok: boolean;
+  service: string;
+  wallet_mode: "demo" | "partner";
+  provider: string;
+  real_money: boolean;
+};
+
+export function fetchWalletPartnerStatus(): Promise<WalletPartnerStatus> {
+  return apiGet<WalletPartnerStatus>("/api/v1/wallet/partner/status");
+}
+
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {
   return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");

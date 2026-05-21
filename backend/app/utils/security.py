@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 import secrets
 import hashlib

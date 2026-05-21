@@ -9,6 +9,8 @@ def read_me(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
         "username": current_user.username,
+        "email": getattr(current_user, "email", None),
+        "full_name": getattr(current_user, "full_name", None),
         "role": current_user.role,
     }
 

@@ -11,12 +11,16 @@ import os
 from app.database import Base, engine
 from app.core.rate_limit import init_rate_limiter
 from app.core.observability import setup_logging, observability_middleware, metrics_response
+from app.config import WALLET_MODE
 
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
 from app.routers import admin_dbfix                              # módulo com .router
 from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRouter
 from app.api.v1.routes.ai_chat import router as ai_chat_router
+from app.api.v1.routes.users import router as users_router
+from app.api.v1.routes.whoami import router as whoami_router
+from app.api.v1.routes.wallet import router as wallet_router
 
 # PIX Super2 (nossas rotas novas)
 from app.api.v1.routes import pix_balance_get                    # módulo com .router
@@ -65,6 +69,9 @@ async def aurea_observability(request: Request, call_next):
 app.include_router(assist_router_v1.router)
 app.include_router(ai_router_v1)
 app.include_router(ai_chat_router)
+app.include_router(users_router)
+app.include_router(whoami_router)
+app.include_router(wallet_router)
 app.include_router(admin_dbfix.router, prefix="/admin")
 app.include_router(dev_seed.router)
 
@@ -95,6 +102,7 @@ def healthz():
         "service": "dils-wallet",
         "version": app.version,
         "git_sha": os.getenv("GIT_SHA", "dev"),
+        "wallet_mode": WALLET_MODE,
     }
     bt = os.getenv("BUILD_TIME")
     if bt:

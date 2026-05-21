@@ -104,7 +104,7 @@ def _email_from_auth_header(auth_header):
 
     try:
         import os
-        from jose import jwt, JWTError
+        import jwt
 
         secret = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "dev-secret"
         alg = os.getenv("JWT_ALG") or os.getenv("JWT_ALGORITHM") or os.getenv("ALGORITHM") or "HS256"

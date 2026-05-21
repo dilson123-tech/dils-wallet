@@ -1,11 +1,11 @@
 :root {
   /* === CORE TOKENS === */
-  --gold: #5aa0ff;
+  --gold: #D4AF37;
   --gold-dark: #2f6fcb;
   --carbon: #07111f;
   --carbon-light: #0d1b33;
   --text-light: #f4f8ff;
-  --text-muted: #bfd0ec;
+  --text-muted: #D7D0BE;
   --radius: 12px;
   --transition: 0.15s ease;
 

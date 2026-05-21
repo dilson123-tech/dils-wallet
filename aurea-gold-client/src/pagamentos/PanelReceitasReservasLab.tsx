@@ -157,7 +157,7 @@ function classStatusReserva(status: Reserva["status"]): string {
   if (status === "concluída") {
     return (
       "inline-flex items-center justify-end gap-1 text-[10px] px-2 py-0.5 " +
-      "rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/40"
+      "rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/18"
     );
   }
   return (

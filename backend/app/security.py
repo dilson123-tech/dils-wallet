@@ -1,6 +1,6 @@
 import os, time, typing as t
 from datetime import timedelta
-from jose import jwt
+import jwt
 from passlib.hash import bcrypt
 
 SECRET_KEY = os.getenv("JWT_SECRET", "change-me-aura")  # defina em prod
@@ -26,8 +26,8 @@ def hash_password(plain: str) -> str:
     return bcrypt.hash(plain)
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
-from jose.exceptions import JWTError
+import jwt
+JWTError = jwt.InvalidTokenError
 from app.database import get_db
 from sqlalchemy.orm import Session
 from sqlalchemy import or_

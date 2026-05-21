@@ -4,7 +4,10 @@ from decimal import Decimal
 
 from app.database import get_db
 from app.utils.authz import require_customer
-from app.models import Transaction, User
+from app.models.transaction import Transaction
+from app.models.user_main import User
+from app.config import WALLET_MODE, IS_PARTNER_WALLET
+from app.partner import get_partner_adapter
 
 router = APIRouter()
 
@@ -60,3 +63,23 @@ def get_history(current_user: User = Depends(require_customer),
         "user_id": current_user.id,
         "history": history
     }
+
+@router.get("/api/v1/wallet/partner/status")
+def get_wallet_partner_status():
+    """
+    Status técnico da camada de parceiro financeiro.
+
+    Não movimenta dinheiro.
+    Serve para QA, diagnóstico, apresentação técnica e validação
+    de modo demo/partner.
+    """
+    adapter = get_partner_adapter()
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "wallet_mode": WALLET_MODE,
+        "provider": adapter.provider_name,
+        "real_money": bool(IS_PARTNER_WALLET),
+    }
+
