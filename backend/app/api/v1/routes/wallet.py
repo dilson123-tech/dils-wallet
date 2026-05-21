@@ -8,7 +8,10 @@ from app.models.transaction import Transaction
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
 from app.partner import get_partner_adapter
-from app.services.wallet_partner_service import get_wallet_balance as get_partner_wallet_balance
+from app.services.wallet_partner_service import (
+    get_wallet_balance as get_partner_wallet_balance,
+    get_wallet_statement as get_partner_wallet_statement,
+)
 
 router = APIRouter()
 
@@ -166,6 +169,109 @@ def get_wallet_structured_balance(
             "Modo demonstração: saldo não representa dinheiro real."
             if not IS_PARTNER_WALLET
             else "Saldo obtido via parceiro financeiro configurado."
+        ),
+    }
+
+
+def _statement_item_payload(item, *, source: str, real_money_enabled: bool) -> dict:
+    raw = getattr(item, "raw", {}) or {}
+    provider_reference = (
+        getattr(item, "provider_reference", None)
+        or raw.get("provider_reference")
+        or raw.get("id")
+        or "not_available"
+    )
+
+    created_at = (
+        getattr(item, "created_at", None)
+        or raw.get("created_at")
+        or raw.get("timestamp")
+        or raw.get("date")
+    )
+
+    return {
+        "provider_reference": str(provider_reference),
+        "direction": getattr(item, "direction", "credit"),
+        "amount": _decimal_as_money(getattr(item, "amount", Decimal("0.00"))),
+        "status": getattr(item, "status", "pending"),
+        "description": getattr(item, "description", None) or "PIX",
+        "created_at": created_at,
+        "source": source,
+        "real_money_enabled": real_money_enabled,
+    }
+
+
+@router.get("/api/v1/wallet/structured-statement")
+def get_wallet_structured_statement(
+    limit: int = 50,
+    current_user: User = Depends(require_customer),
+):
+    """
+    Extrato estruturado da wallet.
+
+    Prepara o contrato real de transações:
+    - provider_reference
+    - direction: credit/debit
+    - amount
+    - status
+    - description
+    - created_at
+    - source
+    - real_money_enabled
+
+    Em modo demo, pode retornar lista vazia e nunca representa dinheiro real.
+    """
+    safe_limit = max(1, min(int(limit or 50), 100))
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+        statement = get_partner_wallet_statement(
+            user_id=current_user.id,
+            limit=safe_limit,
+        )
+        mode = WALLET_MODE
+        source = "partner" if IS_PARTNER_WALLET else "demo"
+        real_money_enabled = bool(IS_PARTNER_WALLET)
+        adapter_error = None
+    except Exception as exc:
+        provider = "not_configured"
+        statement = []
+        mode = WALLET_MODE
+        source = "unavailable"
+        real_money_enabled = False
+        adapter_error = str(exc)
+
+    items = [
+        _statement_item_payload(
+            item,
+            source=source,
+            real_money_enabled=real_money_enabled,
+        )
+        for item in statement
+    ]
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "statement": {
+            "items": items,
+            "count": len(items),
+            "limit": safe_limit,
+            "currency": "BRL",
+        },
+        "wallet": {
+            "mode": mode,
+            "provider": provider,
+            "source": source,
+            "real_money_enabled": real_money_enabled,
+            "adapter_error": adapter_error,
+        },
+        "notice": (
+            "Modo demonstração: extrato não representa movimentação financeira real."
+            if not IS_PARTNER_WALLET
+            else "Extrato obtido via parceiro financeiro configurado."
         ),
     }
 

@@ -76,6 +76,7 @@ class StatementItem:
     direction: Literal["credit", "debit"]
     status: PartnerTransactionStatus
     description: str = "PIX"
+    created_at: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
