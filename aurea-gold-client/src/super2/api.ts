@@ -84,6 +84,35 @@ export function fetchWalletPartnerStatus(): Promise<WalletPartnerStatus> {
   return apiGet<WalletPartnerStatus>("/api/v1/wallet/partner/status");
 }
 
+export type WalletAccountStatus = {
+  ok: boolean;
+  service: string;
+  user?: {
+    id?: number | null;
+    email?: string | null;
+    full_name?: string | null;
+    type?: string | null;
+    role?: string | null;
+  };
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    provider_adapter_ready: boolean;
+    provider_adapter_error?: string | null;
+    real_money_enabled: boolean;
+    account_status: string;
+    kyc_status: string;
+    kyb_status: string;
+    currency: string;
+  };
+  limitations: string[];
+  next_steps: string[];
+};
+
+export function fetchWalletAccountStatus(): Promise<WalletAccountStatus> {
+  return apiGet<WalletAccountStatus>("/api/v1/wallet/account-status");
+}
+
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {
   return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");
