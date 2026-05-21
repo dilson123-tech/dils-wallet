@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -27,6 +27,9 @@ export default function AureaMaisPanel() {
   const [structuredStatement, setStructuredStatement] = useState<WalletStructuredStatement | null>(null);
   const [structuredStatementLoading, setStructuredStatementLoading] = useState(true);
   const [structuredStatementError, setStructuredStatementError] = useState<string | null>(null);
+  const [receiptReconciliation, setReceiptReconciliation] = useState<WalletReceiptReconciliation | null>(null);
+  const [receiptReconciliationLoading, setReceiptReconciliationLoading] = useState(true);
+  const [receiptReconciliationError, setReceiptReconciliationError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -74,6 +77,21 @@ export default function AureaMaisPanel() {
       .finally(() => {
         if (!alive) return;
         setStructuredStatementLoading(false);
+      });
+
+    fetchWalletReceiptReconciliation("demo-ui-preview")
+      .then((data) => {
+        if (!alive) return;
+        setReceiptReconciliation(data);
+        setReceiptReconciliationError(null);
+      })
+      .catch((error) => {
+        if (!alive) return;
+        setReceiptReconciliationError(error instanceof Error ? error.message : "Falha ao carregar comprovante/reconciliação.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setReceiptReconciliationLoading(false);
       });
 
     return () => {
@@ -127,6 +145,24 @@ export default function AureaMaisPanel() {
   const statementRealMoneyLabel = statementWallet?.real_money_enabled
     ? "Dinheiro real ativo"
     : "Dinheiro real desativado";
+  const receiptWallet = receiptReconciliation?.wallet;
+  const receiptRealMoneyLabel = receiptWallet?.real_money_enabled
+    ? "Dinheiro real ativo"
+    : "Dinheiro real desativado";
+  const receiptProviderLabel =
+    receiptWallet?.provider === "demo" ? "Demo" : receiptWallet?.provider || "Não configurado";
+  const transactionStatusLabel =
+    receiptReconciliation?.receipt.transaction_status === "demo_only"
+      ? "Somente demonstração"
+      : receiptReconciliation?.receipt.transaction_status || "Não informado";
+  const auditStatusLabel =
+    receiptReconciliation?.receipt.audit_status === "demo_recorded"
+      ? "Auditoria demo registrada"
+      : receiptReconciliation?.receipt.audit_status || "Não informado";
+  const reconciliationStatusLabel =
+    receiptReconciliation?.receipt.reconciliation_status === "not_applicable_demo"
+      ? "Não aplicável em demo"
+      : receiptReconciliation?.receipt.reconciliation_status || "Não informado";
 
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
@@ -393,6 +429,87 @@ export default function AureaMaisPanel() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
               <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
                 {structuredStatement.notice}
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          Comprovante e reconciliação
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              Fundação de auditoria da wallet
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Base para emitir comprovantes confiáveis somente quando houver transação confirmada via parceiro financeiro.
+            </p>
+          </div>
+
+          <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            receiptWallet?.real_money_enabled
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-500/20 bg-amber-500/10 text-amber-200"
+          }`}>
+            {receiptRealMoneyLabel}
+          </span>
+        </div>
+
+        {receiptReconciliationLoading && (
+          <p className="mt-4 text-sm text-[#B8AD95]">
+            Carregando comprovante e reconciliação...
+          </p>
+        )}
+
+        {receiptReconciliationError && (
+          <p className="mt-4 text-sm text-rose-300">
+            Não foi possível carregar a fundação de comprovante agora.
+          </p>
+        )}
+
+        {receiptReconciliation && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Transação</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{transactionStatusLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Auditoria</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{auditStatusLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Reconciliação</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{reconciliationStatusLabel}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Recibo</div>
+                <p className="mt-2 break-words text-sm leading-relaxed text-[#D7D0BE]">
+                  {receiptReconciliation.receipt.receipt_id}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Origem</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  Provedor {receiptProviderLabel} • {receiptReconciliation.wallet.source}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {receiptReconciliation.notice}
               </p>
             </div>
           </>

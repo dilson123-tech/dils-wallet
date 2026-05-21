@@ -172,6 +172,36 @@ export function fetchWalletStructuredStatement(limit = 20): Promise<WalletStruct
   return apiGet<WalletStructuredStatement>(`/api/v1/wallet/structured-statement?limit=${encodeURIComponent(String(limit))}`);
 }
 
+export type WalletReceiptReconciliation = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  receipt: {
+    receipt_id: string;
+    provider_reference: string;
+    transaction_status: string;
+    audit_status: string;
+    reconciliation_status: string;
+    issued_at: string;
+    currency: string;
+  };
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    real_money_enabled: boolean;
+    adapter_error?: string | null;
+  };
+  notice: string;
+  next_steps: string[];
+};
+
+export function fetchWalletReceiptReconciliation(providerReference = "demo-ui-preview"): Promise<WalletReceiptReconciliation> {
+  return apiGet<WalletReceiptReconciliation>(
+    `/api/v1/wallet/receipt-reconciliation?provider_reference=${encodeURIComponent(providerReference)}`
+  );
+}
+
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {
   return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");
