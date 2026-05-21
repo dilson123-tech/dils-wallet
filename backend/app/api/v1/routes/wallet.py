@@ -8,6 +8,7 @@ from app.models.transaction import Transaction
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
 from app.partner import get_partner_adapter
+from app.services.wallet_partner_service import get_wallet_balance as get_partner_wallet_balance
 
 router = APIRouter()
 
@@ -109,6 +110,64 @@ def get_wallet_account_status(
     e próximos passos de ativação.
     """
     return _account_status_payload(current_user)
+
+
+def _decimal_as_money(value) -> str:
+    return f"{Decimal(value or 0):.2f}"
+
+
+@router.get("/api/v1/wallet/structured-balance")
+def get_wallet_structured_balance(
+    current_user: User = Depends(require_customer),
+):
+    """
+    Saldo estruturado da wallet.
+
+    Prepara o contrato real da carteira:
+    - available: disponível
+    - blocked: bloqueado
+    - pending: pendente/processando
+    - currency: moeda
+    - provider/source/mode: origem do saldo
+
+    Em modo demo, não representa dinheiro real.
+    """
+    try:
+        balance = get_partner_wallet_balance(user_id=current_user.id)
+        provider = balance.provider
+        mode = balance.mode
+        source = "partner" if IS_PARTNER_WALLET else "demo"
+        adapter_error = None
+    except Exception as exc:
+        balance = None
+        provider = "not_configured"
+        mode = WALLET_MODE
+        source = "unavailable"
+        adapter_error = str(exc)
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "balance": {
+            "available": _decimal_as_money(getattr(balance, "available", Decimal("0.00"))),
+            "blocked": _decimal_as_money(getattr(balance, "blocked", Decimal("0.00"))),
+            "pending": _decimal_as_money(getattr(balance, "pending", Decimal("0.00"))),
+            "currency": getattr(balance, "currency", "BRL") if balance else "BRL",
+        },
+        "wallet": {
+            "mode": mode,
+            "provider": provider,
+            "source": source,
+            "real_money_enabled": bool(IS_PARTNER_WALLET and balance is not None),
+            "adapter_error": adapter_error,
+        },
+        "notice": (
+            "Modo demonstração: saldo não representa dinheiro real."
+            if not IS_PARTNER_WALLET
+            else "Saldo obtido via parceiro financeiro configurado."
+        ),
+    }
 
 
 @router.get("/api/v1/wallet/balance")
