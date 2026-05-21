@@ -113,6 +113,30 @@ export function fetchWalletAccountStatus(): Promise<WalletAccountStatus> {
   return apiGet<WalletAccountStatus>("/api/v1/wallet/account-status");
 }
 
+export type WalletStructuredBalance = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  balance: {
+    available: string;
+    blocked: string;
+    pending: string;
+    currency: string;
+  };
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    real_money_enabled: boolean;
+    adapter_error?: string | null;
+  };
+  notice: string;
+};
+
+export function fetchWalletStructuredBalance(): Promise<WalletStructuredBalance> {
+  return apiGet<WalletStructuredBalance>("/api/v1/wallet/structured-balance");
+}
+
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {
   return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");
