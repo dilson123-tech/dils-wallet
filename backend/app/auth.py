@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+import jwt
+JWTError = jwt.InvalidTokenError
 
 JWT_ALG = os.getenv("JWT_ALG") or os.getenv("JWT_ALGORITHM") or "HS256"
 JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "dev-secret"

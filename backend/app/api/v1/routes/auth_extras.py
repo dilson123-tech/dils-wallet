@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.security.jwt_core import decode_access_token, issue_refresh_token
 import os
-from jose import jwt, JWTError
+import jwt
+JWTError = jwt.InvalidTokenError
 
 router = APIRouter(tags=["Auth"])
 
@@ -26,7 +27,7 @@ def link_refresh_body(
     # 2) fallback DEV: extrai claims sem verificar assinatura
     if not user_id:
         try:
-            claims = jwt.get_unverified_claims(access_token)
+            claims = jwt.decode(access_token, options={"verify_signature": False, "verify_exp": False})
             user_id = claims.get("sub")
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"invalid_access_token: {e}")
