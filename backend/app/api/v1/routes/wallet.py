@@ -366,6 +366,123 @@ def get_wallet_receipt_reconciliation(
     }
 
 
+@router.get("/api/v1/wallet/operational-limits")
+def get_wallet_operational_limits(
+    current_user: User = Depends(require_customer),
+):
+    """
+    Limites e segurança operacional da wallet.
+
+    Este endpoint prepara o contrato de segurança antes de qualquer PIX real:
+    - permissão de envio/recebimento;
+    - limite por transação;
+    - limite diário;
+    - limite mensal;
+    - confirmação obrigatória;
+    - motivo/limitações;
+    - origem e modo da carteira.
+
+    Em modo demo, não permite PIX real.
+    """
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+        adapter_ready = True
+        adapter_error = None
+    except Exception as exc:
+        provider = "not_configured"
+        adapter_ready = False
+        adapter_error = str(exc)
+
+    real_money_enabled = bool(IS_PARTNER_WALLET and adapter_ready)
+    source = "partner" if real_money_enabled else "demo"
+
+    if real_money_enabled:
+        can_send_pix = True
+        can_receive_pix = True
+        requires_confirmation = True
+        reason = "Carteira em modo parceiro: operações reais dependem dos limites e regras do parceiro financeiro."
+        limitations = [
+            "Limites finais devem ser confirmados pelo PSP/BaaS.",
+            "Toda saída de dinheiro deve exigir confirmação sensível.",
+            "Operações podem ser bloqueadas por KYC/KYB, antifraude ou compliance do parceiro.",
+        ]
+        limits = {
+            "per_transaction_limit": "provider_defined",
+            "daily_limit": "provider_defined",
+            "monthly_limit": "provider_defined",
+            "currency": "BRL",
+        }
+        security = {
+            "sensitive_action_confirmation_required": True,
+            "kyc_required": True,
+            "kyb_required_for_business": True,
+            "audit_required": True,
+            "reconciliation_required": True,
+        }
+        next_steps = [
+            "Buscar limites reais no parceiro financeiro.",
+            "Aplicar confirmação antes de envio de PIX.",
+            "Validar KYC/KYB antes de habilitar operações.",
+            "Registrar auditoria e idempotência para ações sensíveis.",
+        ]
+    else:
+        can_send_pix = False
+        can_receive_pix = False
+        requires_confirmation = True
+        reason = "Modo demonstração: PIX real depende de parceiro financeiro/PSP/BaaS."
+        limitations = [
+            "Envio de PIX real desativado em modo demo.",
+            "Recebimento de PIX real desativado em modo demo.",
+            "Limites financeiros reais ainda dependem de integração com parceiro.",
+            "Confirmação sensível já deve ser prevista antes de qualquer operação real.",
+        ]
+        limits = {
+            "per_transaction_limit": "0.00",
+            "daily_limit": "0.00",
+            "monthly_limit": "0.00",
+            "currency": "BRL",
+        }
+        security = {
+            "sensitive_action_confirmation_required": True,
+            "kyc_required": True,
+            "kyb_required_for_business": True,
+            "audit_required": True,
+            "reconciliation_required": True,
+        }
+        next_steps = [
+            "Selecionar parceiro financeiro/PSP/BaaS.",
+            "Implementar limites sandbox.",
+            "Implementar confirmação antes de envio de dinheiro.",
+            "Conectar limites ao KYC/KYB.",
+            "Bloquear PIX real enquanto real_money_enabled for false.",
+        ]
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": source,
+            "adapter_ready": adapter_ready,
+            "adapter_error": adapter_error,
+            "real_money_enabled": real_money_enabled,
+        },
+        "permissions": {
+            "can_send_pix": can_send_pix,
+            "can_receive_pix": can_receive_pix,
+            "requires_confirmation": requires_confirmation,
+        },
+        "limits": limits,
+        "security": security,
+        "reason": reason,
+        "limitations": limitations,
+        "next_steps": next_steps,
+    }
+
+
 @router.get("/api/v1/wallet/balance")
 def get_balance(current_user: User = Depends(require_customer),
                 db: Session = Depends(get_db)):
