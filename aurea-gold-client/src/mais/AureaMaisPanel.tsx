@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, type WalletAccountStatus, type WalletStructuredBalance } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -24,6 +24,9 @@ export default function AureaMaisPanel() {
   const [structuredBalance, setStructuredBalance] = useState<WalletStructuredBalance | null>(null);
   const [structuredBalanceLoading, setStructuredBalanceLoading] = useState(true);
   const [structuredBalanceError, setStructuredBalanceError] = useState<string | null>(null);
+  const [structuredStatement, setStructuredStatement] = useState<WalletStructuredStatement | null>(null);
+  const [structuredStatementLoading, setStructuredStatementLoading] = useState(true);
+  const [structuredStatementError, setStructuredStatementError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -56,6 +59,21 @@ export default function AureaMaisPanel() {
       .finally(() => {
         if (!alive) return;
         setStructuredBalanceLoading(false);
+      });
+
+    fetchWalletStructuredStatement(20)
+      .then((data) => {
+        if (!alive) return;
+        setStructuredStatement(data);
+        setStructuredStatementError(null);
+      })
+      .catch((error) => {
+        if (!alive) return;
+        setStructuredStatementError(error instanceof Error ? error.message : "Falha ao carregar extrato estruturado.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setStructuredStatementLoading(false);
       });
 
     return () => {
@@ -95,6 +113,18 @@ export default function AureaMaisPanel() {
       ? "Parceiro"
       : structuredWallet?.source || "Não informado";
   const structuredRealMoneyLabel = structuredWallet?.real_money_enabled
+    ? "Dinheiro real ativo"
+    : "Dinheiro real desativado";
+  const statementWallet = structuredStatement?.wallet;
+  const statementProviderLabel =
+    statementWallet?.provider === "demo" ? "Demo" : statementWallet?.provider || "Não configurado";
+  const statementSourceLabel =
+    statementWallet?.source === "demo"
+      ? "Demo"
+      : statementWallet?.source === "partner"
+      ? "Parceiro"
+      : statementWallet?.source || "Não informado";
+  const statementRealMoneyLabel = statementWallet?.real_money_enabled
     ? "Dinheiro real ativo"
     : "Dinheiro real desativado";
 
@@ -268,6 +298,102 @@ export default function AureaMaisPanel() {
                   {structuredBalance.notice}
                 </p>
               </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          Extrato estruturado
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              Contrato de transações da wallet
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Base para comprovantes, reconciliação e Pix via parceiro. No modo demo, a lista não representa movimentação financeira real.
+            </p>
+          </div>
+
+          <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            statementWallet?.real_money_enabled
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-500/20 bg-amber-500/10 text-amber-200"
+          }`}>
+            {statementRealMoneyLabel}
+          </span>
+        </div>
+
+        {structuredStatementLoading && (
+          <p className="mt-4 text-sm text-[#B8AD95]">
+            Carregando extrato estruturado...
+          </p>
+        )}
+
+        {structuredStatementError && (
+          <p className="mt-4 text-sm text-rose-300">
+            Não foi possível carregar o extrato estruturado agora.
+          </p>
+        )}
+
+        {structuredStatement && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Transações</div>
+                <div className="mt-1 text-lg font-semibold text-[#f4f8ff]">{structuredStatement.statement.count}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Origem</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{statementSourceLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Provedor</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{statementProviderLabel}</div>
+              </div>
+            </div>
+
+            {structuredStatement.statement.items.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {structuredStatement.statement.items.slice(0, 3).map((item) => (
+                  <div
+                    key={`${item.provider_reference}-${item.amount}-${item.status}`}
+                    className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3"
+                    style={{ padding: "14px 16px" }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-[#f4f8ff]">{item.description}</div>
+                        <div className="mt-1 text-[11px] text-[#B8AD95]">
+                          {item.direction} • {item.status} • {item.provider_reference}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-[#f4f8ff]">
+                        R$ {item.amount.replace(".", ",")}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Sem transações reais</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  O extrato estruturado está pronto, mas o modo demo ainda não possui movimentações reais via parceiro.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {structuredStatement.notice}
+              </p>
             </div>
           </>
         )}
