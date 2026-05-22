@@ -1,19 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 from datetime import datetime, timezone
+import hashlib
+import json
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.utils.authz import require_customer
 from app.models.transaction import Transaction
+from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
-from app.partner import get_partner_adapter
+from app.partner import PartnerWebhookEvent, get_partner_adapter
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
     get_wallet_balance as get_partner_wallet_balance,
     get_wallet_statement as get_partner_wallet_statement,
+    handle_wallet_webhook as handle_partner_wallet_webhook,
 )
 
 router = APIRouter()
@@ -729,6 +734,217 @@ def create_wallet_pix_sandbox_payment(
             "Preparar reconciliação sandbox antes de qualquer Pix real.",
         ],
     }
+
+
+
+
+_SANDBOX_WEBHOOK_ALLOWED_STATUSES = {
+    "pending",
+    "processing",
+    "confirmed",
+    "failed",
+    "canceled",
+    "rejected",
+}
+
+
+class WalletPixSandboxWebhookIn(BaseModel):
+    provider_reference: str
+    event_type: str = "pix.payment.confirmed"
+    status: str = "confirmed"
+    amount: Decimal | None = None
+    idempotency_key: str | None = None
+    raw: dict | None = None
+
+
+def _sandbox_webhook_hash(payload: WalletPixSandboxWebhookIn) -> str:
+    body = {
+        "provider_reference": str(payload.provider_reference or "").strip(),
+        "event_type": str(payload.event_type or "").strip(),
+        "status": str(payload.status or "").strip().lower(),
+        "amount": str(payload.amount) if payload.amount is not None else None,
+        "raw": payload.raw or {},
+    }
+    encoded = json.dumps(body, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _sandbox_webhook_idempotency_key(
+    payload: WalletPixSandboxWebhookIn,
+    header_key: str | None,
+) -> str:
+    raw_key = (
+        header_key
+        or payload.idempotency_key
+        or f"{payload.provider_reference}:{payload.event_type}:{payload.status}"
+    )
+    digest = hashlib.sha256(str(raw_key).encode("utf-8")).hexdigest()
+    return f"wallet-sandbox-webhook:{digest}"
+
+
+@router.post("/api/v1/wallet/pix/sandbox-webhook")
+def handle_wallet_pix_sandbox_webhook(
+    payload: WalletPixSandboxWebhookIn,
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+    x_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+):
+    """
+    Recebe evento PIX sandbox com idempotência.
+
+    Segurança:
+    - Só funciona com provider sandbox.
+    - Bloqueia replay por Idempotency-Key.
+    - Não credita saldo real.
+    - Não gera comprovante financeiro real.
+    - Não marca pagamento real como confirmado.
+    """
+    provider_reference = str(payload.provider_reference or "").strip()
+    event_type = str(payload.event_type or "").strip()
+    status = str(payload.status or "").strip().lower()
+
+    if not provider_reference:
+        raise HTTPException(status_code=422, detail="provider_reference é obrigatório.")
+
+    if not event_type:
+        raise HTTPException(status_code=422, detail="event_type é obrigatório.")
+
+    if status not in _SANDBOX_WEBHOOK_ALLOWED_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail="status sandbox inválido.",
+        )
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Adapter financeiro indisponível para webhook sandbox: {exc}",
+        ) from exc
+
+    if provider != "sandbox":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Webhook sandbox exige WALLET_MODE=partner e "
+                "WALLET_PARTNER_PROVIDER=sandbox. Nenhum evento real foi processado."
+            ),
+        )
+
+    request_hash = _sandbox_webhook_hash(payload)
+    idem_key = _sandbox_webhook_idempotency_key(payload, x_idempotency_key)
+
+    try:
+        record = IdempotencyKey(key=idem_key, request_hash=request_hash)
+        db.add(record)
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = db.query(IdempotencyKey).filter_by(key=idem_key).first()
+        if not existing:
+            raise
+
+        if getattr(existing, "request_hash", None) and existing.request_hash != request_hash:
+            raise HTTPException(
+                status_code=409,
+                detail="Idempotency-Key reutilizada com payload diferente.",
+            )
+
+        if existing.response_json:
+            response = json.loads(existing.response_json)
+            response["duplicated"] = True
+            response["idempotency"]["replayed"] = True
+            return response
+
+        return {
+            "ok": True,
+            "service": "aurea-wallet",
+            "duplicated": True,
+            "event": {
+                "provider": "sandbox",
+                "provider_reference": provider_reference,
+                "event_type": event_type,
+                "status": "in_progress",
+            },
+            "wallet": {
+                "mode": WALLET_MODE,
+                "provider": provider,
+                "source": "sandbox",
+                "real_money_enabled": False,
+            },
+            "idempotency": {
+                "key": idem_key,
+                "request_hash": request_hash,
+                "replayed": True,
+                "state": "in_progress",
+            },
+            "can_credit_balance": False,
+            "can_generate_real_receipt": False,
+            "can_mark_real_paid": False,
+            "notice": "Evento sandbox já está em processamento. Nenhum dinheiro real foi movimentado.",
+        }
+
+    webhook_result = handle_partner_wallet_webhook(
+        PartnerWebhookEvent(
+            provider="sandbox",
+            event_type=event_type,
+            provider_reference=provider_reference,
+            status=status,
+            raw=payload.raw or {},
+        )
+    )
+
+    now = datetime.now(timezone.utc)
+    response = {
+        "ok": True,
+        "service": "aurea-wallet",
+        "duplicated": False,
+        "event": {
+            "provider": "sandbox",
+            "provider_reference": provider_reference,
+            "event_type": event_type,
+            "status": status,
+            "amount": _decimal_as_money(payload.amount) if payload.amount is not None else None,
+            "received_at": now.isoformat(),
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": "sandbox",
+            "real_money_enabled": False,
+        },
+        "webhook": webhook_result,
+        "idempotency": {
+            "key": idem_key,
+            "request_hash": request_hash,
+            "replayed": False,
+            "state": "stored",
+        },
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "can_mark_real_paid": False,
+        "notice": "Webhook PIX sandbox processado apenas para simulação técnica. Não movimenta dinheiro real.",
+        "limitations": [
+            "Não credita saldo real.",
+            "Não confirma pagamento real.",
+            "Não gera comprovante financeiro real.",
+            "Não substitui webhook assinado de parceiro financeiro homologado.",
+        ],
+        "next_steps": [
+            "Persistir eventos sandbox em ledger/auditoria própria.",
+            "Implementar reconciliação sandbox por provider_reference.",
+            "Validar assinatura/token de webhook antes de integração real.",
+            "Liberar crédito real somente via parceiro financeiro homologado.",
+        ],
+    }
+
+    record.status_code = 200
+    record.response_json = json.dumps(response, ensure_ascii=False, default=str)
+    db.commit()
+
+    return response
 
 
 @router.get("/api/v1/wallet/balance")
