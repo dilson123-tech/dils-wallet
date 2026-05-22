@@ -947,6 +947,175 @@ def handle_wallet_pix_sandbox_webhook(
     return response
 
 
+
+
+def _find_sandbox_webhook_event_by_reference(
+    db: Session,
+    provider_reference: str,
+) -> dict | None:
+    """
+    Busca evento sandbox registrado pela idempotência.
+
+    Fase 10: fundação de reconciliação sem nova tabela.
+    Não consulta PSP real, não credita saldo e não emite comprovante real.
+    """
+    rows = (
+        db.query(IdempotencyKey)
+        .filter(IdempotencyKey.key.like("wallet-sandbox-webhook:%"))
+        .order_by(IdempotencyKey.created_at.desc())
+        .limit(250)
+        .all()
+    )
+
+    for row in rows:
+        raw_response = getattr(row, "response_json", None)
+        if not raw_response:
+            continue
+
+        try:
+            response = json.loads(raw_response)
+        except Exception:
+            continue
+
+        event = response.get("event") or {}
+        if str(event.get("provider_reference") or "").strip() == provider_reference:
+            return {
+                "idempotency_key": row.key,
+                "request_hash": row.request_hash,
+                "status_code": row.status_code,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "response": response,
+            }
+
+    return None
+
+
+@router.get("/api/v1/wallet/pix/sandbox-reconciliation/{provider_reference}")
+def get_wallet_pix_sandbox_reconciliation(
+    provider_reference: str,
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+):
+    """
+    Consulta reconciliação sandbox por provider_reference.
+
+    Segurança:
+    - Não consulta transação real.
+    - Não credita saldo real.
+    - Não gera comprovante financeiro real.
+    - Não marca pagamento real como confirmado.
+    - Usa somente eventos sandbox já registrados por webhook/idempotência.
+    """
+    safe_reference = _safe_receipt_part(provider_reference)
+
+    if not safe_reference or safe_reference == "not-provided":
+        raise HTTPException(status_code=422, detail="provider_reference é obrigatório.")
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Adapter financeiro indisponível para reconciliação sandbox: {exc}",
+        ) from exc
+
+    if provider != "sandbox":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Reconciliação sandbox exige WALLET_MODE=partner e "
+                "WALLET_PARTNER_PROVIDER=sandbox. Nenhuma transação real foi consultada."
+            ),
+        )
+
+    match = _find_sandbox_webhook_event_by_reference(db, safe_reference)
+
+    if not match:
+        return {
+            "ok": True,
+            "service": "aurea-wallet",
+            "user_id": getattr(current_user, "id", None),
+            "reconciliation": {
+                "provider": "sandbox",
+                "provider_reference": safe_reference,
+                "status": "not_found",
+                "event_found": False,
+                "audit_status": "not_found",
+                "reconciliation_status": "pending_webhook",
+                "amount": None,
+                "received_at": None,
+            },
+            "wallet": {
+                "mode": WALLET_MODE,
+                "provider": provider,
+                "source": "sandbox",
+                "real_money_enabled": False,
+            },
+            "can_credit_balance": False,
+            "can_generate_real_receipt": False,
+            "can_mark_real_paid": False,
+            "notice": "Nenhum webhook sandbox encontrado para esta referência. Nenhum dinheiro real foi movimentado.",
+            "next_steps": [
+                "Receber webhook sandbox para esta provider_reference.",
+                "Validar idempotência do evento.",
+                "Registrar auditoria/reconciliação sandbox.",
+                "Só liberar reconciliação real após parceiro financeiro homologado.",
+            ],
+        }
+
+    response = match["response"]
+    event = response.get("event") or {}
+    webhook = response.get("webhook") or {}
+    event_status = str(event.get("status") or "unknown")
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "reconciliation": {
+            "provider": "sandbox",
+            "provider_reference": safe_reference,
+            "status": event_status,
+            "event_found": True,
+            "audit_status": "sandbox_event_recorded",
+            "reconciliation_status": "sandbox_reconciled",
+            "amount": event.get("amount"),
+            "received_at": event.get("received_at"),
+            "event_type": event.get("event_type"),
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": "sandbox",
+            "real_money_enabled": False,
+        },
+        "webhook": webhook,
+        "idempotency": {
+            "key": match["idempotency_key"],
+            "request_hash": match["request_hash"],
+            "status_code": match["status_code"],
+            "stored_at": match["created_at"],
+        },
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "can_mark_real_paid": False,
+        "notice": "Reconciliação sandbox localizada. Este status não representa liquidação financeira real.",
+        "limitations": [
+            "Não credita saldo real.",
+            "Não confirma pagamento real em parceiro financeiro.",
+            "Não gera comprovante financeiro real.",
+            "Não substitui reconciliação oficial de PSP/BaaS homologado.",
+        ],
+        "next_steps": [
+            "Persistir eventos sandbox em tabela própria de auditoria em fase futura.",
+            "Implementar consulta real no parceiro financeiro homologado.",
+            "Conciliar valor, status, horário e referência do provedor.",
+            "Emitir comprovante real somente após confirmação oficial do parceiro.",
+        ],
+    }
+
+
 @router.get("/api/v1/wallet/balance")
 def get_balance(current_user: User = Depends(require_customer),
                 db: Session = Depends(get_db)):
