@@ -241,6 +241,39 @@ export function fetchWalletOperationalLimits(): Promise<WalletOperationalLimits>
   return apiGet<WalletOperationalLimits>("/api/v1/wallet/operational-limits");
 }
 
+export type WalletOnboardingStatus = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    adapter_ready: boolean;
+    adapter_error?: string | null;
+    real_money_enabled: boolean;
+  };
+  onboarding: {
+    customer_type: "pf" | "pj" | "unknown" | string;
+    status: "not_started" | "pending" | "in_review" | "approved" | "rejected" | string;
+    kyc_status: "not_started" | "pending" | "in_review" | "approved" | "rejected" | string;
+    kyb_status: "not_required" | "not_started" | "pending" | "in_review" | "approved" | "rejected" | string;
+    required_documents: string[];
+    missing_fields: string[];
+    can_start_real_operations: boolean;
+    can_send_pix: boolean;
+    can_receive_pix: boolean;
+  };
+  reason: string;
+  limitations: string[];
+  next_steps: string[];
+};
+
+export function fetchWalletOnboardingStatus(): Promise<WalletOnboardingStatus> {
+  return apiGet<WalletOnboardingStatus>("/api/v1/wallet/onboarding-status");
+}
+
+
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {
   return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");
