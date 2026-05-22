@@ -273,6 +273,47 @@ export function fetchWalletOnboardingStatus(): Promise<WalletOnboardingStatus> {
   return apiGet<WalletOnboardingStatus>("/api/v1/wallet/onboarding-status");
 }
 
+export type WalletPixSandboxPaymentPayload = {
+  amount: string | number;
+  description?: string;
+  external_id?: string | null;
+};
+
+export type WalletPixSandboxPayment = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  payment: {
+    provider: string;
+    provider_reference: string;
+    status: string;
+    amount: string;
+    currency: string;
+    description: string;
+    qr_code?: string | null;
+    copy_paste?: string | null;
+    created_at: string;
+  };
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    real_money_enabled: boolean;
+  };
+  can_credit_balance: boolean;
+  can_generate_real_receipt: boolean;
+  notice: string;
+  limitations: string[];
+  next_steps: string[];
+};
+
+export function createWalletPixSandboxPayment(
+  payload: WalletPixSandboxPaymentPayload
+): Promise<WalletPixSandboxPayment> {
+  return apiPost<WalletPixSandboxPayment>("/api/v1/wallet/pix/sandbox-payment", payload);
+}
+
+
 
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {

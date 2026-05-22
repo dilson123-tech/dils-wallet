@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from decimal import Decimal
 from datetime import datetime, timezone
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.utils.authz import require_customer
@@ -10,6 +11,7 @@ from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
 from app.partner import get_partner_adapter
 from app.services.wallet_partner_service import (
+    create_wallet_pix_payment as create_partner_pix_payment,
     get_wallet_balance as get_partner_wallet_balance,
     get_wallet_statement as get_partner_wallet_statement,
 )
@@ -620,6 +622,113 @@ def get_wallet_onboarding_status(
     ou receber Pix. Em modo demo, tudo permanece bloqueado.
     """
     return _onboarding_status_payload(current_user)
+
+
+
+
+class WalletPixSandboxPaymentIn(BaseModel):
+    amount: Decimal
+    description: str = "PIX sandbox Aurea Gold"
+    external_id: str | None = None
+
+
+@router.post("/api/v1/wallet/pix/sandbox-payment")
+def create_wallet_pix_sandbox_payment(
+    payload: WalletPixSandboxPaymentIn,
+    current_user: User = Depends(require_customer),
+):
+    """
+    Cria cobrança PIX sandbox de entrada.
+
+    Segurança:
+    - Não movimenta dinheiro real.
+    - Não credita saldo real.
+    - Não gera comprovante financeiro real.
+    - Só funciona quando o adapter ativo for sandbox.
+    """
+    amount = Decimal(payload.amount or Decimal("0.00"))
+
+    if amount <= Decimal("0.00"):
+        raise HTTPException(
+            status_code=422,
+            detail="Valor da cobrança sandbox deve ser maior que zero.",
+        )
+
+    if amount > Decimal("5000.00"):
+        raise HTTPException(
+            status_code=422,
+            detail="Valor da cobrança sandbox excede o limite técnico de simulação.",
+        )
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Adapter financeiro indisponível para sandbox: {exc}",
+        ) from exc
+
+    if provider != "sandbox":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "PIX sandbox exige WALLET_MODE=partner e "
+                "WALLET_PARTNER_PROVIDER=sandbox. Nenhuma cobrança real foi criada."
+            ),
+        )
+
+    now = datetime.now(timezone.utc)
+    external_id = (
+        _safe_receipt_part(payload.external_id)
+        if payload.external_id
+        else f"sandbox-payment-{getattr(current_user, 'id', 'user')}-{int(now.timestamp())}"
+    )
+
+    payment = create_partner_pix_payment(
+        user_id=getattr(current_user, "id", None),
+        amount=amount,
+        description=payload.description or "PIX sandbox Aurea Gold",
+        external_id=external_id,
+    )
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "payment": {
+            "provider": payment.provider,
+            "provider_reference": payment.provider_reference,
+            "status": payment.status,
+            "amount": _decimal_as_money(payment.amount),
+            "currency": "BRL",
+            "description": payload.description or "PIX sandbox Aurea Gold",
+            "qr_code": payment.qr_code,
+            "copy_paste": payment.copy_paste,
+            "created_at": now.isoformat(),
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": "sandbox",
+            "real_money_enabled": False,
+        },
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "notice": "Cobrança PIX sandbox criada apenas para simulação técnica. Não representa pagamento real.",
+        "limitations": [
+            "Não movimenta dinheiro real.",
+            "Não altera saldo real da carteira.",
+            "Não gera comprovante financeiro real.",
+            "Não dispensa homologação com parceiro financeiro/PSP/BaaS.",
+        ],
+        "next_steps": [
+            "Implementar webhook sandbox.",
+            "Validar idempotência da cobrança.",
+            "Simular confirmação sem creditar saldo real.",
+            "Preparar reconciliação sandbox antes de qualquer Pix real.",
+        ],
+    }
 
 
 @router.get("/api/v1/wallet/balance")
