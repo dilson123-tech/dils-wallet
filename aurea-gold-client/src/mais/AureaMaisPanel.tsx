@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -36,6 +36,9 @@ export default function AureaMaisPanel() {
   const [walletOnboarding, setWalletOnboarding] = useState<WalletOnboardingStatus | null>(null);
   const [walletOnboardingLoading, setWalletOnboardingLoading] = useState(true);
   const [walletOnboardingError, setWalletOnboardingError] = useState<string | null>(null);
+  const [pixSandboxPayment, setPixSandboxPayment] = useState<WalletPixSandboxPayment | null>(null);
+  const [pixSandboxPaymentLoading, setPixSandboxPaymentLoading] = useState(false);
+  const [pixSandboxPaymentError, setPixSandboxPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -239,6 +242,32 @@ export default function AureaMaisPanel() {
   const onboardingCanOperateLabel = walletOnboarding?.onboarding.can_start_real_operations ? "Liberada" : "Bloqueada";
   const onboardingCanSendPixLabel = walletOnboarding?.onboarding.can_send_pix ? "Ativado" : "Desativado";
   const onboardingCanReceivePixLabel = walletOnboarding?.onboarding.can_receive_pix ? "Ativado" : "Desativado";
+  const pixSandboxPaymentStatusLabel =
+    pixSandboxPayment?.payment.status === "pending"
+      ? "Pendente sandbox"
+      : pixSandboxPayment?.payment.status || "Não gerada";
+
+  async function handleCreatePixSandboxPayment() {
+    setPixSandboxPaymentLoading(true);
+    setPixSandboxPaymentError(null);
+
+    try {
+      const data = await createWalletPixSandboxPayment({
+        amount: "10.00",
+        description: "Cobrança sandbox Aurea Gold",
+        external_id: "aurea-ui-sandbox-payment",
+      });
+      setPixSandboxPayment(data);
+    } catch (error) {
+      setPixSandboxPaymentError(
+        error instanceof Error
+          ? error.message
+          : "Falha ao gerar cobrança PIX sandbox."
+      );
+    } finally {
+      setPixSandboxPaymentLoading(false);
+    }
+  }
 
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
@@ -776,6 +805,86 @@ export default function AureaMaisPanel() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Próximo passo</div>
               <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
                 {walletOnboarding.next_steps?.[0] || "Conectar parceiro financeiro e validar KYC/KYB."}
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          PIX sandbox
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              Cobrança simulada de entrada
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Gera uma cobrança PIX apenas em sandbox técnico. Não movimenta dinheiro real, não altera saldo e não emite comprovante financeiro real.
+            </p>
+          </div>
+
+          <span className="inline-flex w-fit rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">
+            Dinheiro real desativado
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Valor de teste</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">R$ 10,00</div>
+          </div>
+
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Status</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{pixSandboxPaymentStatusLabel}</div>
+          </div>
+
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Saldo real</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">Não altera</div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleCreatePixSandboxPayment}
+          disabled={pixSandboxPaymentLoading}
+          className="mt-4 inline-flex w-full items-center justify-center rounded-[18px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {pixSandboxPaymentLoading ? "Gerando sandbox..." : "Gerar cobrança sandbox"}
+        </button>
+
+        {pixSandboxPaymentError && (
+          <p className="mt-3 text-sm leading-relaxed text-rose-300">
+            {pixSandboxPaymentError}
+          </p>
+        )}
+
+        {pixSandboxPayment && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Referência sandbox</div>
+                <p className="mt-2 break-words text-sm leading-relaxed text-[#D7D0BE]">
+                  {pixSandboxPayment.payment.provider_reference}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Copia e cola sandbox</div>
+                <p className="mt-2 break-words text-sm leading-relaxed text-[#D7D0BE]">
+                  {pixSandboxPayment.payment.copy_paste || "Não informado"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {pixSandboxPayment.notice}
               </p>
             </div>
           </>
