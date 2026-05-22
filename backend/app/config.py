@@ -15,7 +15,8 @@ _wallet_partner_provider_raw = (
     or "demo"
 )
 WALLET_PARTNER_PROVIDER = _wallet_partner_provider_raw.strip().lower()
-IS_SANDBOX_PARTNER = WALLET_PARTNER_PROVIDER in {"sandbox", "partner-sandbox", "sandbox_partner"}
+_IS_SANDBOX_PROVIDER = WALLET_PARTNER_PROVIDER in {"sandbox", "partner-sandbox", "sandbox_partner"}
+IS_SANDBOX_PARTNER = WALLET_MODE == "partner" and _IS_SANDBOX_PROVIDER
 
 IS_DEMO_WALLET = WALLET_MODE == "demo"
 IS_PARTNER_WALLET = WALLET_MODE == "partner" and not IS_SANDBOX_PARTNER
