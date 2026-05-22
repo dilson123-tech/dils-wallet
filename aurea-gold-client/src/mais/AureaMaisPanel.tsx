@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -33,6 +33,9 @@ export default function AureaMaisPanel() {
   const [operationalLimits, setOperationalLimits] = useState<WalletOperationalLimits | null>(null);
   const [operationalLimitsLoading, setOperationalLimitsLoading] = useState(true);
   const [operationalLimitsError, setOperationalLimitsError] = useState<string | null>(null);
+  const [walletOnboarding, setWalletOnboarding] = useState<WalletOnboardingStatus | null>(null);
+  const [walletOnboardingLoading, setWalletOnboardingLoading] = useState(true);
+  const [walletOnboardingError, setWalletOnboardingError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -112,6 +115,21 @@ export default function AureaMaisPanel() {
         setOperationalLimitsLoading(false);
       });
 
+    fetchWalletOnboardingStatus()
+      .then((data) => {
+        if (!alive) return;
+        setWalletOnboarding(data);
+        setWalletOnboardingError(null);
+      })
+      .catch((error) => {
+        if (!alive) return;
+        setWalletOnboardingError(error instanceof Error ? error.message : "Falha ao carregar onboarding da carteira.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setWalletOnboardingLoading(false);
+      });
+
     return () => {
       alive = false;
     };
@@ -188,6 +206,39 @@ export default function AureaMaisPanel() {
   const canSendPixLabel = operationalLimits?.permissions.can_send_pix ? "Ativado" : "Desativado";
   const canReceivePixLabel = operationalLimits?.permissions.can_receive_pix ? "Ativado" : "Desativado";
   const confirmationLabel = operationalLimits?.permissions.requires_confirmation ? "Obrigatória" : "Não exigida";
+  const onboardingWallet = walletOnboarding?.wallet;
+  const onboardingRealMoneyLabel = onboardingWallet?.real_money_enabled
+    ? "Dinheiro real ativo"
+    : "Dinheiro real desativado";
+  const onboardingStatusText: Record<string, string> = {
+    not_started: "Não iniciado",
+    pending: "Pendente",
+    in_review: "Em análise",
+    approved: "Aprovado",
+    rejected: "Recusado",
+    not_required: "Não exigido",
+  };
+  const onboardingCustomerTypeLabel =
+    walletOnboarding?.onboarding.customer_type === "pf"
+      ? "Pessoa física"
+      : walletOnboarding?.onboarding.customer_type === "pj"
+      ? "Pessoa jurídica"
+      : "Não definido";
+  const onboardingStatusLabel =
+    onboardingStatusText[walletOnboarding?.onboarding.status || ""] ||
+    walletOnboarding?.onboarding.status ||
+    "Não informado";
+  const onboardingKycLabel =
+    onboardingStatusText[walletOnboarding?.onboarding.kyc_status || ""] ||
+    walletOnboarding?.onboarding.kyc_status ||
+    "Não informado";
+  const onboardingKybLabel =
+    onboardingStatusText[walletOnboarding?.onboarding.kyb_status || ""] ||
+    walletOnboarding?.onboarding.kyb_status ||
+    "Não informado";
+  const onboardingCanOperateLabel = walletOnboarding?.onboarding.can_start_real_operations ? "Liberada" : "Bloqueada";
+  const onboardingCanSendPixLabel = walletOnboarding?.onboarding.can_send_pix ? "Ativado" : "Desativado";
+  const onboardingCanReceivePixLabel = walletOnboarding?.onboarding.can_receive_pix ? "Ativado" : "Desativado";
 
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
@@ -623,6 +674,108 @@ export default function AureaMaisPanel() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Motivo</div>
               <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
                 {operationalLimits.reason}
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          Onboarding e verificação
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              KYC/KYB antes da carteira real
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Base de aprovação cadastral da wallet. A operação real só deve ser liberada quando o parceiro financeiro validar cliente, documentos e regras de compliance.
+            </p>
+          </div>
+
+          <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            onboardingWallet?.real_money_enabled
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-500/20 bg-amber-500/10 text-amber-200"
+          }`}>
+            {onboardingRealMoneyLabel}
+          </span>
+        </div>
+
+        {walletOnboardingLoading && (
+          <p className="mt-4 text-sm text-[#B8AD95]">
+            Carregando onboarding da carteira...
+          </p>
+        )}
+
+        {walletOnboardingError && (
+          <p className="mt-4 text-sm text-rose-300">
+            Não foi possível carregar o onboarding agora.
+          </p>
+        )}
+
+        {walletOnboarding && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Tipo de cliente</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{onboardingCustomerTypeLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Onboarding</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{onboardingStatusLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Operação real</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{onboardingCanOperateLabel}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">KYC</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  {onboardingKycLabel}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">KYB</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  {onboardingKybLabel}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Enviar PIX</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  {onboardingCanSendPixLabel}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Receber PIX</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  {onboardingCanReceivePixLabel}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Motivo</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {walletOnboarding.reason}
+              </p>
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Próximo passo</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {walletOnboarding.next_steps?.[0] || "Conectar parceiro financeiro e validar KYC/KYB."}
               </p>
             </div>
           </>

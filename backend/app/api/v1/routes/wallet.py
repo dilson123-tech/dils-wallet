@@ -483,6 +483,145 @@ def get_wallet_operational_limits(
     }
 
 
+
+
+def _onboarding_status_payload(current_user: User) -> dict:
+    """
+    Status de onboarding/KYC/KYB da wallet.
+
+    Esta fundação não aprova cliente, não libera Pix e não movimenta dinheiro.
+    Ela prepara o contrato de governança necessário antes de qualquer operação
+    real via parceiro financeiro/PSP/BaaS.
+    """
+    wallet_mode = _wallet_mode_label()
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+        adapter_ready = True
+        adapter_error = None
+    except Exception as exc:
+        provider = "not_configured"
+        adapter_ready = False
+        adapter_error = str(exc)
+
+    real_money_enabled = bool(IS_PARTNER_WALLET and adapter_ready)
+
+    raw_user_type = (
+        getattr(current_user, "type", None)
+        or getattr(current_user, "account_type", None)
+        or getattr(current_user, "role", None)
+        or ""
+    )
+    normalized_user_type = str(raw_user_type).lower()
+
+    if normalized_user_type in {"pj", "business", "company", "merchant", "juridica", "juridical"}:
+        customer_type = "pj"
+    elif normalized_user_type in {"pf", "customer", "client", "fisica", "individual"}:
+        customer_type = "pf"
+    else:
+        customer_type = "unknown"
+
+    if real_money_enabled:
+        onboarding = {
+            "customer_type": customer_type,
+            "status": "pending",
+            "kyc_status": "pending",
+            "kyb_status": "pending" if customer_type in {"pj", "unknown"} else "not_required",
+            "required_documents": [
+                "Documento de identificação do titular",
+                "Comprovante de endereço",
+                "Telefone/e-mail verificados",
+            ] + (
+                [
+                    "Contrato social/cartão CNPJ",
+                    "Dados dos representantes legais",
+                ]
+                if customer_type in {"pj", "unknown"}
+                else []
+            ),
+            "missing_fields": [
+                "Dados cadastrais validados pelo parceiro financeiro",
+                "Documentos aprovados pelo parceiro financeiro",
+                "Resultado final de KYC/KYB",
+            ],
+            "can_start_real_operations": False,
+            "can_send_pix": False,
+            "can_receive_pix": False,
+        }
+        reason = "Parceiro financeiro configurado, mas KYC/KYB ainda precisa ser validado antes da operação real."
+        limitations = [
+            "KYC/KYB depende da análise e aprovação do parceiro financeiro.",
+            "Pix real permanece bloqueado até onboarding aprovado.",
+            "Limites operacionais só devem ser liberados após validação cadastral.",
+        ]
+        next_steps = [
+            "Criar fluxo de envio/coleta de dados cadastrais.",
+            "Conectar adapter sandbox do parceiro financeiro.",
+            "Validar retorno de aprovação, pendência ou recusa.",
+            "Persistir status de onboarding por cliente.",
+        ]
+    else:
+        onboarding = {
+            "customer_type": customer_type,
+            "status": "not_started",
+            "kyc_status": "not_started",
+            "kyb_status": "not_started",
+            "required_documents": [],
+            "missing_fields": [
+                "Parceiro financeiro/PSP/BaaS não configurado.",
+                "Fluxo real de KYC/KYB ainda não iniciado.",
+            ],
+            "can_start_real_operations": False,
+            "can_send_pix": False,
+            "can_receive_pix": False,
+        }
+        reason = "Modo demonstração: KYC/KYB real depende de parceiro financeiro homologado."
+        limitations = [
+            "Modo demonstração não aprova cliente para operação financeira real.",
+            "Enviar e receber Pix real continuam desativados.",
+            "Aurea Gold ainda depende de parceiro financeiro para KYC/KYB, conta transacional e compliance.",
+        ]
+        next_steps = [
+            "Selecionar parceiro financeiro/PSP/BaaS.",
+            "Implementar adapter sandbox.",
+            "Criar fluxo de onboarding com KYC/KYB.",
+            "Validar aprovação antes de liberar Pix real.",
+        ]
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "wallet": {
+            "mode": wallet_mode,
+            "provider": provider,
+            "source": "partner" if real_money_enabled else "demo",
+            "adapter_ready": adapter_ready,
+            "adapter_error": adapter_error,
+            "real_money_enabled": real_money_enabled,
+        },
+        "onboarding": onboarding,
+        "reason": reason,
+        "limitations": limitations,
+        "next_steps": next_steps,
+    }
+
+
+@router.get("/api/v1/wallet/onboarding-status")
+def get_wallet_onboarding_status(
+    current_user: User = Depends(require_customer),
+):
+    """
+    Status estruturado de onboarding/KYC/KYB da wallet.
+
+    Fase 6 da preparação da carteira real:
+    deixa explícito se o cliente pode iniciar operação real, enviar Pix
+    ou receber Pix. Em modo demo, tudo permanece bloqueado.
+    """
+    return _onboarding_status_payload(current_user)
+
+
 @router.get("/api/v1/wallet/balance")
 def get_balance(current_user: User = Depends(require_customer),
                 db: Session = Depends(get_db)):
