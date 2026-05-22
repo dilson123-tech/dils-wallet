@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, fetchWalletPixSandboxReconciliation, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment, type WalletPixSandboxReconciliation } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -39,6 +39,10 @@ export default function AureaMaisPanel() {
   const [pixSandboxPayment, setPixSandboxPayment] = useState<WalletPixSandboxPayment | null>(null);
   const [pixSandboxPaymentLoading, setPixSandboxPaymentLoading] = useState(false);
   const [pixSandboxPaymentError, setPixSandboxPaymentError] = useState<string | null>(null);
+  const [sandboxReconciliationReference, setSandboxReconciliationReference] = useState("aurea-ui-sandbox-payment");
+  const [sandboxReconciliation, setSandboxReconciliation] = useState<WalletPixSandboxReconciliation | null>(null);
+  const [sandboxReconciliationLoading, setSandboxReconciliationLoading] = useState(false);
+  const [sandboxReconciliationError, setSandboxReconciliationError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -246,6 +250,25 @@ export default function AureaMaisPanel() {
     pixSandboxPayment?.payment.status === "pending"
       ? "Pendente sandbox"
       : pixSandboxPayment?.payment.status || "Não gerada";
+  const sandboxReconciliationStatusText: Record<string, string> = {
+    confirmed: "Confirmado sandbox",
+    pending: "Pendente sandbox",
+    processing: "Processando sandbox",
+    rejected: "Recusado sandbox",
+    failed: "Falhou sandbox",
+    canceled: "Cancelado sandbox",
+    not_found: "Não encontrado",
+  };
+  const sandboxReconciliationStatusLabel =
+    sandboxReconciliationStatusText[sandboxReconciliation?.reconciliation.status || ""] ||
+    sandboxReconciliation?.reconciliation.status ||
+    "Não consultado";
+  const sandboxReconciliationEventLabel = sandboxReconciliation?.reconciliation.event_found
+    ? "Evento localizado"
+    : "Aguardando webhook";
+  const sandboxReconciliationRealMoneyLabel = sandboxReconciliation?.wallet.real_money_enabled
+    ? "Dinheiro real ativo"
+    : "Dinheiro real desativado";
 
   async function handleCreatePixSandboxPayment() {
     setPixSandboxPaymentLoading(true);
@@ -258,6 +281,7 @@ export default function AureaMaisPanel() {
         external_id: "aurea-ui-sandbox-payment",
       });
       setPixSandboxPayment(data);
+      setSandboxReconciliationReference(data.payment.provider_reference || "aurea-ui-sandbox-payment");
     } catch (error) {
       setPixSandboxPaymentError(
         error instanceof Error
@@ -266,6 +290,31 @@ export default function AureaMaisPanel() {
       );
     } finally {
       setPixSandboxPaymentLoading(false);
+    }
+  }
+
+  async function handleFetchSandboxReconciliation() {
+    const reference = sandboxReconciliationReference.trim();
+
+    if (!reference) {
+      setSandboxReconciliationError("Informe uma referência sandbox para consultar.");
+      return;
+    }
+
+    setSandboxReconciliationLoading(true);
+    setSandboxReconciliationError(null);
+
+    try {
+      const data = await fetchWalletPixSandboxReconciliation(reference);
+      setSandboxReconciliation(data);
+    } catch (error) {
+      setSandboxReconciliationError(
+        error instanceof Error
+          ? error.message
+          : "Falha ao consultar reconciliação sandbox."
+      );
+    } finally {
+      setSandboxReconciliationLoading(false);
     }
   }
 
@@ -885,6 +934,96 @@ export default function AureaMaisPanel() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
               <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
                 {pixSandboxPayment.notice}
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          Reconciliação sandbox
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              Consulta por referência
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Consulta o evento sandbox processado para uma provider_reference. Não credita saldo, não confirma pagamento real e não gera comprovante financeiro real.
+            </p>
+          </div>
+
+          <span className="inline-flex w-fit rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">
+            {sandboxReconciliationRealMoneyLabel}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            value={sandboxReconciliationReference}
+            onChange={(event) => setSandboxReconciliationReference(event.target.value)}
+            placeholder="provider_reference sandbox"
+            className="w-full rounded-[18px] border border-amber-500/14 bg-[rgba(12,30,42,0.88)] px-4 py-3 text-sm text-[#f4f8ff] outline-none placeholder:text-[#8f846f]"
+          />
+
+          <button
+            type="button"
+            onClick={handleFetchSandboxReconciliation}
+            disabled={sandboxReconciliationLoading}
+            className="inline-flex w-full items-center justify-center rounded-[18px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            {sandboxReconciliationLoading ? "Consultando..." : "Consultar reconciliação"}
+          </button>
+        </div>
+
+        {sandboxReconciliationError && (
+          <p className="mt-3 text-sm leading-relaxed text-rose-300">
+            {sandboxReconciliationError}
+          </p>
+        )}
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Status</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{sandboxReconciliationStatusLabel}</div>
+          </div>
+
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Evento</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{sandboxReconciliationEventLabel}</div>
+          </div>
+
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Saldo real</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">Não altera</div>
+          </div>
+        </div>
+
+        {sandboxReconciliation && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Referência</div>
+                <p className="mt-2 break-words text-sm leading-relaxed text-[#D7D0BE]">
+                  {sandboxReconciliation.reconciliation.provider_reference}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Reconciliação</div>
+                <p className="mt-2 break-words text-sm leading-relaxed text-[#D7D0BE]">
+                  {sandboxReconciliation.reconciliation.reconciliation_status}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {sandboxReconciliation.notice}
               </p>
             </div>
           </>
