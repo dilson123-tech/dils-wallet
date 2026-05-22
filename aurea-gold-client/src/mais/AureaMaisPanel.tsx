@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -30,6 +30,9 @@ export default function AureaMaisPanel() {
   const [receiptReconciliation, setReceiptReconciliation] = useState<WalletReceiptReconciliation | null>(null);
   const [receiptReconciliationLoading, setReceiptReconciliationLoading] = useState(true);
   const [receiptReconciliationError, setReceiptReconciliationError] = useState<string | null>(null);
+  const [operationalLimits, setOperationalLimits] = useState<WalletOperationalLimits | null>(null);
+  const [operationalLimitsLoading, setOperationalLimitsLoading] = useState(true);
+  const [operationalLimitsError, setOperationalLimitsError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -92,6 +95,21 @@ export default function AureaMaisPanel() {
       .finally(() => {
         if (!alive) return;
         setReceiptReconciliationLoading(false);
+      });
+
+    fetchWalletOperationalLimits()
+      .then((data) => {
+        if (!alive) return;
+        setOperationalLimits(data);
+        setOperationalLimitsError(null);
+      })
+      .catch((error) => {
+        if (!alive) return;
+        setOperationalLimitsError(error instanceof Error ? error.message : "Falha ao carregar limites operacionais.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setOperationalLimitsLoading(false);
       });
 
     return () => {
@@ -163,6 +181,13 @@ export default function AureaMaisPanel() {
     receiptReconciliation?.receipt.reconciliation_status === "not_applicable_demo"
       ? "Não aplicável em demo"
       : receiptReconciliation?.receipt.reconciliation_status || "Não informado";
+  const operationalWallet = operationalLimits?.wallet;
+  const operationalRealMoneyLabel = operationalWallet?.real_money_enabled
+    ? "Dinheiro real ativo"
+    : "Dinheiro real desativado";
+  const canSendPixLabel = operationalLimits?.permissions.can_send_pix ? "Ativado" : "Desativado";
+  const canReceivePixLabel = operationalLimits?.permissions.can_receive_pix ? "Ativado" : "Desativado";
+  const confirmationLabel = operationalLimits?.permissions.requires_confirmation ? "Obrigatória" : "Não exigida";
 
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
@@ -510,6 +535,94 @@ export default function AureaMaisPanel() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
               <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
                 {receiptReconciliation.notice}
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          Limites e segurança operacional
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              Controle antes do PIX real
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Base de permissões, limites e confirmação sensível antes de qualquer operação financeira real via parceiro.
+            </p>
+          </div>
+
+          <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            operationalWallet?.real_money_enabled
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-500/20 bg-amber-500/10 text-amber-200"
+          }`}>
+            {operationalRealMoneyLabel}
+          </span>
+        </div>
+
+        {operationalLimitsLoading && (
+          <p className="mt-4 text-sm text-[#B8AD95]">
+            Carregando limites operacionais...
+          </p>
+        )}
+
+        {operationalLimitsError && (
+          <p className="mt-4 text-sm text-rose-300">
+            Não foi possível carregar os limites operacionais agora.
+          </p>
+        )}
+
+        {operationalLimits && (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Enviar PIX</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{canSendPixLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Receber PIX</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{canReceivePixLabel}</div>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Confirmação</div>
+                <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{confirmationLabel}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Por transação</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  R$ {operationalLimits.limits.per_transaction_limit.replace(".", ",")}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Diário</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  R$ {operationalLimits.limits.daily_limit.replace(".", ",")}
+                </p>
+              </div>
+
+              <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Mensal</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                  R$ {operationalLimits.limits.monthly_limit.replace(".", ",")}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Motivo</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {operationalLimits.reason}
               </p>
             </div>
           </>

@@ -202,6 +202,45 @@ export function fetchWalletReceiptReconciliation(providerReference = "demo-ui-pr
   );
 }
 
+export type WalletOperationalLimits = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    adapter_ready: boolean;
+    adapter_error?: string | null;
+    real_money_enabled: boolean;
+  };
+  permissions: {
+    can_send_pix: boolean;
+    can_receive_pix: boolean;
+    requires_confirmation: boolean;
+  };
+  limits: {
+    per_transaction_limit: string;
+    daily_limit: string;
+    monthly_limit: string;
+    currency: string;
+  };
+  security: {
+    sensitive_action_confirmation_required: boolean;
+    kyc_required: boolean;
+    kyb_required_for_business: boolean;
+    audit_required: boolean;
+    reconciliation_required: boolean;
+  };
+  reason: string;
+  limitations: string[];
+  next_steps: string[];
+};
+
+export function fetchWalletOperationalLimits(): Promise<WalletOperationalLimits> {
+  return apiGet<WalletOperationalLimits>("/api/v1/wallet/operational-limits");
+}
+
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
 export function fetchPixBalance(): Promise<PixBalancePayload> {
   return apiGet<PixBalancePayload>("/api/v1/pix/balance?days=7");
