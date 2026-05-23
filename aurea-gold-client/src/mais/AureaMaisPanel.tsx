@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, fetchWalletPixSandboxReconciliation, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment, type WalletPixSandboxReconciliation } from "../super2/api";
+import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, fetchWalletPixSandboxReconciliation, fetchWalletPixSandboxAuditHistory, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment, type WalletPixSandboxReconciliation, type WalletPixSandboxAuditHistory } from "../super2/api";
 
 const sugestoes = [
   "Recarga de celular",
@@ -43,6 +43,9 @@ export default function AureaMaisPanel() {
   const [sandboxReconciliation, setSandboxReconciliation] = useState<WalletPixSandboxReconciliation | null>(null);
   const [sandboxReconciliationLoading, setSandboxReconciliationLoading] = useState(false);
   const [sandboxReconciliationError, setSandboxReconciliationError] = useState<string | null>(null);
+  const [sandboxAuditHistory, setSandboxAuditHistory] = useState<WalletPixSandboxAuditHistory | null>(null);
+  const [sandboxAuditHistoryLoading, setSandboxAuditHistoryLoading] = useState(false);
+  const [sandboxAuditHistoryError, setSandboxAuditHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -269,6 +272,13 @@ export default function AureaMaisPanel() {
   const sandboxReconciliationRealMoneyLabel = sandboxReconciliation?.wallet.real_money_enabled
     ? "Dinheiro real ativo"
     : "Dinheiro real desativado";
+  const sandboxAuditHistoryRealMoneyLabel = sandboxAuditHistory?.wallet.real_money_enabled
+    ? "Dinheiro real ativo"
+    : "Dinheiro real desativado";
+  const sandboxAuditHistoryTotalLabel =
+    sandboxAuditHistory?.history.total_returned ?? 0;
+  const sandboxAuditHistoryStatusLabel =
+    sandboxAuditHistoryTotalLabel > 0 ? "Eventos registrados" : "Sem eventos";
 
   async function handleCreatePixSandboxPayment() {
     setPixSandboxPaymentLoading(true);
@@ -307,6 +317,7 @@ export default function AureaMaisPanel() {
     try {
       const data = await fetchWalletPixSandboxReconciliation(reference);
       setSandboxReconciliation(data);
+      void handleFetchSandboxAuditHistory();
     } catch (error) {
       setSandboxReconciliationError(
         error instanceof Error
@@ -315,6 +326,24 @@ export default function AureaMaisPanel() {
       );
     } finally {
       setSandboxReconciliationLoading(false);
+    }
+  }
+
+  async function handleFetchSandboxAuditHistory() {
+    setSandboxAuditHistoryLoading(true);
+    setSandboxAuditHistoryError(null);
+
+    try {
+      const data = await fetchWalletPixSandboxAuditHistory(10);
+      setSandboxAuditHistory(data);
+    } catch (error) {
+      setSandboxAuditHistoryError(
+        error instanceof Error
+          ? error.message
+          : "Falha ao carregar histórico sandbox."
+      );
+    } finally {
+      setSandboxAuditHistoryLoading(false);
     }
   }
 
@@ -1024,6 +1053,105 @@ export default function AureaMaisPanel() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
               <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
                 {sandboxReconciliation.notice}
+              </p>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          Auditoria sandbox
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#f4f8ff]">
+              Últimos eventos técnicos
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+              Lista os últimos eventos PIX sandbox registrados para auditoria técnica. Não representa movimentação financeira real.
+            </p>
+          </div>
+
+          <span className="inline-flex w-fit rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">
+            {sandboxAuditHistoryRealMoneyLabel}
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Status</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{sandboxAuditHistoryStatusLabel}</div>
+          </div>
+
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Total exibido</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">{sandboxAuditHistoryTotalLabel}</div>
+          </div>
+
+          <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Saldo real</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">Não altera</div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleFetchSandboxAuditHistory}
+          disabled={sandboxAuditHistoryLoading}
+          className="mt-4 inline-flex w-full items-center justify-center rounded-[18px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {sandboxAuditHistoryLoading ? "Carregando..." : "Atualizar histórico sandbox"}
+        </button>
+
+        {sandboxAuditHistoryError && (
+          <p className="mt-3 text-sm leading-relaxed text-rose-300">
+            {sandboxAuditHistoryError}
+          </p>
+        )}
+
+        {sandboxAuditHistory && (
+          <>
+            <div className="mt-4 space-y-3">
+              {sandboxAuditHistory.items.length === 0 ? (
+                <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3 text-sm text-[#D7D0BE]" style={{ padding: "14px 16px" }}>
+                  Nenhum evento sandbox registrado ainda.
+                </div>
+              ) : (
+                sandboxAuditHistory.items.slice(0, 5).map((item) => (
+                  <article
+                    key={`${item.provider_reference}-${item.received_at || item.idempotency?.key || item.status}`}
+                    className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3"
+                    style={{ padding: "14px 16px" }}
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">
+                          {item.status || "unknown"}
+                        </div>
+                        <p className="mt-1 break-words text-sm font-semibold text-[#f4f8ff]">
+                          {item.provider_reference}
+                        </p>
+                      </div>
+
+                      <span className="inline-flex w-fit rounded-full border border-amber-500/16 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-100">
+                        {item.reconciliation_status}
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-xs leading-relaxed text-[#B8AD95]">
+                      Valor: {item.amount || "não informado"} • Evento: {item.event_type || "não informado"} • Recebido: {item.received_at || "não informado"}
+                    </p>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <div className="mt-3 rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.56)] px-4 py-3" style={{ padding: "14px 16px" }}>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[#D4AF37]">Aviso</div>
+              <p className="mt-2 text-sm leading-relaxed text-[#D7D0BE]">
+                {sandboxAuditHistory.notice}
               </p>
             </div>
           </>

@@ -357,6 +357,62 @@ export function fetchWalletPixSandboxReconciliation(
   );
 }
 
+export type WalletPixSandboxAuditHistoryItem = {
+  provider: string;
+  provider_reference: string;
+  event_type?: string | null;
+  status: string;
+  amount?: string | null;
+  received_at?: string | null;
+  audit_status: string;
+  reconciliation_status: string;
+  real_money_enabled: boolean;
+  idempotency?: {
+    key: string;
+    request_hash?: string | null;
+    status_code?: number | null;
+    stored_at?: string | null;
+  };
+  can_credit_balance: boolean;
+  can_generate_real_receipt: boolean;
+  can_mark_real_paid: boolean;
+};
+
+export type WalletPixSandboxAuditHistory = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  history: {
+    provider: string;
+    source: string;
+    limit: number;
+    total_returned: number;
+    audit_status: string;
+  };
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    real_money_enabled: boolean;
+  };
+  items: WalletPixSandboxAuditHistoryItem[];
+  can_credit_balance: boolean;
+  can_generate_real_receipt: boolean;
+  can_mark_real_paid: boolean;
+  notice: string;
+  limitations?: string[];
+  next_steps?: string[];
+};
+
+export function fetchWalletPixSandboxAuditHistory(
+  limit = 10
+): Promise<WalletPixSandboxAuditHistory> {
+  return apiGet<WalletPixSandboxAuditHistory>(
+    `/api/v1/wallet/pix/sandbox-audit-history?limit=${encodeURIComponent(String(limit))}`
+  );
+}
+
+
 
 
 
