@@ -313,6 +313,51 @@ export function createWalletPixSandboxPayment(
   return apiPost<WalletPixSandboxPayment>("/api/v1/wallet/pix/sandbox-payment", payload);
 }
 
+export type WalletPixSandboxReconciliation = {
+  ok: boolean;
+  service: string;
+  user_id?: number | null;
+  reconciliation: {
+    provider: string;
+    provider_reference: string;
+    status: string;
+    event_found: boolean;
+    audit_status: string;
+    reconciliation_status: string;
+    amount?: string | null;
+    received_at?: string | null;
+    event_type?: string | null;
+  };
+  wallet: {
+    mode: "demo" | "partner" | string;
+    provider: string;
+    source: string;
+    real_money_enabled: boolean;
+  };
+  webhook?: Record<string, unknown>;
+  idempotency?: {
+    key: string;
+    request_hash?: string | null;
+    status_code?: number | null;
+    stored_at?: string | null;
+  };
+  can_credit_balance: boolean;
+  can_generate_real_receipt: boolean;
+  can_mark_real_paid: boolean;
+  notice: string;
+  limitations?: string[];
+  next_steps?: string[];
+};
+
+export function fetchWalletPixSandboxReconciliation(
+  providerReference: string
+): Promise<WalletPixSandboxReconciliation> {
+  return apiGet<WalletPixSandboxReconciliation>(
+    `/api/v1/wallet/pix/sandbox-reconciliation/${encodeURIComponent(providerReference)}`
+  );
+}
+
+
 
 
 // 🔹 usado pelo painel Super2 (gráfico + saldos)
