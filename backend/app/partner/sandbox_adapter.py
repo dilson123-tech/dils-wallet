@@ -35,7 +35,7 @@ class SandboxPartnerAdapter(PartnerAdapter):
             pending=Decimal("0.00"),
             currency="BRL",
             provider=self.provider_name,
-            mode="demo",
+            mode="partner",
             raw={
                 "sandbox": True,
                 "real_money": False,
@@ -84,7 +84,7 @@ class SandboxPartnerAdapter(PartnerAdapter):
             "ok": True,
             "provider": self.provider_name,
             "handled": True,
-            "mode": "demo",
+            "mode": "partner",
             "sandbox": True,
             "real_money": False,
             "event_type": event.event_type,
