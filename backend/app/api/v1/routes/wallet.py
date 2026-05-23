@@ -1116,6 +1116,145 @@ def get_wallet_pix_sandbox_reconciliation(
     }
 
 
+
+
+def _list_sandbox_webhook_events(
+    db: Session,
+    limit: int = 20,
+) -> list[dict]:
+    """
+    Lista eventos sandbox registrados pela idempotência.
+
+    Fase 12: histórico/auditoria sandbox sem nova tabela.
+    Não consulta PSP real, não credita saldo e não emite comprovante real.
+    """
+    safe_limit = max(1, min(int(limit or 20), 100))
+
+    rows = (
+        db.query(IdempotencyKey)
+        .filter(IdempotencyKey.key.like("wallet-sandbox-webhook:%"))
+        .order_by(IdempotencyKey.created_at.desc())
+        .limit(safe_limit)
+        .all()
+    )
+
+    items: list[dict] = []
+
+    for row in rows:
+        raw_response = getattr(row, "response_json", None)
+        if not raw_response:
+            continue
+
+        try:
+            response = json.loads(raw_response)
+        except Exception:
+            continue
+
+        event = response.get("event") or {}
+        wallet_payload = response.get("wallet") or {}
+
+        provider_reference = str(event.get("provider_reference") or "").strip()
+        if not provider_reference:
+            continue
+
+        items.append({
+            "provider": "sandbox",
+            "provider_reference": provider_reference,
+            "event_type": event.get("event_type"),
+            "status": event.get("status") or "unknown",
+            "amount": event.get("amount"),
+            "received_at": event.get("received_at"),
+            "audit_status": "sandbox_event_recorded",
+            "reconciliation_status": "sandbox_reconciled",
+            "real_money_enabled": bool(wallet_payload.get("real_money_enabled", False)),
+            "idempotency": {
+                "key": row.key,
+                "request_hash": row.request_hash,
+                "status_code": row.status_code,
+                "stored_at": row.created_at.isoformat() if row.created_at else None,
+            },
+            "can_credit_balance": False,
+            "can_generate_real_receipt": False,
+            "can_mark_real_paid": False,
+        })
+
+    return items
+
+
+@router.get("/api/v1/wallet/pix/sandbox-audit-history")
+def get_wallet_pix_sandbox_audit_history(
+    limit: int = 20,
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+):
+    """
+    Lista histórico/auditoria de eventos PIX sandbox.
+
+    Segurança:
+    - Não consulta transação real.
+    - Não credita saldo real.
+    - Não gera comprovante financeiro real.
+    - Não marca pagamento real como confirmado.
+    - Usa somente eventos sandbox já registrados por webhook/idempotência.
+    """
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Adapter financeiro indisponível para histórico sandbox: {exc}",
+        ) from exc
+
+    if provider != "sandbox":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Histórico sandbox exige WALLET_MODE=partner e "
+                "WALLET_PARTNER_PROVIDER=sandbox. Nenhuma transação real foi consultada."
+            ),
+        )
+
+    safe_limit = max(1, min(int(limit or 20), 100))
+    items = _list_sandbox_webhook_events(db, safe_limit)
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "history": {
+            "provider": "sandbox",
+            "source": "idempotency_keys",
+            "limit": safe_limit,
+            "total_returned": len(items),
+            "audit_status": "sandbox_events_listed",
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": "sandbox",
+            "real_money_enabled": False,
+        },
+        "items": items,
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "can_mark_real_paid": False,
+        "notice": "Histórico sandbox listado apenas para auditoria técnica. Não representa movimentação financeira real.",
+        "limitations": [
+            "Não credita saldo real.",
+            "Não confirma pagamento real em parceiro financeiro.",
+            "Não gera comprovante financeiro real.",
+            "Não substitui histórico oficial de PSP/BaaS homologado.",
+        ],
+        "next_steps": [
+            "Exibir últimos eventos sandbox no painel Mais.",
+            "Persistir eventos em tabela própria de auditoria em fase futura.",
+            "Adicionar filtros por status e provider_reference.",
+            "Integrar histórico real somente após parceiro financeiro homologado.",
+        ],
+    }
+
+
 @router.get("/api/v1/wallet/balance")
 def get_balance(current_user: User = Depends(require_customer),
                 db: Session = Depends(get_db)):
