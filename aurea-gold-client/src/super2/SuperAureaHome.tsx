@@ -471,7 +471,7 @@ async function handleHomeInsight() {
   }
 
 const saldoDisplay =
-    saldoModo === "real" ? formatBRL(saldoReal) : "R$ 12.345,67";
+    saldoModo === "real" ? formatBRL(saldoReal) : "R$ 0,00";
 
   const saldoUpdatedHHMM = saldoUpdatedAt
     ? new Date(saldoUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
@@ -574,46 +574,57 @@ const saldoDisplay =
 
   const currentOpeningLayer = openingLayerMeta[homeOpeningLayer];
 
+  const isDemoWallet = saldoModo !== "real";
+
+  const safeSessionDisplayName =
+    sessionDisplayName && sessionDisplayName !== "customer"
+      ? sessionDisplayName
+      : "Cliente Aurea";
+
   const patrimonioGuardado =
-    forecastPrevisaoFimMes !== null ? Math.max(0, forecastPrevisaoFimMes * 0.22) : 1850;
+    !isDemoWallet && forecastPrevisaoFimMes !== null
+      ? Math.max(0, forecastPrevisaoFimMes * 0.22)
+      : 0;
 
   const patrimonioInvestido =
-    entradasMes !== null ? Math.max(0, entradasMes * 0.18) : 2400;
+    !isDemoWallet && entradasMes !== null ? Math.max(0, entradasMes * 0.18) : 0;
 
   const patrimonioComprometido =
-    saidasMes !== null ? Math.max(0, saidasMes * 0.32) : 1980;
+    !isDemoWallet && saidasMes !== null ? Math.max(0, saidasMes * 0.32) : 0;
 
   const limiteCarteira =
-    entradasMes !== null ? Math.max(0, entradasMes * 0.4) : 3500;
+    !isDemoWallet && entradasMes !== null ? Math.max(0, entradasMes * 0.4) : 0;
 
   const entradasPrevistas =
-    entradasMes !== null ? Math.max(0, entradasMes * 0.12) : 850;
+    !isDemoWallet && entradasMes !== null ? Math.max(0, entradasMes * 0.12) : 0;
 
   const saidasPrevistas =
-    saidasMes !== null ? Math.max(0, saidasMes * 0.08) : 620;
+    !isDemoWallet && saidasMes !== null ? Math.max(0, saidasMes * 0.08) : 0;
 
-  const contasProximas = Math.max(
-    1,
-    Math.min(6, Math.round((saidasMes ?? 6200) / 1550))
-  );
+  const contasProximas =
+    !isDemoWallet && saidasMes !== null
+      ? Math.max(0, Math.min(6, Math.round(saidasMes / 1550)))
+      : 0;
 
-  const riscoCarteiraLabel =
-    forecastNivel === "critico"
-      ? "Risco alto"
-      : forecastNivel === "atencao"
-      ? "Risco moderado"
-      : forecastNivel === "observacao"
-      ? "Sob observação"
-      : "Operação estável";
+  const riscoCarteiraLabel = isDemoWallet
+    ? "Modo demonstração"
+    : forecastNivel === "critico"
+    ? "Risco alto"
+    : forecastNivel === "atencao"
+    ? "Risco moderado"
+    : forecastNivel === "observacao"
+    ? "Sob observação"
+    : "Operação estável";
 
   const segurancaCarteiraLabel =
-    saldoModo === "real" ? "Conta protegida" : "Ambiente validado";
-  const mobilePerformanceCopy =
-    resultadoMes !== null
-      ? resultadoMes >= 0
-        ? `Resultado do mês ${formatBRL(resultadoMes)}`
-        : `Mês em ajuste ${formatBRL(Math.abs(resultadoMes))}`
-      : "Conta pronta para movimentar";
+    saldoModo === "real" ? "Conta protegida" : "Sem dinheiro real";
+  const mobilePerformanceCopy = isDemoWallet
+    ? "Valores zerados para demonstração"
+    : resultadoMes !== null
+    ? resultadoMes >= 0
+      ? `Resultado do mês ${formatBRL(resultadoMes)}`
+      : `Mês em ajuste ${formatBRL(Math.abs(resultadoMes))}`
+    : "Conta pronta para movimentar";
 
   return (
     <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6 px-[2px] sm:px-0">
@@ -628,7 +639,7 @@ const saldoDisplay =
                 Aurea Gold
               </p>
               <h2 className="mt-1 text-[1.35rem] leading-tight font-bold text-[#f4f8ff]">
-                Olá, {sessionDisplayName}
+                Olá, {safeSessionDisplayName}
               </h2>
             </div>
           </div>
@@ -817,7 +828,7 @@ const saldoDisplay =
         <div className="md:hidden flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
-              Conta conectada
+                {isDemoWallet ? "Conta demo" : "Conta conectada"}
             </p>
             <p className="mt-1 text-[11px] text-[#B8AD95]">
               {mobilePerformanceCopy}
@@ -841,7 +852,7 @@ const saldoDisplay =
           <p className="mt-2 text-[12px] md:text-[13px] text-[#D7D0BE]">
             {isPartnerWalletReal
               ? "Disponível para movimentar via parceiro financeiro homologado."
-              : "Prévia visual em modo demonstração, sem movimentar dinheiro real."}
+              : "Modo demonstração: valores zerados, sem movimentação financeira real."}
           </p>
             {saldoModo === "real" && saldoUpdatedHHMM && (
               <p className="mt-1 text-[10px] md:text-[11px] text-[#B8AD95]">
@@ -916,7 +927,7 @@ const saldoDisplay =
                 Ações rápidas
               </p>
               <h3 className="mt-1 text-lg md:text-xl font-bold text-[#f4f8ff]">
-                Mover dinheiro
+                  {isDemoWallet ? "Ações simuladas" : "Mover dinheiro"}
               </h3>
             </div>
             <span className="inline-flex items-center rounded-full border border-amber-500/16 bg-amber-500/10 px-3 py-1 text-[10px] text-[#D4AF37]">
