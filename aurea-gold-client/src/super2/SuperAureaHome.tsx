@@ -574,7 +574,7 @@ const saldoDisplay =
 
   const currentOpeningLayer = openingLayerMeta[homeOpeningLayer];
 
-  const isDemoWallet = saldoModo !== "real";
+  const isDemoWallet = !isPartnerWalletReal || saldoModo !== "real";
 
   const safeSessionDisplayName =
     sessionDisplayName && sessionDisplayName !== "customer"
@@ -616,8 +616,30 @@ const saldoDisplay =
     ? "Sob observação"
     : "Operação estável";
 
-  const segurancaCarteiraLabel =
-    saldoModo === "real" ? "Conta protegida" : "Sem dinheiro real";
+  const segurancaCarteiraLabel = isDemoWallet ? "Sem dinheiro real" : "Conta protegida";
+
+  const forecastNivelDisplayLabel = isDemoWallet
+    ? "Modo demonstração"
+    : forecastNivel === "critico"
+    ? "Crítico"
+    : forecastNivel === "atencao"
+    ? "Atenção"
+    : forecastNivel === "observacao"
+    ? "Observação"
+    : forecastNivel === "ok"
+    ? "Tranquilo"
+    : "—";
+
+  const forecastPrevisaoFimMesDisplay =
+    !isDemoWallet && forecastPrevisaoFimMes !== null ? forecastPrevisaoFimMes : 0;
+
+  const entradasMesDisplay =
+    !isDemoWallet && entradasMes !== null ? entradasMes : 0;
+
+  const saidasMesDisplay =
+    !isDemoWallet && saidasMes !== null ? saidasMes : 0;
+
+  const resultadoMesDisplay = entradasMesDisplay - saidasMesDisplay;
   const mobilePerformanceCopy = isDemoWallet
     ? "Valores zerados para demonstração"
     : resultadoMes !== null
@@ -627,7 +649,7 @@ const saldoDisplay =
     : "Conta pronta para movimentar";
 
   return (
-    <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6 px-[2px] sm:px-0">
+    <section className="aurea-home-root w-full max-w-[390px] md:max-w-[960px] mx-auto space-y-5 md:space-y-6 px-0">
       <div className="md:hidden ag-surface-elevated px-4 pt-4 pb-3 rounded-[28px]">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -854,7 +876,7 @@ const saldoDisplay =
               ? "Disponível para movimentar via parceiro financeiro homologado."
               : "Modo demonstração: valores zerados, sem movimentação financeira real."}
           </p>
-            {saldoModo === "real" && saldoUpdatedHHMM && (
+            {!isDemoWallet && saldoUpdatedHHMM && (
               <p className="mt-1 text-[10px] md:text-[11px] text-[#B8AD95]">
                 Atualizado às {saldoUpdatedHHMM}
               </p>
@@ -867,7 +889,7 @@ const saldoDisplay =
               <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
                 Patrimônio rápido
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-3">
                 <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
                   <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Guardado</p>
                   <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioGuardado)}</p>
@@ -895,7 +917,7 @@ const saldoDisplay =
               <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
                 Agenda financeira
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-3">
                 <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
                   <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Entradas previstas</p>
                   <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(entradasPrevistas)}</p>
@@ -935,7 +957,7 @@ const saldoDisplay =
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-2.5">
             <button
               type="button"
               onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
@@ -988,13 +1010,7 @@ const saldoDisplay =
               </p>
               <p className="mt-2 text-sm text-[#f4f8ff]">
                 Risco atual:&nbsp;
-                <span className="font-semibold text-white">
-                  {forecastNivel === "critico" && "Crítico"}
-                  {forecastNivel === "atencao" && "Atenção"}
-                  {forecastNivel === "observacao" && "Observação"}
-                  {forecastNivel === "ok" && "Tranquilo"}
-                  {!forecastNivel && "—"}
-                </span>
+                <span className="font-semibold text-white">{forecastNivelDisplayLabel}</span>
               </p>
             </div>
 
@@ -1038,7 +1054,7 @@ const saldoDisplay =
               Entradas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-emerald-300">
-              {entradasMes !== null ? formatBRL(entradasMes) : "R$ 8.500,00"}
+              {formatBRL(entradasMesDisplay)}
             </p>
             <p className="mt-1 text-[10px] text-emerald-100/80">
               Entradas confirmadas no período.
@@ -1050,7 +1066,7 @@ const saldoDisplay =
               Saídas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-red-300">
-              {saidasMes !== null ? formatBRL(saidasMes) : "R$ 6.200,00"}
+              {formatBRL(saidasMesDisplay)}
             </p>
             <p className="mt-1 text-[10px] text-red-100/80">
               Saídas efetivas registradas.
@@ -1062,15 +1078,7 @@ const saldoDisplay =
               Resultado do mês
             </p>
             <p className="mt-1 text-lg font-semibold">
-              {resultadoMes !== null ? (
-                <span className={resultadoClass}>
-                  {formatBRL(resultadoMes)} ({resultadoLabel})
-                </span>
-              ) : (
-                <span className="text-[#f4f8ff]">
-                  R$ 2.300,00 (simulação)
-                </span>
-              )}
+              {formatBRL(resultadoMesDisplay)}{!isDemoWallet && resultadoMes !== null ? ` (${resultadoLabel})` : ""}
             </p>
             <p className="mt-1 text-[10px] sm:text-[11px] text-[#D7D0BE]">
               Saldo líquido consolidado do período.
