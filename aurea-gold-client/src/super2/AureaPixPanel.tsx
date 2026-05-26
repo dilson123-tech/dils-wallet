@@ -1,4 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {
+  CircleHelp,
+  Copy,
+  Gauge,
+  History,
+  KeyRound,
+  QrCode,
+  ReceiptText,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import { API_BASE, USER_EMAIL, fetchPixHistory, fetchWalletPartnerStatus, type PixHistoryItem, type WalletPartnerStatus } from "./api";
 import { apiGet } from "../app/lib/http";
 import { withAuth } from "../lib/api";
@@ -30,6 +42,54 @@ type PixInsightResponse = {
   metricas: PixInsightMetrics;
 };
 
+type PixHubTileProps = {
+  title: string;
+  subtitle: string;
+  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+};
+
+function PixHubTile({
+  title,
+  subtitle,
+  Icon,
+  active = false,
+  disabled = false,
+  onClick,
+}: PixHubTileProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex min-h-[132px] flex-col items-center justify-center rounded-[22px] px-2.5 py-4 text-center shadow-[0_10px_22px_rgba(0,0,0,0.16)] transition active:scale-[0.98] ${
+        active
+          ? "bg-[linear-gradient(180deg,#F8E46D_0%,#D2A900_100%)] ring-2 ring-[#FFF1A6]"
+          : "bg-[linear-gradient(180deg,#E9CF43_0%,#CBA500_100%)]"
+      } ${disabled ? "cursor-not-allowed opacity-70" : "hover:brightness-105"}`}
+    >
+      <Icon size={30} strokeWidth={2.6} className="mb-4 text-[#0B2536]" />
+
+      <div
+        className="text-[#0B2536]"
+        style={{
+          fontSize: 15,
+          lineHeight: 1.05,
+          fontFamily: '"Arial Black", Arial, sans-serif',
+          fontWeight: 900,
+        }}
+      >
+        {title}
+      </div>
+
+      <p className="mt-2 text-[12px] font-semibold leading-tight text-[#123047]/80">
+        {subtitle}
+      </p>
+    </button>
+  );
+}
 
 function formatBRL(value: number | null): string {
   if (value === null || Number.isNaN(value)) {
@@ -594,138 +654,112 @@ const saldo =
     saidasMes !== null ? formatBRL(saidasMes) : "R$ 0,00";
 
   return (
-    <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
-      {/* HEADER */}
-      <header className="ag-surface-elevated px-4 py-5 sm:px-5 sm:py-6">
-        <div className="text-[10px] uppercase tracking-wide text-[#B8AD95]">
-          Aurea Gold • Área PIX oficial
-        </div>
-        <h1 className="text-lg md:text-xl font-semibold text-[#D4AF37] mt-1">
-          PIX • Carteira Aurea Gold
-        </h1>
-        <p className="text-xs text-[#B8AD95] mt-1 max-w-xl">
-          Central de transferências, cobranças, extrato e leitura operacional do PIX dentro da Aurea Gold.
-        </p>
-
-        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-[rgba(12,30,42,0.88)] px-3 py-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] uppercase tracking-wide text-amber-100">
-              {saldoSource === "real"
-                ? "Dados reais carregados do backend Aurea Gold"
-                : "Conectando PIX • aguardando sincronização completa"}
-            </span>
+      <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32">
+        <section className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-6 pb-7 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
+          <div className="inline-flex items-center rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.02em] text-[#F6D66B]">
+            Pix em modo seguro
           </div>
 
-          <div className="flex items-center gap-2">
-            {balanceLoading && (
-              <span className="text-[10px] text-[#B8AD95]">
-                Atualizando dados do PIX...
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleReloadBalance}
-              className="rounded-full border border-amber-500/60 bg-[rgba(12,30,42,0.88)] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-100 hover:bg-amber-500/10 active:scale-[0.97] transition"
-            >
-              Atualizar dados PIX
-            </button>
-          </div>
-        </div>
-
-        {balanceError && (
-          <p className="mt-2 text-[11px] text-rose-300">{balanceError}</p>
-        )}
-
-        <div className="h-px w-32 bg-amber-500/60 mt-3" />
-      </header>
-
-      {/* CARDS PRINCIPAIS */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-        <div className="rounded-xl border border-amber-500/40 bg-[rgba(12,30,42,0.88)] p-3">
-          <div className="text-[10px] uppercase tracking-wide text-[#B8AD95] mb-1">
-            Saldo PIX
-          </div>
-          <div className="text-2xl font-semibold text-[#D4AF37]">
-            {saldoPixDisplay}
-          </div>
-          <p className="text-[11px] text-[#D7D0BE] mt-1">
-            {saldoSource === "real"
-              ? "Saldo carregado diretamente do backend Aurea Gold."
-              : "Saldo provisório enquanto o PIX sincroniza. Na versão completa, esse card mostra o saldo real da carteira."}
-          </p>
-        </div>
-
-        <div className="ag-card rounded-[22px] border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(8,34,34,0.96),rgba(7,22,22,0.98))] p-4">
-          <div className="text-[10px] uppercase tracking-wide text-emerald-300 mb-1">
-            Entradas do mês
-          </div>
-          <div className="text-lg font-semibold text-emerald-300">
-            {entradasMesDisplay}
-          </div>
-          <p className="text-[11px] text-emerald-200/80 mt-1">
-            Total de PIX recebidos no mês atual, conforme os registros do Aurea
-            Gold.
-          </p>
-        </div>
-
-        <div className="ag-card rounded-[22px] border border-rose-500/20 bg-[linear-gradient(180deg,rgba(40,14,24,0.96),rgba(24,10,16,0.98))] p-4">
-          <div className="text-[10px] uppercase tracking-wide text-rose-300 mb-1">
-            Saídas do mês
-          </div>
-          <div className="text-lg font-semibold text-rose-300">
-            {saidasMesDisplay}
-          </div>
-          <p className="text-[11px] text-rose-200/80 mt-1">
-            Total de PIX enviados no mês atual, somando transferências e
-            pagamentos feitos pela carteira Aurea Gold.
-          </p>
-        </div>
-      </section>
-
-      {/* AÇÕES RÁPIDAS */}
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
-        <h2 className="text-[11px] uppercase tracking-wide text-[#B8AD95] mb-2">
-          Comandos PIX
-        </h2>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveAction("send")}
-            className={`px-3 py-2 rounded-full text-[11px] font-semibold uppercase tracking-wide transition active:scale-[0.97] ${
-              activeAction === "send"
-                ? "bg-[linear-gradient(135deg,#C89B2D,#D4AF37)] text-[#0E2230] shadow-[0_0_18px_rgba(212,175,55,0.28)]"
-                : "border border-amber-500/18 bg-amber-500/10 text-amber-100"
-            }`}
+          <h1
+            className="mt-5 text-[#F5C842]"
+            style={{
+              fontSize: 26,
+              lineHeight: 1.05,
+              fontFamily: '"Arial Black", Arial, sans-serif',
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+            }}
           >
-            Enviar PIX
-          </button>
+            Pix Aurea
+          </h1>
 
-          <button
-            type="button"
-            onClick={() => setActiveAction("charge")}
-            className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
-              activeAction === "charge"
-                ? "border border-amber-400 bg-black text-amber-100 shadow-[0_0_14px_rgba(251,191,36,0.5)]"
-                : "border border-amber-500/60 text-[#D4AF37] bg-transparent"
-            }`}
-          >
-            Cobrar via PIX
-          </button>
+          <p className="mt-3 text-[15px] leading-relaxed text-[#E6EDF5]">
+            Envie, cobre e acompanhe seus Pix com segurança. No sandbox, nada movimenta dinheiro real.
+          </p>
+        </section>
 
-          <button
-            type="button"
-            onClick={() => setActiveAction("statement")}
-            className={`px-3 py-2 rounded-full text-[11px] uppercase tracking-wide transition active:scale-[0.97] ${
-              activeAction === "statement"
-                ? "border border-amber-500/24 bg-amber-500/12 text-amber-50"
-                : "border border-amber-500/12 text-[#f4f8ff] bg-transparent"
-            }`}
+        <section className="mt-5 rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+          <div
+            className="text-[#D6DEE8]"
+            style={{
+              fontSize: 13,
+              fontFamily: '"Arial Black", Arial, sans-serif',
+              fontWeight: 900,
+            }}
           >
-            Ver extrato PIX
-          </button>
-        </div>
+            Pix rápido
+          </div>
+
+          <div
+            className="mt-5 grid grid-cols-3"
+            style={{ gap: 14 }}
+          >
+            <PixHubTile title="Enviar" subtitle="Pix de saída" Icon={Send} active={activeAction === "send"} onClick={() => setActiveAction("send")} />
+            <PixHubTile title="Cobrar" subtitle="Gerar cobrança" Icon={QrCode} active={activeAction === "charge"} onClick={() => setActiveAction("charge")} />
+            <PixHubTile title="QR Code" subtitle="Cobrança Pix" Icon={QrCode} active={activeAction === "charge"} onClick={() => setActiveAction("charge")} />
+            <PixHubTile title="Copia" subtitle="BR Code" Icon={Copy} active={activeAction === "charge"} onClick={() => setActiveAction("charge")} />
+            <PixHubTile title="Extrato" subtitle="Histórico" Icon={History} active={activeAction === "statement"} onClick={() => setActiveAction("statement")} />
+            <PixHubTile title="Chaves" subtitle="Em breve" Icon={KeyRound} disabled />
+            <PixHubTile title="Limites" subtitle="Bloqueio real" Icon={Gauge} disabled />
+            <PixHubTile title="Recibos" subtitle="Sem fake" Icon={ReceiptText} disabled />
+            <PixHubTile title="Ajuda" subtitle="Suporte" Icon={CircleHelp} disabled />
+          </div>
+
+          <div className="mt-6 rounded-[24px] border border-white/12 bg-[linear-gradient(180deg,rgba(13,43,63,0.98),rgba(8,26,40,0.98))] px-4 pt-4 pb-5 shadow-[0_12px_24px_rgba(0,0,0,0.16)]">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-white/8 text-[#F5C842]">
+                <ShieldCheck size={24} strokeWidth={2.3} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h3
+                  className="text-[#F8FAFC]"
+                  style={{
+                    fontSize: 20,
+                    lineHeight: 1.1,
+                    fontFamily: '"Arial Black", Arial, sans-serif',
+                    fontWeight: 900,
+                  }}
+                >
+                  Pix protegido
+                </h3>
+
+                <p className="mt-2 text-[14px] leading-relaxed text-[#CBD5E1]">
+                  {isDemoWallet
+                    ? "Dinheiro real, Pix real e comprovante real permanecem bloqueados até parceiro homologado."
+                    : `Provedor ${walletPartnerStatus?.provider || "partner"} ativo para operação real.`}
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white/8 px-3 py-1 text-[11px] font-semibold text-[#E6EDF5]">
+                    Saldo {saldoPixDisplay}
+                  </span>
+                  <span className="rounded-full bg-white/8 px-3 py-1 text-[11px] font-semibold text-[#E6EDF5]">
+                    Entradas {entradasMesDisplay}
+                  </span>
+                  <span className="rounded-full bg-white/8 px-3 py-1 text-[11px] font-semibold text-[#E6EDF5]">
+                    Saídas {saidasMesDisplay}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleReloadBalance}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#F5C842] px-3 py-1 text-[11px] font-black text-[#0B2536] active:scale-[0.97]"
+                  >
+                    <RefreshCw size={13} className={balanceLoading ? "animate-spin" : ""} />
+                    Atualizar
+                  </button>
+                </div>
+
+                {walletPartnerStatusError && (
+                  <p className="mt-2 text-[11px] text-rose-200">{walletPartnerStatusError}</p>
+                )}
+
+                {balanceError && (
+                  <p className="mt-2 text-[11px] text-rose-200">{balanceError}</p>
+                )}
+              </div>
+            </div>
+          </div>
 
         {/* PAINEL DE AÇÃO SELECIONADA */}
         <div className="mt-3 rounded-xl border border-amber-500/10 bg-[rgba(12,30,42,0.74)] p-3 text-[11px] text-[#f4f8ff]">
