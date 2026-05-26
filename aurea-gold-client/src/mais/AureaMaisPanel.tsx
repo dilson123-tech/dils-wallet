@@ -1,4 +1,16 @@
 import React, { useEffect, useState } from "react";
+import {
+  BadgeCheck,
+  FileText,
+  FlaskConical,
+  Gauge,
+  Headphones,
+  ScrollText,
+  Search,
+  Settings,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, fetchWalletPixSandboxReconciliation, fetchWalletPixSandboxAuditHistory, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment, type WalletPixSandboxReconciliation, type WalletPixSandboxAuditHistory } from "../super2/api";
 
 const sugestoes = [
@@ -16,6 +28,54 @@ const atalhos = [
   "Segurança da conta",
   "Configurações",
 ];
+
+
+type MoreTileProps = {
+  title: string;
+  subtitle: string;
+  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  onClick?: () => void;
+};
+
+function MoreTile({
+  title,
+  subtitle,
+  Icon,
+  onClick,
+}: MoreTileProps) {
+
+  function scrollToMaisSection(targetId: string) {
+    document
+      .getElementById(targetId)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-[132px] flex-col items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#E9CF43_0%,#CBA500_100%)] px-2.5 py-4 text-center shadow-[0_10px_22px_rgba(0,0,0,0.16)] transition hover:brightness-105 active:scale-[0.98]"
+    >
+      <Icon size={30} strokeWidth={2.6} className="mb-4 text-[#0B2536]" />
+
+      <div
+        className="text-[#0B2536]"
+        style={{
+          fontSize: 15,
+          lineHeight: 1.05,
+          fontFamily: '"Arial Black", Arial, sans-serif',
+          fontWeight: 900,
+        }}
+      >
+        {title}
+      </div>
+
+      <p className="mt-2 text-[12px] font-semibold leading-tight text-[#123047]/80">
+        {subtitle}
+      </p>
+    </button>
+  );
+}
 
 export default function AureaMaisPanel() {
   const [walletStatus, setWalletStatus] = useState<WalletAccountStatus | null>(null);
@@ -348,30 +408,105 @@ export default function AureaMaisPanel() {
   }
 
   return (
-    <section className="w-full max-w-[960px] mx-auto space-y-5 md:space-y-6">
-      <header className="ag-surface-elevated px-4 py-5 sm:px-5 sm:py-6">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
-          Aurea Gold • Mais
+    <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32 space-y-5">
+      <header className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-6 pb-7 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
+        <div className="inline-flex items-center rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.02em] text-[#F6D66B]">
+          Mais Aurea
         </div>
-        <h1 className="mt-2 text-[1.45rem] sm:text-2xl md:text-3xl font-bold text-[#f4f8ff] leading-tight">
-          Ajuda, suporte e serviços
+
+        <h1
+          className="mt-5 text-[#F5C842]"
+          style={{
+            fontSize: 26,
+            lineHeight: 1.05,
+            fontFamily: '"Arial Black", Arial, sans-serif',
+            fontWeight: 900,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Central da carteira
         </h1>
-        <p className="mt-2 text-sm text-[#D7D0BE] max-w-2xl">
-          Busca, suporte, assistente Aurea, histórico de consultas e recursos
-          adicionais do aplicativo.
+
+        <p className="mt-3 text-[15px] leading-relaxed text-[#E6EDF5]">
+          Status, segurança, suporte, sandbox e operação técnica da Aurea Gold em um só lugar.
         </p>
 
-        <div className="mt-4">
-          <div className="flex items-center gap-3 rounded-[18px] border border-amber-500/14 bg-[rgba(12,30,42,0.88)] px-4 py-3">
-            <span className="text-lg text-amber-300">⌕</span>
-            <span className="text-sm text-[#B8AD95]">
-              Busque ajuda, pagamentos e serviços
-            </span>
-          </div>
+        <div className="mt-4 flex items-center gap-3 rounded-[18px] border border-white/12 bg-white/8 px-4 py-3">
+          <Search size={18} strokeWidth={2.4} className="text-[#F5C842]" />
+          <span className="text-sm text-[#CBD5E1]">
+            Busque ajuda, segurança e serviços
+          </span>
         </div>
       </header>
 
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+      <section className="rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+        <div
+          className="text-[#D6DEE8]"
+          style={{
+            fontSize: 13,
+            fontFamily: '"Arial Black", Arial, sans-serif',
+            fontWeight: 900,
+          }}
+        >
+          Mais rápido
+        </div>
+
+        <div
+          className="mt-5 grid grid-cols-3"
+          style={{ gap: 14 }}
+        >
+          <MoreTile title="Perfil" subtitle="Conta" Icon={UserRound} onClick={() => scrollToMaisSection("mais-wallet-status")} />
+          <MoreTile title="Seguro" subtitle="Proteção" Icon={ShieldCheck} onClick={() => scrollToMaisSection("mais-operational-limits")} />
+          <MoreTile title="Suporte" subtitle="Ajuda" Icon={Headphones} onClick={() => scrollToMaisSection("mais-support")} />
+          <MoreTile title="Termos" subtitle="Política" Icon={FileText} onClick={() => scrollToMaisSection("mais-utilities")} />
+          <MoreTile title="KYC" subtitle="KYB" Icon={BadgeCheck} onClick={() => scrollToMaisSection("mais-onboarding")} />
+          <MoreTile title="Limites" subtitle="Operação" Icon={Gauge} onClick={() => scrollToMaisSection("mais-operational-limits")} />
+          <MoreTile title="Sandbox" subtitle="Pix teste" Icon={FlaskConical} onClick={() => scrollToMaisSection("mais-pix-sandbox")} />
+          <MoreTile title="Auditoria" subtitle="Logs" Icon={ScrollText} onClick={() => scrollToMaisSection("mais-sandbox-audit")} />
+          <MoreTile title="Config" subtitle="Ajustes" Icon={Settings} onClick={() => scrollToMaisSection("mais-utilities")} />
+        </div>
+
+        <div className="mt-6 rounded-[24px] border border-white/12 bg-[linear-gradient(180deg,rgba(13,43,63,0.98),rgba(8,26,40,0.98))] px-4 pt-4 pb-5 shadow-[0_12px_24px_rgba(0,0,0,0.16)]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-white/8 text-[#F5C842]">
+              <ShieldCheck size={24} strokeWidth={2.3} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3
+                className="text-[#F8FAFC]"
+                style={{
+                  fontSize: 20,
+                  lineHeight: 1.1,
+                  fontFamily: '"Arial Black", Arial, sans-serif',
+                  fontWeight: 900,
+                }}
+              >
+                Carteira protegida
+              </h3>
+
+              <p className="mt-2 text-[14px] leading-relaxed text-[#CBD5E1]">
+                Dinheiro real, Pix real, comprovante real e liquidação real seguem bloqueados até parceiro homologado.
+              </p>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/8 px-3 py-1 text-[11px] font-semibold text-[#E6EDF5]">
+                  {walletModeLabel}
+                </span>
+                <span className="rounded-full bg-white/8 px-3 py-1 text-[11px] font-semibold text-[#E6EDF5]">
+                  {realMoneyLabel}
+                </span>
+                <span className="rounded-full bg-white/8 px-3 py-1 text-[11px] font-semibold text-[#E6EDF5]">
+                  KYC {kycLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section id="mais-wallet-status" className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
         <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Status da carteira
         </div>
@@ -699,7 +834,7 @@ export default function AureaMaisPanel() {
         )}
       </section>
 
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+      <section id="mais-operational-limits" className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
         <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Limites e segurança operacional
         </div>
@@ -889,7 +1024,7 @@ export default function AureaMaisPanel() {
         )}
       </section>
 
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+      <section id="mais-pix-sandbox" className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
         <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           PIX sandbox
         </div>
@@ -1059,7 +1194,7 @@ export default function AureaMaisPanel() {
         )}
       </section>
 
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+      <section id="mais-sandbox-audit" className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
         <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Auditoria sandbox
         </div>
@@ -1183,7 +1318,7 @@ export default function AureaMaisPanel() {
         </div>
       </section>
 
-      <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
+      <section id="mais-support" className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]">
         <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Assistente Aurea
         </div>
@@ -1196,7 +1331,7 @@ export default function AureaMaisPanel() {
         </p>
       </section>
 
-      <section className="space-y-3">
+      <section id="mais-utilities" className="space-y-3">
         <div className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
           Suporte e utilidades
         </div>
