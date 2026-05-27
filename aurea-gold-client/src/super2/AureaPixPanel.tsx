@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   CircleHelp,
   Copy,
@@ -45,7 +46,7 @@ type PixInsightResponse = {
 type PixHubTileProps = {
   title: string;
   subtitle: string;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  Icon: LucideIcon;
   active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
@@ -64,19 +65,19 @@ function PixHubTile({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex min-h-[132px] flex-col items-center justify-center rounded-[22px] px-2.5 py-4 text-center shadow-[0_10px_22px_rgba(0,0,0,0.16)] transition active:scale-[0.98] ${
+      className={`flex flex-col items-center justify-center text-center shadow-[0_8px_18px_rgba(15,23,42,0.14)] transition active:scale-[0.98] ${
         active
           ? "bg-[linear-gradient(180deg,#F8E46D_0%,#D2A900_100%)] ring-2 ring-[#FFF1A6]"
           : "bg-[linear-gradient(180deg,#E9CF43_0%,#CBA500_100%)]"
-      } ${disabled ? "cursor-not-allowed opacity-70" : "hover:brightness-105"}`}
+      } ${disabled ? "cursor-not-allowed opacity-70" : "hover:brightness-105"}`} style={{ height: 72, width: "85%", justifySelf: "center", padding: "8px 6px", boxSizing: "border-box" }}
     >
-      <Icon size={30} strokeWidth={2.6} className="mb-4 text-[#0B2536]" />
+      <div className="mb-1 flex items-center justify-center rounded-[14px] bg-white/18" style={{ width: 34, height: 34 }}><Icon size={20} strokeWidth={2.4} className="text-[#0B2536]" /></div>
 
       <div
         className="text-[#0B2536]"
         style={{
-          fontSize: 15,
-          lineHeight: 1.05,
+          fontSize: 11.8,
+          lineHeight: 1,
           fontFamily: '"Arial Black", Arial, sans-serif',
           fontWeight: 900,
         }}
@@ -84,7 +85,7 @@ function PixHubTile({
         {title}
       </div>
 
-      <p className="mt-2 text-[12px] font-semibold leading-tight text-[#123047]/80">
+      <p className="mt-1 leading-tight text-[#123047]/80" style={{ fontSize: 10.2, fontWeight: 800, lineHeight: 1.05 }}>
         {subtitle}
       </p>
     </button>
@@ -653,6 +654,194 @@ const saldo =
   const saidasMesDisplay =
     saidasMes !== null ? formatBRL(saidasMes) : "R$ 0,00";
 
+
+  // PIX_EARLY_INTERNAL_PAGE_OK
+  if (activeAction) {
+    const pixPageTitle =
+      activeAction === "send"
+        ? "Enviar PIX"
+        : activeAction === "charge"
+        ? "Cobrança Pix"
+        : "Extrato PIX";
+
+    return (
+      <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32">
+        <section className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-5 pb-6 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
+          <button
+            type="button"
+            onClick={() => setActiveAction(null)}
+            className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-400/14 px-3 py-1 text-[11px] font-black text-emerald-200 shadow-[0_8px_18px_rgba(16,185,129,0.12)]"
+          >
+            ← Voltar para Pix
+          </button>
+
+          <p className="mt-5 text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
+            Pix Aurea
+          </p>
+
+          <h1
+            className="mt-2 text-[#F5C842]"
+            style={{
+              fontSize: 26,
+              lineHeight: 1,
+              fontFamily: '"Arial Black", Arial, sans-serif',
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {pixPageTitle}
+          </h1>
+
+          <p className="mt-3 text-[14px] leading-relaxed text-[#E6EDF5]">
+            {activeAction === "send"
+              ? "Envio preparado em modo seguro. No sandbox, nenhum dinheiro real é movimentado."
+              : activeAction === "charge"
+              ? "Cobrança Pix preparada para QR Code, BR Code e link quando houver parceiro homologado."
+              : "Histórico e leitura operacional dos movimentos Pix da carteira."}
+          </p>
+        </section>
+
+        <section className="mt-5 rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 text-[#f4f8ff] shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+          {activeAction === "send" && (
+            <div className="space-y-3">
+              <h3
+                className="text-[#F5C842]"
+                style={{
+                  fontSize: 18,
+                  lineHeight: 1,
+                  fontFamily: '"Arial Black", Arial, sans-serif',
+                  fontWeight: 900,
+                }}
+              >
+                Enviar PIX
+              </h3>
+
+              <p className="text-[13px] leading-relaxed text-[#D7D0BE]">
+                Preencha os campos abaixo para registrar o fluxo. No modo demonstração, isso não movimenta dinheiro real.
+              </p>
+
+              <form className="grid gap-3" onSubmit={handleSubmitSendPix}>
+                <input
+                  className="rounded-[16px] border border-amber-500/20 bg-black/60 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-400"
+                  value={sendPixKey}
+                  onChange={(e) => setSendPixKey(e.target.value)}
+                  placeholder="Chave PIX ou destinatário"
+                />
+
+                <input
+                  className="rounded-[16px] border border-amber-500/20 bg-black/60 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-400"
+                  value={sendPixAmount}
+                  onChange={(e) => setSendPixAmount(e.target.value)}
+                  placeholder="Valor"
+                />
+
+                <input
+                  className="rounded-[16px] border border-amber-500/20 bg-black/60 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-400"
+                  value={sendPixDescription}
+                  onChange={(e) => setSendPixDescription(e.target.value)}
+                  placeholder="Descrição opcional"
+                />
+
+                <button
+                  type="submit"
+                  disabled={sendPixLoading}
+                  className="rounded-[18px] bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] px-4 py-3 text-[12px] font-black text-[#0A1F2E] shadow-[0_8px_18px_rgba(15,23,42,0.14)] disabled:opacity-60"
+                  style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
+                >
+                  {sendPixLoading ? "Registrando..." : isDemoWallet ? "Registrar teste demo" : "Enviar agora"}
+                </button>
+
+                {sendPixSuccess && <p className="text-[11px] text-emerald-300">{sendPixSuccess}</p>}
+                {sendPixError && <p className="text-[11px] text-rose-300">{sendPixError}</p>}
+              </form>
+            </div>
+          )}
+
+          {activeAction === "charge" && (
+            <div className="space-y-3">
+              <h3
+                className="text-[#F5C842]"
+                style={{
+                  fontSize: 18,
+                  lineHeight: 1,
+                  fontFamily: '"Arial Black", Arial, sans-serif',
+                  fontWeight: 900,
+                }}
+              >
+                Cobrança Pix
+              </h3>
+
+              <p className="text-[13px] leading-relaxed text-[#D7D0BE]">
+                Simulamos a criação da cobrança. Quando o parceiro estiver plugado, este fluxo vai gerar QR Code/BR Code real.
+              </p>
+
+              <form className="grid gap-3" onSubmit={handleGenerateCharge}>
+                <input
+                  className="rounded-[16px] border border-amber-500/20 bg-black/60 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-400"
+                  value={chargePixAmount}
+                  onChange={(e) => setChargePixAmount(e.target.value)}
+                  placeholder="Valor da cobrança"
+                />
+
+                <input
+                  className="rounded-[16px] border border-amber-500/20 bg-black/60 px-3 py-2 text-sm text-zinc-50 outline-none focus:border-amber-400"
+                  value={chargePixDescription}
+                  onChange={(e) => setChargePixDescription(e.target.value)}
+                  placeholder="Descrição/identificador"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-[18px] bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] px-4 py-3 text-[12px] font-black text-[#0A1F2E] shadow-[0_8px_18px_rgba(15,23,42,0.14)]"
+                  style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
+                >
+                  Gerar cobrança simulada
+                </button>
+
+                {chargePixSuccess && <p className="text-[11px] text-emerald-300">{chargePixSuccess}</p>}
+                {chargePixRef && <p className="text-[10px] text-[#D4AF37]">Ref: {chargePixRef}</p>}
+              </form>
+            </div>
+          )}
+
+          {activeAction === "statement" && (
+            <div className="space-y-3">
+              <h3
+                className="text-[#F5C842]"
+                style={{
+                  fontSize: 18,
+                  lineHeight: 1,
+                  fontFamily: '"Arial Black", Arial, sans-serif',
+                  fontWeight: 900,
+                }}
+              >
+                Extrato PIX
+              </h3>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="rounded-[20px] border border-amber-500/16 bg-[rgba(12,30,42,0.74)] px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">Saldo Pix</p>
+                  <p className="mt-1 text-lg font-black text-[#f4f8ff]">{saldoPixDisplay}</p>
+                </div>
+
+                <div className="rounded-[20px] border border-amber-500/16 bg-[rgba(12,30,42,0.74)] px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">Entradas</p>
+                  <p className="mt-1 text-lg font-black text-[#f4f8ff]">{entradasMesDisplay}</p>
+                </div>
+
+                <div className="rounded-[20px] border border-amber-500/16 bg-[rgba(12,30,42,0.74)] px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">Saídas</p>
+                  <p className="mt-1 text-lg font-black text-[#f4f8ff]">{saidasMesDisplay}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </section>
+    );
+  }
+
+
   return (
       <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32">
         <section className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-6 pb-7 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
@@ -664,7 +853,7 @@ const saldo =
             className="mt-5 text-[#F5C842]"
             style={{
               fontSize: 26,
-              lineHeight: 1.05,
+              lineHeight: 1,
               fontFamily: '"Arial Black", Arial, sans-serif',
               fontWeight: 900,
               letterSpacing: "-0.02em",
@@ -692,7 +881,7 @@ const saldo =
 
           <div
             className="mt-5 grid grid-cols-3"
-            style={{ gap: 14 }}
+            style={{ gap: 8 }}
           >
             <PixHubTile title="Enviar" subtitle="Pix de saída" Icon={Send} active={activeAction === "send"} onClick={() => setActiveAction("send")} />
             <PixHubTile title="Cobrar" subtitle="Gerar cobrança" Icon={QrCode} active={activeAction === "charge"} onClick={() => setActiveAction("charge")} />

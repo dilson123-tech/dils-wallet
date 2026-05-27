@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   BellRing,
   CalendarClock,
@@ -17,7 +18,7 @@ type PagAction = "add-bill" | "subscription" | "boleto" | null;
 type PayTileProps = {
   title: string;
   subtitle: string;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  Icon: LucideIcon;
   active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
@@ -36,19 +37,25 @@ function PayTile({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex min-h-[132px] flex-col items-center justify-center rounded-[22px] px-2.5 py-4 text-center shadow-[0_10px_22px_rgba(0,0,0,0.16)] transition active:scale-[0.98] ${
+      className={`flex flex-col items-center justify-center text-center shadow-[0_8px_18px_rgba(15,23,42,0.14)] transition active:scale-[0.98] ${
         active
           ? "bg-[linear-gradient(180deg,#F8E46D_0%,#D2A900_100%)] ring-2 ring-[#FFF1A6]"
           : "bg-[linear-gradient(180deg,#E9CF43_0%,#CBA500_100%)]"
       } ${disabled ? "cursor-not-allowed opacity-70" : "hover:brightness-105"}`}
+      style={{ height: 72, width: "85%", justifySelf: "center", borderRadius: 15, padding: "8px 6px", boxSizing: "border-box" }}
     >
-      <Icon size={30} strokeWidth={2.6} className="mb-4 text-[#0B2536]" />
+      <div
+        className="mb-1 flex items-center justify-center rounded-[14px] bg-white/18"
+        style={{ width: 34, height: 34 }}
+      >
+        <Icon size={20} strokeWidth={2.4} className="text-[#0B2536]" />
+      </div>
 
       <div
         className="text-[#0B2536]"
         style={{
-          fontSize: 15,
-          lineHeight: 1.05,
+          fontSize: 11.8,
+          lineHeight: 1,
           fontFamily: '"Arial Black", Arial, sans-serif',
           fontWeight: 900,
         }}
@@ -56,7 +63,10 @@ function PayTile({
         {title}
       </div>
 
-      <p className="mt-2 text-[12px] font-semibold leading-tight text-[#123047]/80">
+      <p
+        className="mt-1 leading-tight text-[#123047]/80"
+        style={{ fontSize: 10.2, fontWeight: 800, lineHeight: 1.05 }}
+      >
         {subtitle}
       </p>
     </button>
@@ -65,6 +75,7 @@ function PayTile({
 
 export default function AureaPagamentosPanel() {
   const [activeAction, setActiveAction] = useState<PagAction>(null);
+
 
   return (
     <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32">
@@ -105,7 +116,7 @@ export default function AureaPagamentosPanel() {
 
         <div
           className="mt-5 grid grid-cols-3"
-          style={{ gap: 14 }}
+          style={{ gap: 8 }}
         >
           <PayTile
             title="Conta"
