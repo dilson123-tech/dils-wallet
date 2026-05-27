@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
   FileText,
@@ -29,11 +30,116 @@ const atalhos = [
   "Configurações",
 ];
 
+type MaisPageKey =
+  | "perfil"
+  | "seguro"
+  | "suporte"
+  | "termos"
+  | "kyc"
+  | "limites"
+  | "sandbox"
+  | "auditoria"
+  | "config";
+
+type MaisPageInfo = {
+  key: MaisPageKey;
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  description: string;
+  detail: string;
+  statusLabel: string;
+};
+
+const maisPageCards: MaisPageInfo[] = [
+  {
+    key: "perfil",
+    icon: UserRound,
+    title: "Perfil",
+    subtitle: "Conta",
+    description: "Dados da conta, status da carteira e identificação operacional.",
+    detail: "Central para visualizar situação da carteira, modo de operação, provedor, KYC/KYB e informações da conta sem expor dados sensíveis.",
+    statusLabel: "Conta em controle",
+  },
+  {
+    key: "seguro",
+    icon: ShieldCheck,
+    title: "Seguro",
+    subtitle: "Proteção",
+    description: "Camada de proteção operacional da carteira.",
+    detail: "Reúne limites, bloqueios, confirmações obrigatórias e regras para impedir operação real sem parceiro financeiro homologado.",
+    statusLabel: "Proteção ativa",
+  },
+  {
+    key: "suporte",
+    icon: Headphones,
+    title: "Suporte",
+    subtitle: "Ajuda",
+    description: "Central de suporte e orientação da Aurea.",
+    detail: "Área para dúvidas, operação assistida, regras do produto, onboarding e atendimento ao usuário.",
+    statusLabel: "Suporte preparado",
+  },
+  {
+    key: "termos",
+    icon: FileText,
+    title: "Termos",
+    subtitle: "Política",
+    description: "Documentos, termos e políticas operacionais.",
+    detail: "Base para termos de uso, privacidade, segurança, regras de sandbox, responsabilidade e operação com parceiro.",
+    statusLabel: "Documentação em evolução",
+  },
+  {
+    key: "kyc",
+    icon: BadgeCheck,
+    title: "KYC",
+    subtitle: "KYB",
+    description: "Onboarding de pessoa física e jurídica.",
+    detail: "Módulo preparado para validação cadastral, KYC/KYB real, exigências do parceiro e bloqueios antes de operação financeira real.",
+    statusLabel: "Onboarding preparado",
+  },
+  {
+    key: "limites",
+    icon: Gauge,
+    title: "Limites",
+    subtitle: "Operação",
+    description: "Limites operacionais e regras de bloqueio.",
+    detail: "Controle de envio, recebimento, confirmação obrigatória, limites zerados no sandbox e liberação futura por parceiro homologado.",
+    statusLabel: "Limites protegidos",
+  },
+  {
+    key: "sandbox",
+    icon: FlaskConical,
+    title: "Sandbox",
+    subtitle: "Pix teste",
+    description: "Ambiente seguro para simular Pix e reconciliação.",
+    detail: "Permite validar cobrança, evento, conciliação e auditoria sem movimentar dinheiro real.",
+    statusLabel: "Sandbox ativo",
+  },
+  {
+    key: "auditoria",
+    icon: ScrollText,
+    title: "Auditoria",
+    subtitle: "Logs",
+    description: "Histórico técnico e rastreabilidade operacional.",
+    detail: "Registra eventos sandbox, reconciliação, status e evidências técnicas para segurança e controle.",
+    statusLabel: "Auditoria registrada",
+  },
+  {
+    key: "config",
+    icon: Settings,
+    title: "Config",
+    subtitle: "Ajustes",
+    description: "Configurações operacionais da carteira.",
+    detail: "Área para ajustes técnicos, preferências, ambiente, modo de operação e parâmetros futuros.",
+    statusLabel: "Configuração segura",
+  },
+];
+
 
 type MoreTileProps = {
   title: string;
   subtitle: string;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  Icon: LucideIcon;
   onClick?: () => void;
 };
 
@@ -43,26 +149,25 @@ function MoreTile({
   Icon,
   onClick,
 }: MoreTileProps) {
-
-  function scrollToMaisSection(targetId: string) {
-    document
-      .getElementById(targetId)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[132px] flex-col items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#E9CF43_0%,#CBA500_100%)] px-2.5 py-4 text-center shadow-[0_10px_22px_rgba(0,0,0,0.16)] transition hover:brightness-105 active:scale-[0.98]"
+      className="flex flex-col items-center justify-center bg-[linear-gradient(180deg,#E9CF43_0%,#CBA500_100%)] text-center shadow-[0_8px_18px_rgba(15,23,42,0.14)] transition hover:brightness-105 active:scale-[0.98]"
+      style={{ height: 72, width: "85%", justifySelf: "center", borderRadius: 15, padding: "8px 6px", boxSizing: "border-box" }}
     >
-      <Icon size={30} strokeWidth={2.6} className="mb-4 text-[#0B2536]" />
+      <div
+        className="mb-1 flex items-center justify-center rounded-[14px] bg-white/18"
+        style={{ width: 34, height: 34 }}
+      >
+        <Icon size={20} strokeWidth={2.4} className="text-[#0B2536]" />
+      </div>
 
       <div
         className="text-[#0B2536]"
         style={{
-          fontSize: 15,
-          lineHeight: 1.05,
+          fontSize: 11.8,
+          lineHeight: 1,
           fontFamily: '"Arial Black", Arial, sans-serif',
           fontWeight: 900,
         }}
@@ -70,7 +175,10 @@ function MoreTile({
         {title}
       </div>
 
-      <p className="mt-2 text-[12px] font-semibold leading-tight text-[#123047]/80">
+      <p
+        className="mt-1 leading-tight text-[#123047]/80"
+        style={{ fontSize: 10.2, fontWeight: 800, lineHeight: 1.05 }}
+      >
         {subtitle}
       </p>
     </button>
@@ -78,6 +186,7 @@ function MoreTile({
 }
 
 export default function AureaMaisPanel() {
+  const [activePage, setActivePage] = useState<MaisPageInfo | null>(null);
   const [walletStatus, setWalletStatus] = useState<WalletAccountStatus | null>(null);
   const [walletStatusLoading, setWalletStatusLoading] = useState(true);
   const [walletStatusError, setWalletStatusError] = useState<string | null>(null);
@@ -407,6 +516,88 @@ export default function AureaMaisPanel() {
     }
   }
 
+  // MAIS_EARLY_INTERNAL_PAGE_OK
+  if (activePage) {
+    const Icon = activePage.icon;
+
+    return (
+      <main className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32 space-y-5">
+        <header className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-5 pb-6 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
+          <button
+            type="button"
+            onClick={() => setActivePage(null)}
+            className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-400/14 px-3 py-1 text-[11px] font-black text-emerald-200 shadow-[0_8px_18px_rgba(16,185,129,0.12)]"
+          >
+            ← Voltar para Mais
+          </button>
+
+          <p className="mt-5 text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
+            Mais Aurea
+          </p>
+
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] text-[#0A1F2E] shadow-[0_8px_18px_rgba(15,23,42,0.14)]">
+              <Icon size={24} strokeWidth={2.4} />
+            </div>
+
+            <h1
+              className="text-[#F5C842]"
+              style={{
+                fontSize: 26,
+                lineHeight: 1,
+                fontFamily: '"Arial Black", Arial, sans-serif',
+                fontWeight: 900,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {activePage.title}
+            </h1>
+          </div>
+
+          <p className="mt-3 text-[14px] leading-relaxed text-[#E6EDF5]">
+            {activePage.description}
+          </p>
+        </header>
+
+        <section className="rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 text-[#f4f8ff] shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+          <p
+            className="text-[#F5C842]"
+            style={{
+              fontSize: 18,
+              lineHeight: 1,
+              fontFamily: '"Arial Black", Arial, sans-serif',
+              fontWeight: 900,
+            }}
+          >
+            {activePage.subtitle}
+          </p>
+
+          <p className="mt-3 text-[13px] leading-relaxed text-[#D7D0BE]">
+            {activePage.detail}
+          </p>
+
+          <div className="mt-5 rounded-[22px] border border-amber-500/16 bg-[rgba(12,30,42,0.74)] px-4 py-4">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+              Status
+            </p>
+            <p className="mt-2 text-[13px] font-semibold leading-relaxed text-[#CBD5E1]">
+              {activePage.statusLabel}
+            </p>
+          </div>
+
+          <div className="mt-5 rounded-[22px] border border-white/12 bg-[linear-gradient(180deg,rgba(13,43,63,0.98),rgba(8,26,40,0.98))] px-4 py-4">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+              Segurança operacional
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-[#B8AD95]">
+              A carteira mantém separação entre demonstração, sandbox e operação real. Dinheiro real, Pix real, liquidação e comprovante real seguem bloqueados até parceiro homologado.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32 space-y-5">
       <header className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-6 pb-7 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
@@ -453,17 +644,17 @@ export default function AureaMaisPanel() {
 
         <div
           className="mt-5 grid grid-cols-3"
-          style={{ gap: 14 }}
+          style={{ gap: 8 }}
         >
-          <MoreTile title="Perfil" subtitle="Conta" Icon={UserRound} onClick={() => scrollToMaisSection("mais-wallet-status")} />
-          <MoreTile title="Seguro" subtitle="Proteção" Icon={ShieldCheck} onClick={() => scrollToMaisSection("mais-operational-limits")} />
-          <MoreTile title="Suporte" subtitle="Ajuda" Icon={Headphones} onClick={() => scrollToMaisSection("mais-support")} />
-          <MoreTile title="Termos" subtitle="Política" Icon={FileText} onClick={() => scrollToMaisSection("mais-utilities")} />
-          <MoreTile title="KYC" subtitle="KYB" Icon={BadgeCheck} onClick={() => scrollToMaisSection("mais-onboarding")} />
-          <MoreTile title="Limites" subtitle="Operação" Icon={Gauge} onClick={() => scrollToMaisSection("mais-operational-limits")} />
-          <MoreTile title="Sandbox" subtitle="Pix teste" Icon={FlaskConical} onClick={() => scrollToMaisSection("mais-pix-sandbox")} />
-          <MoreTile title="Auditoria" subtitle="Logs" Icon={ScrollText} onClick={() => scrollToMaisSection("mais-sandbox-audit")} />
-          <MoreTile title="Config" subtitle="Ajustes" Icon={Settings} onClick={() => scrollToMaisSection("mais-utilities")} />
+          {maisPageCards.map((item) => (
+            <MoreTile
+              key={item.key}
+              title={item.title}
+              subtitle={item.subtitle}
+              Icon={item.icon}
+              onClick={() => setActivePage(item)}
+            />
+          ))}
         </div>
 
         <div className="mt-6 rounded-[24px] border border-white/12 bg-[linear-gradient(180deg,rgba(13,43,63,0.98),rgba(8,26,40,0.98))] px-4 pt-4 pb-5 shadow-[0_12px_24px_rgba(0,0,0,0.16)]">

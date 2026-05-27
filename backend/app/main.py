@@ -45,6 +45,7 @@ app = FastAPI(title="Dils Wallet API", version="0.3.0",
     redoc_url="/redoc" if DOCS_PUBLIC else None,
     openapi_url="/openapi.json" if DOCS_PUBLIC else None,
 )
+
 # Init Rate Limiter
 limiter = init_rate_limiter(app)
 setup_logging()
@@ -77,7 +78,7 @@ app.include_router(dev_seed.router)
 
 from app.api.v1.ai import chat_lab_router
 app.include_router(chat_lab_router, prefix="/api/v1/ai")
-# --- CORS (hardened) ---
+# AUREA_ENV_CORS
 cors_env = os.getenv("CORS_ORIGINS", "").strip()
 origins = [o.strip() for o in cors_env.split(",") if o.strip()]
 

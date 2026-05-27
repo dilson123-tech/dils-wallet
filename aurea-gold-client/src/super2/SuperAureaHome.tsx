@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {API_BASE, USER_EMAIL, sendPix, fetchPixList, fetchWalletPartnerStatus, type PixListItem, type WalletPartnerStatus} from "./api";
 import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
@@ -6,9 +7,42 @@ import AureaPixChart from "./AureaPixChart";
 import { apiGet } from "../lib/api";
 import { getToken, getSessionUserDisplayName } from "../lib/auth";
 import { saveTokens } from "../auth/authClient";
+import {
+  Wallet,
+  TrendingUp,
+  Gauge,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Clock3,
+  Send,
+  Download,
+  ReceiptText,
+  AlertTriangle,
+} from "lucide-react";
 
 type PixShortcutAction = "enviar" | "receber" | "extrato";
 type HomeOpeningLayer = "saldo" | "cofrinhos" | "investimentos" | "cripto";
+type ContaInnerPage =
+  | "guardado"
+  | "investido"
+  | "espaco"
+  | "entradas"
+  | "saidas"
+  | "contas"
+  | "enviar"
+  | "receber"
+  | "extrato";
+
+type ContaInnerPageInfo = {
+  Icon: LucideIcon;
+  eyebrow: string;
+  title: string;
+  value: string;
+  description: string;
+  detail: string;
+  actionLabel?: string;
+  action?: () => void;
+};
 
 type SuperAureaHomeProps = {
   onPixShortcut?: (action: PixShortcutAction) => void;
@@ -259,6 +293,7 @@ export default function SuperAureaHome({ onPixShortcut, onLogout }: SuperAureaHo
       useState<number | null>(null);
     const [homeOpeningLayer, setHomeOpeningLayer] =
       useState<HomeOpeningLayer>("saldo");
+    const [contaInnerPage, setContaInnerPage] = useState<ContaInnerPage | null>(null);
 
     useEffect(() => {
   let alive = true;
@@ -648,77 +683,162 @@ const saldoDisplay =
       : `Mês em ajuste ${formatBRL(Math.abs(resultadoMes))}`
     : "Conta pronta para movimentar";
 
-  return (
-    <section className="aurea-home-root w-full max-w-[390px] md:max-w-[960px] mx-auto space-y-5 md:space-y-6 px-0">
-      <div className="md:hidden ag-surface-elevated px-4 pt-4 pb-3 rounded-[28px]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-11 w-11 shrink-0 rounded-full border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.16),transparent_30%),linear-gradient(180deg,rgba(16,42,55,0.98),rgba(10,24,34,0.98))] flex items-center justify-center text-[12px] font-bold text-[#f4f8ff] shadow-[0_12px_24px_rgba(2,8,20,0.22)]">
-              AG
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
-                Aurea Gold
-              </p>
-              <h2 className="mt-1 text-[1.35rem] leading-tight font-bold text-[#f4f8ff]">
-                Olá, {safeSessionDisplayName}
-              </h2>
-            </div>
-          </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+  const contaInnerPages: Record<ContaInnerPage, ContaInnerPageInfo> = {
+    guardado: {
+      Icon: Wallet,
+      eyebrow: "Patrimônio rápido",
+      title: "Guardado",
+      value: formatBRL(patrimonioGuardado),
+      description: "Reserva projetada da carteira Aurea.",
+      detail: "Aqui vamos concentrar reserva, cofrinhos e valores separados da movimentação principal, sem representar dinheiro real enquanto a carteira estiver em demonstração.",
+    },
+    investido: {
+      Icon: TrendingUp,
+      eyebrow: "Patrimônio rápido",
+      title: "Investido",
+      value: formatBRL(patrimonioInvestido),
+      description: "Visão de crescimento da carteira.",
+      detail: "Área preparada para produtos de investimento, rendimentos e evolução patrimonial quando houver parceiro homologado e fluxo autorizado.",
+    },
+    espaco: {
+      Icon: Gauge,
+      eyebrow: "Patrimônio rápido",
+      title: "Espaço",
+      value: formatBRL(limiteCarteira),
+      description: "Fôlego operacional disponível.",
+      detail: "Resumo do espaço operacional da conta para movimentações futuras, respeitando limites, KYC/KYB e bloqueio de dinheiro real no modo demo.",
+    },
+    entradas: {
+      Icon: ArrowDownCircle,
+      eyebrow: "Agenda financeira",
+      title: "Entradas",
+      value: formatBRL(entradasPrevistas),
+      description: "Entradas previstas no período.",
+      detail: "Aqui ficam recebimentos esperados, cobranças e valores de entrada ainda sem liquidação real enquanto a carteira estiver em sandbox/demonstração.",
+    },
+    saidas: {
+      Icon: ArrowUpCircle,
+      eyebrow: "Agenda financeira",
+      title: "Saídas",
+      value: formatBRL(saidasPrevistas),
+      description: "Saídas previstas e compromissos.",
+      detail: "Área para organizar pagamentos, compromissos e previsões de saída sem executar pagamento real nesta etapa.",
+    },
+    contas: {
+      Icon: Clock3,
+      eyebrow: "Agenda financeira",
+      title: "Contas",
+      value: String(contasProximas),
+      description: "Contas próximas no radar.",
+      detail: "Aqui vamos abrir a visão de contas, vencimentos e alertas, sem débito automático ou liquidação real por enquanto.",
+    },
+    enviar: {
+      Icon: Send,
+      eyebrow: "Ações rápidas",
+      title: "Enviar",
+      value: "PIX",
+      description: "Envio Pix em ambiente seguro.",
+      detail: "O envio real permanece bloqueado até parceiro financeiro homologado. O botão abaixo leva ao fluxo Pix preparado.",
+      actionLabel: "Abrir envio Pix",
+      action: () => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar")),
+    },
+    receber: {
+      Icon: Download,
+      eyebrow: "Ações rápidas",
+      title: "Receber",
+      value: "Cobrar",
+      description: "Recebimento e cobrança Pix.",
+      detail: "A cobrança real depende de PSP/BaaS homologado. O botão abaixo leva ao fluxo de recebimento Pix preparado.",
+      actionLabel: "Abrir recebimento Pix",
+      action: () => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber")),
+    },
+    extrato: {
+      Icon: ReceiptText,
+      eyebrow: "Ações rápidas",
+      title: "Extrato",
+      value: "Histórico",
+      description: "Histórico da conta e Pix.",
+      detail: "O extrato mostra eventos registrados e deve separar claramente demonstração, sandbox e movimentação real futura.",
+      actionLabel: "Abrir extrato Pix",
+      action: () => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato")),
+    },
+  };
+
+  const selectedContaInnerPage = contaInnerPage ? contaInnerPages[contaInnerPage] : null;
+  const SelectedContaInnerIcon = selectedContaInnerPage?.Icon;
+
+  return (
+    <section className="aurea-home-root w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto space-y-5 md:space-y-6 px-4 pt-8 pb-32 md:px-0 md:pt-0 md:pb-6">
+      <div className="md:hidden ag-surface-elevated relative overflow-hidden px-5 pt-5 pb-4 rounded-[28px] border border-amber-500/20 shadow-[0_22px_60px_rgba(0,0,0,0.28)]">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-36 w-36 -translate-x-1/2 rounded-full bg-amber-400/10 blur-2xl" />
+
+        <div className="relative z-10 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => handleServiceShortcut("ajuda")}
+            className="rounded-[16px] border border-amber-500/15 bg-amber-500/12 px-3 py-2 text-[10px] font-semibold text-amber-100"
+          >
+            Ajuda
+          </button>
+
+          {onLogout && (
             <button
               type="button"
-              onClick={() => handleServiceShortcut("ajuda")}
-              className="rounded-[16px] border border-amber-500/12 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold text-amber-100"
+              onClick={onLogout}
+              className="rounded-[16px] border border-amber-500/15 bg-[rgba(16,42,55,0.88)] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#f4f8ff]"
             >
-              Ajuda
+              Sair
             </button>
-
-            {onLogout && (
-              <button
-                type="button"
-                onClick={onLogout}
-                className="rounded-[16px] border border-amber-500/12 bg-[rgba(16,42,55,0.88)] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#f4f8ff]"
-              >
-                Sair
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        <p className="mt-3 text-[11px] text-[#B8AD95]">
-          Sua carteira digital abre por produtos, com leitura rápida e estrutura de app real.
-        </p>
-
-
-          <div className="mt-4 -mx-1 px-1">
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {([
-                { key: "saldo", label: "Saldo" },
-                { key: "cofrinhos", label: "Cofrinhos" },
-                { key: "investimentos", label: "Investimentos" },
-                { key: "cripto", label: "Cripto" },
-              ] as const).map((item) => {
-                const isSelected = homeOpeningLayer === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setHomeOpeningLayer(item.key)}
-                    className={`shrink-0 rounded-[18px] px-4 py-2 text-[10px] font-semibold transition ${
-                      isSelected
-                        ? "bg-[#eef3ff] text-[#0E2230] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
-                        : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] text-[#102734]"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="relative z-10 mt-1 flex flex-col items-center text-center">
+          <div className="ag-conta-monograma-css flex h-16 w-16 items-center justify-center rounded-full border border-amber-200/50 bg-[radial-gradient(circle_at_30%_18%,#fff8c6_0%,#f7dc70_24%,#d4af37_52%,#8a6208_100%)] shadow-[0_18px_42px_rgba(212,175,55,0.30)]">
+            <span className="text-[1.08rem] font-black tracking-[-0.08em] text-[#082131] drop-shadow-sm">
+              AG
+            </span>
           </div>
 
+          <p className="mt-3 text-[10px] uppercase tracking-[0.32em] text-[#D4AF37]">
+            Aurea Gold
+          </p>
+
+          <h2 className="mt-3 text-[1.9rem] leading-[0.98] font-black tracking-[-0.04em] text-[#f4f8ff]">
+            Olá, {safeSessionDisplayName}
+          </h2>
+
+          <p className="mt-4 max-w-[310px] text-[13px] leading-relaxed text-[#c8d0d8]">
+            Sua conta digital em modo seguro, com saldo, produtos e atalhos em uma visão premium.
+          </p>
+        </div>
+
+        <div className="relative z-10 mt-4 -mx-1 px-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {([
+              { key: "saldo", label: "Saldo" },
+              { key: "cofrinhos", label: "Cofrinhos" },
+              { key: "investimentos", label: "Investimentos" },
+              { key: "cripto", label: "Cripto" },
+            ] as const).map((item) => {
+              const isSelected = homeOpeningLayer === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setHomeOpeningLayer(item.key)}
+                  className={`shrink-0 rounded-[18px] px-4 py-2 text-[10px] font-semibold transition ${
+                    isSelected
+                      ? "bg-[#eef3ff] text-[#0E2230] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
+                      : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] text-[#102734]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
       <div className="hidden md:flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col">
@@ -846,8 +966,8 @@ const saldoDisplay =
         )}
 
         {/* Card de saldo principal */}
-        <div className={`rounded-[30px] border border-amber-500/18 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_24%),linear-gradient(180deg,rgba(12,30,42,0.98),rgba(10,24,34,0.98))] px-4 py-5 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.46),0_0_42px_rgba(212,175,55,0.10)] space-y-4 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "-mt-2 rounded-t-[18px] border-t-0 md:mt-0 md:rounded-[30px] md:border-t" : ""}`}>
-        <div className="md:hidden flex items-start justify-between gap-3">
+        <div className={`rounded-[28px] border border-amber-500/18 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_24%),linear-gradient(180deg,rgba(12,30,42,0.98),rgba(10,24,34,0.98))] px-4 py-4 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.42),0_0_42px_rgba(212,175,55,0.10)] space-y-4 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "mt-0 rounded-[28px] md:rounded-[30px]" : ""}`}>
+        <div className="md:hidden flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
                 {isDemoWallet ? "Conta demo" : "Conta conectada"}
@@ -859,7 +979,7 @@ const saldoDisplay =
           <button
             type="button"
             onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-            className="shrink-0 text-[12px] font-semibold text-amber-300"
+            className="shrink-0 rounded-[18px] bg-[linear-gradient(180deg,#e2b611,#c99a06)] px-4 py-2 text-[12px] font-bold text-[#102734] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
           >
             Extrato →
           </button>
@@ -868,10 +988,10 @@ const saldoDisplay =
           <p className="hidden md:block text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
             Saldo em conta
           </p>
-          <p className="mt-2 text-[2.4rem] sm:text-5xl md:text-6xl font-bold text-[#f4f8ff] leading-[0.95]">
+          <p className="mt-3 text-[2.15rem] sm:text-4xl md:text-6xl font-black tracking-[-0.04em] text-[#f4f8ff] leading-[0.95]">
             {saldoDisplay}
           </p>
-          <p className="mt-2 text-[12px] md:text-[13px] text-[#D7D0BE]">
+          <p className="mt-2 max-w-[320px] text-[11px] leading-relaxed md:text-[13px] text-[#D7D0BE]">
             {isPartnerWalletReal
               ? "Disponível para movimentar via parceiro financeiro homologado."
               : "Modo demonstração: valores zerados, sem movimentação financeira real."}
@@ -884,124 +1004,250 @@ const saldoDisplay =
         </div>
 
 
-          <div className="space-y-2.5">
-            <div>
-              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
-                Patrimônio rápido
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-3">
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Guardado</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioGuardado)}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Reserva projetada</p>
+            {selectedContaInnerPage ? (
+              <section className="rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+                <button
+                  type="button"
+                  onClick={() => setContaInnerPage(null)}
+                  className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-400/14 px-3 py-1 text-[11px] font-black text-emerald-200 shadow-[0_8px_18px_rgba(16,185,129,0.12)]"
+                >
+                  ← Voltar para Conta
+                </button>
+
+                <div className="mt-5 flex items-center gap-3">
+                  {SelectedContaInnerIcon && (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] text-[#0A1F2E] shadow-[0_8px_18px_rgba(15,23,42,0.14)]">
+                      <SelectedContaInnerIcon size={24} strokeWidth={2.4} />
+                    </div>
+                  )}
+
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
+                      {selectedContaInnerPage.eyebrow}
+                    </p>
+                    <h3
+                      className="mt-1 text-[#F5C842]"
+                      style={{
+                        fontSize: 22,
+                        lineHeight: 1,
+                        fontFamily: '"Arial Black", Arial, sans-serif',
+                        fontWeight: 900,
+                        letterSpacing: "-0.02em",
+                      }}
+                    >
+                      {selectedContaInnerPage.title}
+                    </h3>
+                  </div>
                 </div>
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Investido</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioInvestido)}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Crescimento da carteira</p>
+
+                <div className="mt-5 rounded-[24px] border border-white/12 bg-[linear-gradient(180deg,rgba(13,43,63,0.98),rgba(8,26,40,0.98))] px-4 py-4">
+                  <p
+                    className="text-[#F8FAFC]"
+                    style={{
+                      fontSize: 24,
+                      lineHeight: 1,
+                      fontFamily: '"Arial Black", Arial, sans-serif',
+                      fontWeight: 900,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {selectedContaInnerPage.value}
+                  </p>
+
+                  <p className="mt-3 text-[14px] font-semibold leading-relaxed text-[#CBD5E1]">
+                    {selectedContaInnerPage.description}
+                  </p>
+
+                  <p className="mt-3 text-[12px] leading-relaxed text-[#B8AD95]">
+                    {selectedContaInnerPage.detail}
+                  </p>
+
+                  {selectedContaInnerPage.action && selectedContaInnerPage.actionLabel && (
+                    <button
+                      type="button"
+                      onClick={selectedContaInnerPage.action}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] px-4 py-3 text-[13px] font-black text-[#0A1F2E] shadow-[0_8px_18px_rgba(15,23,42,0.14)]"
+                      style={{ fontFamily: '"Arial Black", Arial, sans-serif' }}
+                    >
+                      {selectedContaInnerPage.actionLabel}
+                    </button>
+                  )}
                 </div>
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Comprometido</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(patrimonioComprometido)}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Saídas já pressionando</p>
-                </div>
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Espaço</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(limiteCarteira)}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Fôlego operacional</p>
-                </div>
+              </section>
+            ) : (
+              <div className="space-y-5">
+                <section className="rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+                  <div
+                    className="text-[#D6DEE8]"
+                    style={{
+                      fontSize: 13,
+                      fontFamily: '"Arial Black", Arial, sans-serif',
+                      fontWeight: 900,
+                    }}
+                  >
+                    Patrimônio rápido
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3" style={{ gap: 8 }}>
+                    {[
+                      { Icon: Wallet, title: "Guardado", subtitle: formatBRL(patrimonioGuardado), page: "guardado" as ContaInnerPage },
+                      { Icon: TrendingUp, title: "Investido", subtitle: formatBRL(patrimonioInvestido), page: "investido" as ContaInnerPage },
+                      { Icon: Gauge, title: "Espaço", subtitle: formatBRL(limiteCarteira), page: "espaco" as ContaInnerPage },
+                    ].map(({ Icon, title, subtitle, page }) => (
+                      <button
+                        key={title}
+                        type="button"
+                        onClick={() => setContaInnerPage(page)}
+                        className="border border-[#0F172A]/16 bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] text-center shadow-[0_8px_18px_rgba(15,23,42,0.14)] transition active:scale-[0.97]"
+                        style={{ height: 72, width: "85%", justifySelf: "center", borderRadius: 15, padding: "8px 6px", boxSizing: "border-box" }}
+                      >
+                        <div
+                          className="mx-auto flex items-center justify-center rounded-[14px] bg-white/18"
+                          style={{ width: 34, height: 34 }}
+                        >
+                          <Icon size={20} strokeWidth={2.4} className="text-[#0A1F2E]" />
+                        </div>
+
+                        <div
+                          className="leading-tight text-[#0A1F2E]"
+                          style={{
+                            marginTop: 5,
+                            fontSize: 11.8,
+                            lineHeight: 1,
+                            fontFamily: '"Arial Black", Arial, sans-serif',
+                            fontWeight: 900,
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          {title}
+                        </div>
+
+                        <p
+                          className="leading-snug text-[#174F68]"
+                          style={{ marginTop: 3, fontSize: 10.2, fontWeight: 800, lineHeight: 1.05 }}
+                        >
+                          {subtitle}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+                  <div
+                    className="text-[#D6DEE8]"
+                    style={{
+                      fontSize: 13,
+                      fontFamily: '"Arial Black", Arial, sans-serif',
+                      fontWeight: 900,
+                    }}
+                  >
+                    Agenda financeira
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3" style={{ gap: 8 }}>
+                    {[
+                      { Icon: ArrowDownCircle, title: "Entradas", subtitle: formatBRL(entradasPrevistas), page: "entradas" as ContaInnerPage },
+                      { Icon: ArrowUpCircle, title: "Saídas", subtitle: formatBRL(saidasPrevistas), page: "saidas" as ContaInnerPage },
+                      { Icon: Clock3, title: "Contas", subtitle: String(contasProximas), page: "contas" as ContaInnerPage },
+                    ].map(({ Icon, title, subtitle, page }) => (
+                      <button
+                        key={title}
+                        type="button"
+                        onClick={() => setContaInnerPage(page)}
+                        className="border border-[#0F172A]/16 bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] text-center shadow-[0_8px_18px_rgba(15,23,42,0.14)] transition active:scale-[0.97]"
+                        style={{ height: 72, width: "85%", justifySelf: "center", borderRadius: 15, padding: "8px 6px", boxSizing: "border-box" }}
+                      >
+                        <div
+                          className="mx-auto flex items-center justify-center rounded-[14px] bg-white/18"
+                          style={{ width: 34, height: 34 }}
+                        >
+                          <Icon size={20} strokeWidth={2.4} className="text-[#0A1F2E]" />
+                        </div>
+
+                        <div
+                          className="leading-tight text-[#0A1F2E]"
+                          style={{
+                            marginTop: 5,
+                            fontSize: 11.8,
+                            lineHeight: 1,
+                            fontFamily: '"Arial Black", Arial, sans-serif',
+                            fontWeight: 900,
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          {title}
+                        </div>
+
+                        <p
+                          className="leading-snug text-[#174F68]"
+                          style={{ marginTop: 3, fontSize: 10.2, fontWeight: 800, lineHeight: 1.05 }}
+                        >
+                          {subtitle}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-[28px] bg-[linear-gradient(180deg,#16364B_0%,#0D2436_100%)] px-5 pt-5 pb-6 shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+                  <div
+                    className="text-[#D6DEE8]"
+                    style={{
+                      fontSize: 13,
+                      fontFamily: '"Arial Black", Arial, sans-serif',
+                      fontWeight: 900,
+                    }}
+                  >
+                    Ações rápidas
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-3" style={{ gap: 8 }}>
+                    {[
+                      { Icon: Send, title: "Enviar", subtitle: "PIX", page: "enviar" as ContaInnerPage },
+                      { Icon: Download, title: "Receber", subtitle: "Cobrar", page: "receber" as ContaInnerPage },
+                      { Icon: ReceiptText, title: "Extrato", subtitle: "Histórico", page: "extrato" as ContaInnerPage },
+                    ].map(({ Icon, title, subtitle, page }) => (
+                      <button
+                        key={title}
+                        type="button"
+                        onClick={() => setContaInnerPage(page)}
+                        className="border border-[#0F172A]/16 bg-[linear-gradient(180deg,#E6C84F_0%,#C99A06_100%)] text-center shadow-[0_8px_18px_rgba(15,23,42,0.14)] transition active:scale-[0.97]"
+                        style={{ height: 72, width: "85%", justifySelf: "center", borderRadius: 15, padding: "8px 6px", boxSizing: "border-box" }}
+                      >
+                        <div
+                          className="mx-auto flex items-center justify-center rounded-[14px] bg-white/18"
+                          style={{ width: 34, height: 34 }}
+                        >
+                          <Icon size={20} strokeWidth={2.4} className="text-[#0A1F2E]" />
+                        </div>
+
+                        <div
+                          className="leading-tight text-[#0A1F2E]"
+                          style={{
+                            marginTop: 5,
+                            fontSize: 11.8,
+                            lineHeight: 1,
+                            fontFamily: '"Arial Black", Arial, sans-serif',
+                            fontWeight: 900,
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          {title}
+                        </div>
+
+                        <p
+                          className="leading-snug text-[#174F68]"
+                          style={{ marginTop: 3, fontSize: 10.2, fontWeight: 800, lineHeight: 1.05 }}
+                        >
+                          {subtitle}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               </div>
-            </div>
-
-            <div>
-              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
-                Agenda financeira
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-3">
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Entradas previstas</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(entradasPrevistas)}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Movimento aguardado</p>
-                </div>
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Saídas previstas</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{formatBRL(saidasPrevistas)}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Pagamentos próximos</p>
-                </div>
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Contas próximas</p>
-                  <p className="mt-1.5 text-[1.05rem] sm:text-lg font-bold text-[#f4f8ff]">{contasProximas}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">Lançamentos no radar</p>
-                </div>
-                <div className="rounded-[18px] border border-amber-500/8 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] px-3 py-2.5 shadow-[0_10px_24px_rgba(2,8,20,0.22)]">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-[#B8AD95]">Risco & segurança</p>
-                  <p className="mt-1.5 text-[0.98rem] sm:text-base font-bold text-[#f4f8ff]">{riscoCarteiraLabel}</p>
-                  <p className="mt-1 text-[10px] leading-tight text-[#AFA58F]">{segurancaCarteiraLabel}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        <div className="w-full">
-          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.10em] sm:tracking-[0.18em] text-[#D4AF37]">
-                Ações rápidas
-              </p>
-              <h3 className="mt-1 text-lg md:text-xl font-bold text-[#f4f8ff]">
-                  {isDemoWallet ? "Ações simuladas" : "Mover dinheiro"}
-              </h3>
-            </div>
-            <span className="inline-flex items-center rounded-full border border-amber-500/16 bg-amber-500/10 px-3 py-1 text-[10px] text-[#D4AF37]">
-              Pix
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-2.5">
-            <button
-              type="button"
-              onClick={() => (onPixShortcut ? onPixShortcut("enviar") : handlePixShortcutFallback("enviar"))}
-              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[96px] sm:min-h-[112px] flex flex-col justify-between text-left border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]"
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-300 text-xl">
-                ↑
-              </span>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Enviar</span>
-                <span className="text-[10px] sm:text-[11px] text-[#D7D0BE]">PIX</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => (onPixShortcut ? onPixShortcut("receber") : handlePixShortcutFallback("receber"))}
-              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]"
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/12 text-amber-300 text-xl">
-                ↓
-              </span>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Receber</span>
-                <span className="text-[10px] sm:text-[11px] text-[#D7D0BE]">Cobrar</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-              className="ag-card rounded-[20px] px-3 py-3 sm:px-3 sm:py-3 min-h-[112px] flex flex-col justify-between text-left border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]"
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/12 text-amber-300 text-xl">
-                ≡
-              </span>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[12px] sm:text-[13px] font-bold text-[#f4f8ff]">Extrato</span>
-                <span className="text-[10px] sm:text-[11px] text-[#D7D0BE]">Histórico</span>
-              </div>
-            </button>
-          </div>
-        </div>
-
+            )}
         <div className="rounded-[24px] border border-amber-500/14 bg-[linear-gradient(180deg,rgba(14,34,48,0.96),rgba(10,24,34,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
