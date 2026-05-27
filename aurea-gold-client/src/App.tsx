@@ -18,13 +18,7 @@ const isPlanosLab =
   window.location.pathname.includes("planos");
 
 function PlanosLabApp() {
-  return (
-    <div className="min-h-screen text-white">
-      <main className="w-full px-4 py-6 mx-auto max-w-6xl">
-        <PlanosPremium />
-      </main>
-    </div>
-  );
+  return <PlanosPremium />;
 }
 
 interface AureaAppShellProtectedProps {
