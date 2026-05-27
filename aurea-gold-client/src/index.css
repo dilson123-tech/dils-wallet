@@ -283,3 +283,469 @@ textarea {
   border-radius: var(--ag-radius-sm);
   overflow: hidden;
 }
+
+/* AUREA WALLET GLOBAL MOBILE POLISH V1 */
+/* Acabamento visual global: respiro lateral, centralização e badges/ícones mais estáveis. */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  text-align: center;
+  line-height: 1.08;
+}
+
+img,
+svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+#root [class*="rounded-full"],
+#root [class*="rounded-["] {
+  box-sizing: border-box;
+}
+
+#root [class*="rounded-full"] {
+  line-height: 1.05;
+  text-align: center;
+}
+
+#root button[class*="rounded"],
+#root a[class*="rounded"],
+#root [role="button"][class*="rounded"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#root button svg,
+#root a svg,
+#root [role="button"] svg {
+  margin: auto;
+}
+
+.ag-card,
+.ag-hero,
+.ag-surface-elevated {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ag-card *,
+.ag-hero *,
+.ag-surface-elevated * {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .ag-card,
+  .ag-hero,
+  .ag-surface-elevated {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  #root main,
+  #root section,
+  #root article {
+    min-width: 0;
+  }
+
+  #root p,
+  #root span,
+  #root h1,
+  #root h2,
+  #root h3,
+  #root h4,
+  #root li {
+    overflow-wrap: anywhere;
+  }
+
+  #root [class*="tracking-"] {
+    text-wrap: balance;
+  }
+
+  #root [class*="h-"][class*="w-"][class*="items-center"][class*="justify-center"] {
+    line-height: 1;
+    text-align: center;
+  }
+}
+
+/* AUREA WALLET GLOBAL CENTERING POLISH V2 */
+/* Corrige textos/ícones visualmente colados dentro de pills, círculos, dock e cards amarelos. */
+@media (max-width: 640px) {
+  #root button,
+  #root a,
+  #root [role="button"] {
+    box-sizing: border-box !important;
+    text-align: center !important;
+  }
+
+  #root button[class*="rounded"],
+  #root a[class*="rounded"],
+  #root [role="button"][class*="rounded"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1.05 !important;
+  }
+
+  #root button[class*="rounded-full"],
+  #root span[class*="rounded-full"],
+  #root div[class*="rounded-full"],
+  #root a[class*="rounded-full"] {
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    padding-left: 0.72rem !important;
+    padding-right: 0.72rem !important;
+  }
+
+  #root button[class*="tracking-"],
+  #root span[class*="tracking-"],
+  #root div[class*="tracking-"] {
+    letter-spacing: 0.12em !important;
+  }
+
+  #root button svg,
+  #root a svg,
+  #root [role="button"] svg,
+  #root div[class*="items-center"][class*="justify-center"] svg {
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* Cards/botões dourados principais: Guardado, Investido, Espaço, Entradas, Saídas etc. */
+  #root button[class*="C99A06"],
+  #root button[class*="e2b611"],
+  #root button[class*="E6C84F"],
+  #root div[class*="C99A06"][class*="rounded"],
+  #root div[class*="e2b611"][class*="rounded"],
+  #root div[class*="E6C84F"][class*="rounded"] {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding-left: 0.9rem !important;
+    padding-right: 0.9rem !important;
+    overflow: hidden !important;
+  }
+
+  #root button[class*="C99A06"] *,
+  #root button[class*="e2b611"] *,
+  #root button[class*="E6C84F"] *,
+  #root div[class*="C99A06"][class*="rounded"] *,
+  #root div[class*="e2b611"][class*="rounded"] *,
+  #root div[class*="E6C84F"][class*="rounded"] * {
+    max-width: 100% !important;
+    text-align: center !important;
+    line-height: 1.05 !important;
+  }
+
+  /* Dock inferior: Conta / Gestão / Pix / Pagar / Mais */
+  .app-dock {
+    padding-left: max(0.9rem, env(safe-area-inset-left)) !important;
+    padding-right: max(0.9rem, env(safe-area-inset-right)) !important;
+  }
+
+  .app-dock button,
+  .app-dock a {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.22rem !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+    text-align: center !important;
+    overflow: hidden !important;
+  }
+
+  .app-dock svg {
+    display: block !important;
+    margin: 0 auto !important;
+  }
+
+  .app-dock span,
+  .app-dock p {
+    width: 100% !important;
+    display: block !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    letter-spacing: 0.10em !important;
+    line-height: 1 !important;
+  }
+}
+
+/* AUREA WALLET EDGE LABEL ALIGN V4 */
+/* Ajuste fino das labels pequenas tipo CONTA DEMO, PREVISÃO DO MÊS e PROJEÇÃO FINAL. */
+@media (max-width: 640px) {
+  .aurea-edge-label {
+    display: block !important;
+    padding-left: 0.95rem !important;
+    padding-right: 0.55rem !important;
+    text-align: left !important;
+    letter-spacing: 0.11em !important;
+    line-height: 1.05 !important;
+  }
+}
+
+/* AUREA WALLET CARD TEXT SAFE INSET V5 */
+/* Respiro lateral para textos internos dos cards, sem mexer em botões/cards amarelos. */
+@media (max-width: 640px) {
+  #root .ag-card :where(p, h1, h2, h3, h4),
+  #root .ag-hero :where(p, h1, h2, h3, h4),
+  #root .ag-surface-elevated :where(p, h1, h2, h3, h4),
+  #root section[class*="rounded"] :where(p, h1, h2, h3, h4),
+  #root article[class*="rounded"] :where(p, h1, h2, h3, h4),
+  #root div[class*="rounded"][class*="border"] :where(p, h1, h2, h3, h4) {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Labels pequenas ganham respiro e tracking menos estourado */
+  #root .ag-card :where(p, span, div)[class*="uppercase"],
+  #root .ag-hero :where(p, span, div)[class*="uppercase"],
+  #root .ag-surface-elevated :where(p, span, div)[class*="uppercase"],
+  #root section[class*="rounded"] :where(p, span, div)[class*="uppercase"],
+  #root article[class*="rounded"] :where(p, span, div)[class*="uppercase"],
+  #root div[class*="rounded"][class*="border"] :where(p, span, div)[class*="uppercase"] {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    letter-spacing: 0.11em !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Não aplicar esse respiro nos botões, dock inferior e cards clicáveis amarelos */
+  #root button :where(p, span, h1, h2, h3, h4),
+  #root a :where(p, span, h1, h2, h3, h4),
+  #root [role="button"] :where(p, span, h1, h2, h3, h4),
+  #root .app-dock :where(p, span, h1, h2, h3, h4),
+  #root button[class*="C99A06"] *,
+  #root button[class*="e2b611"] *,
+  #root button[class*="E6C84F"] *,
+  #root div[class*="C99A06"][class*="rounded"] *,
+  #root div[class*="e2b611"][class*="rounded"] *,
+  #root div[class*="E6C84F"][class*="rounded"] * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Textos longos continuam quebrando bonito, sem vazar lateral */
+  #root .ag-card :where(p, h1, h2, h3, h4),
+  #root .ag-hero :where(p, h1, h2, h3, h4),
+  #root .ag-surface-elevated :where(p, h1, h2, h3, h4) {
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* AUREA WALLET FLOATING BADGES AND SECTION TITLES V6 */
+/* Ajusta badges/pílulas, títulos de seção e ícones decorativos que ficam colados na borda dos cards. */
+@media (max-width: 640px) {
+  /* Pílulas/status/badges pequenos no topo de cards */
+  #root :where(section, article, div)[class*="rounded"] > :where(p, span, div)[class*="rounded-full"][class*="border"],
+  #root :where(section, article, div)[class*="rounded"] > :where(p, span, div)[class*="inline-flex"][class*="border"],
+  #root :where(section, article, div)[class*="rounded"] :where(p, span, div)[class*="rounded-full"][class*="uppercase"] {
+    margin-left: 0.95rem !important;
+    margin-right: 0.75rem !important;
+    max-width: calc(100% - 1.7rem) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Títulos curtos de seção antes de grids/cards: Pix rápido, Patrimônio rápido, Agenda financeira etc. */
+  #root :where(p, h2, h3)[class*="font-bold"]:not([class*="text-center"]),
+  #root :where(p, h2, h3)[class*="font-black"]:not([class*="text-center"]) {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Ícones decorativos posicionados com negativo, tipo escudo do Pix protegido */
+  #root :where(section, article, div)[class*="rounded"][class*="border"] > [class*="-left-"],
+  #root :where(section, article, div)[class*="rounded"][class*="border"] > [class*="left-[-"],
+  #root :where(section, article, div)[class*="rounded"][class*="border"] > [style*="left: -"] {
+    left: 0.85rem !important;
+    margin-left: 0 !important;
+  }
+
+  #root :where(section, article, div)[class*="rounded"][class*="border"] > [class*="-top-"] {
+    top: 0.65rem !important;
+  }
+
+  /* Quando o ícone flutuante é o primeiro filho, deixa o conteúdo respirar também */
+  #root :where(section, article, div)[class*="rounded"][class*="border"] > [class*="-left-"] + :where(div, p, h2, h3),
+  #root :where(section, article, div)[class*="rounded"][class*="border"] > [class*="left-[-"] + :where(div, p, h2, h3) {
+    padding-left: 1.1rem !important;
+  }
+
+  /* Mantém botões e cards amarelos livres desse ajuste */
+  #root button[class*="C99A06"],
+  #root button[class*="e2b611"],
+  #root button[class*="E6C84F"],
+  #root div[class*="C99A06"][class*="rounded"],
+  #root div[class*="e2b611"][class*="rounded"],
+  #root div[class*="E6C84F"][class*="rounded"],
+  #root .app-dock * {
+    margin-left: initial;
+  }
+}
+
+/* AUREA WALLET STRUCTURAL CARD INSET V7 */
+/* Respiro para títulos estruturais, labels em div e linhas com ícone dentro dos cards. */
+@media (max-width: 640px) {
+  /* Títulos estruturais em DIV, como "Pix rápido" */
+  #root :where(section, article, div)[class*="rounded"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > div[class*="text-"]:not([class*="grid"]):not([class*="rounded-full"]):not([class*="app-dock"]) {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Labels internas em DIV, como "MODO DEMONSTRAÇÃO" */
+  #root :where(section, article, div)[class*="rounded"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    div[class*="uppercase"][class*="tracking"] {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    letter-spacing: 0.11em !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Linhas com ícone + texto dentro de cards, como "Pix protegido" */
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > div[class*="flex"][class*="items-start"] {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Ícones quadrados/círculos dentro dessas linhas: escudo, status, segurança etc. */
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > div[class*="flex"][class*="items-start"] > div[class*="items-center"][class*="justify-center"] {
+    margin-left: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Textos auxiliares soltos dentro de cards, inclusive blocos abaixo de labels */
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > p,
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > h1,
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > h2,
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > h3 {
+    padding-left: 0.95rem !important;
+    padding-right: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Não tocar em dock, botões e tiles amarelos */
+  #root .app-dock *,
+  #root button *,
+  #root a *,
+  #root [role="button"] *,
+  #root button[class*="C99A06"] *,
+  #root button[class*="e2b611"] *,
+  #root button[class*="E6C84F"] *,
+  #root div[class*="C99A06"][class*="rounded"] *,
+  #root div[class*="e2b611"][class*="rounded"] *,
+  #root div[class*="E6C84F"][class*="rounded"] * {
+    transform: none !important;
+  }
+}
+
+/* AUREA WALLET CARD INSET STRONGER V8 */
+/* Aumenta o respiro interno dos textos/labels estruturais dos cards no mobile. */
+@media (max-width: 640px) {
+  #root .ag-card :where(p, h1, h2, h3, h4),
+  #root .ag-hero :where(p, h1, h2, h3, h4),
+  #root .ag-surface-elevated :where(p, h1, h2, h3, h4),
+  #root section[class*="rounded"] :where(p, h1, h2, h3, h4),
+  #root article[class*="rounded"] :where(p, h1, h2, h3, h4),
+  #root div[class*="rounded"][class*="border"] :where(p, h1, h2, h3, h4) {
+    padding-left: 1.30rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  #root .ag-card :where(p, span, div)[class*="uppercase"],
+  #root .ag-hero :where(p, span, div)[class*="uppercase"],
+  #root .ag-surface-elevated :where(p, span, div)[class*="uppercase"],
+  #root section[class*="rounded"] :where(p, span, div)[class*="uppercase"],
+  #root article[class*="rounded"] :where(p, span, div)[class*="uppercase"],
+  #root div[class*="rounded"][class*="border"] :where(p, span, div)[class*="uppercase"] {
+    padding-left: 1.30rem !important;
+    padding-right: 0.85rem !important;
+    letter-spacing: 0.10em !important;
+  }
+
+  #root :where(section, article, div)[class*="rounded"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > div[class*="text-"]:not([class*="grid"]):not([class*="rounded-full"]):not([class*="app-dock"]) {
+    padding-left: 1.30rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  #root :where(section, article, div)[class*="rounded"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    div[class*="uppercase"][class*="tracking"] {
+    padding-left: 1.30rem !important;
+    padding-right: 0.85rem !important;
+    letter-spacing: 0.10em !important;
+  }
+
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > div[class*="flex"][class*="items-start"] {
+    padding-left: 1.22rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > p,
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > h1,
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > h2,
+  #root :where(section, article, div)[class*="rounded"][class*="border"]:not([class*="C99A06"]):not([class*="e2b611"]):not([class*="E6C84F"])
+    > h3 {
+    padding-left: 1.30rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  /* Preserva botões, dock e tiles amarelos */
+  #root button :where(p, span, h1, h2, h3, h4),
+  #root a :where(p, span, h1, h2, h3, h4),
+  #root [role="button"] :where(p, span, h1, h2, h3, h4),
+  #root .app-dock :where(p, span, h1, h2, h3, h4),
+  #root button[class*="C99A06"] *,
+  #root button[class*="e2b611"] *,
+  #root button[class*="E6C84F"] *,
+  #root div[class*="C99A06"][class*="rounded"] *,
+  #root div[class*="e2b611"][class*="rounded"] *,
+  #root div[class*="E6C84F"][class*="rounded"] * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    transform: none !important;
+  }
+}

@@ -793,27 +793,27 @@ const saldoDisplay =
           )}
         </div>
 
-        <div className="relative z-10 mt-1 flex flex-col items-center text-center">
-          <div className="ag-conta-monograma-css flex h-16 w-16 items-center justify-center rounded-full border border-amber-200/50 bg-[radial-gradient(circle_at_30%_18%,#fff8c6_0%,#f7dc70_24%,#d4af37_52%,#8a6208_100%)] shadow-[0_18px_42px_rgba(212,175,55,0.30)]">
-            <span className="text-[1.08rem] font-black tracking-[-0.08em] text-[#082131] drop-shadow-sm">
+        <div className="relative z-10 -mt-1 flex flex-col items-center text-center">
+          <div className="ag-conta-monograma-css flex h-10 w-10 items-center justify-center rounded-full border border-amber-200/50 bg-[radial-gradient(circle_at_30%_18%,#fff8c6_0%,#f7dc70_24%,#d4af37_52%,#8a6208_100%)] shadow-[0_10px_22px_rgba(212,175,55,0.22)]">
+            <span className="text-[0.78rem] font-black tracking-[-0.08em] text-[#082131] drop-shadow-sm">
               AG
             </span>
           </div>
 
-          <p className="mt-3 text-[10px] uppercase tracking-[0.32em] text-[#D4AF37]">
+          <p className="mt-1.5 text-[8.5px] uppercase tracking-[0.24em] text-[#D4AF37]">
             Aurea Gold
           </p>
 
-          <h2 className="mt-3 text-[1.9rem] leading-[0.98] font-black tracking-[-0.04em] text-[#f4f8ff]">
+          <h2 className="mt-1.5 text-[1.42rem] leading-[0.96] font-black tracking-[-0.04em] text-[#f4f8ff]">
             Olá, {safeSessionDisplayName}
           </h2>
 
-          <p className="mt-4 max-w-[310px] text-[13px] leading-relaxed text-[#c8d0d8]">
+          <p className="mt-1.5 max-w-[286px] text-[10.5px] leading-snug text-[#c8d0d8]">
             Sua conta digital em modo seguro, com saldo, produtos e atalhos em uma visão premium.
           </p>
         </div>
 
-        <div className="relative z-10 mt-4 -mx-1 px-1">
+        <div className="relative z-10 mt-2.5 -mx-1 px-1">
           <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {([
               { key: "saldo", label: "Saldo" },
@@ -827,7 +827,7 @@ const saldoDisplay =
                   key={item.key}
                   type="button"
                   onClick={() => setHomeOpeningLayer(item.key)}
-                  className={`shrink-0 rounded-[18px] px-4 py-2 text-[10px] font-semibold transition ${
+                  className={`shrink-0 rounded-[14px] px-2.5 py-1 text-[9px] font-semibold transition ${
                     isSelected
                       ? "bg-[#eef3ff] text-[#0E2230] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
                       : "bg-[linear-gradient(180deg,#e2b611,#c99a06)] text-[#102734]"
@@ -898,7 +898,7 @@ const saldoDisplay =
               <p className="text-sm font-semibold text-[#f4f8ff]">
                 Camada ativa da conta
               </p>
-              <p className="mt-1 text-[11px] text-[#B8AD95]">
+              <p className="mt-0.5 text-[10px] leading-tight text-[#B8AD95]">
                 Esta abertura mobile organiza a carteira por produtos, como o cliente espera em um app real.
               </p>
             </div>
@@ -966,10 +966,10 @@ const saldoDisplay =
         )}
 
         {/* Card de saldo principal */}
-        <div className={`rounded-[28px] border border-amber-500/18 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_24%),linear-gradient(180deg,rgba(12,30,42,0.98),rgba(10,24,34,0.98))] px-4 py-4 sm:p-5 md:p-6 overflow-hidden shadow-[0_20px_56px_rgba(2,8,20,0.42),0_0_42px_rgba(212,175,55,0.10)] space-y-4 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "mt-0 rounded-[28px] md:rounded-[30px]" : ""}`}>
+        <div className={`rounded-[22px] border border-amber-500/18 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.10),transparent_20%),linear-gradient(180deg,rgba(12,30,42,0.98),rgba(10,24,34,0.98))] px-4 py-2.5 sm:p-5 md:p-6 overflow-hidden shadow-[0_14px_34px_rgba(2,8,20,0.32),0_0_28px_rgba(212,175,55,0.07)] space-y-2.5 ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""} ${homeOpeningLayer === "saldo" ? "mt-0 rounded-[22px] md:rounded-[30px]" : ""}`}>
         <div className="md:hidden flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
+            <p className="aurea-edge-label text-[10px] uppercase tracking-[0.12em] text-[#D4AF37]">
                 {isDemoWallet ? "Conta demo" : "Conta conectada"}
             </p>
             <p className="mt-1 text-[11px] text-[#B8AD95]">
@@ -979,19 +979,19 @@ const saldoDisplay =
           <button
             type="button"
             onClick={() => (onPixShortcut ? onPixShortcut("extrato") : handlePixShortcutFallback("extrato"))}
-            className="shrink-0 rounded-[18px] bg-[linear-gradient(180deg,#e2b611,#c99a06)] px-4 py-2 text-[12px] font-bold text-[#102734] shadow-[0_10px_24px_rgba(2,8,20,0.18)]"
+            className="shrink-0 rounded-[14px] bg-[linear-gradient(180deg,#e2b611,#c99a06)] px-3 py-1 text-[10.5px] font-bold text-[#102734] shadow-[0_7px_14px_rgba(2,8,20,0.14)]"
           >
             Extrato →
           </button>
         </div>
         <div>
-          <p className="hidden md:block text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+          <p className="aurea-edge-label hidden md:block text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
             Saldo em conta
           </p>
-          <p className="mt-3 text-[2.15rem] sm:text-4xl md:text-6xl font-black tracking-[-0.04em] text-[#f4f8ff] leading-[0.95]">
+          <p className="mt-1.5 text-[1.62rem] sm:text-4xl md:text-6xl font-black tracking-[-0.04em] text-[#f4f8ff] leading-[0.94]">
             {saldoDisplay}
           </p>
-          <p className="mt-2 max-w-[320px] text-[11px] leading-relaxed md:text-[13px] text-[#D7D0BE]">
+          <p className="mt-1 max-w-[320px] text-[10px] leading-snug md:text-[13px] text-[#D7D0BE]">
             {isPartnerWalletReal
               ? "Disponível para movimentar via parceiro financeiro homologado."
               : "Modo demonstração: valores zerados, sem movimentação financeira real."}
@@ -1022,7 +1022,7 @@ const saldoDisplay =
                   )}
 
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
+                    <p className="aurea-edge-label text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
                       {selectedContaInnerPage.eyebrow}
                     </p>
                     <h3
@@ -1251,7 +1251,7 @@ const saldoDisplay =
         <div className="rounded-[24px] border border-amber-500/14 bg-[linear-gradient(180deg,rgba(14,34,48,0.96),rgba(10,24,34,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
+              <p className="aurea-edge-label text-[10px] sm:text-[11px] md:text-[12px] text-[#D4AF37] uppercase tracking-[0.14em] sm:tracking-[0.18em]">
                 Previsão do mês • IA 3.0
               </p>
               <p className="mt-2 text-sm text-[#f4f8ff]">
@@ -1261,7 +1261,7 @@ const saldoDisplay =
             </div>
 
             <div className="text-left sm:text-right w-full sm:w-auto">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-[#B8AD95]">
+              <p className="aurea-edge-label text-[10px] uppercase tracking-[0.16em] text-[#B8AD95]">
                 Projeção final
               </p>
               <p className="mt-1 text-sm font-semibold text-[#f4f8ff]">
@@ -1282,7 +1282,7 @@ const saldoDisplay =
       <div className={`ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,124,137,0.16),transparent_28%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(212,175,55,0.14)] ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""}`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <p className="text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
+            <p className="aurea-edge-label text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
               Resumo financeiro do mês
             </p>
             <p className="text-sm md:text-base text-[#f4f8ff]">
@@ -1296,7 +1296,7 @@ const saldoDisplay =
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-[11px]">
           <div className="ag-card px-4 py-3 border border-[rgba(96,214,159,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(96,214,159,0.10),transparent_26%),linear-gradient(180deg,rgba(25,32,18,0.96),rgba(11,14,10,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="text-[10px] text-emerald-200/90 uppercase tracking-[0.14em]">
+            <p className="aurea-edge-label text-[10px] text-emerald-200/90 uppercase tracking-[0.14em]">
               Entradas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-emerald-300">
@@ -1308,7 +1308,7 @@ const saldoDisplay =
           </div>
 
           <div className="ag-card px-4 py-3 border border-[rgba(255,123,143,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(255,123,143,0.10),transparent_26%),linear-gradient(180deg,rgba(38,18,18,0.96),rgba(15,9,9,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="text-[10px] text-red-200/90 uppercase tracking-[0.14em]">
+            <p className="aurea-edge-label text-[10px] text-red-200/90 uppercase tracking-[0.14em]">
               Saídas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-red-300">
@@ -1320,7 +1320,7 @@ const saldoDisplay =
           </div>
 
           <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-amber-500/14 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.10),transparent_24%),linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
+            <p className="aurea-edge-label text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
               Resultado do mês
             </p>
             <p className="mt-1 text-lg font-semibold">
@@ -1355,7 +1355,7 @@ const saldoDisplay =
 
       <section className="space-y-3">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          <p className="aurea-edge-label text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
             Produtos da conta
           </p>
           <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
@@ -1450,7 +1450,7 @@ const saldoDisplay =
         <section className="ag-card rounded-[24px] px-4 py-5 sm:px-5 sm:py-6 border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+              <p className="aurea-edge-label text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
                 Últimas atividades
               </p>
               <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
@@ -1578,7 +1578,7 @@ const saldoDisplay =
         </section>
 
         <section className="ag-hero px-4 py-5 sm:px-5 sm:py-6 rounded-[28px] border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))]">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
+          <p className="aurea-edge-label text-[10px] uppercase tracking-[0.16em] text-[#D4AF37]">
             Benefícios e crescimento
           </p>
           <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
@@ -1647,7 +1647,7 @@ const saldoDisplay =
       {/* Conta em foco */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
         <div className="rounded-2xl border border-amber-500/10 bg-[linear-gradient(180deg,rgba(12,30,42,0.96),rgba(8,22,30,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden shadow-[0_18px_36px_rgba(2,8,20,0.26)]">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
+          <p className="aurea-edge-label text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
             Conta em foco
           </p>
           <h3 className="mt-2 text-[1.35rem] sm:text-lg md:text-xl font-bold text-[#f4f8ff]">
@@ -1692,7 +1692,7 @@ const saldoDisplay =
         <div className="rounded-2xl border border-amber-500/12 bg-[linear-gradient(180deg,rgba(14,34,48,0.96),rgba(10,24,34,0.98))] p-4 sm:p-5 md:p-5 overflow-hidden">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
+              <p className="aurea-edge-label text-[10px] uppercase tracking-[0.16em] text-amber-200/80">
                 Acessos úteis
               </p>
               <h3 className="mt-2 text-lg md:text-xl font-bold text-[#f4f8ff]">
