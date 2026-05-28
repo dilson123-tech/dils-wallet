@@ -107,11 +107,11 @@ Terceira rodada:
 - Parceiro: Celcoin
 - Categoria: BaaS / Core / Pix
 - Prioridade: A
-- Status: contact_sent
+- Status: commercial_form_sent
 - Risco atual: medium
 - Site oficial: https://www.celcoin.com.br/
-- Canal usado: canal oficial Celcoin / primeiro contato comercial
-- Pessoa/área contatada: time comercial/técnico Celcoin
+- Canal usado: WhatsApp/atendimento Celcoin + formulário oficial de Contato Comercial Celcoin
+- Pessoa/área contatada: atendimento Celcoin e time comercial/técnico Celcoin
 - Data do primeiro contato: 2026-05-28
 - Data da última interação: 2026-05-28
 - Próxima revisão: 2026-06-02
@@ -124,7 +124,11 @@ Mensagem reforçou que a operação financeira real permanece bloqueada até par
 
 ### Resposta recebida
 
-Pendente.
+A Celcoin respondeu pelo atendimento agradecendo o interesse na Aurea Gold e orientou o agendamento/contato com o time comercial pelo canal oficial de Contato Comercial Celcoin.
+
+Após essa orientação, o formulário oficial de contato comercial foi preenchido e enviado com os dados da Aurea Gold / dils-wallet.
+
+Leitura atual: avanço real para funil comercial. Ainda não há proposta, contrato, sandbox liberado, credenciais, documentação privada ou aprovação técnica.
 
 ### Documentos recebidos
 
@@ -148,7 +152,9 @@ Pendente.
 
 ### Próxima ação
 
-Aguardar resposta até 2026-06-02. Se não houver retorno, fazer follow-up curto pelo mesmo canal ou canal alternativo oficial.
+Aguardar retorno do time comercial/técnico da Celcoin até 2026-06-02.
+
+Se não houver resposta, fazer follow-up curto citando que o formulário oficial já foi preenchido e reforçando pedido de conversa para validar BaaS, Pix, saldo, webhooks, ledger/reconciliação, KYC/KYB, custos, contrato e sandbox oficial.
 
 ### Decisão atual
 
