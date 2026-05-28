@@ -749,3 +749,135 @@ svg {
     transform: none !important;
   }
 }
+
+/* AUREA WALLET FINANCIAL SUMMARY CARDS V1 */
+/* Padroniza os mini cards do Resumo Financeiro do Mês sem herdar o inset global dos cards grandes. */
+@media (max-width: 640px) {
+  .aurea-finance-summary {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+
+  .aurea-finance-summary .aurea-finance-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .aurea-finance-card {
+    min-height: 116px;
+    border-radius: 22px !important;
+  }
+
+  .aurea-finance-card :where(p, h1, h2, h3, h4, span, div) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: left !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .aurea-finance-card-title {
+    display: block !important;
+    line-height: 1.15 !important;
+    letter-spacing: 0.10em !important;
+    white-space: normal !important;
+    max-width: 100% !important;
+  }
+}
+
+/* AUREA WALLET PIX HERO AND ACTION PANEL V2 */
+/* Ajuste específico do topo Pix e painel Modo Demonstração. */
+@media (max-width: 640px) {
+  .aurea-pix-safe-badge {
+    margin-left: 1.15rem !important;
+    margin-top: 0.25rem !important;
+    max-width: calc(100% - 2.3rem) !important;
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .aurea-pix-hero-title,
+  .aurea-pix-hero-copy {
+    padding-left: 1.15rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .aurea-pix-action-panel {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-color: rgba(212, 175, 55, 0.14) !important;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.20) !important;
+  }
+
+  .aurea-pix-mode-card {
+    border-color: rgba(212, 175, 55, 0.12) !important;
+    background: linear-gradient(180deg, rgba(212,175,55,0.07), rgba(6,20,30,0.58)) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1.15rem !important;
+    padding-right: 1.15rem !important;
+  }
+
+  .aurea-pix-mode-card :where(div, p, span, h1, h2, h3, h4) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .aurea-pix-mode-label {
+    display: block !important;
+    letter-spacing: 0.10em !important;
+    line-height: 1.1 !important;
+  }
+
+  .aurea-pix-mode-copy,
+  .aurea-pix-empty-copy {
+    display: block !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    line-height: 1.35 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .aurea-pix-empty-copy {
+    margin-top: 0.95rem !important;
+    padding-left: 1.15rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* AUREA WALLET MAIS QUICK ACCESS POLISH V1 */
+/* Padroniza Acessos rápidos e Suporte/utilidades da aba Mais. */
+@media (max-width: 640px) {
+  .aurea-more-quick-card {
+    min-height: 96px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .aurea-more-quick-card :where(div, p, span) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center !important;
+  }
+
+  .aurea-more-utility-row {
+    min-height: 48px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .aurea-more-utility-row :where(span, div, p) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: left !important;
+    line-height: 1.15 !important;
+  }
+}

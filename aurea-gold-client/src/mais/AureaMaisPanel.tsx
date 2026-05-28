@@ -2,23 +2,26 @@ import React, { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
+  Bot,
   FileText,
   FlaskConical,
   Gauge,
+  Gift,
   Headphones,
   ScrollText,
   Search,
   Settings,
   ShieldCheck,
+  Smartphone,
   UserRound,
 } from "lucide-react";
 import { fetchWalletAccountStatus, fetchWalletStructuredBalance, fetchWalletStructuredStatement, fetchWalletReceiptReconciliation, fetchWalletOperationalLimits, fetchWalletOnboardingStatus, createWalletPixSandboxPayment, fetchWalletPixSandboxReconciliation, fetchWalletPixSandboxAuditHistory, type WalletAccountStatus, type WalletStructuredBalance, type WalletStructuredStatement, type WalletReceiptReconciliation, type WalletOperationalLimits, type WalletOnboardingStatus, type WalletPixSandboxPayment, type WalletPixSandboxReconciliation, type WalletPixSandboxAuditHistory } from "../super2/api";
 
 const sugestoes = [
-  "Recarga de celular",
-  "Convide e ganhe",
-  "Buscar ajuda",
-  "Assistente Aurea",
+  { label: "Recarga de celular", icon: Smartphone },
+  { label: "Convide e ganhe", icon: Gift },
+  { label: "Buscar ajuda", icon: Search },
+  { label: "Assistente Aurea", icon: Bot },
 ];
 
 const atalhos = [
@@ -455,7 +458,7 @@ export default function AureaMaisPanel() {
 
     try {
       const data = await createWalletPixSandboxPayment({
-        amount: "10.00",
+        amount: "0.00",
         description: "Cobrança sandbox Aurea Gold",
         external_id: "aurea-ui-sandbox-payment",
       });
@@ -1237,8 +1240,8 @@ export default function AureaMaisPanel() {
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
-            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Valor de teste</div>
-            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">R$ 10,00</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#B8AD95]">Valor demonstrativo</div>
+            <div className="mt-1 text-sm font-semibold text-[#f4f8ff]">R$ 0,00</div>
           </div>
 
           <div className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-3" style={{ padding: "14px 16px", minHeight: "74px" }}>
@@ -1495,14 +1498,14 @@ export default function AureaMaisPanel() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {sugestoes.map((item) => (
+          {sugestoes.map(({ label, icon: Icon }) => (
             <article
-              key={item}
-              className="ag-card rounded-[20px] px-4 py-4 text-center border border-amber-500/10 bg-[linear-gradient(180deg,rgba(16,42,55,0.96),rgba(7,15,30,0.98))]"
+              key={label}
+              className="aurea-more-quick-card ag-card rounded-[22px] px-4 py-4 text-center border border-amber-500/14 bg-[radial-gradient(circle_at_top,rgba(212,175,55,0.10),transparent_28%),linear-gradient(180deg,rgba(16,42,55,0.98),rgba(7,20,30,0.98))] shadow-[0_12px_26px_rgba(0,0,0,0.20)]"
             >
-              <div className="text-amber-300 text-lg">✦</div>
-              <div className="mt-2 text-sm font-medium text-[#f4f8ff] leading-snug">
-                {item}
+              <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-[14px] border border-amber-300/20 bg-amber-400/10 text-[#F5C842]"><Icon size={18} strokeWidth={2.4} /></div>
+              <div className="mt-2 text-[13px] font-black leading-tight tracking-[-0.02em] text-[#f4f8ff]">
+                {label}
               </div>
             </article>
           ))}
@@ -1530,7 +1533,7 @@ export default function AureaMaisPanel() {
           {atalhos.map((item) => (
             <article
               key={item}
-              className="rounded-[18px] border border-amber-500/10 bg-[rgba(12,30,42,0.74)] px-4 py-4 text-sm text-[#f4f8ff]"
+              className="aurea-more-utility-row rounded-[18px] border border-amber-500/12 bg-[linear-gradient(180deg,rgba(16,42,55,0.92),rgba(7,18,28,0.98))] px-5 py-3.5 text-[13px] font-semibold text-[#f4f8ff] shadow-[0_8px_18px_rgba(0,0,0,0.16)]"
             >
               {item}
             </article>
