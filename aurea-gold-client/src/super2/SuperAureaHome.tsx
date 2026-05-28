@@ -1279,7 +1279,7 @@ const saldoDisplay =
 
 {/* ===== RESUMO FINANCEIRO PREMIUM ===== */}
       </div>
-      <div className={`ag-hero px-4 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,124,137,0.16),transparent_28%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(212,175,55,0.14)] ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""}`}>
+      <div className={`ag-hero aurea-finance-summary px-5 py-5 sm:px-5 sm:py-5 overflow-hidden mb-6 space-y-4 rounded-[28px] border border-amber-500/16 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,124,137,0.16),transparent_28%),linear-gradient(180deg,rgba(14,34,48,0.98),rgba(10,24,34,0.98))] shadow-[0_26px_58px_rgba(2,8,20,0.46),0_0_48px_rgba(212,175,55,0.14)] ${homeOpeningLayer !== "saldo" ? "hidden md:block" : ""}`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <p className="aurea-edge-label text-[10px] md:text-[11px] text-amber-200/80 uppercase tracking-[0.16em]">
@@ -1294,9 +1294,9 @@ const saldoDisplay =
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-[11px]">
-          <div className="ag-card px-4 py-3 border border-[rgba(96,214,159,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(96,214,159,0.10),transparent_26%),linear-gradient(180deg,rgba(25,32,18,0.96),rgba(11,14,10,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="aurea-edge-label text-[10px] text-emerald-200/90 uppercase tracking-[0.14em]">
+        <div className="aurea-finance-grid grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
+          <div className="ag-card aurea-finance-card px-5 py-4 border border-[rgba(96,214,159,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(96,214,159,0.10),transparent_26%),linear-gradient(180deg,rgba(25,32,18,0.96),rgba(11,14,10,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
+            <p className="aurea-finance-card-title text-[10px] text-emerald-200/90 uppercase tracking-[0.10em]">
               Entradas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-emerald-300">
@@ -1307,8 +1307,8 @@ const saldoDisplay =
             </p>
           </div>
 
-          <div className="ag-card px-4 py-3 border border-[rgba(255,123,143,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(255,123,143,0.10),transparent_26%),linear-gradient(180deg,rgba(38,18,18,0.96),rgba(15,9,9,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="aurea-edge-label text-[10px] text-red-200/90 uppercase tracking-[0.14em]">
+          <div className="ag-card aurea-finance-card px-5 py-4 border border-[rgba(255,123,143,0.28)] bg-[radial-gradient(circle_at_top_right,rgba(255,123,143,0.10),transparent_26%),linear-gradient(180deg,rgba(38,18,18,0.96),rgba(15,9,9,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
+            <p className="aurea-finance-card-title text-[10px] text-red-200/90 uppercase tracking-[0.10em]">
               Saídas no mês
             </p>
             <p className="mt-1 text-lg font-semibold text-red-300">
@@ -1319,8 +1319,8 @@ const saldoDisplay =
             </p>
           </div>
 
-          <div className="col-span-2 md:col-span-1 ag-card px-4 py-3 flex flex-col justify-between border border-amber-500/14 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.10),transparent_24%),linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
-            <p className="aurea-edge-label text-[10px] text-amber-200/90 uppercase tracking-[0.14em]">
+          <div className="ag-card aurea-finance-card px-5 py-4 flex flex-col justify-between border border-amber-500/14 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.10),transparent_24%),linear-gradient(180deg,rgba(16,42,55,0.96),rgba(10,24,34,0.98))] shadow-[0_14px_28px_rgba(0,0,0,0.30)]">
+            <p className="aurea-finance-card-title text-[10px] text-amber-200/90 uppercase tracking-[0.10em]">
               Resultado do mês
             </p>
             <p className="mt-1 text-lg font-semibold">

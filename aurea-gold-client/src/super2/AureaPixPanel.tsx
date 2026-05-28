@@ -845,12 +845,12 @@ const saldo =
   return (
       <section className="w-full max-w-[390px] sm:max-w-[430px] md:max-w-[960px] mx-auto px-4 pt-8 pb-32">
         <section className="rounded-[30px] bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_28%),linear-gradient(180deg,rgba(7,59,88,0.98),rgba(6,30,47,0.98))] px-5 pt-6 pb-7 text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
-          <div className="inline-flex items-center rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.02em] text-[#F6D66B]">
+          <div className="aurea-pix-safe-badge inline-flex items-center justify-center rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.02em] text-[#F6D66B]">
             Pix em modo seguro
           </div>
 
           <h1
-            className="mt-5 text-[#F5C842]"
+            className="aurea-pix-hero-title mt-5 text-[#F5C842]"
             style={{
               fontSize: 26,
               lineHeight: 1,
@@ -862,7 +862,7 @@ const saldo =
             Pix Aurea
           </h1>
 
-          <p className="mt-3 text-[15px] leading-relaxed text-[#E6EDF5]">
+          <p className="aurea-pix-hero-copy mt-3 text-[15px] leading-relaxed text-[#E6EDF5]">
             Envie, cobre e acompanhe seus Pix com segurança. No sandbox, nada movimenta dinheiro real.
           </p>
         </section>
@@ -951,12 +951,12 @@ const saldo =
           </div>
 
         {/* PAINEL DE AÇÃO SELECIONADA */}
-        <div className="mt-3 rounded-xl border border-amber-500/10 bg-[rgba(12,30,42,0.74)] p-3 text-[11px] text-[#f4f8ff]">
-          <div className="mb-4 rounded-2xl border border-amber-500/20 bg-[linear-gradient(180deg,rgba(212,175,55,0.10),rgba(6,14,18,0.72))] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-[#D4AF37]">
+        <div className="aurea-pix-action-panel mt-4 rounded-[24px] border border-amber-500/14 bg-[linear-gradient(180deg,rgba(12,30,42,0.88),rgba(8,26,40,0.96))] px-5 py-4 text-[11px] text-[#f4f8ff] shadow-[0_12px_26px_rgba(0,0,0,0.18)]">
+          <div className="aurea-pix-mode-card mb-4 rounded-[20px] border border-amber-500/12 bg-[linear-gradient(180deg,rgba(212,175,55,0.07),rgba(6,20,30,0.58))] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
+            <div className="aurea-pix-mode-label text-[10px] uppercase tracking-[0.11em] text-[#D4AF37]">
               {walletModeLabel}
             </div>
-            <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-[#D7D0BE]">
+            <p className="aurea-pix-mode-copy mt-2 max-w-[310px] text-[12px] leading-snug text-[#D7D0BE]">
               {isDemoWallet
                 ? "Fluxos de PIX em demonstração, sem movimentar dinheiro real. A operação real será ativada somente via parceiro financeiro homologado."
                 : `Provedor ${walletPartnerStatus?.provider || "partner"} ativo para operação real.`}
