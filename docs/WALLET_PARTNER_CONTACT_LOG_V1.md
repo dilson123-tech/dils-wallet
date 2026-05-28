@@ -107,18 +107,20 @@ Terceira rodada:
 - Parceiro: Celcoin
 - Categoria: BaaS / Core / Pix
 - Prioridade: A
-- Status: not_started
+- Status: contact_sent
 - Risco atual: medium
 - Site oficial: https://www.celcoin.com.br/
-- Canal usado: pendente
-- Pessoa/área contatada: pendente
-- Data do primeiro contato: pendente
-- Data da última interação: pendente
-- Próxima revisão: pendente
+- Canal usado: canal oficial Celcoin / primeiro contato comercial
+- Pessoa/área contatada: time comercial/técnico Celcoin
+- Data do primeiro contato: 2026-05-28
+- Data da última interação: 2026-05-28
+- Próxima revisão: 2026-06-02
 
 ### Mensagem enviada
 
-Pendente.
+Contato inicial enviado apresentando a Aurea Gold como carteira digital real em construção para mercado, com foco em Pix, saldo, pagamentos, gestão financeira, auditoria e experiência mobile premium.
+
+Mensagem reforçou que a operação financeira real permanece bloqueada até parceiro PSP/BaaS homologado, e solicitou conversa com o time comercial/técnico para validar Pix, saldo, webhooks, ledger/reconciliação, KYC/KYB e operação real via infraestrutura de parceiro.
 
 ### Resposta recebida
 
@@ -146,7 +148,7 @@ Pendente.
 
 ### Próxima ação
 
-Enviar mensagem curta usando docs/WALLET_PARTNER_CONTACT_SCRIPT_V1.md.
+Aguardar resposta até 2026-06-02. Se não houver retorno, fazer follow-up curto pelo mesmo canal ou canal alternativo oficial.
 
 ### Decisão atual
 
@@ -209,18 +211,20 @@ Candidato Prioridade A para primeira abordagem.
 - Parceiro: FitBank
 - Categoria: BaaS / Pix API / White Label
 - Prioridade: A/B
-- Status: not_started
+- Status: contact_sent
 - Risco atual: medium
 - Site oficial: https://dev.fitbank.com.br/
-- Canal usado: pendente
-- Pessoa/área contatada: pendente
-- Data do primeiro contato: pendente
-- Data da última interação: pendente
-- Próxima revisão: pendente
+- Canal usado: e-mail comercial — comercial@fitbank.com.br
+- Pessoa/área contatada: time comercial/técnico FitBank/Fits
+- Data do primeiro contato: 2026-05-28
+- Data da última interação: 2026-05-28
+- Próxima revisão: 2026-06-02
 
 ### Mensagem enviada
 
-Pendente.
+E-mail profissional enviado para comercial@fitbank.com.br com o assunto: “Parceria PSP/BaaS para carteira digital Aurea Gold”.
+
+Mensagem apresentou a Aurea Gold / dils-wallet como carteira digital real em construção para mercado, explicou que a operação real ainda está bloqueada por segurança e solicitou conversa comercial/técnica para validar Pix de entrada, Pix de saída, saldo, extrato, webhooks assinados, ledger/reconciliação, KYC/KYB, limites, comprovantes oficiais e modelo comercial/regulatório.
 
 ### Resposta recebida
 
@@ -247,7 +251,7 @@ Pendente.
 
 ### Próxima ação
 
-Enviar mensagem curta e pedir reunião técnica.
+Aguardar resposta até 2026-06-02. Se não houver retorno, enviar follow-up objetivo reforçando pedido de conversa técnica/comercial.
 
 ### Decisão atual
 
