@@ -167,14 +167,14 @@ Candidato Prioridade A para primeira abordagem.
 - Parceiro: Dock
 - Categoria: BaaS / Banking / Pix B2B
 - Prioridade: A
-- Status: not_started
+- Status: commercial_form_sent
 - Risco atual: medium
 - Site oficial: https://dock.tech/
-- Canal usado: pendente
+- Canal usado: formulário oficial — Falar com o comercial Dock
 - Pessoa/área contatada: pendente
-- Data do primeiro contato: pendente
+- Data do primeiro contato: 2026-06-17
 - Data da última interação: pendente
-- Próxima revisão: pendente
+- Próxima revisão: 2026-06-22
 
 ### Mensagem enviada
 
@@ -183,6 +183,8 @@ Pendente.
 ### Resposta recebida
 
 Pendente.
+
+Formulário comercial enviado. Ainda não há proposta, contrato, sandbox liberado, credenciais, documentação privada, reunião agendada ou aprovação técnica.
 
 ### Documentos recebidos
 
@@ -270,14 +272,14 @@ Candidato Prioridade A/B para primeira rodada.
 - Parceiro: Zoop
 - Categoria: Banking API / BaaS / Pagamentos
 - Prioridade: A/B
-- Status: not_started
+- Status: commercial_form_sent
 - Risco atual: medium
 - Site oficial: https://www.zoop.com.br/
-- Canal usado: pendente
+- Canal usado: formulário oficial — Contato Comercial Zoop
 - Pessoa/área contatada: pendente
-- Data do primeiro contato: pendente
+- Data do primeiro contato: 2026-06-17
 - Data da última interação: pendente
-- Próxima revisão: pendente
+- Próxima revisão: 2026-06-22
 
 ### Mensagem enviada
 
@@ -286,6 +288,8 @@ Pendente.
 ### Resposta recebida
 
 Pendente.
+
+Formulário comercial enviado. Ainda não há proposta, contrato, sandbox liberado, credenciais, documentação privada, reunião agendada ou aprovação técnica.
 
 ### Documentos recebidos
 
