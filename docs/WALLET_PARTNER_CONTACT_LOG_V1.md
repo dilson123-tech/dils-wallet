@@ -325,7 +325,7 @@ Candidato Prioridade A/B.
 - Parceiro: Stark Bank
 - Categoria: Banking API / Pix / Pagamentos corporativos
 - Prioridade: B
-- Status: not_started
+- Status: commercial_form_sent
 - Risco atual: medium
 - Site oficial: https://starkbank.com/
 - Próxima ação: deixar para segunda rodada.
@@ -338,7 +338,7 @@ Candidato Prioridade A/B.
 - Parceiro: Asaas
 - Categoria: API de pagamentos / Conta digital / Cobranças
 - Prioridade: B
-- Status: not_started
+- Status: ticket_opened
 - Risco atual: medium
 - Site oficial: https://www.asaas.com/
 - Próxima ação: avaliar como alternativa de pagamentos/cobranças.
@@ -351,7 +351,7 @@ Candidato Prioridade A/B.
 - Parceiro: Efí Bank
 - Categoria: API Pix / Pagamentos / Cash-in / Cash-out
 - Prioridade: B
-- Status: not_started
+- Status: contact_redirected
 - Risco atual: medium
 - Site oficial: https://sejaefi.com.br/
 - Próxima ação: avaliar como alternativa de Pix/pagamentos.
