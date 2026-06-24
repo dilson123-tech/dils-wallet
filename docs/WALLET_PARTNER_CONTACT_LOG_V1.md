@@ -336,36 +336,78 @@ Candidato Prioridade A/B.
 ## 12. Registro — Asaas
 
 - Parceiro: Asaas
-- Categoria: API de pagamentos / Conta digital / Cobranças
-- Prioridade: B
-- Status: api_response_followup_sent
+- Categoria: API de pagamentos / Conta digital / Cobranças / BaaS
+- Prioridade: A
+- Status: baas_next_steps_confirmed
 - Risco atual: medium
 - Site oficial: https://www.asaas.com/
 - Canal usado: e-mail — contato@asaas.com.br + resposta no mesmo ticket
 - Data do primeiro contato: 2026-06-17
 - Última interação: 2026-06-24
 - Próxima revisão: 2026-06-29
-- Decisão atual: candidato Prioridade B com melhor resposta até o momento para API pública, Sandbox e integração passiva.
+- Decisão atual: candidato Prioridade A para validação técnica em Sandbox e possível MVP controlado via BaaS, ainda sem operação real.
 
 ### Resposta recebida
 
-O Asaas respondeu por e-mail via Sabrina Moura, da área de Experiência do Cliente - Suporte.
+O Asaas respondeu primeiro via Sabrina Moura, da área de Experiência do Cliente - Suporte, confirmando API pública, Sandbox gratuito e integração passiva.
 
-A resposta confirmou que o Asaas trabalha com as funcionalidades consultadas, possui Sandbox gratuito antes de implementação em produção e disponibiliza API pública sem custo adicional para integrações.
+Depois, Valentina Menezes, gerente de contas / Suporte N1, respondeu ponto a ponto e confirmou elementos importantes para a Aurea Gold / dils-wallet:
 
-Também foi esclarecido que a integração é passiva: o Asaas disponibiliza API, documentação, manual, FAQ, plugins/módulos e comunidade/Discord de desenvolvedores, mas não desenvolve nem manipula o código do sistema do cliente.
+- Pix de entrada via cobranças com QR Code dinâmico/estático ou recebimentos via chave Pix.
+- Pix de saída via transferências para outras instituições por chave Pix ou dados bancários.
+- Transferências para contas externas ou entre contas Asaas.
+- Sandbox completo para cobranças Pix, boleto, cartão, webhooks, conciliação e confirmação de pagamentos.
+- Consulta de status de pagamentos/cobranças, extrato e histórico de transações.
+- Webhooks com token de autenticação no header `asaas-access-token`.
+- Lista de IPs oficiais para restrição da rota de recebimento de webhooks.
+- Emissão de cobranças por boleto, Pix e cartão via API.
+- Links de pagamento, recorrência/assinaturas e integração de notas fiscais pela plataforma.
+- Limites operacionais, rate/quota limit e taxas por produto.
+- Modelo recomendado para a Aurea Gold: BaaS com conta PJ principal e subcontas para usuários/estabelecimentos.
+- Recursos de subcontas e split de pagamento.
+- Período de Avaliação em produção com até 10 subcontas, limite de R$2.000 por subconta, por 60 dias, enquanto a homologação é concluída.
+- Necessidade de homologação regulatória BaaS para operação com contas de terceiros.
 
-Após a resposta, foi enviada nova mensagem no mesmo ticket solicitando confirmação técnica/comercial sobre Pix de entrada e saída, Sandbox, webhooks, conciliação, extrato/histórico, comprovantes, limites, taxas, requisitos de produção, conta PJ, subcontas/split/contas vinculadas e modelo correto para uma carteira digital em fase inicial.
+### Retorno sobre próximos passos
 
-Leitura atual: Asaas é o contato mais promissor até o momento para API de pagamentos/Pix/cobranças/webhooks/conciliação, mas ainda depende de validação técnica e comercial antes de qualquer operação real.
+Após o follow-up enviado, o Asaas respondeu novamente confirmando o caminho operacional:
+
+- O Sandbox pode ser iniciado diretamente pela conta Asaas, sem contrato específico, em `Minha Conta > Integrações > Acessar ambiente Sandbox`.
+- A conta de testes é criada automaticamente, sem aprovação prévia.
+- Os testes em Sandbox devem usar apenas dados fictícios.
+- O Sandbox permite testar cobranças, Pix, webhooks, subcontas e demais recursos disponíveis no ambiente de testes.
+- Para subcontas não-BaaS, o Período de Avaliação inicia ao criar a primeira subconta em produção e possui limitações até a homologação regulatória obrigatória.
+- Para criar subcontas no modelo BaaS, o cadastro precisa estar obrigatoriamente homologado antes.
+- A homologação BaaS pode ser solicitada pelo mesmo canal de atendimento após a conta de produção estar aprovada.
+- O processo de homologação possui quatro etapas: entendimento do modelo de negócio, análise e validação, formalização da parceria e liberação técnica.
+- Na etapa de entendimento, o Asaas envia Checklist e Playbook para preenchimento.
+- Na etapa de análise, o time especializado avalia aspectos regulatórios e operacionais, com retorno estimado em até 3 dias úteis.
+- A formalização inclui assinatura de contrato BaaS.
+- A liberação técnica libera a operação em produção sem restrições, após aprovação.
+- Pré-requisitos informados: conta Pessoa Jurídica e cadastro 100% aprovado.
+- O contrato BaaS será específico, formalizará a parceria, definirá responsabilidades e será assinado digitalmente.
+
+Leitura atual: Asaas é o parceiro mais promissor até o momento para MVP real controlado, mas qualquer operação real permanece bloqueada até validação em Sandbox, homologação BaaS, compliance, revisão jurídica, contrato/parceria formal e validação operacional.
+
+### Follow-up enviado
+
+Foi enviada resposta no mesmo ticket agradecendo a explicação e informando que a Aurea Gold iniciará primeiro pela validação técnica em Sandbox, sem movimentação real de dinheiro.
+
+O follow-up solicitou confirmação dos próximos passos:
+
+1. Se é possível começar no Sandbox diretamente pela plataforma, sem contrato específico neste primeiro momento.
+2. Se o Período de Avaliação em produção precisa ser solicitado/ativado com o time Asaas antes.
+3. Qual é o canal correto para iniciar a homologação BaaS.
+4. Se existe checklist oficial de documentos/requisitos para homologação BaaS.
+5. Se haverá contrato/parceria formal específico para produção.
 
 ### Próxima ação
 
-Aguardar retorno humano/técnico do Asaas até 2026-06-29.
+Criar um plano técnico de validação Sandbox Asaas antes de qualquer implementação produtiva.
 
-Se houver resposta positiva, analisar escopo com cuidado antes de qualquer implementação: Pix entrada/saída, cobranças, transferências, webhooks assinados, conciliação, comprovantes, Sandbox, taxas, limites, requisitos de produção, conta PJ, subcontas/split e responsabilidades regulatórias.
+Esse plano deve cobrir criação/acesso ao Sandbox, variáveis de ambiente, proteção de tokens, fluxo de cobrança Pix sandbox, webhooks sandbox, validação do header `asaas-access-token`, extrato/histórico sandbox, subcontas sandbox se disponível, split sandbox se disponível, reconciliação, critérios de sucesso e critérios que ainda bloqueiam produção.
 
-A operação real da Aurea Gold permanece bloqueada até validação técnica, comercial, compliance, revisão jurídica e homologação operacional.
+A operação real da Aurea Gold permanece bloqueada até validação técnica, comercial, compliance, revisão jurídica, homologação BaaS, contrato/parceria formal, validação operacional e decisão explícita do Dilson para avançar.
 
 ---
 
