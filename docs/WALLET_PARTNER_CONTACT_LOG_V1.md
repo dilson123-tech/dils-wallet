@@ -338,11 +338,34 @@ Candidato Prioridade A/B.
 - Parceiro: Asaas
 - Categoria: API de pagamentos / Conta digital / Cobranças
 - Prioridade: B
-- Status: ticket_opened
+- Status: api_response_followup_sent
 - Risco atual: medium
 - Site oficial: https://www.asaas.com/
-- Próxima ação: avaliar como alternativa de pagamentos/cobranças.
-- Decisão atual: candidato Prioridade B.
+- Canal usado: e-mail — contato@asaas.com.br + resposta no mesmo ticket
+- Data do primeiro contato: 2026-06-17
+- Última interação: 2026-06-24
+- Próxima revisão: 2026-06-29
+- Decisão atual: candidato Prioridade B com melhor resposta até o momento para API pública, Sandbox e integração passiva.
+
+### Resposta recebida
+
+O Asaas respondeu por e-mail via Sabrina Moura, da área de Experiência do Cliente - Suporte.
+
+A resposta confirmou que o Asaas trabalha com as funcionalidades consultadas, possui Sandbox gratuito antes de implementação em produção e disponibiliza API pública sem custo adicional para integrações.
+
+Também foi esclarecido que a integração é passiva: o Asaas disponibiliza API, documentação, manual, FAQ, plugins/módulos e comunidade/Discord de desenvolvedores, mas não desenvolve nem manipula o código do sistema do cliente.
+
+Após a resposta, foi enviada nova mensagem no mesmo ticket solicitando confirmação técnica/comercial sobre Pix de entrada e saída, Sandbox, webhooks, conciliação, extrato/histórico, comprovantes, limites, taxas, requisitos de produção, conta PJ, subcontas/split/contas vinculadas e modelo correto para uma carteira digital em fase inicial.
+
+Leitura atual: Asaas é o contato mais promissor até o momento para API de pagamentos/Pix/cobranças/webhooks/conciliação, mas ainda depende de validação técnica e comercial antes de qualquer operação real.
+
+### Próxima ação
+
+Aguardar retorno humano/técnico do Asaas até 2026-06-29.
+
+Se houver resposta positiva, analisar escopo com cuidado antes de qualquer implementação: Pix entrada/saída, cobranças, transferências, webhooks assinados, conciliação, comprovantes, Sandbox, taxas, limites, requisitos de produção, conta PJ, subcontas/split e responsabilidades regulatórias.
+
+A operação real da Aurea Gold permanece bloqueada até validação técnica, comercial, compliance, revisão jurídica e homologação operacional.
 
 ---
 
