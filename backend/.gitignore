@@ -19,6 +19,7 @@ htmlcov/
 # Env/Secrets
 .env
 .env.*
+!.env.example
 
 # Editors/OS
 .vscode/
