@@ -166,3 +166,56 @@ def test_customer_dry_run_safe_summary_keeps_http_blocked_and_hides_secrets():
     assert summary["prepared_request"]["http_call_executed"] is False
     assert "sandbox-api-key-for-test-only" not in repr(summary)
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
+def test_payment_dry_run_reuses_pix_payment_request_without_http_call():
+    client = make_client()
+
+    dry_run = client.dry_run_create_pix_payment(
+        customer_id="cus_dry_run_xxxxxxxx",
+        value=Decimal("75.50"),
+        due_date="2026-07-15",
+        description="Dry run cobranca Pix Sandbox Aurea Gold",
+    )
+
+    request = dry_run.prepared_request
+
+    assert dry_run.payment_reference == "dry-run-pix-payment-sandbox"
+    assert dry_run.billing_type == "PIX"
+    assert dry_run.real_money is False
+    assert dry_run.http_call_executed is False
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/payments"
+    assert request.operation == "create_pix_payment"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "customer": "cus_dry_run_xxxxxxxx",
+        "billingType": "PIX",
+        "value": 75.5,
+        "dueDate": "2026-07-15",
+        "description": "Dry run cobranca Pix Sandbox Aurea Gold",
+    }
+
+
+def test_payment_dry_run_safe_summary_keeps_http_blocked_and_hides_secrets():
+    client = make_client()
+
+    dry_run = client.dry_run_create_pix_payment(
+        customer_id="cus_dry_run_xxxxxxxx",
+        value=Decimal("75.50"),
+        due_date="2026-07-15",
+        description="Dry run cobranca Pix Sandbox Aurea Gold",
+    )
+
+    summary = dry_run.safe_summary()
+
+    assert summary["operation"] == "payment_dry_run"
+    assert summary["billing_type"] == "PIX"
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["prepared_request"]["operation"] == "create_pix_payment"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
