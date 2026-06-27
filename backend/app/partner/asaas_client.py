@@ -74,6 +74,25 @@ class AsaasPaymentDryRunResult:
         }
 
 
+@dataclass(frozen=True)
+class AsaasPixQrCodeDryRunResult:
+    prepared_request: AsaasPreparedRequest
+    qr_code_reference: str = "dry-run-pix-qr-code-sandbox"
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "pix_qr_code_dry_run",
+            "qr_code_reference": self.qr_code_reference,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_review_before_any_sandbox_http_call",
+        }
+
+
 class AsaasSandboxClient:
     """
     Skeleton client for Asaas Sandbox.
@@ -203,6 +222,15 @@ class AsaasSandboxClient:
             path=f"/payments/{payment_id}/pixQrCode",
             operation="get_pix_qr_code",
         )
+
+    def dry_run_get_pix_qr_code(
+        self,
+        *,
+        payment_id: str,
+    ) -> AsaasPixQrCodeDryRunResult:
+        prepared_request = self.prepare_get_pix_qr_code(payment_id=payment_id)
+
+        return AsaasPixQrCodeDryRunResult(prepared_request=prepared_request)
 
     def prepare_get_payment_status(self, *, payment_id: str) -> AsaasPreparedRequest:
         return self._prepare(
