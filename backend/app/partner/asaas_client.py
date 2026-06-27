@@ -34,6 +34,25 @@ class AsaasPreparedRequest:
         }
 
 
+@dataclass(frozen=True)
+class AsaasCustomerDryRunResult:
+    prepared_request: AsaasPreparedRequest
+    customer_reference: str = "dry-run-customer-sandbox"
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "customer_dry_run",
+            "customer_reference": self.customer_reference,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_review_before_any_sandbox_http_call",
+        }
+
+
 class AsaasSandboxClient:
     """
     Skeleton client for Asaas Sandbox.
@@ -99,6 +118,23 @@ class AsaasSandboxClient:
             operation="create_customer",
             json=payload,
         )
+
+    def dry_run_create_customer(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+    ) -> AsaasCustomerDryRunResult:
+        prepared_request = self.prepare_create_customer(
+            name=name,
+            cpf_cnpj=cpf_cnpj,
+            email=email,
+            mobile_phone=mobile_phone,
+        )
+
+        return AsaasCustomerDryRunResult(prepared_request=prepared_request)
 
     def prepare_create_pix_payment(
         self,

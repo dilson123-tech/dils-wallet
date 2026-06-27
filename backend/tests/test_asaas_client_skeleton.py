@@ -116,3 +116,53 @@ def test_prepared_request_safe_summary_does_not_include_secrets():
     assert summary["real_money"] is False
     assert "sandbox-api-key-for-test-only" not in repr(summary)
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
+def test_customer_dry_run_reuses_create_customer_request_without_http_call():
+    client = make_client()
+
+    dry_run = client.dry_run_create_customer(
+        name="Cliente Dry Run Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.dryrun@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = dry_run.prepared_request
+
+    assert dry_run.customer_reference == "dry-run-customer-sandbox"
+    assert dry_run.real_money is False
+    assert dry_run.http_call_executed is False
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "name": "Cliente Dry Run Aurea Gold",
+        "cpfCnpj": "12345678909",
+        "email": "cliente.dryrun@example.com",
+        "mobilePhone": "11999999999",
+    }
+
+
+def test_customer_dry_run_safe_summary_keeps_http_blocked_and_hides_secrets():
+    client = make_client()
+
+    dry_run = client.dry_run_create_customer(
+        name="Cliente Dry Run Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.dryrun@example.com",
+        mobile_phone="11999999999",
+    )
+
+    summary = dry_run.safe_summary()
+
+    assert summary["operation"] == "customer_dry_run"
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
