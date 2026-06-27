@@ -93,6 +93,25 @@ class AsaasPixQrCodeDryRunResult:
         }
 
 
+@dataclass(frozen=True)
+class AsaasPaymentStatusDryRunResult:
+    prepared_request: AsaasPreparedRequest
+    status_reference: str = "dry-run-payment-status-sandbox"
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "payment_status_dry_run",
+            "status_reference": self.status_reference,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_review_before_any_sandbox_http_call",
+        }
+
+
 class AsaasSandboxClient:
     """
     Skeleton client for Asaas Sandbox.
@@ -238,6 +257,15 @@ class AsaasSandboxClient:
             path=f"/payments/{payment_id}",
             operation="get_payment_status",
         )
+
+    def dry_run_get_payment_status(
+        self,
+        *,
+        payment_id: str,
+    ) -> AsaasPaymentStatusDryRunResult:
+        prepared_request = self.prepare_get_payment_status(payment_id=payment_id)
+
+        return AsaasPaymentStatusDryRunResult(prepared_request=prepared_request)
 
     def execute_prepared_request(self, request: AsaasPreparedRequest) -> None:
         raise RuntimeError(

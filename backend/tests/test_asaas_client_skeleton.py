@@ -254,3 +254,38 @@ def test_pix_qr_code_dry_run_safe_summary_keeps_http_blocked_and_hides_secrets()
     assert summary["prepared_request"]["http_call_executed"] is False
     assert "sandbox-api-key-for-test-only" not in repr(summary)
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
+def test_payment_status_dry_run_reuses_status_request_without_http_call():
+    client = make_client()
+
+    dry_run = client.dry_run_get_payment_status(payment_id="pay_dry_run_xxxxxxxx")
+
+    request = dry_run.prepared_request
+
+    assert dry_run.status_reference == "dry-run-payment-status-sandbox"
+    assert dry_run.real_money is False
+    assert dry_run.http_call_executed is False
+    assert request.method == "GET"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/payments/pay_dry_run_xxxxxxxx"
+    assert request.operation == "get_payment_status"
+    assert request.json is None
+    assert request.real_money is False
+    assert request.http_call_executed is False
+
+
+def test_payment_status_dry_run_safe_summary_keeps_http_blocked_and_hides_secrets():
+    client = make_client()
+
+    dry_run = client.dry_run_get_payment_status(payment_id="pay_dry_run_xxxxxxxx")
+
+    summary = dry_run.safe_summary()
+
+    assert summary["operation"] == "payment_status_dry_run"
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["prepared_request"]["operation"] == "get_payment_status"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
