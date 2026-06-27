@@ -76,6 +76,7 @@ Detailed project documentation is available in:
 - `docs/pix-operation.md`
 - `docs/panels.md`
 - `docs/product-maturity.md`
+- `docs/WALLET_ASAAS_SANDBOX_MANUAL_EXECUTION_GATE_V1.md`
 
 ## Tech Stack
 
@@ -122,6 +123,7 @@ The current product phase is focused on:
 - improving technical documentation
 - exposing validated platform capabilities more clearly
 - consolidating governance and product visibility
+- maintaining a manual execution gate before any Asaas Sandbox HTTP call
 
 ## Status
 
@@ -129,5 +131,5 @@ Aurea Gold is an active fintech product under structured development, focused on
 
 ## Author
 
-Developed by **Dilson Pereira**  
+Developed by **Dilson Pereira**
 GitHub: [dilson123-tech](https://github.com/dilson123-tech)

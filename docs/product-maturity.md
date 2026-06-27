@@ -14,19 +14,19 @@ The current maturity level reflects a strong technical foundation combined with 
 
 Aurea Gold is structured on the following strategic pillars:
 
-- **Financial Infrastructure**  
+- **Financial Infrastructure**
   Core wallet logic, transaction control, and PIX operations with idempotency and reliability.
 
-- **Security & Governance**  
+- **Security & Governance**
   Protected flows, strict GitHub governance, CI/CD validation, and operational discipline.
 
-- **Operational Control**  
+- **Operational Control**
   Admin panel, auditability, and structured backend processes.
 
-- **User Experience (Premium Layer)**  
+- **User Experience (Premium Layer)**
   Client-facing panels and interaction flows designed for high perceived value.
 
-- **Documentation & Trust Surface**  
+- **Documentation & Trust Surface**
   Public documentation, transparency, and product clarity for external stakeholders.
 
 ---
@@ -85,6 +85,26 @@ The next phase of Aurea Gold is focused on:
 3. refining public-facing documentation
 4. increasing perceived product value
 5. preparing structured material for market presentation
+
+---
+
+## Asaas Sandbox Execution Gate
+
+Aurea Gold now maintains a formal manual execution gate before any real HTTP call to the Asaas Sandbox.
+
+This gate separates safe dry-run preparation from external Sandbox execution.
+
+The current rule is explicit:
+
+- no automatic HTTP execution
+- no production usage
+- no real money movement
+- no exposed API Key
+- no exposed webhook token
+- no exposed Wallet ID
+- manual approval required before the first Sandbox HTTP call
+
+This strengthens operational governance before the product moves from prepared requests to controlled external Sandbox validation.
 
 ---
 
