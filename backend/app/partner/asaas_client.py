@@ -53,6 +53,27 @@ class AsaasCustomerDryRunResult:
         }
 
 
+@dataclass(frozen=True)
+class AsaasPaymentDryRunResult:
+    prepared_request: AsaasPreparedRequest
+    payment_reference: str = "dry-run-pix-payment-sandbox"
+    billing_type: str = "PIX"
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "payment_dry_run",
+            "payment_reference": self.payment_reference,
+            "billing_type": self.billing_type,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_review_before_any_sandbox_http_call",
+        }
+
+
 class AsaasSandboxClient:
     """
     Skeleton client for Asaas Sandbox.
@@ -158,6 +179,23 @@ class AsaasSandboxClient:
             operation="create_pix_payment",
             json=payload,
         )
+
+    def dry_run_create_pix_payment(
+        self,
+        *,
+        customer_id: str,
+        value: Decimal,
+        due_date: str,
+        description: str,
+    ) -> AsaasPaymentDryRunResult:
+        prepared_request = self.prepare_create_pix_payment(
+            customer_id=customer_id,
+            value=value,
+            due_date=due_date,
+            description=description,
+        )
+
+        return AsaasPaymentDryRunResult(prepared_request=prepared_request)
 
     def prepare_get_pix_qr_code(self, *, payment_id: str) -> AsaasPreparedRequest:
         return self._prepare(
