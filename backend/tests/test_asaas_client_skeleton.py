@@ -289,3 +289,85 @@ def test_payment_status_dry_run_safe_summary_keeps_http_blocked_and_hides_secret
     assert summary["prepared_request"]["http_call_executed"] is False
     assert "sandbox-api-key-for-test-only" not in repr(summary)
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+def test_full_pix_flow_dry_run_reuses_all_steps_without_http_call():
+    client = make_client()
+
+    flow = client.dry_run_full_pix_flow(
+        name="Cliente Fluxo Completo Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.fullflow@example.com",
+        mobile_phone="11999999999",
+        value=Decimal("99.90"),
+        due_date="2026-07-20",
+        description="Dry run fluxo completo Pix Sandbox Aurea Gold",
+    )
+
+    assert flow.flow_reference == "dry-run-full-pix-flow-sandbox"
+    assert flow.real_money is False
+    assert flow.http_call_executed is False
+
+    assert flow.customer.prepared_request.method == "POST"
+    assert flow.customer.prepared_request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert flow.customer.prepared_request.operation == "create_customer"
+    assert flow.customer.prepared_request.http_call_executed is False
+
+    assert flow.payment.prepared_request.method == "POST"
+    assert flow.payment.prepared_request.url == f"{ASAAS_SANDBOX_BASE_URL}/payments"
+    assert flow.payment.prepared_request.operation == "create_pix_payment"
+    assert flow.payment.prepared_request.json == {
+        "customer": "cus_dry_run_full_flow",
+        "billingType": "PIX",
+        "value": 99.9,
+        "dueDate": "2026-07-20",
+        "description": "Dry run fluxo completo Pix Sandbox Aurea Gold",
+    }
+    assert flow.payment.prepared_request.http_call_executed is False
+
+    assert flow.pix_qr_code.prepared_request.method == "GET"
+    assert flow.pix_qr_code.prepared_request.url == (
+        f"{ASAAS_SANDBOX_BASE_URL}/payments/pay_dry_run_full_flow/pixQrCode"
+    )
+    assert flow.pix_qr_code.prepared_request.operation == "get_pix_qr_code"
+    assert flow.pix_qr_code.prepared_request.http_call_executed is False
+
+    assert flow.payment_status.prepared_request.method == "GET"
+    assert flow.payment_status.prepared_request.url == (
+        f"{ASAAS_SANDBOX_BASE_URL}/payments/pay_dry_run_full_flow"
+    )
+    assert flow.payment_status.prepared_request.operation == "get_payment_status"
+    assert flow.payment_status.prepared_request.http_call_executed is False
+
+
+def test_full_pix_flow_dry_run_safe_summary_keeps_every_step_blocked():
+    client = make_client()
+
+    flow = client.dry_run_full_pix_flow(
+        name="Cliente Fluxo Completo Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.fullflow@example.com",
+        mobile_phone="11999999999",
+        value=Decimal("99.90"),
+        due_date="2026-07-20",
+        description="Dry run fluxo completo Pix Sandbox Aurea Gold",
+    )
+
+    summary = flow.safe_summary()
+
+    assert summary["operation"] == "full_pix_flow_dry_run"
+    assert summary["flow_reference"] == "dry-run-full-pix-flow-sandbox"
+    assert summary["steps"] == [
+        "customer_dry_run",
+        "payment_dry_run",
+        "pix_qr_code_dry_run",
+        "payment_status_dry_run",
+    ]
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["customer"]["prepared_request"]["http_call_executed"] is False
+    assert summary["payment"]["prepared_request"]["http_call_executed"] is False
+    assert summary["pix_qr_code"]["prepared_request"]["http_call_executed"] is False
+    assert summary["payment_status"]["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)

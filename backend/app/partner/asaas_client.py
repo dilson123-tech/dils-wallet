@@ -112,6 +112,37 @@ class AsaasPaymentStatusDryRunResult:
         }
 
 
+@dataclass(frozen=True)
+class AsaasFullDryRunFlowResult:
+    customer: AsaasCustomerDryRunResult
+    payment: AsaasPaymentDryRunResult
+    pix_qr_code: AsaasPixQrCodeDryRunResult
+    payment_status: AsaasPaymentStatusDryRunResult
+    flow_reference: str = "dry-run-full-pix-flow-sandbox"
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "full_pix_flow_dry_run",
+            "flow_reference": self.flow_reference,
+            "steps": [
+                "customer_dry_run",
+                "payment_dry_run",
+                "pix_qr_code_dry_run",
+                "payment_status_dry_run",
+            ],
+            "customer": self.customer.safe_summary(),
+            "payment": self.payment.safe_summary(),
+            "pix_qr_code": self.pix_qr_code.safe_summary(),
+            "payment_status": self.payment_status.safe_summary(),
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_review_before_any_sandbox_http_call",
+        }
+
+
 class AsaasSandboxClient:
     """
     Skeleton client for Asaas Sandbox.
@@ -266,6 +297,41 @@ class AsaasSandboxClient:
         prepared_request = self.prepare_get_payment_status(payment_id=payment_id)
 
         return AsaasPaymentStatusDryRunResult(prepared_request=prepared_request)
+
+    def dry_run_full_pix_flow(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        value: Decimal,
+        due_date: str,
+        description: str,
+        sandbox_customer_id: str = "cus_dry_run_full_flow",
+        sandbox_payment_id: str = "pay_dry_run_full_flow",
+    ) -> AsaasFullDryRunFlowResult:
+        customer = self.dry_run_create_customer(
+            name=name,
+            cpf_cnpj=cpf_cnpj,
+            email=email,
+            mobile_phone=mobile_phone,
+        )
+        payment = self.dry_run_create_pix_payment(
+            customer_id=sandbox_customer_id,
+            value=value,
+            due_date=due_date,
+            description=description,
+        )
+        pix_qr_code = self.dry_run_get_pix_qr_code(payment_id=sandbox_payment_id)
+        payment_status = self.dry_run_get_payment_status(payment_id=sandbox_payment_id)
+
+        return AsaasFullDryRunFlowResult(
+            customer=customer,
+            payment=payment,
+            pix_qr_code=pix_qr_code,
+            payment_status=payment_status,
+        )
 
     def execute_prepared_request(self, request: AsaasPreparedRequest) -> None:
         raise RuntimeError(
