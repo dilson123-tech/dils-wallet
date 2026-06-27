@@ -2,8 +2,10 @@ import pytest
 
 from app.partner.asaas_config import (
     ASAAS_SANDBOX_BASE_URL,
+    ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
     AsaasConfigError,
     load_asaas_sandbox_config,
+    run_asaas_first_http_call_preflight,
 )
 
 
@@ -84,3 +86,47 @@ def test_load_asaas_sandbox_config_normalizes_trailing_slash():
     config = load_asaas_sandbox_config(env)
 
     assert config.base_url == ASAAS_SANDBOX_BASE_URL
+
+
+def test_first_http_call_preflight_accepts_safe_env_without_executing_http():
+    preflight = run_asaas_first_http_call_preflight(VALID_ENV)
+
+    assert preflight.target_method == "POST"
+    assert preflight.target_path == "/customers"
+    assert preflight.target_operation == "create_customer"
+    assert preflight.manual_authorization_registered is False
+    assert preflight.real_money is False
+    assert preflight.http_call_executed is False
+
+
+def test_first_http_call_preflight_recognizes_manual_authorization_but_keeps_http_blocked():
+    preflight = run_asaas_first_http_call_preflight(
+        VALID_ENV,
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = preflight.safe_summary()
+
+    assert preflight.manual_authorization_registered is True
+    assert summary["operation"] == "first_http_call_preflight"
+    assert summary["target_method"] == "POST"
+    assert summary["target_path"] == "/customers"
+    assert summary["target_operation"] == "create_customer"
+    assert summary["manual_authorization_registered"] is True
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["environment"]["http_calls_allowed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
+def test_first_http_call_preflight_rejects_unsafe_env_before_any_http_call():
+    env = dict(VALID_ENV)
+    env["ASAAS_BASE_URL"] = "https://api.asaas.com/v3"
+
+    with pytest.raises(AsaasConfigError, match="Production Asaas base URL is blocked"):
+        run_asaas_first_http_call_preflight(
+            env,
+            manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        )

@@ -8,6 +8,11 @@ from typing import Mapping
 ASAAS_SANDBOX_BASE_URL = "https://sandbox.asaas.com/api/v3"
 ASAAS_PRODUCTION_BASE_URL = "https://api.asaas.com/v3"
 
+ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE = (
+    "AUTORIZO EXECUTAR PRIMEIRA CHAMADA HTTP ASAAS SANDBOX, "
+    "SEM PRODUCAO E SEM DINHEIRO REAL."
+)
+
 
 class AsaasConfigError(RuntimeError):
     """Raised when Asaas Sandbox safety guards reject the configuration."""
@@ -46,6 +51,31 @@ class AsaasSandboxConfig:
             "wallet_mode": self.wallet_mode,
             "wallet_partner_provider": self.wallet_partner_provider,
             "http_calls_allowed": False,
+        }
+
+
+@dataclass(frozen=True)
+class AsaasFirstHttpCallPreflightResult:
+    config: AsaasSandboxConfig
+    target_method: str = "POST"
+    target_path: str = "/customers"
+    target_operation: str = "create_customer"
+    manual_authorization_registered: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, object]:
+        return {
+            "operation": "first_http_call_preflight",
+            "target_method": self.target_method,
+            "target_path": self.target_path,
+            "target_operation": self.target_operation,
+            "environment": self.config.safe_summary(),
+            "manual_authorization_registered": self.manual_authorization_registered,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_review_before_any_sandbox_http_call",
         }
 
 
@@ -117,4 +147,27 @@ def load_asaas_sandbox_config(
         real_money_enabled=False,
         wallet_mode=wallet_mode,
         wallet_partner_provider=wallet_partner_provider,
+    )
+
+
+def run_asaas_first_http_call_preflight(
+    env: Mapping[str, str] | None = None,
+    *,
+    manual_authorization_phrase: str = "",
+) -> AsaasFirstHttpCallPreflightResult:
+    """
+    Validate local safety requirements before the first Asaas Sandbox HTTP call.
+
+    This function intentionally performs no HTTP calls.
+    It only validates local configuration and records whether the mandatory
+    manual authorization phrase was provided.
+    """
+    config = load_asaas_sandbox_config(env)
+    manual_authorization_registered = (
+        manual_authorization_phrase.strip() == ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE
+    )
+
+    return AsaasFirstHttpCallPreflightResult(
+        config=config,
+        manual_authorization_registered=manual_authorization_registered,
     )
