@@ -3,7 +3,11 @@ from decimal import Decimal
 import pytest
 
 from app.partner.asaas_client import AsaasSandboxClient
-from app.partner.asaas_config import ASAAS_SANDBOX_BASE_URL, AsaasSandboxConfig
+from app.partner.asaas_config import (
+    ASAAS_SANDBOX_BASE_URL,
+    ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    AsaasSandboxConfig,
+)
 
 
 TEST_CONFIG = AsaasSandboxConfig(
@@ -43,6 +47,63 @@ def test_prepare_create_customer_builds_sandbox_request_without_http_call():
         "email": "cliente.sandbox@example.com",
         "mobilePhone": "11999999999",
     }
+
+
+def test_first_customer_http_client_gate_prepares_customer_request_without_http_call():
+    client = make_client()
+
+    gate = client.gate_first_customer_http_call(
+        name="Cliente Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.gate@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = gate.prepared_request
+
+    assert gate.customer_reference == "first-customer-http-client-gate-sandbox"
+    assert gate.manual_authorization_registered is False
+    assert gate.http_transport_enabled is False
+    assert gate.real_money is False
+    assert gate.http_call_executed is False
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "name": "Cliente Gate Aurea Gold",
+        "cpfCnpj": "12345678909",
+        "email": "cliente.gate@example.com",
+        "mobilePhone": "11999999999",
+    }
+
+
+def test_first_customer_http_client_gate_recognizes_manual_phrase_but_keeps_transport_off():
+    client = make_client()
+
+    gate = client.gate_first_customer_http_call(
+        name="Cliente Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.gate@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = gate.safe_summary()
+
+    assert gate.manual_authorization_registered is True
+    assert summary["operation"] == "first_customer_http_client_gate"
+    assert summary["manual_authorization_registered"] is True
+    assert summary["http_transport_enabled"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
 
 
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():

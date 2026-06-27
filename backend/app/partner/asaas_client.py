@@ -4,7 +4,11 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Literal
 
-from app.partner.asaas_config import AsaasSandboxConfig, load_asaas_sandbox_config
+from app.partner.asaas_config import (
+    ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    AsaasSandboxConfig,
+    load_asaas_sandbox_config,
+)
 
 
 AsaasHttpMethod = Literal["GET", "POST"]
@@ -50,6 +54,29 @@ class AsaasCustomerDryRunResult:
             "http_call_executed": self.http_call_executed,
             "ready_for_http_execution": False,
             "next_step_required": "manual_review_before_any_sandbox_http_call",
+        }
+
+
+@dataclass(frozen=True)
+class AsaasFirstCustomerHttpClientGateResult:
+    prepared_request: AsaasPreparedRequest
+    customer_reference: str = "first-customer-http-client-gate-sandbox"
+    manual_authorization_registered: bool = False
+    http_transport_enabled: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_client_gate",
+            "customer_reference": self.customer_reference,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "manual_authorization_registered": self.manual_authorization_registered,
+            "http_transport_enabled": self.http_transport_enabled,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_transport_review_before_explicit_sandbox_execution",
         }
 
 
@@ -225,6 +252,31 @@ class AsaasSandboxClient:
         )
 
         return AsaasCustomerDryRunResult(prepared_request=prepared_request)
+
+    def gate_first_customer_http_call(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpClientGateResult:
+        prepared_request = self.prepare_create_customer(
+            name=name,
+            cpf_cnpj=cpf_cnpj,
+            email=email,
+            mobile_phone=mobile_phone,
+        )
+        manual_authorization_registered = (
+            manual_authorization_phrase.strip()
+            == ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE
+        )
+
+        return AsaasFirstCustomerHttpClientGateResult(
+            prepared_request=prepared_request,
+            manual_authorization_registered=manual_authorization_registered,
+        )
 
     def prepare_create_pix_payment(
         self,

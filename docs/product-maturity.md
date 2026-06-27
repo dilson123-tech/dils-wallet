@@ -121,3 +121,4 @@ The remaining gap to full market readiness is no longer centered on engineering,
 
 The transition from a technically solid system to a commercially compelling product is currently in progress.
 - v0.2.49-wallet-asaas-sandbox-first-http-call-preflight — local preflight for the first future Asaas Sandbox HTTP call; still no HTTP execution, no production, no real money and no exposed secrets.
+- v0.2.50-wallet-asaas-sandbox-first-customer-http-client-gate — client gate for the first future Asaas Sandbox POST /customers call; still no HTTP execution, no production, no real money and no exposed secrets.
