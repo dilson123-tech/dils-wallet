@@ -103,6 +103,7 @@ The current rule is explicit:
 - no exposed webhook token
 - no exposed Wallet ID
 - manual approval required before the first Sandbox HTTP call
+- first HTTP call runbook prepared before any external execution
 
 This strengthens operational governance before the product moves from prepared requests to controlled external Sandbox validation.
 
