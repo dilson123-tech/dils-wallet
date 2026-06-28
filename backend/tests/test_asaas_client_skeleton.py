@@ -172,6 +172,78 @@ def test_first_customer_http_transport_skeleton_safe_summary_hides_secrets():
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
 
 
+def test_first_customer_http_transport_adapter_gate_stays_blocked():
+    client = make_client()
+
+    adapter = client.gate_first_customer_http_transport_adapter(
+        name="Cliente Adapter Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.adapter@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = adapter.prepared_request
+
+    assert adapter.adapter_reference == (
+        "first-customer-http-transport-adapter-gate-sandbox"
+    )
+    assert adapter.adapter_name == "blocked_sandbox_manual_http_adapter"
+    assert adapter.manual_authorization_registered is False
+    assert adapter.access_token_header_configured is True
+    assert adapter.sandbox_only is True
+    assert adapter.target_allowed is True
+    assert adapter.adapter_implemented is False
+    assert adapter.adapter_enabled is False
+    assert adapter.can_send_http is False
+    assert adapter.retry_enabled is False
+    assert adapter.real_money is False
+    assert adapter.http_call_executed is False
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "name": "Cliente Adapter Gate Aurea Gold",
+        "cpfCnpj": "12345678909",
+        "email": "cliente.adapter@example.com",
+        "mobilePhone": "11999999999",
+    }
+
+
+def test_first_customer_http_transport_adapter_gate_recognizes_phrase_but_cannot_send():
+    client = make_client()
+
+    adapter = client.gate_first_customer_http_transport_adapter(
+        name="Cliente Adapter Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.adapter@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = adapter.safe_summary()
+
+    assert adapter.manual_authorization_registered is True
+    assert summary["operation"] == "first_customer_http_transport_adapter_gate"
+    assert summary["manual_authorization_registered"] is True
+    assert summary["access_token_header_configured"] is True
+    assert summary["sandbox_only"] is True
+    assert summary["target_allowed"] is True
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["retry_enabled"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 

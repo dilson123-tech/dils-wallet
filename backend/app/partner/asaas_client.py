@@ -112,6 +112,43 @@ class AsaasFirstCustomerHttpTransportSkeletonResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpTransportAdapterGateResult:
+    prepared_request: AsaasPreparedRequest
+    adapter_reference: str = "first-customer-http-transport-adapter-gate-sandbox"
+    adapter_name: str = "blocked_sandbox_manual_http_adapter"
+    manual_authorization_registered: bool = False
+    access_token_header_configured: bool = False
+    sandbox_only: bool = True
+    target_allowed: bool = True
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    can_send_http: bool = False
+    retry_enabled: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_transport_adapter_gate",
+            "adapter_reference": self.adapter_reference,
+            "adapter_name": self.adapter_name,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "manual_authorization_registered": self.manual_authorization_registered,
+            "access_token_header_configured": self.access_token_header_configured,
+            "sandbox_only": self.sandbox_only,
+            "target_allowed": self.target_allowed,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "can_send_http": self.can_send_http,
+            "retry_enabled": self.retry_enabled,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_blocked_adapter_review_before_any_http_send",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -333,6 +370,38 @@ class AsaasSandboxClient:
             prepared_request=prepared_request,
             manual_authorization_registered=manual_authorization_registered,
             access_token_header_configured=prepared_request.headers_configured,
+        )
+
+    def gate_first_customer_http_transport_adapter(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpTransportAdapterGateResult:
+        prepared_request = self.prepare_create_customer(
+            name=name,
+            cpf_cnpj=cpf_cnpj,
+            email=email,
+            mobile_phone=mobile_phone,
+        )
+        manual_authorization_registered = (
+            manual_authorization_phrase.strip()
+            == ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE
+        )
+        target_allowed = (
+            prepared_request.method == "POST"
+            and prepared_request.url == f"{self.base_url}/customers"
+            and prepared_request.operation == "create_customer"
+        )
+
+        return AsaasFirstCustomerHttpTransportAdapterGateResult(
+            prepared_request=prepared_request,
+            manual_authorization_registered=manual_authorization_registered,
+            access_token_header_configured=prepared_request.headers_configured,
+            target_allowed=target_allowed,
         )
 
     def prepare_create_pix_payment(
