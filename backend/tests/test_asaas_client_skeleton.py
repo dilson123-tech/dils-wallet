@@ -106,6 +106,72 @@ def test_first_customer_http_client_gate_recognizes_manual_phrase_but_keeps_tran
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
 
 
+def test_first_customer_http_transport_skeleton_is_built_without_http_execution():
+    client = make_client()
+
+    transport = client.build_first_customer_http_transport_skeleton(
+        name="Cliente Transport Skeleton Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.transport@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = transport.prepared_request
+
+    assert transport.transport_reference == (
+        "first-customer-http-transport-skeleton-sandbox"
+    )
+    assert transport.manual_authorization_registered is False
+    assert transport.access_token_header_configured is True
+    assert transport.timeout_seconds == 30
+    assert transport.retry_enabled is False
+    assert transport.http_transport_implemented is False
+    assert transport.http_transport_enabled is False
+    assert transport.real_money is False
+    assert transport.http_call_executed is False
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "name": "Cliente Transport Skeleton Aurea Gold",
+        "cpfCnpj": "12345678909",
+        "email": "cliente.transport@example.com",
+        "mobilePhone": "11999999999",
+    }
+
+
+def test_first_customer_http_transport_skeleton_safe_summary_hides_secrets():
+    client = make_client()
+
+    transport = client.build_first_customer_http_transport_skeleton(
+        name="Cliente Transport Skeleton Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.transport@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = transport.safe_summary()
+
+    assert transport.manual_authorization_registered is True
+    assert summary["operation"] == "first_customer_http_transport_skeleton"
+    assert summary["manual_authorization_registered"] is True
+    assert summary["access_token_header_configured"] is True
+    assert summary["retry_enabled"] is False
+    assert summary["http_transport_implemented"] is False
+    assert summary["http_transport_enabled"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
