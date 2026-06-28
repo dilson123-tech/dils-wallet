@@ -125,3 +125,5 @@ The transition from a technically solid system to a commercially compelling prod
 - v0.2.51-wallet-asaas-sandbox-first-customer-http-transport-review — safe transport review for the first future Asaas Sandbox POST /customers call; still no HTTP execution, no production, no real money and no exposed secrets.
 
 - v0.2.52-wallet-asaas-sandbox-first-customer-http-transport-skeleton: safe transport skeleton for the future first Asaas Sandbox POST /customers call, keeping HTTP transport not implemented, execution disabled, production blocked, real money disabled and secrets hidden.
+
+- v0.2.53-wallet-asaas-sandbox-first-customer-http-transport-adapter-gate: blocked adapter gate for the future first Asaas Sandbox POST /customers transport, keeping the adapter not implemented, disabled, unable to send HTTP, production blocked, real money disabled and secrets hidden.
