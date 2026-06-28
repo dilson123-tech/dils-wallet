@@ -136,3 +136,4 @@ Developed by **Dilson Pereira**
 GitHub: [dilson123-tech](https://github.com/dilson123-tech)
 - v0.2.49-wallet-asaas-sandbox-first-http-call-preflight — adds a local preflight validation before the first Asaas Sandbox HTTP call, keeping HTTP blocked, production blocked, real money disabled and secrets masked.
 - v0.2.50-wallet-asaas-sandbox-first-customer-http-client-gate — adds a client-side gate for the first future Asaas Sandbox POST /customers call, keeping HTTP transport disabled, production blocked, real money disabled and secrets masked.
+- v0.2.51-wallet-asaas-sandbox-first-customer-http-transport-review — reviews the safe design for the future Asaas Sandbox POST /customers HTTP transport, still without HTTP execution, production, real money or exposed secrets.
