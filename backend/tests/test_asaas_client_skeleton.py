@@ -562,6 +562,105 @@ def test_first_customer_http_error_sanitizer_contract_recognizes_phrase_but_cann
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
 
 
+def test_first_customer_http_manual_execution_approval_gate_stays_blocked():
+    client = make_client()
+
+    gate = client.gate_first_customer_http_manual_execution_approval(
+        name="Cliente Manual Approval Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.manual.approval@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = gate.prepared_request
+    checklist = gate.approval_checklist
+
+    assert gate.approval_reference == (
+        "first-customer-http-manual-execution-approval-gate-sandbox"
+    )
+    assert gate.approval_gate_defined is True
+    assert gate.manual_execution_approval_registered is False
+    assert gate.manual_execution_approval_valid is False
+    assert gate.approval_allows_http_execution is False
+    assert gate.execution_enabled is False
+    assert gate.sandbox_only is True
+    assert gate.adapter_implemented is False
+    assert gate.adapter_enabled is False
+    assert gate.can_send_http is False
+    assert gate.network_call_allowed is False
+    assert gate.real_money is False
+    assert gate.http_call_executed is False
+
+    assert checklist["sandbox_target_confirmed"] is True
+    assert checklist["production_blocked"] is True
+    assert checklist["real_money_disabled"] is True
+    assert checklist["safe_response_sanitizer_required"] is True
+    assert checklist["safe_error_sanitizer_required"] is True
+    assert checklist["raw_response_exposure_blocked"] is True
+    assert checklist["raw_error_exposure_blocked"] is True
+    assert checklist["request_body_exposure_blocked"] is True
+    assert checklist["stacktrace_exposure_blocked"] is True
+    assert checklist["secret_exposure_blocked"] is True
+    assert checklist["adapter_implementation_reviewed"] is False
+    assert checklist["final_operator_confirmation_required"] is True
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+
+
+def test_first_customer_http_manual_execution_approval_gate_recognizes_phrase_but_does_not_enable_http():
+    client = make_client()
+
+    gate = client.gate_first_customer_http_manual_execution_approval(
+        name="Cliente Manual Approval Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.manual.approval@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = gate.safe_summary()
+
+    assert gate.manual_execution_approval_registered is True
+    assert gate.manual_execution_approval_valid is True
+    assert gate.approval_allows_http_execution is False
+    assert gate.execution_enabled is False
+    assert gate.can_send_http is False
+    assert gate.network_call_allowed is False
+    assert gate.real_money is False
+    assert gate.http_call_executed is False
+
+    assert summary["operation"] == (
+        "first_customer_http_manual_execution_approval_gate"
+    )
+    assert summary["manual_execution_approval_registered"] is True
+    assert summary["manual_execution_approval_valid"] is True
+    assert summary["approval_allows_http_execution"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["approval_checklist"]["production_blocked"] is True
+    assert summary["approval_checklist"]["real_money_disabled"] is True
+    assert summary["approval_checklist"]["secret_exposure_blocked"] is True
+    assert summary["approval_checklist"]["adapter_implementation_reviewed"] is False
+    assert summary["error_sanitizer_contract"]["operation"] == (
+        "first_customer_http_error_sanitizer_contract"
+    )
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
