@@ -149,6 +149,78 @@ class AsaasFirstCustomerHttpTransportAdapterGateResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpBlockedAdapterContractResult:
+    prepared_request: AsaasPreparedRequest
+    contract_reference: str = "first-customer-http-blocked-adapter-contract-sandbox"
+    adapter_name: str = "blocked_sandbox_first_customer_http_adapter_contract"
+    request_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "method": "POST",
+            "path": "/customers",
+            "operation": "create_customer",
+            "required_header_names": ["access_token"],
+            "sensitive_header_values_masked": True,
+            "required_json_fields": ["name", "cpfCnpj", "email", "mobilePhone"],
+        }
+    )
+    response_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "expected_success_statuses": [200, 201],
+            "expected_safe_fields": ["id", "name", "cpfCnpj", "email", "mobilePhone"],
+            "raw_response_blocked": True,
+            "secret_values_allowed": False,
+        }
+    )
+    error_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "sanitized_error_fields": [
+                "status_code",
+                "provider_error_code",
+                "safe_message",
+                "retryable",
+            ],
+            "raw_error_blocked": True,
+            "secret_values_allowed": False,
+        }
+    )
+    manual_authorization_registered: bool = False
+    access_token_header_configured: bool = False
+    sandbox_only: bool = True
+    target_allowed: bool = True
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    retry_enabled: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_blocked_adapter_contract",
+            "contract_reference": self.contract_reference,
+            "adapter_name": self.adapter_name,
+            "prepared_request": self.prepared_request.safe_summary(),
+            "request_contract": self.request_contract,
+            "response_contract": self.response_contract,
+            "error_contract": self.error_contract,
+            "manual_authorization_registered": self.manual_authorization_registered,
+            "access_token_header_configured": self.access_token_header_configured,
+            "sandbox_only": self.sandbox_only,
+            "target_allowed": self.target_allowed,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "retry_enabled": self.retry_enabled,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_blocked_adapter_contract_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -402,6 +474,34 @@ class AsaasSandboxClient:
             manual_authorization_registered=manual_authorization_registered,
             access_token_header_configured=prepared_request.headers_configured,
             target_allowed=target_allowed,
+        )
+
+    def build_first_customer_http_blocked_adapter_contract(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpBlockedAdapterContractResult:
+        adapter_gate = self.gate_first_customer_http_transport_adapter(
+            name=name,
+            cpf_cnpj=cpf_cnpj,
+            email=email,
+            mobile_phone=mobile_phone,
+            manual_authorization_phrase=manual_authorization_phrase,
+        )
+
+        return AsaasFirstCustomerHttpBlockedAdapterContractResult(
+            prepared_request=adapter_gate.prepared_request,
+            manual_authorization_registered=(
+                adapter_gate.manual_authorization_registered
+            ),
+            access_token_header_configured=(
+                adapter_gate.access_token_header_configured
+            ),
+            target_allowed=adapter_gate.target_allowed,
         )
 
     def prepare_create_pix_payment(
