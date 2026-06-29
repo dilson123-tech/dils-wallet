@@ -661,6 +661,98 @@ def test_first_customer_http_manual_execution_approval_gate_recognizes_phrase_bu
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_disabled_adapter_shell_stays_disabled():
+    client = make_client()
+
+    shell = client.build_first_customer_http_disabled_adapter_shell(
+        name="Cliente Disabled Adapter Shell Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.disabled.adapter@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = shell.prepared_request
+    contract = shell.adapter_shell_contract
+
+    assert shell.adapter_shell_reference == (
+        "first-customer-http-disabled-adapter-shell-sandbox"
+    )
+    assert shell.disabled_adapter_shell_defined is True
+    assert shell.adapter_shell_enabled is False
+    assert shell.adapter_implemented is False
+    assert shell.adapter_enabled is False
+    assert shell.execution_enabled is False
+    assert shell.can_send_http is False
+    assert shell.network_call_allowed is False
+    assert shell.real_money is False
+    assert shell.http_call_executed is False
+    assert shell.sandbox_only is True
+
+    assert contract == {
+        "target_method": "POST",
+        "target_path": "/customers",
+        "target_environment": "sandbox",
+        "http_client_library_selected": False,
+        "network_binding_created": False,
+        "send_method_defined": False,
+        "execution_method_defined": False,
+        "requires_future_explicit_enablement": True,
+    }
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+
+
+def test_first_customer_http_disabled_adapter_shell_recognizes_manual_phrase_but_still_cannot_send():
+    client = make_client()
+
+    shell = client.build_first_customer_http_disabled_adapter_shell(
+        name="Cliente Disabled Adapter Shell Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.disabled.adapter@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = shell.safe_summary()
+
+    assert summary["operation"] == "first_customer_http_disabled_adapter_shell"
+    assert summary["disabled_adapter_shell_defined"] is True
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["adapter_shell_contract"]["http_client_library_selected"] is False
+    assert summary["adapter_shell_contract"]["network_binding_created"] is False
+    assert summary["adapter_shell_contract"]["send_method_defined"] is False
+    assert summary["adapter_shell_contract"]["execution_method_defined"] is False
+    assert (
+        summary["adapter_shell_contract"]["requires_future_explicit_enablement"]
+        is True
+    )
+    assert summary["manual_approval_gate"]["operation"] == (
+        "first_customer_http_manual_execution_approval_gate"
+    )
+    assert (
+        summary["manual_approval_gate"]["manual_execution_approval_registered"]
+        is True
+    )
+    assert summary["manual_approval_gate"]["approval_allows_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 

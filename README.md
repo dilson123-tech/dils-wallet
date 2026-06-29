@@ -151,3 +151,5 @@ GitHub: [dilson123-tech](https://github.com/dilson123-tech)
 - v0.2.57-wallet-asaas-sandbox-first-customer-http-pre-execution-safety-review: adds a documented pre-execution safety review for the future Asaas Sandbox POST /customers call, keeping no HTTP adapter implementation, no HTTP execution, no Asaas request, no production, no real money, no raw provider payload exposure and no exposed secrets.
 
 - v0.2.58-wallet-asaas-sandbox-first-customer-http-manual-execution-approval-gate: adds a manual execution approval gate for the future Asaas Sandbox POST /customers call, recognizing the mandatory authorization phrase while keeping HTTP execution blocked, adapter disabled, production blocked, real money disabled, raw provider payload exposure blocked and secrets hidden.
+
+- v0.2.59-wallet-asaas-sandbox-first-customer-http-disabled-adapter-shell: adds a disabled adapter shell for the future Asaas Sandbox POST /customers call, keeping HTTP client selection, network binding, send method, execution method, production, real money and provider payload exposure blocked.
