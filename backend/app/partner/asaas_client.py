@@ -313,6 +313,98 @@ class AsaasFirstCustomerHttpResponseSanitizerContractResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpErrorSanitizerContractResult:
+    response_sanitizer_contract: AsaasFirstCustomerHttpResponseSanitizerContractResult
+    error_sanitizer_reference: str = (
+        "first-customer-http-error-sanitizer-contract-sandbox"
+    )
+    safe_error_shape: dict[str, Any] = field(
+        default_factory=lambda: {
+            "allowed_fields": [
+                "status_code",
+                "provider_error_code",
+                "safe_message",
+                "retryable",
+                "category",
+            ],
+            "blocked_fields": [
+                "access_token",
+                "api_key",
+                "webhook_token",
+                "wallet_id",
+                "headers",
+                "raw",
+                "provider_raw",
+                "stacktrace",
+                "request_body",
+            ],
+            "raw_error_allowed": False,
+            "provider_raw_error_allowed": False,
+            "stacktrace_allowed": False,
+            "secret_values_allowed": False,
+            "safe_fields_only": True,
+        }
+    )
+    safe_error_categories: list[str] = field(
+        default_factory=lambda: [
+            "provider_validation_error",
+            "provider_authentication_error",
+            "provider_rate_limit_error",
+            "provider_unavailable",
+            "unexpected_provider_error",
+        ]
+    )
+    error_sanitizer_contract_defined: bool = True
+    error_sanitizer_implemented: bool = False
+    raw_error_retained: bool = False
+    provider_raw_error_retained: bool = False
+    stacktrace_retained: bool = False
+    manual_authorization_registered: bool = False
+    sandbox_only: bool = True
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.response_sanitizer_contract.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_error_sanitizer_contract",
+            "error_sanitizer_reference": self.error_sanitizer_reference,
+            "response_sanitizer_contract": (
+                self.response_sanitizer_contract.safe_summary()
+            ),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "safe_error_shape": self.safe_error_shape,
+            "safe_error_categories": self.safe_error_categories,
+            "error_sanitizer_contract_defined": (
+                self.error_sanitizer_contract_defined
+            ),
+            "error_sanitizer_implemented": self.error_sanitizer_implemented,
+            "raw_error_retained": self.raw_error_retained,
+            "provider_raw_error_retained": self.provider_raw_error_retained,
+            "stacktrace_retained": self.stacktrace_retained,
+            "manual_authorization_registered": (
+                self.manual_authorization_registered
+            ),
+            "sandbox_only": self.sandbox_only,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_error_sanitizer_contract_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -627,6 +719,41 @@ class AsaasSandboxClient:
             network_call_allowed=blocked_adapter_contract.network_call_allowed,
             real_money=blocked_adapter_contract.real_money,
             http_call_executed=blocked_adapter_contract.http_call_executed,
+        )
+
+    def build_first_customer_http_error_sanitizer_contract(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpErrorSanitizerContractResult:
+        response_sanitizer_contract = (
+            self.build_first_customer_http_response_sanitizer_contract(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+            )
+        )
+
+        return AsaasFirstCustomerHttpErrorSanitizerContractResult(
+            response_sanitizer_contract=response_sanitizer_contract,
+            manual_authorization_registered=(
+                response_sanitizer_contract.manual_authorization_registered
+            ),
+            sandbox_only=response_sanitizer_contract.sandbox_only,
+            adapter_implemented=response_sanitizer_contract.adapter_implemented,
+            adapter_enabled=response_sanitizer_contract.adapter_enabled,
+            can_send_http=response_sanitizer_contract.can_send_http,
+            network_call_allowed=(
+                response_sanitizer_contract.network_call_allowed
+            ),
+            real_money=response_sanitizer_contract.real_money,
+            http_call_executed=response_sanitizer_contract.http_call_executed,
         )
 
     def prepare_create_pix_payment(
