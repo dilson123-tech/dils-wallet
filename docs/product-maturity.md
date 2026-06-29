@@ -129,3 +129,5 @@ The transition from a technically solid system to a commercially compelling prod
 - v0.2.53-wallet-asaas-sandbox-first-customer-http-transport-adapter-gate: blocked adapter gate for the future first Asaas Sandbox POST /customers transport, keeping the adapter not implemented, disabled, unable to send HTTP, production blocked, real money disabled and secrets hidden.
 
 - v0.2.54-wallet-asaas-sandbox-first-customer-http-blocked-adapter-contract: blocked adapter contract for the future first Asaas Sandbox POST /customers transport, defining safe request, response and sanitized error shapes while keeping the adapter not implemented, disabled, unable to send HTTP, production blocked, real money disabled and secrets hidden.
+
+- v0.2.55-wallet-asaas-sandbox-first-customer-http-response-sanitizer-contract: response sanitizer contract for the future first Asaas Sandbox POST /customers transport, defining safe success and error exposure rules while keeping the adapter not implemented, disabled, unable to send HTTP, production blocked, real money disabled, raw provider payload blocked and secrets hidden.
