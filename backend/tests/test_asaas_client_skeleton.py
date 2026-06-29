@@ -337,6 +337,123 @@ def test_first_customer_http_blocked_adapter_contract_recognizes_phrase_but_cann
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
 
 
+def test_first_customer_http_response_sanitizer_contract_stays_blocked():
+    client = make_client()
+
+    sanitizer = client.build_first_customer_http_response_sanitizer_contract(
+        name="Cliente Response Sanitizer Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.sanitizer@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = sanitizer.prepared_request
+    success_contract = sanitizer.success_sanitizer_contract
+    error_contract = sanitizer.error_sanitizer_contract
+
+    assert sanitizer.sanitizer_reference == (
+        "first-customer-http-response-sanitizer-contract-sandbox"
+    )
+    assert sanitizer.sanitizer_contract_defined is True
+    assert sanitizer.sanitizer_implemented is False
+    assert sanitizer.raw_response_retained is False
+    assert sanitizer.raw_error_retained is False
+    assert sanitizer.manual_authorization_registered is False
+    assert sanitizer.sandbox_only is True
+    assert sanitizer.adapter_implemented is False
+    assert sanitizer.adapter_enabled is False
+    assert sanitizer.can_send_http is False
+    assert sanitizer.network_call_allowed is False
+    assert sanitizer.real_money is False
+    assert sanitizer.http_call_executed is False
+
+    assert success_contract["allowed_fields"] == [
+        "id",
+        "name",
+        "cpfCnpj",
+        "email",
+        "mobilePhone",
+    ]
+    assert "access_token" in success_contract["blocked_fields"]
+    assert "api_key" in success_contract["blocked_fields"]
+    assert "webhook_token" in success_contract["blocked_fields"]
+    assert "wallet_id" in success_contract["blocked_fields"]
+    assert "raw" in success_contract["blocked_fields"]
+    assert success_contract["raw_response_allowed"] is False
+    assert success_contract["secret_values_allowed"] is False
+    assert success_contract["safe_fields_only"] is True
+
+    assert error_contract["allowed_fields"] == [
+        "status_code",
+        "provider_error_code",
+        "safe_message",
+        "retryable",
+    ]
+    assert "access_token" in error_contract["blocked_fields"]
+    assert "api_key" in error_contract["blocked_fields"]
+    assert "webhook_token" in error_contract["blocked_fields"]
+    assert "wallet_id" in error_contract["blocked_fields"]
+    assert "provider_raw" in error_contract["blocked_fields"]
+    assert "stacktrace" in error_contract["blocked_fields"]
+    assert error_contract["raw_error_allowed"] is False
+    assert error_contract["secret_values_allowed"] is False
+    assert error_contract["safe_fields_only"] is True
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "name": "Cliente Response Sanitizer Aurea Gold",
+        "cpfCnpj": "12345678909",
+        "email": "cliente.sanitizer@example.com",
+        "mobilePhone": "11999999999",
+    }
+
+
+def test_first_customer_http_response_sanitizer_contract_recognizes_phrase_but_cannot_send():
+    client = make_client()
+
+    sanitizer = client.build_first_customer_http_response_sanitizer_contract(
+        name="Cliente Response Sanitizer Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.sanitizer@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = sanitizer.safe_summary()
+
+    assert sanitizer.manual_authorization_registered is True
+    assert summary["operation"] == "first_customer_http_response_sanitizer_contract"
+    assert summary["manual_authorization_registered"] is True
+    assert summary["sanitizer_contract_defined"] is True
+    assert summary["sanitizer_implemented"] is False
+    assert summary["raw_response_retained"] is False
+    assert summary["raw_error_retained"] is False
+    assert summary["sandbox_only"] is True
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["success_sanitizer_contract"]["raw_response_allowed"] is False
+    assert summary["error_sanitizer_contract"]["raw_error_allowed"] is False
+    assert summary["blocked_adapter_contract"]["operation"] == (
+        "first_customer_http_blocked_adapter_contract"
+    )
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+    assert "provider_raw_response" not in repr(summary)
+    assert "provider_raw_error" not in repr(summary)
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 

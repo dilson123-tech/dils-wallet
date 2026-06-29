@@ -143,3 +143,5 @@ GitHub: [dilson123-tech](https://github.com/dilson123-tech)
 - v0.2.53-wallet-asaas-sandbox-first-customer-http-transport-adapter-gate: adds a blocked adapter gate for the future Asaas Sandbox POST /customers transport, still with no HTTP adapter implementation, no HTTP execution, no Asaas request, no real customer, no Pix, no production, no real money and no exposed secrets.
 
 - v0.2.54-wallet-asaas-sandbox-first-customer-http-blocked-adapter-contract: adds a blocked adapter contract for the future Asaas Sandbox POST /customers transport, defining request, safe response and sanitized error shapes while keeping no HTTP adapter implementation, no HTTP execution, no Asaas request, no production, no real money and no exposed secrets.
+
+- v0.2.55-wallet-asaas-sandbox-first-customer-http-response-sanitizer-contract: adds a response sanitizer contract for the future Asaas Sandbox POST /customers transport, defining safe success and error exposure rules while keeping no HTTP adapter implementation, no HTTP execution, no Asaas request, no production, no real money, no raw provider payload and no exposed secrets.
