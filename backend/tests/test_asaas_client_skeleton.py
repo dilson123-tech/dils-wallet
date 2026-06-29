@@ -244,6 +244,99 @@ def test_first_customer_http_transport_adapter_gate_recognizes_phrase_but_cannot
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
 
 
+def test_first_customer_http_blocked_adapter_contract_stays_blocked():
+    client = make_client()
+
+    contract = client.build_first_customer_http_blocked_adapter_contract(
+        name="Cliente Blocked Adapter Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.contract@example.com",
+        mobile_phone="11999999999",
+    )
+
+    request = contract.prepared_request
+
+    assert contract.contract_reference == (
+        "first-customer-http-blocked-adapter-contract-sandbox"
+    )
+    assert contract.adapter_name == (
+        "blocked_sandbox_first_customer_http_adapter_contract"
+    )
+    assert contract.manual_authorization_registered is False
+    assert contract.access_token_header_configured is True
+    assert contract.sandbox_only is True
+    assert contract.target_allowed is True
+    assert contract.adapter_implemented is False
+    assert contract.adapter_enabled is False
+    assert contract.can_send_http is False
+    assert contract.network_call_allowed is False
+    assert contract.retry_enabled is False
+    assert contract.real_money is False
+    assert contract.http_call_executed is False
+
+    assert contract.request_contract == {
+        "method": "POST",
+        "path": "/customers",
+        "operation": "create_customer",
+        "required_header_names": ["access_token"],
+        "sensitive_header_values_masked": True,
+        "required_json_fields": ["name", "cpfCnpj", "email", "mobilePhone"],
+    }
+    assert contract.response_contract["expected_success_statuses"] == [200, 201]
+    assert contract.response_contract["raw_response_blocked"] is True
+    assert contract.response_contract["secret_values_allowed"] is False
+    assert contract.error_contract["raw_error_blocked"] is True
+    assert contract.error_contract["secret_values_allowed"] is False
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/customers"
+    assert request.operation == "create_customer"
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json == {
+        "name": "Cliente Blocked Adapter Contract Aurea Gold",
+        "cpfCnpj": "12345678909",
+        "email": "cliente.contract@example.com",
+        "mobilePhone": "11999999999",
+    }
+
+
+def test_first_customer_http_blocked_adapter_contract_recognizes_phrase_but_cannot_send():
+    client = make_client()
+
+    contract = client.build_first_customer_http_blocked_adapter_contract(
+        name="Cliente Blocked Adapter Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.contract@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+
+    summary = contract.safe_summary()
+
+    assert contract.manual_authorization_registered is True
+    assert summary["operation"] == "first_customer_http_blocked_adapter_contract"
+    assert summary["manual_authorization_registered"] is True
+    assert summary["access_token_header_configured"] is True
+    assert summary["sandbox_only"] is True
+    assert summary["target_allowed"] is True
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["retry_enabled"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["request_contract"]["path"] == "/customers"
+    assert summary["response_contract"]["raw_response_blocked"] is True
+    assert summary["error_contract"]["raw_error_blocked"] is True
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
