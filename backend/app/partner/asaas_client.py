@@ -476,6 +476,61 @@ class AsaasFirstCustomerHttpManualExecutionApprovalGateResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpDisabledAdapterShellResult:
+    manual_approval_gate: AsaasFirstCustomerHttpManualExecutionApprovalGateResult
+    adapter_shell_reference: str = (
+        "first-customer-http-disabled-adapter-shell-sandbox"
+    )
+    adapter_shell_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "http_client_library_selected": False,
+            "network_binding_created": False,
+            "send_method_defined": False,
+            "execution_method_defined": False,
+            "requires_future_explicit_enablement": True,
+        }
+    )
+    disabled_adapter_shell_defined: bool = True
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.manual_approval_gate.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_disabled_adapter_shell",
+            "adapter_shell_reference": self.adapter_shell_reference,
+            "manual_approval_gate": self.manual_approval_gate.safe_summary(),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "adapter_shell_contract": self.adapter_shell_contract,
+            "disabled_adapter_shell_defined": self.disabled_adapter_shell_defined,
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": "manual_disabled_adapter_shell_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -864,6 +919,37 @@ class AsaasSandboxClient:
             network_call_allowed=error_sanitizer_contract.network_call_allowed,
             real_money=error_sanitizer_contract.real_money,
             http_call_executed=error_sanitizer_contract.http_call_executed,
+        )
+
+    def build_first_customer_http_disabled_adapter_shell(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpDisabledAdapterShellResult:
+        manual_approval_gate = (
+            self.gate_first_customer_http_manual_execution_approval(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+            )
+        )
+
+        return AsaasFirstCustomerHttpDisabledAdapterShellResult(
+            manual_approval_gate=manual_approval_gate,
+            adapter_implemented=manual_approval_gate.adapter_implemented,
+            adapter_enabled=manual_approval_gate.adapter_enabled,
+            execution_enabled=manual_approval_gate.execution_enabled,
+            can_send_http=manual_approval_gate.can_send_http,
+            network_call_allowed=manual_approval_gate.network_call_allowed,
+            real_money=manual_approval_gate.real_money,
+            http_call_executed=manual_approval_gate.http_call_executed,
+            sandbox_only=manual_approval_gate.sandbox_only,
         )
 
     def prepare_create_pix_payment(
