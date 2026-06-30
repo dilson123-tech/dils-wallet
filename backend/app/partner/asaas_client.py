@@ -531,6 +531,95 @@ class AsaasFirstCustomerHttpDisabledAdapterShellResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpExplicitEnablePreflightResult:
+    disabled_adapter_shell: AsaasFirstCustomerHttpDisabledAdapterShellResult
+    explicit_enable_reference: str = (
+        "first-customer-http-explicit-enable-preflight-sandbox"
+    )
+    required_explicit_enable_phrase: str = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    explicit_enable_preflight_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "requires_manual_execution_approval": True,
+            "requires_disabled_adapter_shell": True,
+            "requires_explicit_enable_phrase": True,
+            "requires_future_http_adapter_implementation": True,
+            "requires_future_runtime_enablement": True,
+            "current_preflight_is_non_executing": True,
+        }
+    )
+    explicit_enable_preflight_defined: bool = True
+    explicit_enable_phrase_registered: bool = False
+    manual_execution_approval_valid: bool = False
+    disabled_adapter_shell_defined: bool = True
+    explicit_enable_preflight_valid: bool = False
+    explicit_enable_allows_adapter_enablement: bool = False
+    explicit_enable_allows_http_execution: bool = False
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.disabled_adapter_shell.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_explicit_enable_preflight",
+            "explicit_enable_reference": self.explicit_enable_reference,
+            "disabled_adapter_shell": self.disabled_adapter_shell.safe_summary(),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "explicit_enable_preflight_contract": (
+                self.explicit_enable_preflight_contract
+            ),
+            "explicit_enable_preflight_defined": (
+                self.explicit_enable_preflight_defined
+            ),
+            "explicit_enable_phrase_required": True,
+            "explicit_enable_phrase_registered": (
+                self.explicit_enable_phrase_registered
+            ),
+            "manual_execution_approval_valid": (
+                self.manual_execution_approval_valid
+            ),
+            "disabled_adapter_shell_defined": (
+                self.disabled_adapter_shell_defined
+            ),
+            "explicit_enable_preflight_valid": (
+                self.explicit_enable_preflight_valid
+            ),
+            "explicit_enable_allows_adapter_enablement": (
+                self.explicit_enable_allows_adapter_enablement
+            ),
+            "explicit_enable_allows_http_execution": (
+                self.explicit_enable_allows_http_execution
+            ),
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": "explicit_enable_preflight_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -950,6 +1039,64 @@ class AsaasSandboxClient:
             real_money=manual_approval_gate.real_money,
             http_call_executed=manual_approval_gate.http_call_executed,
             sandbox_only=manual_approval_gate.sandbox_only,
+        )
+
+    def build_first_customer_http_explicit_enable_preflight(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+        explicit_enable_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpExplicitEnablePreflightResult:
+        disabled_adapter_shell = (
+            self.build_first_customer_http_disabled_adapter_shell(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+            )
+        )
+        required_explicit_enable_phrase = (
+            "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+            "SEM PRODUCAO E SEM DINHEIRO REAL."
+        )
+        explicit_enable_phrase_registered = (
+            explicit_enable_phrase == required_explicit_enable_phrase
+        )
+        manual_execution_approval_valid = (
+            disabled_adapter_shell.manual_approval_gate
+            .manual_execution_approval_valid
+        )
+        explicit_enable_preflight_valid = (
+            explicit_enable_phrase_registered
+            and manual_execution_approval_valid
+            and disabled_adapter_shell.disabled_adapter_shell_defined
+        )
+
+        return AsaasFirstCustomerHttpExplicitEnablePreflightResult(
+            disabled_adapter_shell=disabled_adapter_shell,
+            required_explicit_enable_phrase=required_explicit_enable_phrase,
+            explicit_enable_phrase_registered=(
+                explicit_enable_phrase_registered
+            ),
+            manual_execution_approval_valid=manual_execution_approval_valid,
+            disabled_adapter_shell_defined=(
+                disabled_adapter_shell.disabled_adapter_shell_defined
+            ),
+            explicit_enable_preflight_valid=explicit_enable_preflight_valid,
+            adapter_shell_enabled=disabled_adapter_shell.adapter_shell_enabled,
+            adapter_implemented=disabled_adapter_shell.adapter_implemented,
+            adapter_enabled=disabled_adapter_shell.adapter_enabled,
+            execution_enabled=disabled_adapter_shell.execution_enabled,
+            can_send_http=disabled_adapter_shell.can_send_http,
+            network_call_allowed=disabled_adapter_shell.network_call_allowed,
+            real_money=disabled_adapter_shell.real_money,
+            http_call_executed=disabled_adapter_shell.http_call_executed,
+            sandbox_only=disabled_adapter_shell.sandbox_only,
         )
 
     def prepare_create_pix_payment(

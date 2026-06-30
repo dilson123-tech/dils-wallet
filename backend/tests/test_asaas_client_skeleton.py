@@ -753,6 +753,123 @@ def test_first_customer_http_disabled_adapter_shell_recognizes_manual_phrase_but
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_explicit_enable_preflight_stays_blocked_without_phrases():
+    client = make_client()
+
+    preflight = client.build_first_customer_http_explicit_enable_preflight(
+        name="Cliente Explicit Enable Preflight Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.explicit.preflight@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = preflight.explicit_enable_preflight_contract
+
+    assert preflight.explicit_enable_reference == (
+        "first-customer-http-explicit-enable-preflight-sandbox"
+    )
+    assert preflight.explicit_enable_preflight_defined is True
+    assert preflight.explicit_enable_phrase_registered is False
+    assert preflight.manual_execution_approval_valid is False
+    assert preflight.disabled_adapter_shell_defined is True
+    assert preflight.explicit_enable_preflight_valid is False
+    assert preflight.explicit_enable_allows_adapter_enablement is False
+    assert preflight.explicit_enable_allows_http_execution is False
+    assert preflight.adapter_shell_enabled is False
+    assert preflight.adapter_implemented is False
+    assert preflight.adapter_enabled is False
+    assert preflight.execution_enabled is False
+    assert preflight.can_send_http is False
+    assert preflight.network_call_allowed is False
+    assert preflight.real_money is False
+    assert preflight.http_call_executed is False
+    assert preflight.sandbox_only is True
+
+    assert contract == {
+        "target_method": "POST",
+        "target_path": "/customers",
+        "target_environment": "sandbox",
+        "requires_manual_execution_approval": True,
+        "requires_disabled_adapter_shell": True,
+        "requires_explicit_enable_phrase": True,
+        "requires_future_http_adapter_implementation": True,
+        "requires_future_runtime_enablement": True,
+        "current_preflight_is_non_executing": True,
+    }
+
+
+def test_first_customer_http_explicit_enable_preflight_requires_manual_approval_too():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    preflight = client.build_first_customer_http_explicit_enable_preflight(
+        name="Cliente Explicit Enable Preflight Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.explicit.preflight@example.com",
+        mobile_phone="11999999999",
+        explicit_enable_phrase=explicit_phrase,
+    )
+
+    summary = preflight.safe_summary()
+
+    assert summary["operation"] == "first_customer_http_explicit_enable_preflight"
+    assert summary["explicit_enable_phrase_required"] is True
+    assert summary["explicit_enable_phrase_registered"] is True
+    assert summary["manual_execution_approval_valid"] is False
+    assert summary["explicit_enable_preflight_valid"] is False
+    assert summary["explicit_enable_allows_adapter_enablement"] is False
+    assert summary["explicit_enable_allows_http_execution"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+
+
+def test_first_customer_http_explicit_enable_preflight_valid_but_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    preflight = client.build_first_customer_http_explicit_enable_preflight(
+        name="Cliente Explicit Enable Preflight Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.explicit.preflight@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+    )
+
+    summary = preflight.safe_summary()
+
+    assert summary["explicit_enable_phrase_registered"] is True
+    assert summary["manual_execution_approval_valid"] is True
+    assert summary["disabled_adapter_shell_defined"] is True
+    assert summary["explicit_enable_preflight_valid"] is True
+    assert summary["explicit_enable_allows_adapter_enablement"] is False
+    assert summary["explicit_enable_allows_http_execution"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert summary["disabled_adapter_shell"]["adapter_shell_enabled"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
