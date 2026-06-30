@@ -994,6 +994,140 @@ def test_first_customer_http_runtime_enable_contract_valid_but_non_executing():
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_runtime_switch_guard_stays_blocked_without_phrases():
+    client = make_client()
+
+    guard = client.build_first_customer_http_runtime_switch_guard(
+        name="Cliente Runtime Switch Guard Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.runtime.switch@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = guard.runtime_switch_guard_contract
+
+    assert guard.runtime_switch_guard_reference == (
+        "first-customer-http-runtime-switch-guard-sandbox"
+    )
+    assert guard.runtime_switch_guard_defined is True
+    assert guard.runtime_switch_phrase_registered is False
+    assert guard.runtime_enable_contract_valid is False
+    assert guard.runtime_switch_guard_valid is False
+    assert guard.runtime_switch_requested is False
+    assert guard.runtime_switch_allows_adapter_enablement is False
+    assert guard.runtime_switch_allows_http_execution is False
+    assert guard.adapter_shell_enabled is False
+    assert guard.adapter_implemented is False
+    assert guard.adapter_enabled is False
+    assert guard.execution_enabled is False
+    assert guard.can_send_http is False
+    assert guard.network_call_allowed is False
+    assert guard.real_money is False
+    assert guard.http_call_executed is False
+    assert guard.sandbox_only is True
+
+    assert contract == {
+        "target_method": "POST",
+        "target_path": "/customers",
+        "target_environment": "sandbox",
+        "requires_manual_execution_approval": True,
+        "requires_disabled_adapter_shell": True,
+        "requires_explicit_enable_preflight": True,
+        "requires_runtime_enable_contract": True,
+        "requires_runtime_switch_phrase": True,
+        "runtime_switch_default_state": "disabled",
+        "requires_future_http_adapter_implementation": True,
+        "requires_future_runtime_execution_gate": True,
+        "current_guard_is_non_executing": True,
+    }
+
+
+def test_first_customer_http_runtime_switch_guard_requires_valid_runtime_contract_too():
+    client = make_client()
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    guard = client.build_first_customer_http_runtime_switch_guard(
+        name="Cliente Runtime Switch Guard Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.runtime.switch@example.com",
+        mobile_phone="11999999999",
+        runtime_switch_phrase=switch_phrase,
+    )
+
+    summary = guard.safe_summary()
+
+    assert summary["operation"] == "first_customer_http_runtime_switch_guard"
+    assert summary["runtime_switch_phrase_required"] is True
+    assert summary["runtime_switch_phrase_registered"] is True
+    assert summary["runtime_enable_contract_valid"] is False
+    assert summary["runtime_switch_guard_valid"] is False
+    assert summary["runtime_switch_requested"] is True
+    assert summary["runtime_switch_allows_adapter_enablement"] is False
+    assert summary["runtime_switch_allows_http_execution"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+
+
+def test_first_customer_http_runtime_switch_guard_valid_but_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    guard = client.build_first_customer_http_runtime_switch_guard(
+        name="Cliente Runtime Switch Guard Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.runtime.switch@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+        runtime_enable_phrase=runtime_phrase,
+        runtime_switch_phrase=switch_phrase,
+    )
+
+    summary = guard.safe_summary()
+
+    assert summary["runtime_switch_phrase_registered"] is True
+    assert summary["runtime_enable_contract_valid"] is True
+    assert summary["runtime_switch_guard_valid"] is True
+    assert summary["runtime_switch_requested"] is True
+    assert summary["runtime_switch_allows_adapter_enablement"] is False
+    assert summary["runtime_switch_allows_http_execution"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["runtime_enable_contract"]["runtime_enable_contract_valid"]
+        is True
+    )
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
