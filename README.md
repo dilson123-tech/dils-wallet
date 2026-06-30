@@ -155,3 +155,5 @@ GitHub: [dilson123-tech](https://github.com/dilson123-tech)
 - v0.2.59-wallet-asaas-sandbox-first-customer-http-disabled-adapter-shell: adds a disabled adapter shell for the future Asaas Sandbox POST /customers call, keeping HTTP client selection, network binding, send method, execution method, production, real money and provider payload exposure blocked.
 
 - v0.2.60-wallet-asaas-sandbox-first-customer-http-explicit-enable-preflight: adds a non-executing explicit enable preflight for the future Asaas Sandbox POST /customers call, recognizing the required explicit enable phrase while keeping adapter enablement, HTTP execution, production, real money and provider payload exposure blocked.
+
+- v0.2.61-wallet-asaas-sandbox-first-customer-http-runtime-enable-contract: adds a non-executing runtime enable contract for the future Asaas Sandbox POST /customers call, recognizing the required runtime enable phrase while keeping adapter enablement, HTTP execution, production, real money and provider payload exposure blocked.
