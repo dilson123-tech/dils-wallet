@@ -1891,6 +1891,172 @@ def test_first_customer_http_adapter_boundary_final_contract_valid_chain_but_non
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_final_manual_execution_runbook_readiness_gate_stays_blocked_without_phrases():
+    client = make_client()
+
+    gate = client.build_first_customer_http_final_manual_execution_runbook_readiness_gate(
+        name="Cliente Final Readiness Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.final.readiness@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = gate.final_manual_execution_runbook_readiness_gate
+
+    assert gate.final_readiness_gate_reference == (
+        "first-customer-http-final-manual-execution-runbook-readiness-gate"
+    )
+    assert gate.final_manual_execution_runbook_readiness_gate_defined is True
+    assert gate.adapter_boundary_final_contract_valid is False
+    assert gate.final_manual_execution_runbook_readiness_gate_valid is False
+    assert gate.manual_operator_review_required is True
+    assert gate.sandbox_only_confirmation_required is True
+    assert gate.no_production_confirmation_required is True
+    assert gate.no_real_money_confirmation_required is True
+    assert gate.sanitized_logging_only_required is True
+    assert gate.future_manual_execution_approval_required is True
+    assert gate.future_adapter_implementation_review_required is True
+    assert gate.raw_provider_payload_allowed is False
+    assert gate.raw_provider_error_allowed is False
+    assert gate.request_body_exposure_allowed is False
+    assert gate.stacktrace_exposure_allowed is False
+    assert gate.final_readiness_gate_allows_adapter_implementation is False
+    assert gate.final_readiness_gate_allows_adapter_enablement is False
+    assert gate.final_readiness_gate_allows_http_execution is False
+    assert gate.final_readiness_gate_can_emit_raw_payload is False
+    assert gate.ready_for_manual_execution_review is False
+    assert gate.manual_execution_started is False
+    assert gate.adapter_shell_enabled is False
+    assert gate.adapter_implemented is False
+    assert gate.adapter_enabled is False
+    assert gate.execution_enabled is False
+    assert gate.can_send_http is False
+    assert gate.network_call_allowed is False
+    assert gate.real_money is False
+    assert gate.http_call_executed is False
+    assert gate.sandbox_only is True
+
+    assert contract["target_method"] == "POST"
+    assert contract["target_path"] == "/customers"
+    assert contract["target_environment"] == "sandbox"
+    assert contract["requires_adapter_boundary_final_contract"] is True
+    assert contract["requires_manual_operator_review"] is True
+    assert contract["requires_sandbox_only_confirmation"] is True
+    assert contract["requires_no_production_confirmation"] is True
+    assert contract["requires_no_real_money_confirmation"] is True
+    assert contract["requires_sanitized_logging_only"] is True
+    assert contract["requires_no_raw_provider_payload"] is True
+    assert contract["requires_no_raw_provider_error"] is True
+    assert contract["requires_no_request_body_logging"] is True
+    assert contract["requires_no_stacktrace_exposure"] is True
+    assert contract["requires_future_adapter_implementation_review"] is True
+    assert contract["requires_future_manual_execution_approval"] is True
+    assert contract["manual_execution_not_started"] is True
+    assert contract["current_gate_is_review_only"] is True
+
+
+def test_first_customer_http_final_manual_execution_runbook_readiness_gate_defines_review_steps():
+    client = make_client()
+
+    gate = client.build_first_customer_http_final_manual_execution_runbook_readiness_gate(
+        name="Cliente Final Readiness Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.final.readiness@example.com",
+        mobile_phone="11999999999",
+    )
+
+    assert gate.runbook_review_steps == [
+        "confirm_sandbox_environment_only",
+        "confirm_no_production_credentials_or_urls",
+        "confirm_no_real_money_or_real_pix_flow",
+        "confirm_adapter_boundary_contract_valid",
+        "confirm_sanitized_result_envelope_only",
+        "confirm_no_raw_provider_payload_or_error_logging",
+        "confirm_no_request_body_or_stacktrace_exposure",
+        "confirm_future_manual_execution_approval_required",
+    ]
+
+
+def test_first_customer_http_final_manual_execution_runbook_readiness_gate_valid_chain_review_only():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_phrase = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    gate = client.build_first_customer_http_final_manual_execution_runbook_readiness_gate(
+        name="Cliente Final Readiness Gate Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.final.readiness@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+        runtime_enable_phrase=runtime_phrase,
+        runtime_switch_phrase=switch_phrase,
+        execution_gate_phrase=execution_phrase,
+    )
+
+    summary = gate.safe_summary()
+
+    assert summary["operation"] == (
+        "first_customer_http_final_manual_execution_runbook_readiness_gate"
+    )
+    assert summary["adapter_boundary_final_contract_valid"] is True
+    assert summary["final_manual_execution_runbook_readiness_gate_valid"] is True
+    assert summary["ready_for_manual_execution_review"] is True
+    assert summary["manual_operator_review_required"] is True
+    assert summary["sandbox_only_confirmation_required"] is True
+    assert summary["no_production_confirmation_required"] is True
+    assert summary["no_real_money_confirmation_required"] is True
+    assert summary["sanitized_logging_only_required"] is True
+    assert summary["future_manual_execution_approval_required"] is True
+    assert summary["future_adapter_implementation_review_required"] is True
+    assert summary["raw_provider_payload_allowed"] is False
+    assert summary["raw_provider_error_allowed"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["final_readiness_gate_allows_adapter_implementation"] is False
+    assert summary["final_readiness_gate_allows_adapter_enablement"] is False
+    assert summary["final_readiness_gate_allows_http_execution"] is False
+    assert summary["final_readiness_gate_can_emit_raw_payload"] is False
+    assert summary["manual_execution_started"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["next_step_required"] == (
+        "manual_review_before_first_sandbox_http_attempt"
+    )
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["adapter_boundary_final_contract"][
+            "adapter_boundary_final_contract_valid"
+        ]
+        is True
+    )
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
