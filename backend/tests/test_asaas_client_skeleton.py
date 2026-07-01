@@ -2057,6 +2057,227 @@ def test_first_customer_http_final_manual_execution_runbook_readiness_gate_valid
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_first_controlled_sandbox_attempt_preparation_stays_blocked_without_phrases():
+    client = make_client()
+
+    preparation = (
+        client
+        .build_first_customer_http_first_controlled_sandbox_attempt_preparation(
+            name="Cliente First Controlled Attempt Aurea Gold",
+            cpf_cnpj="12345678909",
+            email="cliente.first.controlled@example.com",
+            mobile_phone="11999999999",
+        )
+    )
+
+    contract = preparation.first_controlled_sandbox_attempt_preparation
+
+    assert preparation.first_controlled_attempt_preparation_reference == (
+        "first-customer-http-first-controlled-sandbox-attempt-preparation"
+    )
+    assert (
+        preparation.first_controlled_sandbox_attempt_preparation_defined
+        is True
+    )
+    assert (
+        preparation.final_manual_execution_runbook_readiness_gate_valid
+        is False
+    )
+    assert (
+        preparation.first_controlled_sandbox_attempt_preparation_valid
+        is False
+    )
+    assert (
+        preparation.ready_for_first_controlled_sandbox_attempt_review
+        is False
+    )
+    assert preparation.manual_operator_review_required is True
+    assert preparation.sandbox_base_url_confirmation_required is True
+    assert preparation.environment_secret_loading_only_required is True
+    assert preparation.no_production_credentials_required is True
+    assert preparation.no_real_money_or_real_pix_flow_required is True
+    assert preparation.sanitized_success_envelope_required is True
+    assert preparation.sanitized_error_envelope_required is True
+    assert preparation.redacted_logs_only_required is True
+    assert preparation.single_controlled_attempt_policy_required is True
+    assert preparation.no_retry_loop_required is True
+    assert preparation.manual_stop_on_unexpected_response_required is True
+    assert preparation.raw_provider_payload_storage_allowed is False
+    assert preparation.request_body_logging_allowed is False
+    assert preparation.stacktrace_exposure_allowed is False
+    assert (
+        preparation.first_controlled_attempt_allows_adapter_implementation
+        is False
+    )
+    assert (
+        preparation.first_controlled_attempt_allows_adapter_enablement
+        is False
+    )
+    assert preparation.first_controlled_attempt_allows_http_execution is False
+    assert preparation.first_controlled_attempt_can_emit_raw_payload is False
+    assert preparation.first_controlled_attempt_executed is False
+    assert preparation.adapter_shell_enabled is False
+    assert preparation.adapter_implemented is False
+    assert preparation.adapter_enabled is False
+    assert preparation.execution_enabled is False
+    assert preparation.can_send_http is False
+    assert preparation.network_call_allowed is False
+    assert preparation.real_money is False
+    assert preparation.http_call_executed is False
+    assert preparation.sandbox_only is True
+
+    assert contract["target_method"] == "POST"
+    assert contract["target_path"] == "/customers"
+    assert contract["target_environment"] == "sandbox"
+    assert (
+        contract["requires_final_manual_execution_runbook_readiness_gate"]
+        is True
+    )
+    assert contract["requires_manual_operator_review"] is True
+    assert contract["requires_sandbox_base_url_confirmation"] is True
+    assert contract["requires_environment_secret_loading_only"] is True
+    assert contract["requires_no_production_credentials"] is True
+    assert contract["requires_no_real_money_or_real_pix_flow"] is True
+    assert contract["requires_sanitized_success_envelope"] is True
+    assert contract["requires_sanitized_error_envelope"] is True
+    assert contract["requires_redacted_logs_only"] is True
+    assert contract["requires_single_controlled_attempt_policy"] is True
+    assert contract["requires_no_retry_loop"] is True
+    assert contract["requires_manual_stop_on_unexpected_response"] is True
+    assert contract["requires_no_raw_provider_payload_storage"] is True
+    assert contract["requires_no_request_body_logging"] is True
+    assert contract["requires_no_stacktrace_exposure"] is True
+    assert contract["first_controlled_attempt_not_executed"] is True
+    assert contract["current_preparation_is_non_executing"] is True
+
+
+def test_first_customer_http_first_controlled_sandbox_attempt_preparation_defines_checklist():
+    client = make_client()
+
+    preparation = (
+        client
+        .build_first_customer_http_first_controlled_sandbox_attempt_preparation(
+            name="Cliente First Controlled Attempt Aurea Gold",
+            cpf_cnpj="12345678909",
+            email="cliente.first.controlled@example.com",
+            mobile_phone="11999999999",
+        )
+    )
+
+    assert preparation.first_controlled_attempt_checklist == [
+        "confirm_main_branch_clean_and_tagged",
+        "confirm_sandbox_environment_variables_exist_locally",
+        "confirm_no_production_base_url_or_credentials",
+        "confirm_manual_operator_is_present",
+        "confirm_single_attempt_only",
+        "confirm_sanitized_logging_only",
+        "confirm_no_request_body_logging",
+        "confirm_no_raw_provider_payload_storage",
+        "confirm_stop_on_unexpected_response",
+        "confirm_post_attempt_sanitized_record_required",
+    ]
+
+
+def test_first_customer_http_first_controlled_sandbox_attempt_preparation_valid_chain_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_phrase = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    preparation = (
+        client
+        .build_first_customer_http_first_controlled_sandbox_attempt_preparation(
+            name="Cliente First Controlled Attempt Aurea Gold",
+            cpf_cnpj="12345678909",
+            email="cliente.first.controlled@example.com",
+            mobile_phone="11999999999",
+            manual_authorization_phrase=(
+                ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE
+            ),
+            explicit_enable_phrase=explicit_phrase,
+            runtime_enable_phrase=runtime_phrase,
+            runtime_switch_phrase=switch_phrase,
+            execution_gate_phrase=execution_phrase,
+        )
+    )
+
+    summary = preparation.safe_summary()
+
+    assert summary["operation"] == (
+        "first_customer_http_first_controlled_sandbox_attempt_preparation"
+    )
+    assert (
+        summary["final_manual_execution_runbook_readiness_gate_valid"]
+        is True
+    )
+    assert (
+        summary["first_controlled_sandbox_attempt_preparation_valid"]
+        is True
+    )
+    assert (
+        summary["ready_for_first_controlled_sandbox_attempt_review"]
+        is True
+    )
+    assert summary["manual_operator_review_required"] is True
+    assert summary["sandbox_base_url_confirmation_required"] is True
+    assert summary["environment_secret_loading_only_required"] is True
+    assert summary["no_production_credentials_required"] is True
+    assert summary["no_real_money_or_real_pix_flow_required"] is True
+    assert summary["sanitized_success_envelope_required"] is True
+    assert summary["sanitized_error_envelope_required"] is True
+    assert summary["redacted_logs_only_required"] is True
+    assert summary["single_controlled_attempt_policy_required"] is True
+    assert summary["no_retry_loop_required"] is True
+    assert summary["manual_stop_on_unexpected_response_required"] is True
+    assert summary["raw_provider_payload_storage_allowed"] is False
+    assert summary["request_body_logging_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert (
+        summary["first_controlled_attempt_allows_adapter_implementation"]
+        is False
+    )
+    assert summary["first_controlled_attempt_allows_adapter_enablement"] is False
+    assert summary["first_controlled_attempt_allows_http_execution"] is False
+    assert summary["first_controlled_attempt_can_emit_raw_payload"] is False
+    assert summary["first_controlled_attempt_executed"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["next_step_required"] == (
+        "operator_decision_before_any_real_sandbox_http_call"
+    )
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["final_manual_execution_runbook_readiness_gate"][
+            "final_manual_execution_runbook_readiness_gate_valid"
+        ]
+        is True
+    )
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 

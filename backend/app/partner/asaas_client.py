@@ -1540,6 +1540,191 @@ class AsaasFirstCustomerHttpFinalManualExecutionRunbookReadinessGateResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpFirstControlledSandboxAttemptPreparationResult:
+    final_manual_execution_runbook_readiness_gate: (
+        AsaasFirstCustomerHttpFinalManualExecutionRunbookReadinessGateResult
+    )
+    first_controlled_attempt_preparation_reference: str = (
+        "first-customer-http-first-controlled-sandbox-attempt-preparation"
+    )
+    first_controlled_sandbox_attempt_preparation: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "requires_final_manual_execution_runbook_readiness_gate": True,
+            "requires_manual_operator_review": True,
+            "requires_sandbox_base_url_confirmation": True,
+            "requires_environment_secret_loading_only": True,
+            "requires_no_production_credentials": True,
+            "requires_no_real_money_or_real_pix_flow": True,
+            "requires_sanitized_success_envelope": True,
+            "requires_sanitized_error_envelope": True,
+            "requires_redacted_logs_only": True,
+            "requires_single_controlled_attempt_policy": True,
+            "requires_no_retry_loop": True,
+            "requires_manual_stop_on_unexpected_response": True,
+            "requires_no_raw_provider_payload_storage": True,
+            "requires_no_request_body_logging": True,
+            "requires_no_stacktrace_exposure": True,
+            "first_controlled_attempt_not_executed": True,
+            "current_preparation_is_non_executing": True,
+        }
+    )
+    first_controlled_attempt_checklist: list[str] = field(
+        default_factory=lambda: [
+            "confirm_main_branch_clean_and_tagged",
+            "confirm_sandbox_environment_variables_exist_locally",
+            "confirm_no_production_base_url_or_credentials",
+            "confirm_manual_operator_is_present",
+            "confirm_single_attempt_only",
+            "confirm_sanitized_logging_only",
+            "confirm_no_request_body_logging",
+            "confirm_no_raw_provider_payload_storage",
+            "confirm_stop_on_unexpected_response",
+            "confirm_post_attempt_sanitized_record_required",
+        ]
+    )
+    first_controlled_sandbox_attempt_preparation_defined: bool = True
+    final_manual_execution_runbook_readiness_gate_valid: bool = False
+    first_controlled_sandbox_attempt_preparation_valid: bool = False
+    ready_for_first_controlled_sandbox_attempt_review: bool = False
+    manual_operator_review_required: bool = True
+    sandbox_base_url_confirmation_required: bool = True
+    environment_secret_loading_only_required: bool = True
+    no_production_credentials_required: bool = True
+    no_real_money_or_real_pix_flow_required: bool = True
+    sanitized_success_envelope_required: bool = True
+    sanitized_error_envelope_required: bool = True
+    redacted_logs_only_required: bool = True
+    single_controlled_attempt_policy_required: bool = True
+    no_retry_loop_required: bool = True
+    manual_stop_on_unexpected_response_required: bool = True
+    raw_provider_payload_storage_allowed: bool = False
+    request_body_logging_allowed: bool = False
+    stacktrace_exposure_allowed: bool = False
+    first_controlled_attempt_allows_adapter_implementation: bool = False
+    first_controlled_attempt_allows_adapter_enablement: bool = False
+    first_controlled_attempt_allows_http_execution: bool = False
+    first_controlled_attempt_can_emit_raw_payload: bool = False
+    first_controlled_attempt_executed: bool = False
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return (
+            self.final_manual_execution_runbook_readiness_gate
+            .prepared_request
+        )
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": (
+                "first_customer_http_first_controlled_sandbox_attempt_"
+                "preparation"
+            ),
+            "first_controlled_attempt_preparation_reference": (
+                self.first_controlled_attempt_preparation_reference
+            ),
+            "final_manual_execution_runbook_readiness_gate": (
+                self.final_manual_execution_runbook_readiness_gate
+                .safe_summary()
+            ),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "first_controlled_sandbox_attempt_preparation": (
+                self.first_controlled_sandbox_attempt_preparation
+            ),
+            "first_controlled_attempt_checklist": (
+                self.first_controlled_attempt_checklist
+            ),
+            "first_controlled_sandbox_attempt_preparation_defined": (
+                self.first_controlled_sandbox_attempt_preparation_defined
+            ),
+            "final_manual_execution_runbook_readiness_gate_valid": (
+                self.final_manual_execution_runbook_readiness_gate_valid
+            ),
+            "first_controlled_sandbox_attempt_preparation_valid": (
+                self.first_controlled_sandbox_attempt_preparation_valid
+            ),
+            "ready_for_first_controlled_sandbox_attempt_review": (
+                self.ready_for_first_controlled_sandbox_attempt_review
+            ),
+            "manual_operator_review_required": (
+                self.manual_operator_review_required
+            ),
+            "sandbox_base_url_confirmation_required": (
+                self.sandbox_base_url_confirmation_required
+            ),
+            "environment_secret_loading_only_required": (
+                self.environment_secret_loading_only_required
+            ),
+            "no_production_credentials_required": (
+                self.no_production_credentials_required
+            ),
+            "no_real_money_or_real_pix_flow_required": (
+                self.no_real_money_or_real_pix_flow_required
+            ),
+            "sanitized_success_envelope_required": (
+                self.sanitized_success_envelope_required
+            ),
+            "sanitized_error_envelope_required": (
+                self.sanitized_error_envelope_required
+            ),
+            "redacted_logs_only_required": self.redacted_logs_only_required,
+            "single_controlled_attempt_policy_required": (
+                self.single_controlled_attempt_policy_required
+            ),
+            "no_retry_loop_required": self.no_retry_loop_required,
+            "manual_stop_on_unexpected_response_required": (
+                self.manual_stop_on_unexpected_response_required
+            ),
+            "raw_provider_payload_storage_allowed": (
+                self.raw_provider_payload_storage_allowed
+            ),
+            "request_body_logging_allowed": (
+                self.request_body_logging_allowed
+            ),
+            "stacktrace_exposure_allowed": self.stacktrace_exposure_allowed,
+            "first_controlled_attempt_allows_adapter_implementation": (
+                self.first_controlled_attempt_allows_adapter_implementation
+            ),
+            "first_controlled_attempt_allows_adapter_enablement": (
+                self.first_controlled_attempt_allows_adapter_enablement
+            ),
+            "first_controlled_attempt_allows_http_execution": (
+                self.first_controlled_attempt_allows_http_execution
+            ),
+            "first_controlled_attempt_can_emit_raw_payload": (
+                self.first_controlled_attempt_can_emit_raw_payload
+            ),
+            "first_controlled_attempt_executed": (
+                self.first_controlled_attempt_executed
+            ),
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": (
+                "operator_decision_before_any_real_sandbox_http_call"
+            ),
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -2449,6 +2634,60 @@ class AsaasSandboxClient:
             real_money=adapter_boundary.real_money,
             http_call_executed=adapter_boundary.http_call_executed,
             sandbox_only=adapter_boundary.sandbox_only,
+        )
+
+    def build_first_customer_http_first_controlled_sandbox_attempt_preparation(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+        explicit_enable_phrase: str = "",
+        runtime_enable_phrase: str = "",
+        runtime_switch_phrase: str = "",
+        execution_gate_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpFirstControlledSandboxAttemptPreparationResult:
+        readiness_gate = (
+            self
+            .build_first_customer_http_final_manual_execution_runbook_readiness_gate(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+                explicit_enable_phrase=explicit_enable_phrase,
+                runtime_enable_phrase=runtime_enable_phrase,
+                runtime_switch_phrase=runtime_switch_phrase,
+                execution_gate_phrase=execution_gate_phrase,
+            )
+        )
+        readiness_gate_valid = (
+            readiness_gate
+            .final_manual_execution_runbook_readiness_gate_valid
+        )
+
+        return AsaasFirstCustomerHttpFirstControlledSandboxAttemptPreparationResult(
+            final_manual_execution_runbook_readiness_gate=readiness_gate,
+            final_manual_execution_runbook_readiness_gate_valid=(
+                readiness_gate_valid
+            ),
+            first_controlled_sandbox_attempt_preparation_valid=(
+                readiness_gate_valid
+            ),
+            ready_for_first_controlled_sandbox_attempt_review=(
+                readiness_gate_valid
+            ),
+            adapter_shell_enabled=readiness_gate.adapter_shell_enabled,
+            adapter_implemented=readiness_gate.adapter_implemented,
+            adapter_enabled=readiness_gate.adapter_enabled,
+            execution_enabled=readiness_gate.execution_enabled,
+            can_send_http=readiness_gate.can_send_http,
+            network_call_allowed=readiness_gate.network_call_allowed,
+            real_money=readiness_gate.real_money,
+            http_call_executed=readiness_gate.http_call_executed,
+            sandbox_only=readiness_gate.sandbox_only,
         )
 
     def prepare_create_pix_payment(
