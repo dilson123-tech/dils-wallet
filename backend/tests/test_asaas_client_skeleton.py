@@ -1725,6 +1725,172 @@ def test_first_customer_http_sanitized_success_error_fixture_contract_valid_chai
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_adapter_boundary_final_contract_stays_blocked_without_phrases():
+    client = make_client()
+
+    boundary = client.build_first_customer_http_adapter_boundary_final_contract(
+        name="Cliente Adapter Boundary Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.adapter.boundary@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = boundary.adapter_boundary_final_contract
+
+    assert boundary.adapter_boundary_reference == (
+        "first-customer-http-adapter-boundary-final-contract-sandbox"
+    )
+    assert boundary.adapter_boundary_final_contract_defined is True
+    assert boundary.sanitized_success_error_fixture_contract_valid is False
+    assert boundary.adapter_boundary_final_contract_valid is False
+    assert boundary.future_adapter_must_return_sanitized_envelope_only is True
+    assert boundary.raw_provider_payload_allowed is False
+    assert boundary.raw_provider_error_allowed is False
+    assert boundary.request_body_exposure_allowed is False
+    assert boundary.stacktrace_exposure_allowed is False
+    assert boundary.adapter_boundary_allows_adapter_implementation is False
+    assert boundary.adapter_boundary_allows_adapter_enablement is False
+    assert boundary.adapter_boundary_allows_http_execution is False
+    assert boundary.adapter_boundary_can_emit_raw_payload is False
+    assert boundary.adapter_shell_enabled is False
+    assert boundary.adapter_implemented is False
+    assert boundary.adapter_enabled is False
+    assert boundary.execution_enabled is False
+    assert boundary.can_send_http is False
+    assert boundary.network_call_allowed is False
+    assert boundary.real_money is False
+    assert boundary.http_call_executed is False
+    assert boundary.sandbox_only is True
+
+    assert contract["target_method"] == "POST"
+    assert contract["target_path"] == "/customers"
+    assert contract["target_environment"] == "sandbox"
+    assert contract["allowed_future_caller"] == (
+        "first_customer_http_sanitized_execution_handler"
+    )
+    assert contract["requires_manual_execution_approval"] is True
+    assert contract["requires_disabled_adapter_shell"] is True
+    assert contract["requires_explicit_enable_preflight"] is True
+    assert contract["requires_runtime_enable_contract"] is True
+    assert contract["requires_runtime_switch_guard"] is True
+    assert contract["requires_execution_gate_contract"] is True
+    assert contract["requires_sanitized_execution_handler_contract"] is True
+    assert contract["requires_sanitized_result_envelope_contract"] is True
+    assert contract["requires_sanitized_success_error_fixtures"] is True
+    assert contract["future_adapter_must_return_sanitized_envelope_only"] is True
+    assert contract["future_adapter_must_not_expose_raw_provider_payload"] is True
+    assert contract["future_adapter_must_not_expose_raw_provider_error"] is True
+    assert contract["future_adapter_must_not_expose_request_body"] is True
+    assert contract["future_adapter_must_not_expose_stacktrace"] is True
+    assert contract["adapter_implementation_present"] is False
+    assert contract["current_boundary_is_contract_only"] is True
+
+
+def test_first_customer_http_adapter_boundary_final_contract_requires_valid_fixture_chain():
+    client = make_client()
+
+    boundary = client.build_first_customer_http_adapter_boundary_final_contract(
+        name="Cliente Adapter Boundary Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.adapter.boundary@example.com",
+        mobile_phone="11999999999",
+    )
+
+    summary = boundary.safe_summary()
+
+    assert summary["operation"] == (
+        "first_customer_http_adapter_boundary_final_contract"
+    )
+    assert summary["sanitized_success_error_fixture_contract_valid"] is False
+    assert summary["adapter_boundary_final_contract_valid"] is False
+    assert summary["future_adapter_must_return_sanitized_envelope_only"] is True
+    assert summary["raw_provider_payload_allowed"] is False
+    assert summary["raw_provider_error_allowed"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["adapter_boundary_allows_adapter_implementation"] is False
+    assert summary["adapter_boundary_allows_adapter_enablement"] is False
+    assert summary["adapter_boundary_allows_http_execution"] is False
+    assert summary["adapter_boundary_can_emit_raw_payload"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["next_step_required"] == (
+        "final_manual_execution_runbook_readiness_gate"
+    )
+
+
+def test_first_customer_http_adapter_boundary_final_contract_valid_chain_but_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_phrase = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    boundary = client.build_first_customer_http_adapter_boundary_final_contract(
+        name="Cliente Adapter Boundary Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.adapter.boundary@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+        runtime_enable_phrase=runtime_phrase,
+        runtime_switch_phrase=switch_phrase,
+        execution_gate_phrase=execution_phrase,
+    )
+
+    summary = boundary.safe_summary()
+
+    assert summary["sanitized_success_error_fixture_contract_valid"] is True
+    assert summary["adapter_boundary_final_contract_valid"] is True
+    assert summary["future_adapter_must_return_sanitized_envelope_only"] is True
+    assert summary["raw_provider_payload_allowed"] is False
+    assert summary["raw_provider_error_allowed"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["adapter_boundary_allows_adapter_implementation"] is False
+    assert summary["adapter_boundary_allows_adapter_enablement"] is False
+    assert summary["adapter_boundary_allows_http_execution"] is False
+    assert summary["adapter_boundary_can_emit_raw_payload"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["sanitized_success_error_fixture_contract"][
+            "sanitized_result_envelope_contract_valid"
+        ]
+        is True
+    )
+    assert summary["adapter_boundary_final_contract"][
+        "adapter_implementation_present"
+    ] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
