@@ -798,6 +798,90 @@ class AsaasFirstCustomerHttpRuntimeSwitchGuardResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpExecutionGateContractResult:
+    runtime_switch_guard: AsaasFirstCustomerHttpRuntimeSwitchGuardResult
+    execution_gate_reference: str = (
+        "first-customer-http-execution-gate-contract-sandbox"
+    )
+    required_execution_gate_phrase: str = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_gate_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "requires_manual_execution_approval": True,
+            "requires_disabled_adapter_shell": True,
+            "requires_explicit_enable_preflight": True,
+            "requires_runtime_enable_contract": True,
+            "requires_runtime_switch_guard": True,
+            "requires_execution_gate_phrase": True,
+            "requires_future_http_adapter_implementation": True,
+            "requires_future_sanitized_execution_handler": True,
+            "current_gate_is_non_executing": True,
+        }
+    )
+    execution_gate_contract_defined: bool = True
+    execution_gate_phrase_registered: bool = False
+    runtime_switch_guard_valid: bool = False
+    execution_gate_contract_valid: bool = False
+    execution_gate_allows_adapter_enablement: bool = False
+    execution_gate_allows_http_execution: bool = False
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.runtime_switch_guard.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "first_customer_http_execution_gate_contract",
+            "execution_gate_reference": self.execution_gate_reference,
+            "runtime_switch_guard": self.runtime_switch_guard.safe_summary(),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "execution_gate_contract": self.execution_gate_contract,
+            "execution_gate_contract_defined": (
+                self.execution_gate_contract_defined
+            ),
+            "execution_gate_phrase_required": True,
+            "execution_gate_phrase_registered": (
+                self.execution_gate_phrase_registered
+            ),
+            "runtime_switch_guard_valid": self.runtime_switch_guard_valid,
+            "execution_gate_contract_valid": (
+                self.execution_gate_contract_valid
+            ),
+            "execution_gate_allows_adapter_enablement": (
+                self.execution_gate_allows_adapter_enablement
+            ),
+            "execution_gate_allows_http_execution": (
+                self.execution_gate_allows_http_execution
+            ),
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": "execution_gate_contract_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -1388,6 +1472,65 @@ class AsaasSandboxClient:
             real_money=runtime_enable_contract.real_money,
             http_call_executed=runtime_enable_contract.http_call_executed,
             sandbox_only=runtime_enable_contract.sandbox_only,
+        )
+
+    def build_first_customer_http_execution_gate_contract(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+        explicit_enable_phrase: str = "",
+        runtime_enable_phrase: str = "",
+        runtime_switch_phrase: str = "",
+        execution_gate_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpExecutionGateContractResult:
+        runtime_switch_guard = (
+            self.build_first_customer_http_runtime_switch_guard(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+                explicit_enable_phrase=explicit_enable_phrase,
+                runtime_enable_phrase=runtime_enable_phrase,
+                runtime_switch_phrase=runtime_switch_phrase,
+            )
+        )
+        required_execution_gate_phrase = (
+            "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+            "SEM PRODUCAO E SEM DINHEIRO REAL."
+        )
+        execution_gate_phrase_registered = (
+            execution_gate_phrase == required_execution_gate_phrase
+        )
+        runtime_switch_guard_valid = (
+            runtime_switch_guard.runtime_switch_guard_valid
+        )
+        execution_gate_contract_valid = (
+            execution_gate_phrase_registered
+            and runtime_switch_guard_valid
+        )
+
+        return AsaasFirstCustomerHttpExecutionGateContractResult(
+            runtime_switch_guard=runtime_switch_guard,
+            required_execution_gate_phrase=required_execution_gate_phrase,
+            execution_gate_phrase_registered=(
+                execution_gate_phrase_registered
+            ),
+            runtime_switch_guard_valid=runtime_switch_guard_valid,
+            execution_gate_contract_valid=execution_gate_contract_valid,
+            adapter_shell_enabled=runtime_switch_guard.adapter_shell_enabled,
+            adapter_implemented=runtime_switch_guard.adapter_implemented,
+            adapter_enabled=runtime_switch_guard.adapter_enabled,
+            execution_enabled=runtime_switch_guard.execution_enabled,
+            can_send_http=runtime_switch_guard.can_send_http,
+            network_call_allowed=runtime_switch_guard.network_call_allowed,
+            real_money=runtime_switch_guard.real_money,
+            http_call_executed=runtime_switch_guard.http_call_executed,
+            sandbox_only=runtime_switch_guard.sandbox_only,
         )
 
     def prepare_create_pix_payment(
