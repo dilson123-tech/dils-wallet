@@ -161,3 +161,5 @@ GitHub: [dilson123-tech](https://github.com/dilson123-tech)
 - v0.2.62-wallet-asaas-sandbox-first-customer-http-runtime-switch-guard: adds a non-executing runtime switch guard for the future Asaas Sandbox POST /customers call, recognizing the required runtime switch phrase while keeping adapter enablement, HTTP execution, production, real money and provider payload exposure blocked.
 
 - v0.2.63-wallet-asaas-sandbox-first-customer-http-execution-gate-contract: adds a non-executing execution gate contract for the future Asaas Sandbox POST /customers call, recognizing the required execution gate phrase while keeping adapter enablement, HTTP execution, production, real money and provider payload exposure blocked.
+
+- v0.2.64-wallet-asaas-sandbox-first-customer-http-sanitized-execution-handler-contract: adds a non-executing sanitized execution handler contract for the future Asaas Sandbox POST /customers call, requiring sanitized response and sanitized error handling while keeping adapter enablement, HTTP execution, production, real money, request body exposure, raw provider response/error and stacktrace exposure blocked.
