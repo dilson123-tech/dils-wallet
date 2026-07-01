@@ -987,6 +987,132 @@ class AsaasFirstCustomerHttpSanitizedExecutionHandlerContractResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpSanitizedResultEnvelopeContractResult:
+    sanitized_execution_handler_contract: (
+        AsaasFirstCustomerHttpSanitizedExecutionHandlerContractResult
+    )
+    sanitized_result_envelope_reference: str = (
+        "first-customer-http-sanitized-result-envelope-contract-sandbox"
+    )
+    sanitized_result_envelope_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "requires_sanitized_execution_handler_contract": True,
+            "requires_success_envelope": True,
+            "requires_error_envelope": True,
+            "requires_no_raw_provider_payload": True,
+            "success_envelope_fields": [
+                "ok",
+                "operation",
+                "provider",
+                "environment",
+                "asaas_customer_id_present",
+                "http_status_class",
+                "sanitized_customer_reference",
+                "raw_provider_payload_included",
+            ],
+            "error_envelope_fields": [
+                "ok",
+                "operation",
+                "provider",
+                "environment",
+                "error_category",
+                "retryable",
+                "http_status_class",
+                "raw_provider_error_included",
+                "stacktrace_included",
+            ],
+            "raw_provider_payload_allowed": False,
+            "raw_provider_error_allowed": False,
+            "request_body_exposure_allowed": False,
+            "stacktrace_exposure_allowed": False,
+            "current_envelope_is_contract_only": True,
+        }
+    )
+    sanitized_result_envelope_contract_defined: bool = True
+    sanitized_execution_handler_contract_valid: bool = False
+    success_envelope_required: bool = True
+    error_envelope_required: bool = True
+    raw_provider_payload_allowed: bool = False
+    raw_provider_error_allowed: bool = False
+    request_body_exposure_allowed: bool = False
+    stacktrace_exposure_allowed: bool = False
+    sanitized_result_envelope_allows_adapter_enablement: bool = False
+    sanitized_result_envelope_allows_http_execution: bool = False
+    sanitized_result_envelope_can_include_raw_payload: bool = False
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.sanitized_execution_handler_contract.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": (
+                "first_customer_http_sanitized_result_envelope_contract"
+            ),
+            "sanitized_result_envelope_reference": (
+                self.sanitized_result_envelope_reference
+            ),
+            "sanitized_execution_handler_contract": (
+                self.sanitized_execution_handler_contract.safe_summary()
+            ),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "sanitized_result_envelope_contract": (
+                self.sanitized_result_envelope_contract
+            ),
+            "sanitized_result_envelope_contract_defined": (
+                self.sanitized_result_envelope_contract_defined
+            ),
+            "sanitized_execution_handler_contract_valid": (
+                self.sanitized_execution_handler_contract_valid
+            ),
+            "success_envelope_required": self.success_envelope_required,
+            "error_envelope_required": self.error_envelope_required,
+            "raw_provider_payload_allowed": (
+                self.raw_provider_payload_allowed
+            ),
+            "raw_provider_error_allowed": self.raw_provider_error_allowed,
+            "request_body_exposure_allowed": (
+                self.request_body_exposure_allowed
+            ),
+            "stacktrace_exposure_allowed": self.stacktrace_exposure_allowed,
+            "sanitized_result_envelope_allows_adapter_enablement": (
+                self.sanitized_result_envelope_allows_adapter_enablement
+            ),
+            "sanitized_result_envelope_allows_http_execution": (
+                self.sanitized_result_envelope_allows_http_execution
+            ),
+            "sanitized_result_envelope_can_include_raw_payload": (
+                self.sanitized_result_envelope_can_include_raw_payload
+            ),
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": (
+                "sanitized_result_envelope_contract_review"
+            ),
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -1680,6 +1806,64 @@ class AsaasSandboxClient:
             real_money=execution_gate_contract.real_money,
             http_call_executed=execution_gate_contract.http_call_executed,
             sandbox_only=execution_gate_contract.sandbox_only,
+        )
+
+    def build_first_customer_http_sanitized_result_envelope_contract(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+        explicit_enable_phrase: str = "",
+        runtime_enable_phrase: str = "",
+        runtime_switch_phrase: str = "",
+        execution_gate_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpSanitizedResultEnvelopeContractResult:
+        sanitized_execution_handler_contract = (
+            self.build_first_customer_http_sanitized_execution_handler_contract(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+                explicit_enable_phrase=explicit_enable_phrase,
+                runtime_enable_phrase=runtime_enable_phrase,
+                runtime_switch_phrase=runtime_switch_phrase,
+                execution_gate_phrase=execution_gate_phrase,
+            )
+        )
+        sanitized_execution_handler_contract_valid = (
+            sanitized_execution_handler_contract.execution_gate_contract_valid
+        )
+
+        return AsaasFirstCustomerHttpSanitizedResultEnvelopeContractResult(
+            sanitized_execution_handler_contract=(
+                sanitized_execution_handler_contract
+            ),
+            sanitized_execution_handler_contract_valid=(
+                sanitized_execution_handler_contract_valid
+            ),
+            adapter_shell_enabled=(
+                sanitized_execution_handler_contract.adapter_shell_enabled
+            ),
+            adapter_implemented=(
+                sanitized_execution_handler_contract.adapter_implemented
+            ),
+            adapter_enabled=sanitized_execution_handler_contract.adapter_enabled,
+            execution_enabled=(
+                sanitized_execution_handler_contract.execution_enabled
+            ),
+            can_send_http=sanitized_execution_handler_contract.can_send_http,
+            network_call_allowed=(
+                sanitized_execution_handler_contract.network_call_allowed
+            ),
+            real_money=sanitized_execution_handler_contract.real_money,
+            http_call_executed=(
+                sanitized_execution_handler_contract.http_call_executed
+            ),
+            sandbox_only=sanitized_execution_handler_contract.sandbox_only,
         )
 
     def prepare_create_pix_payment(
