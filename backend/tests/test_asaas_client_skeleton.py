@@ -1408,6 +1408,159 @@ def test_first_customer_http_sanitized_execution_handler_contract_valid_gate_but
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_sanitized_result_envelope_contract_stays_blocked_without_phrases():
+    client = make_client()
+
+    envelope = client.build_first_customer_http_sanitized_result_envelope_contract(
+        name="Cliente Result Envelope Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.result.envelope@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = envelope.sanitized_result_envelope_contract
+
+    assert envelope.sanitized_result_envelope_reference == (
+        "first-customer-http-sanitized-result-envelope-contract-sandbox"
+    )
+    assert envelope.sanitized_result_envelope_contract_defined is True
+    assert envelope.sanitized_execution_handler_contract_valid is False
+    assert envelope.success_envelope_required is True
+    assert envelope.error_envelope_required is True
+    assert envelope.raw_provider_payload_allowed is False
+    assert envelope.raw_provider_error_allowed is False
+    assert envelope.request_body_exposure_allowed is False
+    assert envelope.stacktrace_exposure_allowed is False
+    assert envelope.sanitized_result_envelope_allows_adapter_enablement is False
+    assert envelope.sanitized_result_envelope_allows_http_execution is False
+    assert envelope.sanitized_result_envelope_can_include_raw_payload is False
+    assert envelope.adapter_shell_enabled is False
+    assert envelope.adapter_implemented is False
+    assert envelope.adapter_enabled is False
+    assert envelope.execution_enabled is False
+    assert envelope.can_send_http is False
+    assert envelope.network_call_allowed is False
+    assert envelope.real_money is False
+    assert envelope.http_call_executed is False
+    assert envelope.sandbox_only is True
+
+    assert contract["target_method"] == "POST"
+    assert contract["target_path"] == "/customers"
+    assert contract["target_environment"] == "sandbox"
+    assert contract["requires_sanitized_execution_handler_contract"] is True
+    assert contract["requires_success_envelope"] is True
+    assert contract["requires_error_envelope"] is True
+    assert contract["requires_no_raw_provider_payload"] is True
+    assert contract["raw_provider_payload_allowed"] is False
+    assert contract["raw_provider_error_allowed"] is False
+    assert contract["request_body_exposure_allowed"] is False
+    assert contract["stacktrace_exposure_allowed"] is False
+    assert contract["current_envelope_is_contract_only"] is True
+
+
+def test_first_customer_http_sanitized_result_envelope_contract_defines_safe_fields():
+    client = make_client()
+
+    envelope = client.build_first_customer_http_sanitized_result_envelope_contract(
+        name="Cliente Result Envelope Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.result.envelope@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = envelope.sanitized_result_envelope_contract
+
+    assert contract["success_envelope_fields"] == [
+        "ok",
+        "operation",
+        "provider",
+        "environment",
+        "asaas_customer_id_present",
+        "http_status_class",
+        "sanitized_customer_reference",
+        "raw_provider_payload_included",
+    ]
+    assert contract["error_envelope_fields"] == [
+        "ok",
+        "operation",
+        "provider",
+        "environment",
+        "error_category",
+        "retryable",
+        "http_status_class",
+        "raw_provider_error_included",
+        "stacktrace_included",
+    ]
+
+
+def test_first_customer_http_sanitized_result_envelope_contract_valid_chain_but_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_phrase = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    envelope = client.build_first_customer_http_sanitized_result_envelope_contract(
+        name="Cliente Result Envelope Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.result.envelope@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+        runtime_enable_phrase=runtime_phrase,
+        runtime_switch_phrase=switch_phrase,
+        execution_gate_phrase=execution_phrase,
+    )
+
+    summary = envelope.safe_summary()
+
+    assert summary["operation"] == (
+        "first_customer_http_sanitized_result_envelope_contract"
+    )
+    assert summary["sanitized_execution_handler_contract_valid"] is True
+    assert summary["success_envelope_required"] is True
+    assert summary["error_envelope_required"] is True
+    assert summary["raw_provider_payload_allowed"] is False
+    assert summary["raw_provider_error_allowed"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["sanitized_result_envelope_allows_adapter_enablement"] is False
+    assert summary["sanitized_result_envelope_allows_http_execution"] is False
+    assert summary["sanitized_result_envelope_can_include_raw_payload"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["sanitized_execution_handler_contract"][
+            "execution_gate_contract_valid"
+        ]
+        is True
+    )
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
