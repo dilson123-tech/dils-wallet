@@ -1378,6 +1378,168 @@ class AsaasFirstCustomerHttpAdapterBoundaryFinalContractResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpFinalManualExecutionRunbookReadinessGateResult:
+    adapter_boundary_final_contract: (
+        AsaasFirstCustomerHttpAdapterBoundaryFinalContractResult
+    )
+    final_readiness_gate_reference: str = (
+        "first-customer-http-final-manual-execution-runbook-readiness-gate"
+    )
+    final_manual_execution_runbook_readiness_gate: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "requires_adapter_boundary_final_contract": True,
+            "requires_manual_operator_review": True,
+            "requires_sandbox_only_confirmation": True,
+            "requires_no_production_confirmation": True,
+            "requires_no_real_money_confirmation": True,
+            "requires_sanitized_logging_only": True,
+            "requires_no_raw_provider_payload": True,
+            "requires_no_raw_provider_error": True,
+            "requires_no_request_body_logging": True,
+            "requires_no_stacktrace_exposure": True,
+            "requires_future_adapter_implementation_review": True,
+            "requires_future_manual_execution_approval": True,
+            "manual_execution_not_started": True,
+            "current_gate_is_review_only": True,
+        }
+    )
+    runbook_review_steps: list[str] = field(
+        default_factory=lambda: [
+            "confirm_sandbox_environment_only",
+            "confirm_no_production_credentials_or_urls",
+            "confirm_no_real_money_or_real_pix_flow",
+            "confirm_adapter_boundary_contract_valid",
+            "confirm_sanitized_result_envelope_only",
+            "confirm_no_raw_provider_payload_or_error_logging",
+            "confirm_no_request_body_or_stacktrace_exposure",
+            "confirm_future_manual_execution_approval_required",
+        ]
+    )
+    final_manual_execution_runbook_readiness_gate_defined: bool = True
+    adapter_boundary_final_contract_valid: bool = False
+    final_manual_execution_runbook_readiness_gate_valid: bool = False
+    manual_operator_review_required: bool = True
+    sandbox_only_confirmation_required: bool = True
+    no_production_confirmation_required: bool = True
+    no_real_money_confirmation_required: bool = True
+    sanitized_logging_only_required: bool = True
+    future_manual_execution_approval_required: bool = True
+    future_adapter_implementation_review_required: bool = True
+    raw_provider_payload_allowed: bool = False
+    raw_provider_error_allowed: bool = False
+    request_body_exposure_allowed: bool = False
+    stacktrace_exposure_allowed: bool = False
+    final_readiness_gate_allows_adapter_implementation: bool = False
+    final_readiness_gate_allows_adapter_enablement: bool = False
+    final_readiness_gate_allows_http_execution: bool = False
+    final_readiness_gate_can_emit_raw_payload: bool = False
+    ready_for_manual_execution_review: bool = False
+    manual_execution_started: bool = False
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.adapter_boundary_final_contract.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": (
+                "first_customer_http_final_manual_execution_runbook_"
+                "readiness_gate"
+            ),
+            "final_readiness_gate_reference": (
+                self.final_readiness_gate_reference
+            ),
+            "adapter_boundary_final_contract": (
+                self.adapter_boundary_final_contract.safe_summary()
+            ),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "final_manual_execution_runbook_readiness_gate": (
+                self.final_manual_execution_runbook_readiness_gate
+            ),
+            "runbook_review_steps": self.runbook_review_steps,
+            "final_manual_execution_runbook_readiness_gate_defined": (
+                self.final_manual_execution_runbook_readiness_gate_defined
+            ),
+            "adapter_boundary_final_contract_valid": (
+                self.adapter_boundary_final_contract_valid
+            ),
+            "final_manual_execution_runbook_readiness_gate_valid": (
+                self.final_manual_execution_runbook_readiness_gate_valid
+            ),
+            "manual_operator_review_required": (
+                self.manual_operator_review_required
+            ),
+            "sandbox_only_confirmation_required": (
+                self.sandbox_only_confirmation_required
+            ),
+            "no_production_confirmation_required": (
+                self.no_production_confirmation_required
+            ),
+            "no_real_money_confirmation_required": (
+                self.no_real_money_confirmation_required
+            ),
+            "sanitized_logging_only_required": (
+                self.sanitized_logging_only_required
+            ),
+            "future_manual_execution_approval_required": (
+                self.future_manual_execution_approval_required
+            ),
+            "future_adapter_implementation_review_required": (
+                self.future_adapter_implementation_review_required
+            ),
+            "raw_provider_payload_allowed": (
+                self.raw_provider_payload_allowed
+            ),
+            "raw_provider_error_allowed": self.raw_provider_error_allowed,
+            "request_body_exposure_allowed": (
+                self.request_body_exposure_allowed
+            ),
+            "stacktrace_exposure_allowed": self.stacktrace_exposure_allowed,
+            "final_readiness_gate_allows_adapter_implementation": (
+                self.final_readiness_gate_allows_adapter_implementation
+            ),
+            "final_readiness_gate_allows_adapter_enablement": (
+                self.final_readiness_gate_allows_adapter_enablement
+            ),
+            "final_readiness_gate_allows_http_execution": (
+                self.final_readiness_gate_allows_http_execution
+            ),
+            "final_readiness_gate_can_emit_raw_payload": (
+                self.final_readiness_gate_can_emit_raw_payload
+            ),
+            "ready_for_manual_execution_review": (
+                self.ready_for_manual_execution_review
+            ),
+            "manual_execution_started": self.manual_execution_started,
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": (
+                "manual_review_before_first_sandbox_http_attempt"
+            ),
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -2239,6 +2401,54 @@ class AsaasSandboxClient:
             real_money=fixture_contract.real_money,
             http_call_executed=fixture_contract.http_call_executed,
             sandbox_only=fixture_contract.sandbox_only,
+        )
+
+    def build_first_customer_http_final_manual_execution_runbook_readiness_gate(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+        explicit_enable_phrase: str = "",
+        runtime_enable_phrase: str = "",
+        runtime_switch_phrase: str = "",
+        execution_gate_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpFinalManualExecutionRunbookReadinessGateResult:
+        adapter_boundary = (
+            self.build_first_customer_http_adapter_boundary_final_contract(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+                explicit_enable_phrase=explicit_enable_phrase,
+                runtime_enable_phrase=runtime_enable_phrase,
+                runtime_switch_phrase=runtime_switch_phrase,
+                execution_gate_phrase=execution_gate_phrase,
+            )
+        )
+        adapter_boundary_valid = (
+            adapter_boundary.adapter_boundary_final_contract_valid
+        )
+
+        return AsaasFirstCustomerHttpFinalManualExecutionRunbookReadinessGateResult(
+            adapter_boundary_final_contract=adapter_boundary,
+            adapter_boundary_final_contract_valid=adapter_boundary_valid,
+            final_manual_execution_runbook_readiness_gate_valid=(
+                adapter_boundary_valid
+            ),
+            ready_for_manual_execution_review=adapter_boundary_valid,
+            adapter_shell_enabled=adapter_boundary.adapter_shell_enabled,
+            adapter_implemented=adapter_boundary.adapter_implemented,
+            adapter_enabled=adapter_boundary.adapter_enabled,
+            execution_enabled=adapter_boundary.execution_enabled,
+            can_send_http=adapter_boundary.can_send_http,
+            network_call_allowed=adapter_boundary.network_call_allowed,
+            real_money=adapter_boundary.real_money,
+            http_call_executed=adapter_boundary.http_call_executed,
+            sandbox_only=adapter_boundary.sandbox_only,
         )
 
     def prepare_create_pix_payment(
