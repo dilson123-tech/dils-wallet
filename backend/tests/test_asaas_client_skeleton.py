@@ -1561,6 +1561,170 @@ def test_first_customer_http_sanitized_result_envelope_contract_valid_chain_but_
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_sanitized_success_error_fixture_contract_stays_blocked_without_phrases():
+    client = make_client()
+
+    fixture = client.build_first_customer_http_sanitized_success_error_fixture_contract(
+        name="Cliente Fixture Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.fixture.contract@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = fixture.sanitized_success_error_fixture_contract
+
+    assert fixture.sanitized_success_error_fixture_reference == (
+        "first-customer-http-sanitized-success-error-fixture-contract-sandbox"
+    )
+    assert fixture.sanitized_success_error_fixture_contract_defined is True
+    assert fixture.sanitized_result_envelope_contract_valid is False
+    assert fixture.sanitized_success_fixture_defined is True
+    assert fixture.sanitized_error_fixture_defined is True
+    assert fixture.sanitized_fixtures_match_envelope_contract is True
+    assert fixture.success_fixture_contains_raw_provider_payload is False
+    assert fixture.error_fixture_contains_raw_provider_error is False
+    assert fixture.request_body_exposure_allowed is False
+    assert fixture.stacktrace_exposure_allowed is False
+    assert fixture.fixture_contract_allows_adapter_enablement is False
+    assert fixture.fixture_contract_allows_http_execution is False
+    assert fixture.fixture_contract_can_include_raw_payload is False
+    assert fixture.adapter_shell_enabled is False
+    assert fixture.adapter_implemented is False
+    assert fixture.adapter_enabled is False
+    assert fixture.execution_enabled is False
+    assert fixture.can_send_http is False
+    assert fixture.network_call_allowed is False
+    assert fixture.real_money is False
+    assert fixture.http_call_executed is False
+    assert fixture.sandbox_only is True
+
+    assert contract == {
+        "target_method": "POST",
+        "target_path": "/customers",
+        "target_environment": "sandbox",
+        "requires_sanitized_result_envelope_contract": True,
+        "requires_success_fixture": True,
+        "requires_error_fixture": True,
+        "fixtures_are_sanitized": True,
+        "success_fixture_contains_raw_provider_payload": False,
+        "error_fixture_contains_raw_provider_error": False,
+        "request_body_exposure_allowed": False,
+        "stacktrace_exposure_allowed": False,
+        "current_fixtures_are_contract_only": True,
+    }
+
+
+def test_first_customer_http_sanitized_success_error_fixture_contract_defines_safe_fixtures():
+    client = make_client()
+
+    fixture = client.build_first_customer_http_sanitized_success_error_fixture_contract(
+        name="Cliente Fixture Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.fixture.contract@example.com",
+        mobile_phone="11999999999",
+    )
+
+    assert fixture.sanitized_success_fixture == {
+        "ok": True,
+        "operation": "create_customer",
+        "provider": "asaas",
+        "environment": "sandbox",
+        "asaas_customer_id_present": True,
+        "http_status_class": "2xx",
+        "sanitized_customer_reference": (
+            "asaas_customer_sandbox_fixture_redacted"
+        ),
+        "raw_provider_payload_included": False,
+    }
+    assert fixture.sanitized_error_fixture == {
+        "ok": False,
+        "operation": "create_customer",
+        "provider": "asaas",
+        "environment": "sandbox",
+        "error_category": "provider_rejected_or_unavailable",
+        "retryable": False,
+        "http_status_class": "4xx_or_5xx",
+        "raw_provider_error_included": False,
+        "stacktrace_included": False,
+    }
+
+
+def test_first_customer_http_sanitized_success_error_fixture_contract_valid_chain_but_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_phrase = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    fixture = client.build_first_customer_http_sanitized_success_error_fixture_contract(
+        name="Cliente Fixture Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.fixture.contract@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+        runtime_enable_phrase=runtime_phrase,
+        runtime_switch_phrase=switch_phrase,
+        execution_gate_phrase=execution_phrase,
+    )
+
+    summary = fixture.safe_summary()
+
+    assert summary["operation"] == (
+        "first_customer_http_sanitized_success_error_fixture_contract"
+    )
+    assert summary["sanitized_result_envelope_contract_valid"] is True
+    assert summary["sanitized_success_fixture_defined"] is True
+    assert summary["sanitized_error_fixture_defined"] is True
+    assert summary["sanitized_fixtures_match_envelope_contract"] is True
+    assert summary["success_fixture_contains_raw_provider_payload"] is False
+    assert summary["error_fixture_contains_raw_provider_error"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["fixture_contract_allows_adapter_enablement"] is False
+    assert summary["fixture_contract_allows_http_execution"] is False
+    assert summary["fixture_contract_can_include_raw_payload"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["sanitized_result_envelope_contract"][
+            "sanitized_execution_handler_contract_valid"
+        ]
+        is True
+    )
+    assert summary["sanitized_success_fixture"][
+        "raw_provider_payload_included"
+    ] is False
+    assert summary["sanitized_error_fixture"][
+        "raw_provider_error_included"
+    ] is False
+    assert summary["sanitized_error_fixture"]["stacktrace_included"] is False
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
