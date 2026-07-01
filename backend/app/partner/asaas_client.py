@@ -1113,6 +1113,150 @@ class AsaasFirstCustomerHttpSanitizedResultEnvelopeContractResult:
 
 
 @dataclass(frozen=True)
+class AsaasFirstCustomerHttpSanitizedSuccessErrorFixtureContractResult:
+    sanitized_result_envelope_contract: (
+        AsaasFirstCustomerHttpSanitizedResultEnvelopeContractResult
+    )
+    sanitized_success_error_fixture_reference: str = (
+        "first-customer-http-sanitized-success-error-fixture-contract-sandbox"
+    )
+    sanitized_success_error_fixture_contract: dict[str, Any] = field(
+        default_factory=lambda: {
+            "target_method": "POST",
+            "target_path": "/customers",
+            "target_environment": "sandbox",
+            "requires_sanitized_result_envelope_contract": True,
+            "requires_success_fixture": True,
+            "requires_error_fixture": True,
+            "fixtures_are_sanitized": True,
+            "success_fixture_contains_raw_provider_payload": False,
+            "error_fixture_contains_raw_provider_error": False,
+            "request_body_exposure_allowed": False,
+            "stacktrace_exposure_allowed": False,
+            "current_fixtures_are_contract_only": True,
+        }
+    )
+    sanitized_success_fixture: dict[str, Any] = field(
+        default_factory=lambda: {
+            "ok": True,
+            "operation": "create_customer",
+            "provider": "asaas",
+            "environment": "sandbox",
+            "asaas_customer_id_present": True,
+            "http_status_class": "2xx",
+            "sanitized_customer_reference": (
+                "asaas_customer_sandbox_fixture_redacted"
+            ),
+            "raw_provider_payload_included": False,
+        }
+    )
+    sanitized_error_fixture: dict[str, Any] = field(
+        default_factory=lambda: {
+            "ok": False,
+            "operation": "create_customer",
+            "provider": "asaas",
+            "environment": "sandbox",
+            "error_category": "provider_rejected_or_unavailable",
+            "retryable": False,
+            "http_status_class": "4xx_or_5xx",
+            "raw_provider_error_included": False,
+            "stacktrace_included": False,
+        }
+    )
+    sanitized_success_error_fixture_contract_defined: bool = True
+    sanitized_result_envelope_contract_valid: bool = False
+    sanitized_success_fixture_defined: bool = True
+    sanitized_error_fixture_defined: bool = True
+    sanitized_fixtures_match_envelope_contract: bool = True
+    success_fixture_contains_raw_provider_payload: bool = False
+    error_fixture_contains_raw_provider_error: bool = False
+    request_body_exposure_allowed: bool = False
+    stacktrace_exposure_allowed: bool = False
+    fixture_contract_allows_adapter_enablement: bool = False
+    fixture_contract_allows_http_execution: bool = False
+    fixture_contract_can_include_raw_payload: bool = False
+    adapter_shell_enabled: bool = False
+    adapter_implemented: bool = False
+    adapter_enabled: bool = False
+    execution_enabled: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    @property
+    def prepared_request(self) -> AsaasPreparedRequest:
+        return self.sanitized_result_envelope_contract.prepared_request
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": (
+                "first_customer_http_sanitized_success_error_fixture_contract"
+            ),
+            "sanitized_success_error_fixture_reference": (
+                self.sanitized_success_error_fixture_reference
+            ),
+            "sanitized_result_envelope_contract": (
+                self.sanitized_result_envelope_contract.safe_summary()
+            ),
+            "prepared_request": self.prepared_request.safe_summary(),
+            "sanitized_success_error_fixture_contract": (
+                self.sanitized_success_error_fixture_contract
+            ),
+            "sanitized_success_fixture": self.sanitized_success_fixture,
+            "sanitized_error_fixture": self.sanitized_error_fixture,
+            "sanitized_success_error_fixture_contract_defined": (
+                self.sanitized_success_error_fixture_contract_defined
+            ),
+            "sanitized_result_envelope_contract_valid": (
+                self.sanitized_result_envelope_contract_valid
+            ),
+            "sanitized_success_fixture_defined": (
+                self.sanitized_success_fixture_defined
+            ),
+            "sanitized_error_fixture_defined": (
+                self.sanitized_error_fixture_defined
+            ),
+            "sanitized_fixtures_match_envelope_contract": (
+                self.sanitized_fixtures_match_envelope_contract
+            ),
+            "success_fixture_contains_raw_provider_payload": (
+                self.success_fixture_contains_raw_provider_payload
+            ),
+            "error_fixture_contains_raw_provider_error": (
+                self.error_fixture_contains_raw_provider_error
+            ),
+            "request_body_exposure_allowed": (
+                self.request_body_exposure_allowed
+            ),
+            "stacktrace_exposure_allowed": self.stacktrace_exposure_allowed,
+            "fixture_contract_allows_adapter_enablement": (
+                self.fixture_contract_allows_adapter_enablement
+            ),
+            "fixture_contract_allows_http_execution": (
+                self.fixture_contract_allows_http_execution
+            ),
+            "fixture_contract_can_include_raw_payload": (
+                self.fixture_contract_can_include_raw_payload
+            ),
+            "adapter_shell_enabled": self.adapter_shell_enabled,
+            "adapter_implemented": self.adapter_implemented,
+            "adapter_enabled": self.adapter_enabled,
+            "execution_enabled": self.execution_enabled,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": (
+                "sanitized_success_error_fixture_contract_review"
+            ),
+        }
+
+
+@dataclass(frozen=True)
 class AsaasPaymentDryRunResult:
     prepared_request: AsaasPreparedRequest
     payment_reference: str = "dry-run-pix-payment-sandbox"
@@ -1864,6 +2008,65 @@ class AsaasSandboxClient:
                 sanitized_execution_handler_contract.http_call_executed
             ),
             sandbox_only=sanitized_execution_handler_contract.sandbox_only,
+        )
+
+    def build_first_customer_http_sanitized_success_error_fixture_contract(
+        self,
+        *,
+        name: str,
+        cpf_cnpj: str,
+        email: str,
+        mobile_phone: str,
+        manual_authorization_phrase: str = "",
+        explicit_enable_phrase: str = "",
+        runtime_enable_phrase: str = "",
+        runtime_switch_phrase: str = "",
+        execution_gate_phrase: str = "",
+    ) -> AsaasFirstCustomerHttpSanitizedSuccessErrorFixtureContractResult:
+        sanitized_result_envelope_contract = (
+            self.build_first_customer_http_sanitized_result_envelope_contract(
+                name=name,
+                cpf_cnpj=cpf_cnpj,
+                email=email,
+                mobile_phone=mobile_phone,
+                manual_authorization_phrase=manual_authorization_phrase,
+                explicit_enable_phrase=explicit_enable_phrase,
+                runtime_enable_phrase=runtime_enable_phrase,
+                runtime_switch_phrase=runtime_switch_phrase,
+                execution_gate_phrase=execution_gate_phrase,
+            )
+        )
+        sanitized_result_envelope_contract_valid = (
+            sanitized_result_envelope_contract
+            .sanitized_execution_handler_contract_valid
+        )
+
+        return AsaasFirstCustomerHttpSanitizedSuccessErrorFixtureContractResult(
+            sanitized_result_envelope_contract=(
+                sanitized_result_envelope_contract
+            ),
+            sanitized_result_envelope_contract_valid=(
+                sanitized_result_envelope_contract_valid
+            ),
+            adapter_shell_enabled=(
+                sanitized_result_envelope_contract.adapter_shell_enabled
+            ),
+            adapter_implemented=(
+                sanitized_result_envelope_contract.adapter_implemented
+            ),
+            adapter_enabled=sanitized_result_envelope_contract.adapter_enabled,
+            execution_enabled=(
+                sanitized_result_envelope_contract.execution_enabled
+            ),
+            can_send_http=sanitized_result_envelope_contract.can_send_http,
+            network_call_allowed=(
+                sanitized_result_envelope_contract.network_call_allowed
+            ),
+            real_money=sanitized_result_envelope_contract.real_money,
+            http_call_executed=(
+                sanitized_result_envelope_contract.http_call_executed
+            ),
+            sandbox_only=sanitized_result_envelope_contract.sandbox_only,
         )
 
     def prepare_create_pix_payment(
