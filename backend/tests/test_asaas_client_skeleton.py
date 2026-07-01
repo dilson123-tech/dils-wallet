@@ -1261,6 +1261,153 @@ def test_first_customer_http_execution_gate_contract_valid_but_non_executing():
     assert "access_token" not in repr(summary["prepared_request"])
 
 
+def test_first_customer_http_sanitized_execution_handler_contract_stays_blocked_without_phrases():
+    client = make_client()
+
+    handler = client.build_first_customer_http_sanitized_execution_handler_contract(
+        name="Cliente Sanitized Handler Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.sanitized.handler@example.com",
+        mobile_phone="11999999999",
+    )
+
+    contract = handler.sanitized_execution_handler_contract
+
+    assert handler.sanitized_handler_reference == (
+        "first-customer-http-sanitized-execution-handler-contract-sandbox"
+    )
+    assert handler.sanitized_execution_handler_contract_defined is True
+    assert handler.execution_gate_contract_valid is False
+    assert handler.sanitized_response_handler_required is True
+    assert handler.sanitized_error_handler_required is True
+    assert handler.raw_provider_response_allowed is False
+    assert handler.raw_provider_error_allowed is False
+    assert handler.request_body_exposure_allowed is False
+    assert handler.stacktrace_exposure_allowed is False
+    assert handler.sanitized_handler_allows_adapter_enablement is False
+    assert handler.sanitized_handler_allows_http_execution is False
+    assert handler.sanitized_handler_can_process_raw_provider_payload is False
+    assert handler.adapter_shell_enabled is False
+    assert handler.adapter_implemented is False
+    assert handler.adapter_enabled is False
+    assert handler.execution_enabled is False
+    assert handler.can_send_http is False
+    assert handler.network_call_allowed is False
+    assert handler.real_money is False
+    assert handler.http_call_executed is False
+    assert handler.sandbox_only is True
+
+    assert contract == {
+        "target_method": "POST",
+        "target_path": "/customers",
+        "target_environment": "sandbox",
+        "requires_execution_gate_contract": True,
+        "requires_future_http_adapter_implementation": True,
+        "requires_sanitized_response_handler": True,
+        "requires_sanitized_error_handler": True,
+        "raw_provider_response_allowed": False,
+        "raw_provider_error_allowed": False,
+        "request_body_exposure_allowed": False,
+        "stacktrace_exposure_allowed": False,
+        "current_handler_is_non_executing": True,
+    }
+
+
+def test_first_customer_http_sanitized_execution_handler_contract_requires_valid_execution_gate():
+    client = make_client()
+
+    handler = client.build_first_customer_http_sanitized_execution_handler_contract(
+        name="Cliente Sanitized Handler Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.sanitized.handler@example.com",
+        mobile_phone="11999999999",
+    )
+
+    summary = handler.safe_summary()
+
+    assert summary["operation"] == (
+        "first_customer_http_sanitized_execution_handler_contract"
+    )
+    assert summary["execution_gate_contract_valid"] is False
+    assert summary["sanitized_response_handler_required"] is True
+    assert summary["sanitized_error_handler_required"] is True
+    assert summary["raw_provider_response_allowed"] is False
+    assert summary["raw_provider_error_allowed"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["sanitized_handler_allows_adapter_enablement"] is False
+    assert summary["sanitized_handler_allows_http_execution"] is False
+    assert summary["sanitized_handler_can_process_raw_provider_payload"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+
+
+def test_first_customer_http_sanitized_execution_handler_contract_valid_gate_but_non_executing():
+    client = make_client()
+    explicit_phrase = (
+        "CONFIRMO PREFLIGHT DE HABILITACAO EXPLICITA ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    runtime_phrase = (
+        "CONFIRMO CONTRATO DE HABILITACAO RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    switch_phrase = (
+        "CONFIRMO GUARD DO SWITCH RUNTIME ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+    execution_phrase = (
+        "CONFIRMO CONTRATO DO GATE DE EXECUCAO ASAAS SANDBOX, "
+        "SEM PRODUCAO E SEM DINHEIRO REAL."
+    )
+
+    handler = client.build_first_customer_http_sanitized_execution_handler_contract(
+        name="Cliente Sanitized Handler Contract Aurea Gold",
+        cpf_cnpj="12345678909",
+        email="cliente.sanitized.handler@example.com",
+        mobile_phone="11999999999",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        explicit_enable_phrase=explicit_phrase,
+        runtime_enable_phrase=runtime_phrase,
+        runtime_switch_phrase=switch_phrase,
+        execution_gate_phrase=execution_phrase,
+    )
+
+    summary = handler.safe_summary()
+
+    assert summary["execution_gate_contract_valid"] is True
+    assert summary["sanitized_response_handler_required"] is True
+    assert summary["sanitized_error_handler_required"] is True
+    assert summary["raw_provider_response_allowed"] is False
+    assert summary["raw_provider_error_allowed"] is False
+    assert summary["request_body_exposure_allowed"] is False
+    assert summary["stacktrace_exposure_allowed"] is False
+    assert summary["sanitized_handler_allows_adapter_enablement"] is False
+    assert summary["sanitized_handler_allows_http_execution"] is False
+    assert summary["sanitized_handler_can_process_raw_provider_payload"] is False
+    assert summary["adapter_shell_enabled"] is False
+    assert summary["adapter_implemented"] is False
+    assert summary["adapter_enabled"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == "create_customer"
+    assert summary["prepared_request"]["http_call_executed"] is False
+    assert (
+        summary["execution_gate_contract"]["execution_gate_contract_valid"]
+        is True
+    )
+    assert "sandbox-api-key-for-test-only" not in repr(summary)
+    assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+    assert "access_token" not in repr(summary["prepared_request"])
+
+
 def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     client = make_client()
 
