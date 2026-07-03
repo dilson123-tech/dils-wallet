@@ -57,3 +57,5 @@ placeholder.db
 /lan_links/
 /scripts/lan_qr_login.sh
 /scripts/which_api.sh
+.asaas-ngrok.pid
+.asaas-webhook-local.pid

@@ -155,3 +155,17 @@ def test_asaas_sandbox_webhook_ignores_non_payment_received_events_safely():
     assert response["event"]["ignored"] is True
     assert response["can_credit_balance"] is False
     assert "pay_created_must_not_leak" not in encoded
+
+
+
+def test_asaas_sandbox_webhook_registers_panel_fallback_routes():
+    paths = {
+        route.path
+        for route in wallet_routes.router.routes
+        if getattr(route, "endpoint", None)
+        is wallet_routes.handle_asaas_sandbox_webhook_receiver
+    }
+
+    assert "/api/v1/partners/asaas/webhooks/sandbox" in paths
+    assert "/api/v1/partners/" in paths
+    assert "/api/v1/partners" in paths

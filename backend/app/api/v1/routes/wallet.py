@@ -864,6 +864,8 @@ def _asaas_sandbox_webhook_idempotency_key(event_id: str) -> str:
     return f"asaas-sandbox-webhook:{digest}"
 
 
+@router.post("/api/v1/partners")
+@router.post("/api/v1/partners/")
 @router.post("/api/v1/partners/asaas/webhooks/sandbox")
 def handle_asaas_sandbox_webhook_receiver(
     payload: dict = Body(...),
