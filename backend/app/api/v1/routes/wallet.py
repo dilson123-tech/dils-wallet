@@ -14,8 +14,8 @@ from app.models.transaction import Transaction
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
-from app import config as app_config
 from app.partner import PartnerWebhookEvent, get_partner_adapter
+from app.partner.asaas_config import AsaasConfigError, load_asaas_sandbox_config
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
     get_wallet_balance as get_partner_wallet_balance,
@@ -791,18 +791,20 @@ _ASAAS_SANDBOX_WEBHOOK_ACCEPTED_EVENTS = {
 }
 
 
-def _asaas_sandbox_webhook_token() -> str:
-    token = str(getattr(app_config, "ASAAS_WEBHOOK_TOKEN", "") or "").strip()
-    if not token:
+def _asaas_sandbox_webhook_config():
+    try:
+        return load_asaas_sandbox_config()
+    except AsaasConfigError as exc:
         raise HTTPException(
             status_code=503,
-            detail="ASAAS_WEBHOOK_TOKEN não configurado para webhook Asaas Sandbox.",
-        )
-    return token
+            detail=f"Configuração Asaas Sandbox inválida para webhook: {exc}",
+        ) from exc
 
 
-def _validate_asaas_sandbox_webhook_token(header_value: str | None) -> None:
-    expected_token = _asaas_sandbox_webhook_token()
+def _validate_asaas_sandbox_webhook_token(
+    header_value: str | None,
+    expected_token: str,
+) -> None:
     received_token = str(header_value or "").strip()
 
     if not received_token:
@@ -885,25 +887,12 @@ def handle_asaas_sandbox_webhook_receiver(
     if not isinstance(payload, dict):
         raise HTTPException(status_code=422, detail="Payload Asaas inválido.")
 
-    _validate_asaas_sandbox_webhook_token(asaas_access_token)
-
-    try:
-        adapter = get_partner_adapter()
-        provider = adapter.provider_name
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Adapter financeiro indisponível para webhook Asaas Sandbox: {exc}",
-        ) from exc
-
-    if provider != "sandbox":
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "Webhook Asaas Sandbox exige WALLET_MODE=partner e "
-                "WALLET_PARTNER_PROVIDER=sandbox. Nenhum evento real foi processado."
-            ),
-        )
+    config = _asaas_sandbox_webhook_config()
+    _validate_asaas_sandbox_webhook_token(
+        asaas_access_token,
+        config.webhook_token,
+    )
+    provider = "asaas"
 
     event_id = _asaas_sandbox_webhook_event_id(payload)
     event_type = _asaas_sandbox_webhook_event_type(payload)
