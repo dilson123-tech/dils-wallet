@@ -4,16 +4,13 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 
 import json
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.routes import wallet as wallet_routes
-
-
-class FakeAdapter:
-    provider_name = "sandbox"
 
 
 class FakeQuery:
@@ -69,8 +66,11 @@ def _valid_payload():
 
 @pytest.fixture(autouse=True)
 def asaas_receiver_setup(monkeypatch):
-    monkeypatch.setattr(wallet_routes.app_config, "ASAAS_WEBHOOK_TOKEN", "secret-token", raising=False)
-    monkeypatch.setattr(wallet_routes, "get_partner_adapter", lambda: FakeAdapter())
+    monkeypatch.setattr(
+        wallet_routes,
+        "load_asaas_sandbox_config",
+        lambda: SimpleNamespace(webhook_token="secret-token"),
+    )
 
 
 def test_asaas_sandbox_webhook_accepts_payment_received_without_exposing_sensitive_values():
