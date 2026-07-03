@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
 from pydantic import BaseModel
 
@@ -13,6 +14,7 @@ from app.models.transaction import Transaction
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
+from app import config as app_config
 from app.partner import PartnerWebhookEvent, get_partner_adapter
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
@@ -780,6 +782,242 @@ def _sandbox_webhook_idempotency_key(
     )
     digest = hashlib.sha256(str(raw_key).encode("utf-8")).hexdigest()
     return f"wallet-sandbox-webhook:{digest}"
+
+
+
+
+_ASAAS_SANDBOX_WEBHOOK_ACCEPTED_EVENTS = {
+    "PAYMENT_RECEIVED",
+}
+
+
+def _asaas_sandbox_webhook_token() -> str:
+    token = str(getattr(app_config, "ASAAS_WEBHOOK_TOKEN", "") or "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=503,
+            detail="ASAAS_WEBHOOK_TOKEN não configurado para webhook Asaas Sandbox.",
+        )
+    return token
+
+
+def _validate_asaas_sandbox_webhook_token(header_value: str | None) -> None:
+    expected_token = _asaas_sandbox_webhook_token()
+    received_token = str(header_value or "").strip()
+
+    if not received_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Header asaas-access-token é obrigatório.",
+        )
+
+    if not hmac.compare_digest(received_token, expected_token):
+        raise HTTPException(
+            status_code=403,
+            detail="Header asaas-access-token inválido.",
+        )
+
+
+def _asaas_sandbox_webhook_event_id(payload: dict) -> str:
+    event_id = str(
+        payload.get("id")
+        or payload.get("eventId")
+        or payload.get("event_id")
+        or ""
+    ).strip()
+
+    if not event_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Identificador único do evento Asaas é obrigatório.",
+        )
+
+    return event_id
+
+
+def _asaas_sandbox_webhook_event_type(payload: dict) -> str:
+    event_type = str(payload.get("event") or payload.get("event_type") or "").strip()
+
+    if not event_type:
+        raise HTTPException(
+            status_code=422,
+            detail="Tipo do evento Asaas é obrigatório.",
+        )
+
+    return event_type
+
+
+def _asaas_sandbox_webhook_hash(payload: dict) -> str:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        ensure_ascii=False,
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _asaas_sandbox_webhook_idempotency_key(event_id: str) -> str:
+    digest = hashlib.sha256(event_id.encode("utf-8")).hexdigest()
+    return f"asaas-sandbox-webhook:{digest}"
+
+
+@router.post("/api/v1/partners/asaas/webhooks/sandbox")
+def handle_asaas_sandbox_webhook_receiver(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    asaas_access_token: str | None = Header(default=None, alias="asaas-access-token"),
+):
+    """
+    Recebe webhooks reais do Asaas Sandbox com token e idempotência.
+
+    Segurança:
+    - Valida header asaas-access-token.
+    - Usa ASAAS_WEBHOOK_TOKEN fora do Git.
+    - Exige identificador único do evento para idempotência.
+    - Não exige login do cliente.
+    - Não salva payload bruto.
+    - Não expõe token nem payment_id.
+    - Não credita saldo real.
+    - Não gera comprovante real.
+    - Não marca pagamento como real.
+    """
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="Payload Asaas inválido.")
+
+    _validate_asaas_sandbox_webhook_token(asaas_access_token)
+
+    try:
+        adapter = get_partner_adapter()
+        provider = adapter.provider_name
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Adapter financeiro indisponível para webhook Asaas Sandbox: {exc}",
+        ) from exc
+
+    if provider != "sandbox":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Webhook Asaas Sandbox exige WALLET_MODE=partner e "
+                "WALLET_PARTNER_PROVIDER=sandbox. Nenhum evento real foi processado."
+            ),
+        )
+
+    event_id = _asaas_sandbox_webhook_event_id(payload)
+    event_type = _asaas_sandbox_webhook_event_type(payload)
+    request_hash = _asaas_sandbox_webhook_hash(payload)
+    idem_key = _asaas_sandbox_webhook_idempotency_key(event_id)
+
+    try:
+        record = IdempotencyKey(key=idem_key, request_hash=request_hash)
+        db.add(record)
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = db.query(IdempotencyKey).filter_by(key=idem_key).first()
+        if not existing:
+            raise
+
+        if getattr(existing, "request_hash", None) and existing.request_hash != request_hash:
+            raise HTTPException(
+                status_code=409,
+                detail="Evento Asaas reutilizado com payload diferente.",
+            )
+
+        if existing.response_json:
+            response = json.loads(existing.response_json)
+            response["duplicated"] = True
+            response["idempotency"]["replayed"] = True
+            return response
+
+        return {
+            "ok": True,
+            "service": "aurea-wallet",
+            "duplicated": True,
+            "event": {
+                "provider": "asaas",
+                "environment": "sandbox",
+                "event_id_present": True,
+                "event_type": event_type,
+                "status": "in_progress",
+            },
+            "wallet": {
+                "mode": WALLET_MODE,
+                "provider": provider,
+                "source": "asaas_sandbox",
+                "real_money_enabled": False,
+            },
+            "idempotency": {
+                "key": idem_key,
+                "request_hash": request_hash,
+                "replayed": True,
+                "state": "in_progress",
+            },
+            "can_credit_balance": False,
+            "can_generate_real_receipt": False,
+            "can_mark_real_paid": False,
+            "notice": "Evento Asaas Sandbox já está em processamento. Nenhum dinheiro real foi movimentado.",
+        }
+
+    accepted = event_type in _ASAAS_SANDBOX_WEBHOOK_ACCEPTED_EVENTS
+    payment_payload = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
+    now = datetime.now(timezone.utc)
+
+    response = {
+        "ok": True,
+        "service": "aurea-wallet",
+        "duplicated": False,
+        "event": {
+            "provider": "asaas",
+            "environment": "sandbox",
+            "event_id_present": True,
+            "event_type": event_type,
+            "accepted": accepted,
+            "ignored": not accepted,
+            "received_at": now.isoformat(),
+        },
+        "payment": {
+            "object_present": bool(payment_payload),
+            "payment_id_present": bool(payment_payload.get("id")),
+            "status": payment_payload.get("status"),
+            "billing_type": payment_payload.get("billingType"),
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": provider,
+            "source": "asaas_sandbox",
+            "real_money_enabled": False,
+        },
+        "idempotency": {
+            "key": idem_key,
+            "request_hash": request_hash,
+            "replayed": False,
+            "state": "stored",
+        },
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "can_mark_real_paid": False,
+        "notice": (
+            "Webhook Asaas Sandbox recebido com segurança. "
+            "Nenhum saldo real, comprovante real ou pagamento real foi gerado."
+        ),
+        "limitations": [
+            "Não credita saldo real.",
+            "Não gera comprovante financeiro real.",
+            "Não marca pagamento real como confirmado.",
+            "Não expõe token.",
+            "Não expõe payment_id.",
+            "Não salva payload bruto.",
+        ],
+    }
+
+    record.response_json = json.dumps(response, ensure_ascii=False, default=str)
+    db.commit()
+
+    return response
+
 
 
 @router.post("/api/v1/wallet/pix/sandbox-webhook")
