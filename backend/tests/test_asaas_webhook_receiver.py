@@ -17,13 +17,32 @@ class FakeQuery:
     def __init__(self, db):
         self.db = db
         self.key = None
+        self.row_limit = None
 
     def filter_by(self, **kwargs):
         self.key = kwargs.get("key")
         return self
 
+    def filter(self, *_args, **_kwargs):
+        return self
+
+    def order_by(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, value):
+        self.row_limit = int(value)
+        return self
+
     def first(self):
         return self.db.records.get(self.key)
+
+    def all(self):
+        rows = list(self.db.records.values())
+        rows = [row for row in rows if str(row.key).startswith("asaas-sandbox-webhook:")]
+        rows.sort(key=lambda row: str(getattr(row, "created_at", "") or ""), reverse=True)
+        if self.row_limit is not None:
+            rows = rows[: self.row_limit]
+        return rows
 
 
 class FakeDb:
@@ -69,7 +88,7 @@ def asaas_receiver_setup(monkeypatch):
     monkeypatch.setattr(
         wallet_routes,
         "load_asaas_sandbox_config",
-        lambda: SimpleNamespace(webhook_token="secret-token"),
+        lambda: SimpleNamespace(webhook_token="secret-token", env="sandbox"),
     )
 
 
@@ -185,3 +204,92 @@ def test_asaas_sandbox_webhook_registers_panel_fallback_routes():
     assert "/api/v1/partners/asaas/webhooks/sandbox" in paths
     assert "/api/v1/partners/" in paths
     assert "/api/v1/partners" in paths
+
+
+def test_asaas_sandbox_webhook_audit_history_lists_safe_records_without_sensitive_values():
+    db = FakeDb()
+
+    wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        payload=_valid_payload(),
+        db=db,
+        asaas_access_token="secret-token",
+    )
+
+    response = wallet_routes.get_asaas_sandbox_webhook_audit_history(
+        limit=20,
+        current_user=SimpleNamespace(id=123),
+        db=db,
+    )
+
+    encoded = json.dumps(response, ensure_ascii=False, default=str)
+
+    assert response["ok"] is True
+    assert response["history"]["provider"] == "asaas"
+    assert response["history"]["environment"] == "sandbox"
+    assert response["history"]["source"] == "idempotency_keys"
+    assert response["history"]["total_returned"] == 1
+    assert response["wallet"]["provider"] == "asaas"
+    assert response["wallet"]["real_money_enabled"] is False
+    assert response["can_credit_balance"] is False
+    assert response["can_generate_real_receipt"] is False
+    assert response["can_mark_real_paid"] is False
+
+    item = response["items"][0]
+    assert item["provider"] == "asaas"
+    assert item["environment"] == "sandbox"
+    assert item["event_type"] == "PAYMENT_RECEIVED"
+    assert item["event_accepted"] is True
+    assert item["payment_id_present"] is True
+    assert item["audit_status"] == "asaas_sandbox_webhook_recorded"
+    assert item["storage"]["raw_payload_stored"] is False
+    assert item["storage"]["raw_event_id_stored"] is False
+    assert item["storage"]["raw_payment_id_stored"] is False
+    assert item["can_credit_balance"] is False
+    assert item["can_generate_real_receipt"] is False
+    assert item["can_mark_real_paid"] is False
+
+    assert "secret-token" not in encoded
+    assert "pay_real_sandbox_must_not_leak" not in encoded
+    assert "evt_test_unique_001" not in encoded
+
+
+def test_asaas_sandbox_webhook_audit_history_ignores_malformed_or_non_asaas_records():
+    db = FakeDb()
+
+    wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        payload=_valid_payload(),
+        db=db,
+        asaas_access_token="secret-token",
+    )
+
+    good_key = next(iter(db.records))
+    good_record = db.records[good_key]
+
+    malformed = SimpleNamespace(
+        key="asaas-sandbox-webhook:malformed",
+        request_hash="bad",
+        status_code=200,
+        created_at=good_record.created_at,
+        response_json="{not-json",
+    )
+    non_asaas = SimpleNamespace(
+        key="asaas-sandbox-webhook:non-asaas",
+        request_hash="non-asaas",
+        status_code=200,
+        created_at=good_record.created_at,
+        response_json=json.dumps({
+            "audit": {
+                "provider": "other",
+                "environment": "sandbox",
+            }
+        }),
+    )
+
+    db.records[malformed.key] = malformed
+    db.records[non_asaas.key] = non_asaas
+
+    items = wallet_routes._list_asaas_sandbox_webhook_audit_events(db, limit=20)
+
+    assert len(items) == 1
+    assert items[0]["provider"] == "asaas"
+    assert items[0]["event_type"] == "PAYMENT_RECEIVED"

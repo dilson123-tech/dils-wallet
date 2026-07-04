@@ -1521,6 +1521,155 @@ def get_wallet_pix_sandbox_audit_history(
     }
 
 
+def _list_asaas_sandbox_webhook_audit_events(
+    db: Session,
+    limit: int = 20,
+) -> list[dict]:
+    """
+    Lista auditoria segura de webhooks Asaas Sandbox.
+
+    Fase v0.2.74: histórico sem nova tabela.
+    Usa somente response_json seguro em IdempotencyKey.
+    Não consulta PSP real, não credita saldo e não emite comprovante real.
+    """
+    safe_limit = max(1, min(int(limit or 20), 100))
+
+    rows = (
+        db.query(IdempotencyKey)
+        .filter(IdempotencyKey.key.like("asaas-sandbox-webhook:%"))
+        .order_by(IdempotencyKey.created_at.desc())
+        .limit(safe_limit)
+        .all()
+    )
+
+    items: list[dict] = []
+
+    for row in rows:
+        raw_response = getattr(row, "response_json", None)
+        if not raw_response:
+            continue
+
+        try:
+            response = json.loads(raw_response)
+        except Exception:
+            continue
+
+        audit = response.get("audit") or {}
+        event = response.get("event") or {}
+        payment = response.get("payment") or {}
+        wallet_payload = response.get("wallet") or {}
+
+        if audit.get("provider") != "asaas":
+            continue
+
+        if audit.get("environment") != "sandbox":
+            continue
+
+        items.append({
+            "provider": "asaas",
+            "environment": "sandbox",
+            "source": audit.get("source") or "asaas_sandbox_webhook_receiver",
+            "event_type": audit.get("event_type") or event.get("event_type"),
+            "event_accepted": bool(audit.get("event_accepted", False)),
+            "payment_object_present": bool(
+                audit.get("payment_object_present", payment.get("object_present", False))
+            ),
+            "payment_id_present": bool(
+                audit.get("payment_id_present", payment.get("payment_id_present", False))
+            ),
+            "payment_status": audit.get("payment_status") or payment.get("status"),
+            "billing_type": audit.get("billing_type") or payment.get("billing_type"),
+            "received_at": audit.get("received_at") or event.get("received_at"),
+            "audit_status": audit.get("audit_status") or "asaas_sandbox_webhook_recorded",
+            "real_money_enabled": bool(
+                audit.get(
+                    "real_money_enabled",
+                    wallet_payload.get("real_money_enabled", False),
+                )
+            ),
+            "storage": {
+                "source": "idempotency_keys",
+                "raw_payload_stored": False,
+                "raw_event_id_stored": False,
+                "raw_payment_id_stored": False,
+                "response_json_stored": True,
+            },
+            "idempotency": {
+                "key": row.key,
+                "request_hash": row.request_hash,
+                "status_code": row.status_code,
+                "stored_at": row.created_at.isoformat() if row.created_at else None,
+            },
+            "can_credit_balance": False,
+            "can_generate_real_receipt": False,
+            "can_mark_real_paid": False,
+        })
+
+    return items
+
+
+@router.get("/api/v1/partners/asaas/webhooks/sandbox/audit-history")
+def get_asaas_sandbox_webhook_audit_history(
+    limit: int = 20,
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+):
+    """
+    Lista histórico/auditoria segura de webhooks Asaas Sandbox.
+
+    Segurança:
+    - Não consulta transação real no Asaas.
+    - Não credita saldo real.
+    - Não gera comprovante financeiro real.
+    - Não marca pagamento real como confirmado.
+    - Não expõe token, event_id bruto nem payment_id bruto.
+    - Usa somente registros seguros já salvos por idempotência.
+    """
+    config = _asaas_sandbox_webhook_config()
+    safe_limit = max(1, min(int(limit or 20), 100))
+    items = _list_asaas_sandbox_webhook_audit_events(db, safe_limit)
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
+        "history": {
+            "provider": "asaas",
+            "environment": config.env,
+            "source": "idempotency_keys",
+            "limit": safe_limit,
+            "total_returned": len(items),
+            "audit_status": "asaas_sandbox_webhooks_listed",
+        },
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": "asaas",
+            "source": "asaas_sandbox",
+            "real_money_enabled": False,
+        },
+        "items": items,
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "can_mark_real_paid": False,
+        "notice": "Histórico Asaas Sandbox listado apenas para auditoria técnica. Não representa movimentação financeira real.",
+        "limitations": [
+            "Não credita saldo real.",
+            "Não confirma pagamento real em parceiro financeiro.",
+            "Não gera comprovante financeiro real.",
+            "Não expõe token.",
+            "Não expõe event_id bruto.",
+            "Não expõe payment_id bruto.",
+            "Não salva payload bruto.",
+        ],
+        "next_steps": [
+            "Exibir últimos webhooks Asaas Sandbox no painel técnico.",
+            "Adicionar filtros por event_type e audit_status em fase futura.",
+            "Persistir eventos em tabela própria de auditoria em fase futura.",
+            "Integrar histórico real somente após parceiro financeiro homologado.",
+        ],
+    }
+
+
 @router.get("/api/v1/wallet/balance")
 def get_balance(current_user: User = Depends(require_customer),
                 db: Session = Depends(get_db)):
