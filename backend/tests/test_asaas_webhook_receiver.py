@@ -156,9 +156,34 @@ def test_asaas_sandbox_webhook_is_idempotent_for_same_event():
         asaas_access_token="secret-token",
     )
 
+    encoded = json.dumps(second, ensure_ascii=False, default=str)
+
     assert first["duplicated"] is False
     assert second["duplicated"] is True
     assert second["idempotency"]["replayed"] is True
+    assert second["idempotency"]["state"] == "replayed"
+    assert (
+        second["idempotency"]["replay_audit_status"]
+        == "asaas_sandbox_webhook_idempotent_replay"
+    )
+    assert second["audit"]["replay"]["replay_status"] == (
+        "asaas_sandbox_webhook_idempotent_replay"
+    )
+    assert second["audit"]["replay"]["safe_replay"] is True
+    assert second["audit"]["replay"]["duplicated"] is True
+    assert second["audit"]["replay"]["idempotency_replayed"] is True
+    assert second["audit"]["replay"]["raw_payload_stored"] is False
+    assert second["audit"]["replay"]["raw_event_id_stored"] is False
+    assert second["audit"]["replay"]["raw_payment_id_stored"] is False
+    assert second["audit"]["replay"]["can_credit_balance"] is False
+    assert second["audit"]["replay"]["can_generate_real_receipt"] is False
+    assert second["audit"]["replay"]["can_mark_real_paid"] is False
+    assert second["can_credit_balance"] is False
+    assert second["can_generate_real_receipt"] is False
+    assert second["can_mark_real_paid"] is False
+    assert "secret-token" not in encoded
+    assert "pay_real_sandbox_must_not_leak" not in encoded
+    assert "evt_test_unique_001" not in encoded
     assert db.rolled_back is True
 
 
