@@ -920,7 +920,33 @@ def handle_asaas_sandbox_webhook_receiver(
         if existing.response_json:
             response = json.loads(existing.response_json)
             response["duplicated"] = True
-            response["idempotency"]["replayed"] = True
+            response.setdefault("idempotency", {})["replayed"] = True
+            response["idempotency"]["state"] = "replayed"
+            response["idempotency"]["replay_audit_status"] = (
+                "asaas_sandbox_webhook_idempotent_replay"
+            )
+
+            audit = response.setdefault("audit", {})
+            audit["replay"] = {
+                "replay_status": "asaas_sandbox_webhook_idempotent_replay",
+                "safe_replay": True,
+                "duplicated": True,
+                "idempotency_replayed": True,
+                "raw_payload_stored": False,
+                "raw_event_id_stored": False,
+                "raw_payment_id_stored": False,
+                "can_credit_balance": False,
+                "can_generate_real_receipt": False,
+                "can_mark_real_paid": False,
+                "notice": (
+                    "Evento Asaas Sandbox repetido reconhecido por idempotência. "
+                    "Nenhum saldo real, comprovante real ou pagamento real foi gerado."
+                ),
+            }
+
+            response["can_credit_balance"] = False
+            response["can_generate_real_receipt"] = False
+            response["can_mark_real_paid"] = False
             return response
 
         return {
