@@ -956,6 +956,41 @@ def handle_asaas_sandbox_webhook_receiver(
     payment_payload = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
     now = datetime.now(timezone.utc)
 
+    audit_record = {
+        "provider": "asaas",
+        "environment": "sandbox",
+        "source": "asaas_sandbox_webhook_receiver",
+        "audit_status": (
+            "asaas_sandbox_webhook_recorded"
+            if accepted
+            else "asaas_sandbox_webhook_ignored_recorded"
+        ),
+        "event_type": event_type,
+        "event_accepted": accepted,
+        "event_id_present": True,
+        "payment_object_present": bool(payment_payload),
+        "payment_id_present": bool(payment_payload.get("id")),
+        "payment_status": payment_payload.get("status"),
+        "billing_type": payment_payload.get("billingType"),
+        "received_at": now.isoformat(),
+        "storage": {
+            "source": "idempotency_keys",
+            "raw_payload_stored": False,
+            "raw_event_id_stored": False,
+            "raw_payment_id_stored": False,
+            "response_json_stored": True,
+        },
+        "idempotency": {
+            "key": idem_key,
+            "request_hash": request_hash,
+            "state": "stored",
+        },
+        "real_money_enabled": False,
+        "can_credit_balance": False,
+        "can_generate_real_receipt": False,
+        "can_mark_real_paid": False,
+    }
+
     response = {
         "ok": True,
         "service": "aurea-wallet",
@@ -981,6 +1016,7 @@ def handle_asaas_sandbox_webhook_receiver(
             "source": "asaas_sandbox",
             "real_money_enabled": False,
         },
+        "audit": audit_record,
         "idempotency": {
             "key": idem_key,
             "request_hash": request_hash,
@@ -1004,6 +1040,7 @@ def handle_asaas_sandbox_webhook_receiver(
         ],
     }
 
+    record.status_code = 200
     record.response_json = json.dumps(response, ensure_ascii=False, default=str)
     db.commit()
 
