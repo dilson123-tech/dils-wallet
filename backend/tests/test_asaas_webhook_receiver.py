@@ -94,6 +94,19 @@ def test_asaas_sandbox_webhook_accepts_payment_received_without_exposing_sensiti
     assert "secret-token" not in encoded
     assert "pay_real_sandbox_must_not_leak" not in encoded
     assert "evt_test_unique_001" not in encoded
+    assert response["audit"]["provider"] == "asaas"
+    assert response["audit"]["environment"] == "sandbox"
+    assert response["audit"]["source"] == "asaas_sandbox_webhook_receiver"
+    assert response["audit"]["audit_status"] == "asaas_sandbox_webhook_recorded"
+    assert response["audit"]["event_accepted"] is True
+    assert response["audit"]["payment_id_present"] is True
+    assert response["audit"]["storage"]["raw_payload_stored"] is False
+    assert response["audit"]["storage"]["raw_event_id_stored"] is False
+    assert response["audit"]["storage"]["raw_payment_id_stored"] is False
+    assert response["audit"]["can_credit_balance"] is False
+    assert response["audit"]["can_generate_real_receipt"] is False
+    assert response["audit"]["can_mark_real_paid"] is False
+    assert next(iter(db.records.values())).status_code == 200
     assert db.committed is True
 
 
@@ -154,6 +167,9 @@ def test_asaas_sandbox_webhook_ignores_non_payment_received_events_safely():
     assert response["event"]["accepted"] is False
     assert response["event"]["ignored"] is True
     assert response["can_credit_balance"] is False
+    assert response["audit"]["audit_status"] == "asaas_sandbox_webhook_ignored_recorded"
+    assert response["audit"]["event_accepted"] is False
+    assert response["audit"]["storage"]["raw_payload_stored"] is False
     assert "pay_created_must_not_leak" not in encoded
 
 
