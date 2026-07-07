@@ -296,6 +296,70 @@ class AsaasSandboxSubaccountPayloadBuilderGuardResult:
 
 
 @dataclass(frozen=True)
+class AsaasSandboxSubaccountSanitizedFixtureResult:
+    builder_guard: AsaasSandboxSubaccountPayloadBuilderGuardResult
+    fixture_reference: str = "subaccount-sanitized-fixture-sandbox"
+    fixture_source: str = "synthetic_sandbox_subaccount_response_fixture"
+    raw_response_stored: bool = False
+    raw_payload_stored: bool = False
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    synthetic_fixture_only: bool = True
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    api_key_present: bool = True
+    wallet_id_present: bool = True
+    account_id_present: bool = True
+    onboarding_url_present: bool = True
+    sensitive_response_fields: tuple[str, ...] = (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    )
+    sanitized_response_fixture: dict[str, Any] = field(
+        default_factory=lambda: {
+            "object": "account",
+            "id": "<masked>",
+            "apiKey": "<masked>",
+            "walletId": "<masked>",
+            "onboardingUrl": "<masked>",
+            "status": "sandbox_fixture_only",
+        }
+    )
+    future_result_marker: str = "ASAAS_SANDBOX_SUBACCOUNT_SANITIZED_FIXTURE_READY"
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_sanitized_fixture",
+            "fixture_reference": self.fixture_reference,
+            "fixture_source": self.fixture_source,
+            "builder_guard": self.builder_guard.safe_summary(),
+            "raw_response_stored": self.raw_response_stored,
+            "raw_payload_stored": self.raw_payload_stored,
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "synthetic_fixture_only": self.synthetic_fixture_only,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "api_key_present": self.api_key_present,
+            "wallet_id_present": self.wallet_id_present,
+            "account_id_present": self.account_id_present,
+            "onboarding_url_present": self.onboarding_url_present,
+            "sensitive_response_fields": list(self.sensitive_response_fields),
+            "sensitive_response_values_masked": True,
+            "sanitized_response_fixture": self.sanitized_response_fixture,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": "manual_subaccount_response_sanitizer_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
     customer_reference: str = "first-customer-http-client-gate-sandbox"
@@ -2183,6 +2247,15 @@ class AsaasSandboxClient:
         return AsaasSandboxSubaccountPayloadBuilderGuardResult(
             payload_contract=payload_contract,
             prepared_request=prepared_request,
+        )
+
+    def build_subaccount_sanitized_fixture(
+        self,
+    ) -> AsaasSandboxSubaccountSanitizedFixtureResult:
+        builder_guard = self.build_subaccount_payload_builder_guard()
+
+        return AsaasSandboxSubaccountSanitizedFixtureResult(
+            builder_guard=builder_guard,
         )
 
     def gate_first_customer_http_call(
