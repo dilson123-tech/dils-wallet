@@ -2665,3 +2665,97 @@ def test_subaccount_structure_guard_safe_summary_hides_sensitive_values():
     assert "subaccount-api-key-for-test-only" not in rendered_summary
     assert "wallet-id-for-test-only" not in rendered_summary
     assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+
+def test_subaccount_payload_contract_maps_required_fields_without_values():
+    client = make_client()
+
+    contract = client.build_subaccount_payload_contract()
+    summary = contract.safe_summary()
+
+    assert contract.contract_reference == "subaccount-payload-contract-sandbox"
+    assert contract.endpoint_path == "/accounts"
+    assert contract.method == "POST"
+    assert contract.target_operation == "create_subaccount"
+    assert contract.request_body_build_enabled is False
+    assert contract.payload_values_stored is False
+    assert contract.raw_payload_stored is False
+    assert contract.sandbox_only is True
+    assert contract.production_blocked is True
+    assert contract.manual_authorization_required is True
+    assert contract.can_create_subaccount is False
+    assert contract.can_send_http is False
+    assert contract.real_money is False
+    assert contract.http_call_executed is False
+    assert contract.future_result_marker == (
+        "ASAAS_SANDBOX_SUBACCOUNT_PAYLOAD_CONTRACT_READY"
+    )
+
+    assert summary["operation"] == "subaccount_payload_contract"
+    assert summary["field_names_only"] is True
+    assert summary["field_values_masked"] is True
+    assert summary["secret_values_allowed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["structure_guard"]["operation"] == "subaccount_structure_guard"
+    assert summary["structure_guard"]["prepared_request"]["url"] == (
+        f"{ASAAS_SANDBOX_BASE_URL}/accounts"
+    )
+
+    for field_name in (
+        "name",
+        "email",
+        "cpfCnpj",
+        "mobilePhone",
+        "incomeValue",
+        "address",
+        "addressNumber",
+        "province",
+        "postalCode",
+    ):
+        assert field_name in summary["required_request_fields"]
+
+
+def test_subaccount_payload_contract_blocks_secret_and_response_only_fields():
+    client = make_client()
+
+    contract = client.build_subaccount_payload_contract()
+    summary = contract.safe_summary()
+    rendered_summary = repr(summary)
+
+    for field_name in (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+        "access_token",
+        "asaas-access-token",
+        "webhook_token",
+        "ASAAS_API_KEY",
+        "ASAAS_WEBHOOK_TOKEN",
+    ):
+        assert field_name in summary["prohibited_request_fields"]
+
+    for field_name in (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    ):
+        assert field_name in summary["sensitive_response_fields"]
+
+    for field_name in (
+        "cpfCnpj",
+        "email",
+        "loginEmail",
+        "mobilePhone",
+        "address",
+        "postalCode",
+        "incomeValue",
+    ):
+        assert field_name in summary["sensitive_request_fields"]
+
+    assert "webhooks" in summary["future_review_request_fields"]
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary

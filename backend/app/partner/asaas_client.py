@@ -119,6 +119,113 @@ class AsaasSandboxSubaccountStructureGuardResult:
 
 
 @dataclass(frozen=True)
+class AsaasSandboxSubaccountPayloadContractResult:
+    structure_guard: AsaasSandboxSubaccountStructureGuardResult
+    contract_reference: str = "subaccount-payload-contract-sandbox"
+    endpoint_path: str = "/accounts"
+    method: str = "POST"
+    target_operation: str = "create_subaccount"
+    request_body_build_enabled: bool = False
+    payload_values_stored: bool = False
+    raw_payload_stored: bool = False
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    manual_authorization_required: bool = True
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    required_request_fields: tuple[str, ...] = (
+        "name",
+        "email",
+        "cpfCnpj",
+        "mobilePhone",
+        "incomeValue",
+        "address",
+        "addressNumber",
+        "province",
+        "postalCode",
+    )
+    optional_request_fields: tuple[str, ...] = (
+        "loginEmail",
+        "birthDate",
+        "companyType",
+        "phone",
+        "site",
+        "complement",
+    )
+    future_review_request_fields: tuple[str, ...] = (
+        "webhooks",
+    )
+    sensitive_request_fields: tuple[str, ...] = (
+        "cpfCnpj",
+        "email",
+        "loginEmail",
+        "phone",
+        "mobilePhone",
+        "address",
+        "addressNumber",
+        "complement",
+        "province",
+        "postalCode",
+        "birthDate",
+        "incomeValue",
+    )
+    prohibited_request_fields: tuple[str, ...] = (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+        "access_token",
+        "asaas-access-token",
+        "webhook_token",
+        "ASAAS_API_KEY",
+        "ASAAS_WEBHOOK_TOKEN",
+    )
+    sensitive_response_fields: tuple[str, ...] = (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    )
+    future_result_marker: str = "ASAAS_SANDBOX_SUBACCOUNT_PAYLOAD_CONTRACT_READY"
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_payload_contract",
+            "contract_reference": self.contract_reference,
+            "endpoint_path": self.endpoint_path,
+            "method": self.method,
+            "target_operation": self.target_operation,
+            "structure_guard": self.structure_guard.safe_summary(),
+            "request_body_build_enabled": self.request_body_build_enabled,
+            "payload_values_stored": self.payload_values_stored,
+            "raw_payload_stored": self.raw_payload_stored,
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "manual_authorization_required": self.manual_authorization_required,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "required_request_fields": list(self.required_request_fields),
+            "optional_request_fields": list(self.optional_request_fields),
+            "future_review_request_fields": list(
+                self.future_review_request_fields
+            ),
+            "sensitive_request_fields": list(self.sensitive_request_fields),
+            "prohibited_request_fields": list(self.prohibited_request_fields),
+            "sensitive_response_fields": list(self.sensitive_response_fields),
+            "field_names_only": True,
+            "field_values_masked": True,
+            "secret_values_allowed": False,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": "manual_subaccount_payload_builder_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
     customer_reference: str = "first-customer-http-client-gate-sandbox"
@@ -1970,6 +2077,15 @@ class AsaasSandboxClient:
 
         return AsaasSandboxSubaccountStructureGuardResult(
             prepared_request=prepared_request,
+        )
+
+    def build_subaccount_payload_contract(
+        self,
+    ) -> AsaasSandboxSubaccountPayloadContractResult:
+        structure_guard = self.build_subaccount_structure_guard()
+
+        return AsaasSandboxSubaccountPayloadContractResult(
+            structure_guard=structure_guard,
         )
 
     def gate_first_customer_http_call(
