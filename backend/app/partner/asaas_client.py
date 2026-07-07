@@ -58,6 +58,67 @@ class AsaasCustomerDryRunResult:
 
 
 @dataclass(frozen=True)
+class AsaasSandboxSubaccountStructureGuardResult:
+    prepared_request: AsaasPreparedRequest
+    guard_reference: str = "subaccount-structure-guard-sandbox"
+    endpoint_path: str = "/accounts"
+    target_operation: str = "create_subaccount"
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    manual_authorization_required: bool = True
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sensitive_response_fields: tuple[str, ...] = (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    )
+    sensitive_request_fields: tuple[str, ...] = (
+        "cpfCnpj",
+        "email",
+        "phone",
+        "mobilePhone",
+        "address",
+    )
+    future_result_marker: str = "ASAAS_SANDBOX_SUBACCOUNT_STRUCTURE_VALIDATED"
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_structure_guard",
+            "guard_reference": self.guard_reference,
+            "endpoint_path": self.endpoint_path,
+            "target_operation": self.target_operation,
+            "prepared_request": {
+                "method": self.prepared_request.method,
+                "url": self.prepared_request.url,
+                "operation": self.prepared_request.operation,
+                "headers_configured": self.prepared_request.headers_configured,
+                "real_money": self.prepared_request.real_money,
+                "http_call_executed": self.prepared_request.http_call_executed,
+                "json_payload_stored": self.prepared_request.json is not None,
+                "raw": self.prepared_request.raw,
+            },
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "manual_authorization_required": self.manual_authorization_required,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sensitive_response_fields": list(self.sensitive_response_fields),
+            "sensitive_request_fields": list(self.sensitive_request_fields),
+            "sensitive_response_fields_masked": True,
+            "sensitive_request_fields_masked": True,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": "manual_subaccount_payload_contract_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
     customer_reference: str = "first-customer-http-client-gate-sandbox"
@@ -1896,6 +1957,20 @@ class AsaasSandboxClient:
         )
 
         return AsaasCustomerDryRunResult(prepared_request=prepared_request)
+
+    def build_subaccount_structure_guard(
+        self,
+    ) -> AsaasSandboxSubaccountStructureGuardResult:
+        prepared_request = self._prepare(
+            method="POST",
+            path="/accounts",
+            operation="create_subaccount_structure_guard",
+            json=None,
+        )
+
+        return AsaasSandboxSubaccountStructureGuardResult(
+            prepared_request=prepared_request,
+        )
 
     def gate_first_customer_http_call(
         self,

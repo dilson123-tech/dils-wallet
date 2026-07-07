@@ -2604,3 +2604,64 @@ def test_full_pix_flow_dry_run_safe_summary_keeps_every_step_blocked():
     assert summary["payment_status"]["prepared_request"]["http_call_executed"] is False
     assert "sandbox-api-key-for-test-only" not in repr(summary)
     assert "sandbox-webhook-token-for-test-only" not in repr(summary)
+
+def test_subaccount_structure_guard_prepares_accounts_endpoint_without_http_call():
+    client = make_client()
+
+    guard = client.build_subaccount_structure_guard()
+    request = guard.prepared_request
+
+    assert guard.guard_reference == "subaccount-structure-guard-sandbox"
+    assert guard.endpoint_path == "/accounts"
+    assert guard.target_operation == "create_subaccount"
+    assert guard.sandbox_only is True
+    assert guard.production_blocked is True
+    assert guard.manual_authorization_required is True
+    assert guard.can_create_subaccount is False
+    assert guard.can_send_http is False
+    assert guard.real_money is False
+    assert guard.http_call_executed is False
+    assert guard.future_result_marker == "ASAAS_SANDBOX_SUBACCOUNT_STRUCTURE_VALIDATED"
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/accounts"
+    assert request.operation == "create_subaccount_structure_guard"
+    assert request.headers_configured is True
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.json is None
+    assert request.raw["sandbox"] is True
+    assert request.raw["provider"] == "asaas"
+    assert request.raw["http_execution_blocked"] is True
+
+
+def test_subaccount_structure_guard_safe_summary_hides_sensitive_values():
+    client = make_client()
+
+    guard = client.build_subaccount_structure_guard()
+    summary = guard.safe_summary()
+    rendered_summary = repr(summary)
+
+    assert summary["operation"] == "subaccount_structure_guard"
+    assert summary["prepared_request"]["operation"] == (
+        "create_subaccount_structure_guard"
+    )
+    assert summary["prepared_request"]["json_payload_stored"] is False
+    assert summary["sandbox_only"] is True
+    assert summary["production_blocked"] is True
+    assert summary["can_create_subaccount"] is False
+    assert summary["can_send_http"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["sensitive_response_fields_masked"] is True
+    assert summary["sensitive_request_fields_masked"] is True
+    assert "apiKey" in summary["sensitive_response_fields"]
+    assert "walletId" in summary["sensitive_response_fields"]
+    assert "onboardingUrl" in summary["sensitive_response_fields"]
+
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
