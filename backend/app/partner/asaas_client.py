@@ -226,6 +226,76 @@ class AsaasSandboxSubaccountPayloadContractResult:
 
 
 @dataclass(frozen=True)
+class AsaasSandboxSubaccountPayloadBuilderGuardResult:
+    payload_contract: AsaasSandboxSubaccountPayloadContractResult
+    prepared_request: AsaasPreparedRequest
+    builder_reference: str = "subaccount-payload-builder-guard-sandbox"
+    endpoint_path: str = "/accounts"
+    method: str = "POST"
+    target_operation: str = "create_subaccount"
+    template_payload_built: bool = True
+    synthetic_payload_only: bool = True
+    payload_values_stored: bool = False
+    raw_payload_stored: bool = False
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    manual_authorization_required: bool = True
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    future_result_marker: str = "ASAAS_SANDBOX_SUBACCOUNT_PAYLOAD_BUILDER_GUARD_READY"
+
+    def safe_summary(self) -> dict[str, Any]:
+        template = self.prepared_request.json or {}
+        prohibited_template_fields = sorted(
+            set(template).intersection(
+                set(self.payload_contract.prohibited_request_fields)
+            )
+        )
+
+        return {
+            "operation": "subaccount_payload_builder_guard",
+            "builder_reference": self.builder_reference,
+            "endpoint_path": self.endpoint_path,
+            "method": self.method,
+            "target_operation": self.target_operation,
+            "payload_contract": self.payload_contract.safe_summary(),
+            "prepared_request": {
+                "method": self.prepared_request.method,
+                "url": self.prepared_request.url,
+                "operation": self.prepared_request.operation,
+                "headers_configured": self.prepared_request.headers_configured,
+                "real_money": self.prepared_request.real_money,
+                "http_call_executed": self.prepared_request.http_call_executed,
+                "json_payload_template_stored": self.prepared_request.json
+                is not None,
+                "raw": self.prepared_request.raw,
+            },
+            "template_payload_built": self.template_payload_built,
+            "synthetic_payload_only": self.synthetic_payload_only,
+            "payload_values_stored": self.payload_values_stored,
+            "raw_payload_stored": self.raw_payload_stored,
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "manual_authorization_required": self.manual_authorization_required,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "payload_template_field_names": list(template.keys()),
+            "payload_template_values_masked": True,
+            "sanitized_payload_preview": {
+                field_name: "<masked>" for field_name in template
+            },
+            "prohibited_template_fields": prohibited_template_fields,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": "manual_subaccount_payload_fixture_review",
+        }
+
+
+@dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
     customer_reference: str = "first-customer-http-client-gate-sandbox"
@@ -2086,6 +2156,33 @@ class AsaasSandboxClient:
 
         return AsaasSandboxSubaccountPayloadContractResult(
             structure_guard=structure_guard,
+        )
+
+    def build_subaccount_payload_builder_guard(
+        self,
+    ) -> AsaasSandboxSubaccountPayloadBuilderGuardResult:
+        payload_contract = self.build_subaccount_payload_contract()
+        sanitized_payload_template: dict[str, Any] = {
+            "name": "<sandbox-subaccount-name>",
+            "email": "<sandbox-subaccount-email>",
+            "cpfCnpj": "<sandbox-subaccount-cpf-cnpj>",
+            "mobilePhone": "<sandbox-subaccount-mobile-phone>",
+            "incomeValue": 0,
+            "address": "<sandbox-subaccount-address>",
+            "addressNumber": "<sandbox-subaccount-address-number>",
+            "province": "<sandbox-subaccount-province>",
+            "postalCode": "<sandbox-subaccount-postal-code>",
+        }
+        prepared_request = self._prepare(
+            method="POST",
+            path="/accounts",
+            operation="create_subaccount_payload_builder_guard",
+            json=sanitized_payload_template,
+        )
+
+        return AsaasSandboxSubaccountPayloadBuilderGuardResult(
+            payload_contract=payload_contract,
+            prepared_request=prepared_request,
         )
 
     def gate_first_customer_http_call(
