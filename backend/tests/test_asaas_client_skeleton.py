@@ -2851,3 +2851,72 @@ def test_subaccount_payload_builder_guard_safe_summary_masks_template_values():
     assert "subaccount-api-key-for-test-only" not in rendered_summary
     assert "wallet-id-for-test-only" not in rendered_summary
     assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+
+def test_subaccount_sanitized_fixture_marks_sensitive_response_fields_present():
+    client = make_client()
+
+    fixture = client.build_subaccount_sanitized_fixture()
+    summary = fixture.safe_summary()
+
+    assert fixture.fixture_reference == "subaccount-sanitized-fixture-sandbox"
+    assert fixture.fixture_source == "synthetic_sandbox_subaccount_response_fixture"
+    assert fixture.raw_response_stored is False
+    assert fixture.raw_payload_stored is False
+    assert fixture.sandbox_only is True
+    assert fixture.production_blocked is True
+    assert fixture.synthetic_fixture_only is True
+    assert fixture.can_create_subaccount is False
+    assert fixture.can_send_http is False
+    assert fixture.real_money is False
+    assert fixture.http_call_executed is False
+    assert fixture.api_key_present is True
+    assert fixture.wallet_id_present is True
+    assert fixture.account_id_present is True
+    assert fixture.onboarding_url_present is True
+    assert fixture.future_result_marker == (
+        "ASAAS_SANDBOX_SUBACCOUNT_SANITIZED_FIXTURE_READY"
+    )
+
+    assert summary["operation"] == "subaccount_sanitized_fixture"
+    assert summary["builder_guard"]["operation"] == (
+        "subaccount_payload_builder_guard"
+    )
+    assert summary["raw_response_stored"] is False
+    assert summary["raw_payload_stored"] is False
+    assert summary["sensitive_response_values_masked"] is True
+    assert summary["ready_for_http_execution"] is False
+
+    for field_name in ("apiKey", "walletId", "id", "onboardingUrl"):
+        assert field_name in summary["sensitive_response_fields"]
+        assert summary["sanitized_response_fixture"][field_name] == "<masked>"
+
+
+def test_subaccount_sanitized_fixture_safe_summary_exposes_no_secret_values():
+    client = make_client()
+
+    fixture = client.build_subaccount_sanitized_fixture()
+    summary = fixture.safe_summary()
+    rendered_summary = repr(summary)
+
+    assert summary["sanitized_response_fixture"] == {
+        "object": "account",
+        "id": "<masked>",
+        "apiKey": "<masked>",
+        "walletId": "<masked>",
+        "onboardingUrl": "<masked>",
+        "status": "sandbox_fixture_only",
+    }
+    assert summary["can_send_http"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+    assert "<sandbox-subaccount-cpf-cnpj>" not in rendered_summary
+    assert "<sandbox-subaccount-email>" not in rendered_summary
+    assert "<sandbox-subaccount-mobile-phone>" not in rendered_summary
