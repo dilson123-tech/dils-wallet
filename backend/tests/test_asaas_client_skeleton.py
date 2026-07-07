@@ -2759,3 +2759,95 @@ def test_subaccount_payload_contract_blocks_secret_and_response_only_fields():
     assert "subaccount-api-key-for-test-only" not in rendered_summary
     assert "wallet-id-for-test-only" not in rendered_summary
     assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+
+def test_subaccount_payload_builder_guard_builds_template_without_http_call():
+    client = make_client()
+
+    builder = client.build_subaccount_payload_builder_guard()
+    request = builder.prepared_request
+    summary = builder.safe_summary()
+
+    assert builder.builder_reference == "subaccount-payload-builder-guard-sandbox"
+    assert builder.endpoint_path == "/accounts"
+    assert builder.method == "POST"
+    assert builder.target_operation == "create_subaccount"
+    assert builder.template_payload_built is True
+    assert builder.synthetic_payload_only is True
+    assert builder.payload_values_stored is False
+    assert builder.raw_payload_stored is False
+    assert builder.sandbox_only is True
+    assert builder.production_blocked is True
+    assert builder.manual_authorization_required is True
+    assert builder.can_create_subaccount is False
+    assert builder.can_send_http is False
+    assert builder.real_money is False
+    assert builder.http_call_executed is False
+    assert builder.future_result_marker == (
+        "ASAAS_SANDBOX_SUBACCOUNT_PAYLOAD_BUILDER_GUARD_READY"
+    )
+
+    assert request.method == "POST"
+    assert request.url == f"{ASAAS_SANDBOX_BASE_URL}/accounts"
+    assert request.operation == "create_subaccount_payload_builder_guard"
+    assert request.headers_configured is True
+    assert request.real_money is False
+    assert request.http_call_executed is False
+    assert request.raw["http_execution_blocked"] is True
+
+    assert request.json == {
+        "name": "<sandbox-subaccount-name>",
+        "email": "<sandbox-subaccount-email>",
+        "cpfCnpj": "<sandbox-subaccount-cpf-cnpj>",
+        "mobilePhone": "<sandbox-subaccount-mobile-phone>",
+        "incomeValue": 0,
+        "address": "<sandbox-subaccount-address>",
+        "addressNumber": "<sandbox-subaccount-address-number>",
+        "province": "<sandbox-subaccount-province>",
+        "postalCode": "<sandbox-subaccount-postal-code>",
+    }
+
+    assert summary["operation"] == "subaccount_payload_builder_guard"
+    assert summary["template_payload_built"] is True
+    assert summary["synthetic_payload_only"] is True
+    assert summary["payload_template_values_masked"] is True
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prohibited_template_fields"] == []
+
+
+def test_subaccount_payload_builder_guard_safe_summary_masks_template_values():
+    client = make_client()
+
+    builder = client.build_subaccount_payload_builder_guard()
+    summary = builder.safe_summary()
+    rendered_summary = repr(summary)
+
+    for field_name in (
+        "name",
+        "email",
+        "cpfCnpj",
+        "mobilePhone",
+        "incomeValue",
+        "address",
+        "addressNumber",
+        "province",
+        "postalCode",
+    ):
+        assert field_name in summary["payload_template_field_names"]
+        assert summary["sanitized_payload_preview"][field_name] == "<masked>"
+
+    assert summary["payload_contract"]["operation"] == "subaccount_payload_contract"
+    assert summary["payload_contract"]["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["operation"] == (
+        "create_subaccount_payload_builder_guard"
+    )
+    assert summary["prepared_request"]["json_payload_template_stored"] is True
+    assert summary["prepared_request"]["http_call_executed"] is False
+
+    assert "<sandbox-subaccount-cpf-cnpj>" not in rendered_summary
+    assert "<sandbox-subaccount-email>" not in rendered_summary
+    assert "<sandbox-subaccount-mobile-phone>" not in rendered_summary
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
