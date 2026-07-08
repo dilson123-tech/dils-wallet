@@ -2920,3 +2920,86 @@ def test_subaccount_sanitized_fixture_safe_summary_exposes_no_secret_values():
     assert "<sandbox-subaccount-cpf-cnpj>" not in rendered_summary
     assert "<sandbox-subaccount-email>" not in rendered_summary
     assert "<sandbox-subaccount-mobile-phone>" not in rendered_summary
+
+
+def test_subaccount_response_sanitizer_contract_defines_safe_output_rules():
+    client = make_client()
+
+    contract = client.build_subaccount_response_sanitizer_contract()
+    summary = contract.safe_summary()
+
+    assert contract.contract_reference == (
+        "subaccount-response-sanitizer-contract-sandbox"
+    )
+    assert contract.sanitizer_reference == "subaccount-response-sanitizer-sandbox"
+    assert contract.raw_response_input_expected is True
+    assert contract.raw_response_stored is False
+    assert contract.raw_payload_stored is False
+    assert contract.raw_secret_values_retained is False
+    assert contract.sandbox_only is True
+    assert contract.production_blocked is True
+    assert contract.synthetic_contract_only is True
+    assert contract.can_create_subaccount is False
+    assert contract.can_send_http is False
+    assert contract.real_money is False
+    assert contract.http_call_executed is False
+    assert contract.future_result_marker == (
+        "ASAAS_SANDBOX_SUBACCOUNT_RESPONSE_SANITIZER_CONTRACT_READY"
+    )
+
+    assert summary["operation"] == "subaccount_response_sanitizer_contract"
+    assert summary["contract_reference"] == contract.contract_reference
+    assert summary["sanitizer_reference"] == contract.sanitizer_reference
+    assert summary["sanitized_fixture"]["operation"] == "subaccount_sanitized_fixture"
+    assert summary["raw_response_input_expected"] is True
+    assert summary["raw_response_stored"] is False
+    assert summary["raw_payload_stored"] is False
+    assert summary["raw_secret_values_retained"] is False
+    assert summary["masking_required"] is True
+    assert summary["secret_values_allowed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["next_step_required"] == (
+        "manual_subaccount_response_sanitizer_implementation_review"
+    )
+
+    for field_name in (
+        "api_key_present",
+        "wallet_id_present",
+        "account_id_present",
+        "onboarding_url_present",
+        "sensitive_response_values_masked",
+    ):
+        assert field_name in summary["safe_output_fields"]
+
+
+def test_subaccount_response_sanitizer_contract_blocks_raw_secret_storage():
+    client = make_client()
+
+    contract = client.build_subaccount_response_sanitizer_contract()
+    summary = contract.safe_summary()
+    rendered_summary = repr(summary)
+
+    for field_name in ("apiKey", "walletId", "id", "onboardingUrl"):
+        assert field_name in summary["sensitive_input_fields"]
+        assert field_name in summary["masked_output_fields"]
+        assert field_name in summary["blocked_storage_fields"]
+
+    assert "raw_response" in summary["blocked_storage_fields"]
+    assert "raw_payload" in summary["blocked_storage_fields"]
+    assert summary["raw_response_stored"] is False
+    assert summary["raw_payload_stored"] is False
+    assert summary["raw_secret_values_retained"] is False
+    assert summary["can_send_http"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+    assert "<sandbox-subaccount-cpf-cnpj>" not in rendered_summary
+    assert "<sandbox-subaccount-email>" not in rendered_summary
+    assert "<sandbox-subaccount-mobile-phone>" not in rendered_summary

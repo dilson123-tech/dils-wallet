@@ -359,6 +359,86 @@ class AsaasSandboxSubaccountSanitizedFixtureResult:
         }
 
 
+
+@dataclass(frozen=True)
+class AsaasSandboxSubaccountResponseSanitizerContractResult:
+    sanitized_fixture: AsaasSandboxSubaccountSanitizedFixtureResult
+    contract_reference: str = "subaccount-response-sanitizer-contract-sandbox"
+    sanitizer_reference: str = "subaccount-response-sanitizer-sandbox"
+    raw_response_input_expected: bool = True
+    raw_response_stored: bool = False
+    raw_payload_stored: bool = False
+    raw_secret_values_retained: bool = False
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    synthetic_contract_only: bool = True
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sensitive_input_fields: tuple[str, ...] = (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    )
+    safe_output_fields: tuple[str, ...] = (
+        "object",
+        "status",
+        "api_key_present",
+        "wallet_id_present",
+        "account_id_present",
+        "onboarding_url_present",
+        "sensitive_response_values_masked",
+    )
+    masked_output_fields: tuple[str, ...] = (
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    )
+    blocked_storage_fields: tuple[str, ...] = (
+        "raw_response",
+        "raw_payload",
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+    )
+    future_result_marker: str = (
+        "ASAAS_SANDBOX_SUBACCOUNT_RESPONSE_SANITIZER_CONTRACT_READY"
+    )
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_response_sanitizer_contract",
+            "contract_reference": self.contract_reference,
+            "sanitizer_reference": self.sanitizer_reference,
+            "sanitized_fixture": self.sanitized_fixture.safe_summary(),
+            "raw_response_input_expected": self.raw_response_input_expected,
+            "raw_response_stored": self.raw_response_stored,
+            "raw_payload_stored": self.raw_payload_stored,
+            "raw_secret_values_retained": self.raw_secret_values_retained,
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "synthetic_contract_only": self.synthetic_contract_only,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sensitive_input_fields": list(self.sensitive_input_fields),
+            "safe_output_fields": list(self.safe_output_fields),
+            "masked_output_fields": list(self.masked_output_fields),
+            "blocked_storage_fields": list(self.blocked_storage_fields),
+            "masking_required": True,
+            "secret_values_allowed": False,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": (
+                "manual_subaccount_response_sanitizer_implementation_review"
+            ),
+        }
+
 @dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
@@ -2256,6 +2336,15 @@ class AsaasSandboxClient:
 
         return AsaasSandboxSubaccountSanitizedFixtureResult(
             builder_guard=builder_guard,
+        )
+
+    def build_subaccount_response_sanitizer_contract(
+        self,
+    ) -> AsaasSandboxSubaccountResponseSanitizerContractResult:
+        sanitized_fixture = self.build_subaccount_sanitized_fixture()
+
+        return AsaasSandboxSubaccountResponseSanitizerContractResult(
+            sanitized_fixture=sanitized_fixture,
         )
 
     def gate_first_customer_http_call(
