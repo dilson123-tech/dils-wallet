@@ -3095,3 +3095,79 @@ def test_subaccount_response_sanitizer_implementation_exposes_no_raw_values():
     assert "this-raw-field-must-not-be-exposed" not in rendered_summary
     assert "sandbox-api-key-for-test-only" not in rendered_summary
     assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+
+
+def test_subaccount_manual_execution_gate_records_valid_manual_phrase_without_http():
+    client = make_client()
+
+    gate = client.gate_subaccount_manual_execution(
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+    summary = gate.safe_summary()
+
+    assert gate.gate_reference == "subaccount-manual-execution-gate-sandbox"
+    assert gate.target_method == "POST"
+    assert gate.target_path == "/accounts"
+    assert gate.manual_authorization_registered is True
+    assert gate.manual_authorization_valid is True
+    assert gate.gate_defined is True
+    assert gate.gate_allows_http_execution is False
+    assert gate.execution_enabled is False
+    assert gate.sandbox_only is True
+    assert gate.production_blocked is True
+    assert gate.synthetic_input_only is True
+    assert gate.can_create_subaccount is False
+    assert gate.can_send_http is False
+    assert gate.network_call_allowed is False
+    assert gate.real_money is False
+    assert gate.http_call_executed is False
+
+    assert summary["operation"] == "subaccount_manual_execution_gate"
+    assert summary["response_sanitizer_result"]["operation"] == (
+        "subaccount_response_sanitizer_implementation"
+    )
+    assert summary["manual_authorization_registered"] is True
+    assert summary["manual_authorization_valid"] is True
+    assert summary["gate_allows_http_execution"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["future_result_marker"] == (
+        "ASAAS_SANDBOX_SUBACCOUNT_MANUAL_EXECUTION_GATE_READY"
+    )
+    assert summary["next_step_required"] == (
+        "manual_subaccount_first_post_runbook_review"
+    )
+
+
+def test_subaccount_manual_execution_gate_blocks_invalid_phrase_and_raw_values():
+    client = make_client()
+
+    gate = client.gate_subaccount_manual_execution(
+        manual_authorization_phrase="EXECUTAR POST SANDBOX SUBCONTA AGORA",
+    )
+    summary = gate.safe_summary()
+    rendered_summary = repr(summary)
+
+    assert summary["manual_authorization_registered"] is False
+    assert summary["manual_authorization_valid"] is False
+    assert summary["gate_allows_http_execution"] is False
+    assert summary["execution_enabled"] is False
+    assert summary["can_send_http"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["approval_checklist"]["http_execution_still_blocked"] is True
+    assert summary["approval_checklist"]["secret_exposure_blocked"] is True
+
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_subaccount_for_test_only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
