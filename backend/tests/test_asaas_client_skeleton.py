@@ -3003,3 +3003,95 @@ def test_subaccount_response_sanitizer_contract_blocks_raw_secret_storage():
     assert "<sandbox-subaccount-cpf-cnpj>" not in rendered_summary
     assert "<sandbox-subaccount-email>" not in rendered_summary
     assert "<sandbox-subaccount-mobile-phone>" not in rendered_summary
+
+
+def test_subaccount_response_sanitizer_implementation_returns_safe_output():
+    client = make_client()
+
+    result = client.sanitize_subaccount_response(
+        {
+            "object": "account",
+            "id": "acct_subaccount_for_test_only",
+            "apiKey": "subaccount-api-key-for-test-only",
+            "walletId": "wallet-id-for-test-only",
+            "onboardingUrl": "https://sandbox.asaas.com/onboarding/test-only",
+            "status": "sandbox_fixture_only",
+        }
+    )
+    summary = result.safe_summary()
+    sanitized_output = summary["sanitized_output"]
+
+    assert result.implementation_reference == (
+        "subaccount-response-sanitizer-implementation-sandbox"
+    )
+    assert result.sanitizer_reference == "subaccount-response-sanitizer-sandbox"
+    assert result.raw_response_input_received is True
+    assert result.raw_response_stored is False
+    assert result.raw_payload_stored is False
+    assert result.raw_secret_values_retained is False
+    assert result.sanitizer_implemented is True
+    assert result.sandbox_only is True
+    assert result.production_blocked is True
+    assert result.synthetic_input_only is True
+    assert result.can_create_subaccount is False
+    assert result.can_send_http is False
+    assert result.real_money is False
+    assert result.http_call_executed is False
+
+    assert summary["operation"] == "subaccount_response_sanitizer_implementation"
+    assert summary["contract"]["operation"] == (
+        "subaccount_response_sanitizer_contract"
+    )
+    assert summary["masking_required"] is True
+    assert summary["secret_values_allowed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["next_step_required"] == (
+        "manual_subaccount_response_sanitizer_execution_review"
+    )
+    assert summary["future_result_marker"] == (
+        "ASAAS_SANDBOX_SUBACCOUNT_RESPONSE_SANITIZER_IMPLEMENTATION_READY"
+    )
+
+    assert sanitized_output == {
+        "object": "account",
+        "status": "sandbox_fixture_only",
+        "api_key_present": True,
+        "wallet_id_present": True,
+        "account_id_present": True,
+        "onboarding_url_present": True,
+        "sensitive_response_values_masked": True,
+    }
+
+
+def test_subaccount_response_sanitizer_implementation_exposes_no_raw_values():
+    client = make_client()
+
+    result = client.sanitize_subaccount_response(
+        {
+            "object": "account",
+            "id": "acct_subaccount_for_test_only",
+            "apiKey": "subaccount-api-key-for-test-only",
+            "walletId": "wallet-id-for-test-only",
+            "onboardingUrl": "https://sandbox.asaas.com/onboarding/test-only",
+            "status": "sandbox_fixture_only",
+            "ignoredRawField": "this-raw-field-must-not-be-exposed",
+        }
+    )
+    summary = result.safe_summary()
+    rendered_summary = repr(summary)
+
+    assert summary["raw_response_stored"] is False
+    assert summary["raw_payload_stored"] is False
+    assert summary["raw_secret_values_retained"] is False
+    assert summary["can_send_http"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_subaccount_for_test_only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+    assert "this-raw-field-must-not-be-exposed" not in rendered_summary
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
