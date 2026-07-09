@@ -492,6 +492,79 @@ class AsaasSandboxSubaccountResponseSanitizerImplementationResult:
             ),
         }
 
+
+@dataclass(frozen=True)
+class AsaasSandboxSubaccountManualExecutionGateResult:
+    response_sanitizer_result: (
+        AsaasSandboxSubaccountResponseSanitizerImplementationResult
+    )
+    gate_reference: str = "subaccount-manual-execution-gate-sandbox"
+    target_method: str = "POST"
+    target_path: str = "/accounts"
+    manual_authorization_registered: bool = False
+    manual_authorization_valid: bool = False
+    gate_defined: bool = True
+    gate_allows_http_execution: bool = False
+    execution_enabled: bool = False
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    synthetic_input_only: bool = True
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    approval_checklist: dict[str, Any] = field(
+        default_factory=lambda: {
+            "sandbox_target_confirmed": True,
+            "target_method": "POST",
+            "target_path": "/accounts",
+            "production_blocked": True,
+            "real_money_disabled": True,
+            "payload_builder_guard_required": True,
+            "response_sanitizer_required": True,
+            "raw_response_exposure_blocked": True,
+            "raw_payload_exposure_blocked": True,
+            "secret_exposure_blocked": True,
+            "manual_phrase_required": True,
+            "http_execution_still_blocked": True,
+            "final_operator_confirmation_required": True,
+        }
+    )
+    future_result_marker: str = (
+        "ASAAS_SANDBOX_SUBACCOUNT_MANUAL_EXECUTION_GATE_READY"
+    )
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_manual_execution_gate",
+            "gate_reference": self.gate_reference,
+            "target_method": self.target_method,
+            "target_path": self.target_path,
+            "response_sanitizer_result": (
+                self.response_sanitizer_result.safe_summary()
+            ),
+            "approval_checklist": self.approval_checklist,
+            "manual_authorization_registered": (
+                self.manual_authorization_registered
+            ),
+            "manual_authorization_valid": self.manual_authorization_valid,
+            "gate_defined": self.gate_defined,
+            "gate_allows_http_execution": self.gate_allows_http_execution,
+            "execution_enabled": self.execution_enabled,
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "synthetic_input_only": self.synthetic_input_only,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": "manual_subaccount_first_post_runbook_review",
+        }
+
 @dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
@@ -2419,6 +2492,35 @@ class AsaasSandboxClient:
         return AsaasSandboxSubaccountResponseSanitizerImplementationResult(
             contract=contract,
             sanitized_output=sanitized_output,
+        )
+
+
+    def gate_subaccount_manual_execution(
+        self,
+        *,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasSandboxSubaccountManualExecutionGateResult:
+        sanitized_fixture = self.build_subaccount_sanitized_fixture()
+        response_sanitizer_result = self.sanitize_subaccount_response(
+            sanitized_fixture.sanitized_response_fixture
+        )
+        manual_authorization_registered = (
+            manual_authorization_phrase.strip()
+            == ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE
+        )
+
+        return AsaasSandboxSubaccountManualExecutionGateResult(
+            response_sanitizer_result=response_sanitizer_result,
+            manual_authorization_registered=manual_authorization_registered,
+            manual_authorization_valid=manual_authorization_registered,
+            sandbox_only=response_sanitizer_result.sandbox_only,
+            production_blocked=response_sanitizer_result.production_blocked,
+            synthetic_input_only=response_sanitizer_result.synthetic_input_only,
+            can_create_subaccount=False,
+            can_send_http=False,
+            network_call_allowed=False,
+            real_money=response_sanitizer_result.real_money,
+            http_call_executed=response_sanitizer_result.http_call_executed,
         )
 
     def gate_first_customer_http_call(
