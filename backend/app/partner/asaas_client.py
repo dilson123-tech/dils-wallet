@@ -565,6 +565,157 @@ class AsaasSandboxSubaccountManualExecutionGateResult:
             "next_step_required": "manual_subaccount_first_post_runbook_review",
         }
 
+
+@dataclass(frozen=True)
+class AsaasSandboxSubaccountFirstControlledAttemptPreflightResult:
+    manual_execution_gate: AsaasSandboxSubaccountManualExecutionGateResult
+    preflight_reference: str = (
+        "subaccount-first-controlled-attempt-preflight-sandbox"
+    )
+    target_environment: str = "sandbox"
+    target_method: str = "POST"
+    target_path: str = "/accounts"
+    preflight_checklist: dict[str, Any] = field(
+        default_factory=lambda: {
+            "sandbox_target_confirmed": True,
+            "target_method": "POST",
+            "target_path": "/accounts",
+            "requires_manual_execution_gate": True,
+            "requires_manual_operator_review": True,
+            "requires_sandbox_base_url_confirmation": True,
+            "requires_environment_secret_loading_only": True,
+            "requires_no_production_credentials": True,
+            "requires_no_real_money": True,
+            "requires_payload_builder_guard": True,
+            "requires_response_sanitizer": True,
+            "requires_redacted_logs_only": True,
+            "requires_single_controlled_attempt_policy": True,
+            "requires_no_retry_loop": True,
+            "requires_manual_stop_on_unexpected_response": True,
+            "requires_no_raw_payload_storage": True,
+            "requires_no_raw_response_storage": True,
+            "requires_no_request_body_logging": True,
+            "requires_sanitized_attempt_record": True,
+            "current_preflight_is_non_executing": True,
+        }
+    )
+    required_operator_confirmations: tuple[str, ...] = (
+        "confirm_main_branch_clean_and_tagged",
+        "confirm_sandbox_environment_only",
+        "confirm_no_production_base_url_or_credentials",
+        "confirm_no_real_money",
+        "confirm_no_secret_in_chat_or_docs",
+        "confirm_payload_reviewed_locally",
+        "confirm_response_sanitizer_enabled",
+        "confirm_manual_execution_gate_reviewed",
+        "confirm_single_controlled_attempt_only",
+        "confirm_no_retry_loop",
+        "confirm_manual_stop_on_unexpected_response",
+        "confirm_sanitized_attempt_record_required",
+    )
+    preflight_defined: bool = True
+    manual_execution_gate_valid: bool = False
+    first_controlled_attempt_preflight_valid: bool = False
+    ready_for_first_controlled_attempt_review: bool = False
+    manual_operator_review_required: bool = True
+    sandbox_base_url_confirmation_required: bool = True
+    environment_secret_loading_only_required: bool = True
+    no_production_credentials_required: bool = True
+    no_real_money_required: bool = True
+    payload_builder_guard_required: bool = True
+    response_sanitizer_required: bool = True
+    redacted_logs_only_required: bool = True
+    single_controlled_attempt_policy_required: bool = True
+    no_retry_loop_required: bool = True
+    manual_stop_on_unexpected_response_required: bool = True
+    sanitized_attempt_record_required: bool = True
+    raw_payload_storage_allowed: bool = False
+    raw_response_storage_allowed: bool = False
+    request_body_logging_allowed: bool = False
+    first_controlled_attempt_allows_http_execution: bool = False
+    first_controlled_attempt_executed: bool = False
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+    production_blocked: bool = True
+    future_result_marker: str = (
+        "ASAAS_SANDBOX_SUBACCOUNT_FIRST_CONTROLLED_ATTEMPT_PREFLIGHT_READY"
+    )
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_first_controlled_attempt_preflight",
+            "preflight_reference": self.preflight_reference,
+            "target_environment": self.target_environment,
+            "target_method": self.target_method,
+            "target_path": self.target_path,
+            "manual_execution_gate": self.manual_execution_gate.safe_summary(),
+            "preflight_checklist": self.preflight_checklist,
+            "required_operator_confirmations": list(
+                self.required_operator_confirmations
+            ),
+            "preflight_defined": self.preflight_defined,
+            "manual_execution_gate_valid": self.manual_execution_gate_valid,
+            "first_controlled_attempt_preflight_valid": (
+                self.first_controlled_attempt_preflight_valid
+            ),
+            "ready_for_first_controlled_attempt_review": (
+                self.ready_for_first_controlled_attempt_review
+            ),
+            "manual_operator_review_required": (
+                self.manual_operator_review_required
+            ),
+            "sandbox_base_url_confirmation_required": (
+                self.sandbox_base_url_confirmation_required
+            ),
+            "environment_secret_loading_only_required": (
+                self.environment_secret_loading_only_required
+            ),
+            "no_production_credentials_required": (
+                self.no_production_credentials_required
+            ),
+            "no_real_money_required": self.no_real_money_required,
+            "payload_builder_guard_required": (
+                self.payload_builder_guard_required
+            ),
+            "response_sanitizer_required": self.response_sanitizer_required,
+            "redacted_logs_only_required": self.redacted_logs_only_required,
+            "single_controlled_attempt_policy_required": (
+                self.single_controlled_attempt_policy_required
+            ),
+            "no_retry_loop_required": self.no_retry_loop_required,
+            "manual_stop_on_unexpected_response_required": (
+                self.manual_stop_on_unexpected_response_required
+            ),
+            "sanitized_attempt_record_required": (
+                self.sanitized_attempt_record_required
+            ),
+            "raw_payload_storage_allowed": self.raw_payload_storage_allowed,
+            "raw_response_storage_allowed": self.raw_response_storage_allowed,
+            "request_body_logging_allowed": self.request_body_logging_allowed,
+            "first_controlled_attempt_allows_http_execution": (
+                self.first_controlled_attempt_allows_http_execution
+            ),
+            "first_controlled_attempt_executed": (
+                self.first_controlled_attempt_executed
+            ),
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "production_blocked": self.production_blocked,
+            "ready_for_http_execution": False,
+            "future_result_marker": self.future_result_marker,
+            "next_step_required": (
+                "manual_subaccount_first_controlled_attempt_operator_review"
+            ),
+        }
+
 @dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
@@ -2521,6 +2672,33 @@ class AsaasSandboxClient:
             network_call_allowed=False,
             real_money=response_sanitizer_result.real_money,
             http_call_executed=response_sanitizer_result.http_call_executed,
+        )
+
+
+    def build_subaccount_first_controlled_attempt_preflight(
+        self,
+        *,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasSandboxSubaccountFirstControlledAttemptPreflightResult:
+        manual_execution_gate = self.gate_subaccount_manual_execution(
+            manual_authorization_phrase=manual_authorization_phrase,
+        )
+        manual_execution_gate_valid = (
+            manual_execution_gate.manual_authorization_valid
+        )
+
+        return AsaasSandboxSubaccountFirstControlledAttemptPreflightResult(
+            manual_execution_gate=manual_execution_gate,
+            manual_execution_gate_valid=manual_execution_gate_valid,
+            first_controlled_attempt_preflight_valid=manual_execution_gate_valid,
+            ready_for_first_controlled_attempt_review=manual_execution_gate_valid,
+            can_create_subaccount=False,
+            can_send_http=False,
+            network_call_allowed=False,
+            real_money=manual_execution_gate.real_money,
+            http_call_executed=manual_execution_gate.http_call_executed,
+            sandbox_only=manual_execution_gate.sandbox_only,
+            production_blocked=manual_execution_gate.production_blocked,
         )
 
     def gate_first_customer_http_call(
