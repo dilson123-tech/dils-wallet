@@ -3171,3 +3171,108 @@ def test_subaccount_manual_execution_gate_blocks_invalid_phrase_and_raw_values()
     assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
     assert "sandbox-api-key-for-test-only" not in rendered_summary
     assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+
+def test_subaccount_first_controlled_attempt_preflight_validates_manual_gate_without_http():
+    client = make_client()
+
+    preflight = client.build_subaccount_first_controlled_attempt_preflight(
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+    summary = preflight.safe_summary()
+
+    assert preflight.preflight_reference == (
+        "subaccount-first-controlled-attempt-preflight-sandbox"
+    )
+    assert preflight.target_environment == "sandbox"
+    assert preflight.target_method == "POST"
+    assert preflight.target_path == "/accounts"
+    assert preflight.preflight_defined is True
+    assert preflight.manual_execution_gate_valid is True
+    assert preflight.first_controlled_attempt_preflight_valid is True
+    assert preflight.ready_for_first_controlled_attempt_review is True
+    assert preflight.manual_operator_review_required is True
+    assert preflight.sandbox_base_url_confirmation_required is True
+    assert preflight.environment_secret_loading_only_required is True
+    assert preflight.no_production_credentials_required is True
+    assert preflight.no_real_money_required is True
+    assert preflight.payload_builder_guard_required is True
+    assert preflight.response_sanitizer_required is True
+    assert preflight.redacted_logs_only_required is True
+    assert preflight.single_controlled_attempt_policy_required is True
+    assert preflight.no_retry_loop_required is True
+    assert preflight.manual_stop_on_unexpected_response_required is True
+    assert preflight.sanitized_attempt_record_required is True
+    assert preflight.raw_payload_storage_allowed is False
+    assert preflight.raw_response_storage_allowed is False
+    assert preflight.request_body_logging_allowed is False
+    assert preflight.first_controlled_attempt_allows_http_execution is False
+    assert preflight.first_controlled_attempt_executed is False
+    assert preflight.can_create_subaccount is False
+    assert preflight.can_send_http is False
+    assert preflight.network_call_allowed is False
+    assert preflight.real_money is False
+    assert preflight.http_call_executed is False
+    assert preflight.sandbox_only is True
+    assert preflight.production_blocked is True
+
+    assert summary["operation"] == "subaccount_first_controlled_attempt_preflight"
+    assert summary["manual_execution_gate"]["operation"] == (
+        "subaccount_manual_execution_gate"
+    )
+    assert summary["manual_execution_gate_valid"] is True
+    assert summary["first_controlled_attempt_preflight_valid"] is True
+    assert summary["ready_for_first_controlled_attempt_review"] is True
+    assert summary["can_create_subaccount"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["future_result_marker"] == (
+        "ASAAS_SANDBOX_SUBACCOUNT_FIRST_CONTROLLED_ATTEMPT_PREFLIGHT_READY"
+    )
+    assert summary["next_step_required"] == (
+        "manual_subaccount_first_controlled_attempt_operator_review"
+    )
+
+    for confirmation in (
+        "confirm_main_branch_clean_and_tagged",
+        "confirm_sandbox_environment_only",
+        "confirm_no_secret_in_chat_or_docs",
+        "confirm_single_controlled_attempt_only",
+    ):
+        assert confirmation in summary["required_operator_confirmations"]
+
+
+def test_subaccount_first_controlled_attempt_preflight_blocks_invalid_phrase_and_raw_values():
+    client = make_client()
+
+    preflight = client.build_subaccount_first_controlled_attempt_preflight(
+        manual_authorization_phrase="EXECUTAR POST SANDBOX SUBCONTA AGORA",
+    )
+    summary = preflight.safe_summary()
+    rendered_summary = repr(summary)
+
+    assert summary["manual_execution_gate_valid"] is False
+    assert summary["first_controlled_attempt_preflight_valid"] is False
+    assert summary["ready_for_first_controlled_attempt_review"] is False
+    assert summary["first_controlled_attempt_allows_http_execution"] is False
+    assert summary["first_controlled_attempt_executed"] is False
+    assert summary["raw_payload_storage_allowed"] is False
+    assert summary["raw_response_storage_allowed"] is False
+    assert summary["request_body_logging_allowed"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["real_money"] is False
+    assert summary["http_call_executed"] is False
+    assert summary["preflight_checklist"]["current_preflight_is_non_executing"] is True
+    assert summary["preflight_checklist"]["requires_no_retry_loop"] is True
+    assert summary["preflight_checklist"]["requires_no_raw_response_storage"] is True
+
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_subaccount_for_test_only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+    assert "sandbox-api-key-for-test-only" not in rendered_summary
+    assert "sandbox-webhook-token-for-test-only" not in rendered_summary
