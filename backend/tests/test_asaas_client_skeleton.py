@@ -3340,3 +3340,224 @@ def test_subaccount_first_controlled_attempt_record_contract_blocks_invalid_gate
     assert summary["can_send_http"] is False
     assert summary["network_call_allowed"] is False
     assert summary["http_call_executed"] is False
+
+
+def test_subaccount_first_controlled_post_attempt_stays_blocked_without_final_confirmation():
+    client = make_client()
+
+    attempt = client.execute_subaccount_first_controlled_post_attempt(
+        name="Subconta Teste Aurea Gold",
+        email="subconta.teste@example.com",
+        cpf_cnpj="19540550000121",
+        mobile_phone="47999999999",
+        income_value=Decimal("1000.00"),
+        address="Rua Teste",
+        address_number="123",
+        province="Centro",
+        postal_code="89200000",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        final_operator_confirmation=False,
+    )
+    summary = attempt.safe_summary()
+
+    assert attempt.attempt_reference == (
+        "subaccount-first-controlled-post-attempt-sandbox"
+    )
+    assert attempt.manual_authorization_registered is True
+    assert attempt.final_operator_confirmation_registered is False
+    assert attempt.can_create_subaccount is False
+    assert attempt.can_send_http is False
+    assert attempt.network_call_allowed is False
+    assert attempt.http_call_executed is False
+    assert attempt.sanitized_attempt_record_created is False
+    assert summary["ready_for_http_execution"] is False
+    assert summary["prepared_request"]["json_payload_values_masked"] is True
+
+    rendered_summary = repr(summary)
+    assert "19540550000121" not in rendered_summary
+    assert "subconta.teste@example.com" not in rendered_summary
+    assert "47999999999" not in rendered_summary
+    assert "Rua Teste" not in rendered_summary
+
+
+def test_subaccount_first_controlled_post_attempt_uses_injected_transport_once_and_sanitizes_response():
+    client = make_client()
+    calls = []
+
+    def fake_http_post(request):
+        calls.append(request)
+        return 200, {
+            "object": "account",
+            "id": "acct_subaccount_for_test_only",
+            "apiKey": "subaccount-api-key-for-test-only",
+            "walletId": "wallet-id-for-test-only",
+            "onboardingUrl": "https://sandbox.asaas.com/onboarding/test-only",
+        }
+
+    attempt = client.execute_subaccount_first_controlled_post_attempt(
+        name="Subconta Teste Aurea Gold",
+        email="subconta.teste@example.com",
+        cpf_cnpj="19540550000121",
+        mobile_phone="47999999999",
+        income_value=Decimal("1000.00"),
+        address="Rua Teste",
+        address_number="123",
+        province="Centro",
+        postal_code="89200000",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        final_operator_confirmation=True,
+        http_post=fake_http_post,
+    )
+    summary = attempt.safe_summary()
+
+    assert len(calls) == 1
+    assert calls[0].method == "POST"
+    assert calls[0].url.endswith("/accounts")
+    assert calls[0].operation == (
+        "create_subaccount_first_controlled_post_attempt"
+    )
+    assert calls[0].json["cpfCnpj"] == "19540550000121"
+
+    assert attempt.can_create_subaccount is True
+    assert attempt.can_send_http is True
+    assert attempt.network_call_allowed is True
+    assert attempt.http_call_executed is True
+    assert attempt.retry_loop_used is False
+    assert attempt.raw_payload_stored is False
+    assert attempt.raw_response_stored is False
+    assert attempt.raw_error_stored is False
+    assert attempt.raw_headers_stored is False
+    assert attempt.production_used is False
+    assert attempt.real_money is False
+    assert attempt.sanitized_attempt_record_created is True
+
+    assert summary["http_status_code"] == 200
+    assert summary["subaccount_created"] is True
+    assert summary["object"] == "account"
+    assert summary["api_key_present"] is True
+    assert summary["wallet_id_present"] is True
+    assert summary["account_id_present"] is True
+    assert summary["onboarding_url_present"] is True
+    assert summary["sensitive_response_values_masked"] is True
+    assert summary["next_step_required"] == (
+        "validate_subaccount_permissions_and_onboarding_url"
+    )
+
+    rendered_summary = repr(summary)
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_subaccount_for_test_only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+    assert "19540550000121" not in rendered_summary
+    assert "subconta.teste@example.com" not in rendered_summary
+
+
+def test_subaccount_first_controlled_post_attempt_blocks_invalid_phrase_even_with_transport():
+    client = make_client()
+    calls = []
+
+    def fake_http_post(request):
+        calls.append(request)
+        return 200, {"object": "account"}
+
+    attempt = client.execute_subaccount_first_controlled_post_attempt(
+        name="Subconta Teste Aurea Gold",
+        email="subconta.teste@example.com",
+        cpf_cnpj="19540550000121",
+        mobile_phone="47999999999",
+        income_value=Decimal("1000.00"),
+        address="Rua Teste",
+        address_number="123",
+        province="Centro",
+        postal_code="89200000",
+        manual_authorization_phrase="EXECUTAR POST SANDBOX SUBCONTA AGORA",
+        final_operator_confirmation=True,
+        http_post=fake_http_post,
+    )
+
+    assert calls == []
+    assert attempt.manual_authorization_registered is False
+    assert attempt.can_create_subaccount is False
+    assert attempt.can_send_http is False
+    assert attempt.network_call_allowed is False
+    assert attempt.http_call_executed is False
+
+
+def test_subaccount_first_controlled_post_attempt_does_not_mark_error_response_as_created():
+    client = make_client()
+    calls = []
+
+    def fake_http_post(request):
+        calls.append(request)
+        return 400, {
+            "object": "account",
+            "id": "unexpected-id-for-error-test-only",
+        }
+
+    attempt = client.execute_subaccount_first_controlled_post_attempt(
+        name="Subconta Teste Aurea Gold",
+        email="subconta.teste@example.com",
+        cpf_cnpj="19540550000121",
+        mobile_phone="47999999999",
+        income_value=Decimal("1000.00"),
+        address="Rua Teste",
+        address_number="123",
+        province="Centro",
+        postal_code="89200000",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        final_operator_confirmation=True,
+        http_post=fake_http_post,
+    )
+    summary = attempt.safe_summary()
+
+    assert len(calls) == 1
+    assert attempt.http_call_executed is True
+    assert attempt.http_status_code == 400
+    assert attempt.subaccount_created is False
+    assert attempt.can_create_subaccount is False
+    assert summary["subaccount_created"] is False
+    assert summary["next_step_required"] == (
+        "review_sanitized_provider_error_and_stop"
+    )
+    assert "unexpected-id-for-error-test-only" not in repr(summary)
+
+
+def test_subaccount_first_controlled_post_attempt_sanitizes_transport_exception():
+    client = make_client()
+    calls = []
+
+    def fake_http_post(request):
+        calls.append(request)
+        raise RuntimeError(
+            "raw transport failure with access_token and secret test value"
+        )
+
+    attempt = client.execute_subaccount_first_controlled_post_attempt(
+        name="Subconta Teste Aurea Gold",
+        email="subconta.teste@example.com",
+        cpf_cnpj="19540550000121",
+        mobile_phone="47999999999",
+        income_value=Decimal("1000.00"),
+        address="Rua Teste",
+        address_number="123",
+        province="Centro",
+        postal_code="89200000",
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+        final_operator_confirmation=True,
+        http_post=fake_http_post,
+    )
+    summary = attempt.safe_summary()
+
+    assert len(calls) == 1
+    assert attempt.http_call_executed is True
+    assert attempt.http_status_code is None
+    assert attempt.subaccount_created is False
+    assert attempt.raw_error_stored is False
+    assert attempt.sanitized_attempt_record_created is True
+    assert summary["next_step_required"] == (
+        "review_sanitized_transport_error_and_stop"
+    )
+
+    rendered_summary = repr(summary)
+    assert "raw transport failure" not in rendered_summary
+    assert "secret test value" not in rendered_summary

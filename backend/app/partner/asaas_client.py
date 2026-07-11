@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from app.partner.asaas_config import (
+    ASAAS_SANDBOX_BASE_URL,
     ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
     AsaasSandboxConfig,
     load_asaas_sandbox_config,
@@ -802,6 +803,107 @@ class AsaasSandboxSubaccountFirstControlledAttemptRecordContractResult:
             "next_step_required": (
                 "manual_first_controlled_sandbox_attempt_decision"
             ),
+        }
+
+
+@dataclass(frozen=True)
+class AsaasSandboxSubaccountFirstControlledPostAttemptResult:
+    record_contract: AsaasSandboxSubaccountFirstControlledAttemptRecordContractResult
+    prepared_request: AsaasPreparedRequest
+    attempt_reference: str = (
+        "subaccount-first-controlled-post-attempt-sandbox"
+    )
+    manual_authorization_registered: bool = False
+    final_operator_confirmation_registered: bool = False
+    attempt_policy: dict[str, Any] = field(
+        default_factory=lambda: {
+            "single_attempt_only": True,
+            "retry_loop_enabled": False,
+            "sandbox_only": True,
+            "production_blocked": True,
+            "real_money": False,
+            "raw_payload_storage_allowed": False,
+            "raw_response_storage_allowed": False,
+            "raw_error_storage_allowed": False,
+            "raw_headers_storage_allowed": False,
+            "external_http_requires_injected_transport": True,
+        }
+    )
+    http_status_code: int | None = None
+    subaccount_created: bool = False
+    object: str | None = None
+    api_key_present: bool = False
+    wallet_id_present: bool = False
+    account_id_present: bool = False
+    onboarding_url_present: bool = False
+    sensitive_response_values_masked: bool = True
+    raw_payload_stored: bool = False
+    raw_response_stored: bool = False
+    raw_error_stored: bool = False
+    raw_headers_stored: bool = False
+    production_used: bool = False
+    real_money: bool = False
+    retry_loop_used: bool = False
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    http_call_executed: bool = False
+    sanitized_attempt_record_created: bool = False
+    next_step_required: str = "manual_controlled_sandbox_post_execution"
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "subaccount_first_controlled_post_attempt",
+            "attempt_reference": self.attempt_reference,
+            "record_contract": self.record_contract.safe_summary(),
+            "prepared_request": {
+                "method": self.prepared_request.method,
+                "url": self.prepared_request.url,
+                "operation": self.prepared_request.operation,
+                "headers_configured": self.prepared_request.headers_configured,
+                "json_payload_stored": self.prepared_request.json is not None,
+                "json_payload_values_masked": True,
+                "real_money": self.prepared_request.real_money,
+                "http_call_executed": self.prepared_request.http_call_executed,
+                "raw": self.prepared_request.raw,
+            },
+            "manual_authorization_registered": (
+                self.manual_authorization_registered
+            ),
+            "final_operator_confirmation_registered": (
+                self.final_operator_confirmation_registered
+            ),
+            "attempt_policy": self.attempt_policy,
+            "http_status_code": self.http_status_code,
+            "subaccount_created": self.subaccount_created,
+            "object": self.object,
+            "api_key_present": self.api_key_present,
+            "wallet_id_present": self.wallet_id_present,
+            "account_id_present": self.account_id_present,
+            "onboarding_url_present": self.onboarding_url_present,
+            "sensitive_response_values_masked": (
+                self.sensitive_response_values_masked
+            ),
+            "raw_payload_stored": self.raw_payload_stored,
+            "raw_response_stored": self.raw_response_stored,
+            "raw_error_stored": self.raw_error_stored,
+            "raw_headers_stored": self.raw_headers_stored,
+            "production_used": self.production_used,
+            "real_money": self.real_money,
+            "retry_loop_used": self.retry_loop_used,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "http_call_executed": self.http_call_executed,
+            "sanitized_attempt_record_created": (
+                self.sanitized_attempt_record_created
+            ),
+            "ready_for_http_execution": (
+                self.can_send_http
+                and self.network_call_allowed
+                and not self.http_call_executed
+            ),
+            "next_step_required": self.next_step_required,
         }
 
 
@@ -2812,6 +2914,144 @@ class AsaasSandboxClient:
             http_call_executed=False,
             sandbox_only=preflight.sandbox_only,
         )
+
+
+    def execute_subaccount_first_controlled_post_attempt(
+        self,
+        *,
+        name: str,
+        email: str,
+        cpf_cnpj: str,
+        mobile_phone: str,
+        income_value: Decimal,
+        address: str,
+        address_number: str,
+        province: str,
+        postal_code: str,
+        manual_authorization_phrase: str = "",
+        final_operator_confirmation: bool = False,
+        http_post: Callable[
+            [AsaasPreparedRequest],
+            tuple[int, dict[str, Any]],
+        ] | None = None,
+    ) -> AsaasSandboxSubaccountFirstControlledPostAttemptResult:
+        record_contract = self.build_subaccount_first_controlled_attempt_record_contract(
+            manual_authorization_phrase=manual_authorization_phrase,
+        )
+        manual_authorization_registered = (
+            manual_authorization_phrase.strip()
+            == ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE
+        )
+        target_allowed = (
+            self.config.env == "sandbox"
+            and self.base_url == ASAAS_SANDBOX_BASE_URL.rstrip("/")
+            and record_contract.record_contract_valid
+            and manual_authorization_registered
+            and final_operator_confirmation
+        )
+        payload = {
+            "name": name,
+            "email": email,
+            "cpfCnpj": cpf_cnpj,
+            "mobilePhone": mobile_phone,
+            "incomeValue": float(income_value),
+            "address": address,
+            "addressNumber": address_number,
+            "province": province,
+            "postalCode": postal_code,
+        }
+        executable_request = self._prepare(
+            method="POST",
+            path="/accounts",
+            operation="create_subaccount_first_controlled_post_attempt",
+            json=payload,
+        )
+        masked_request = self._prepare(
+            method="POST",
+            path="/accounts",
+            operation="create_subaccount_first_controlled_post_attempt",
+            json={
+                "name": "<masked>",
+                "email": "<masked>",
+                "cpfCnpj": "<masked>",
+                "mobilePhone": "<masked>",
+                "incomeValue": "<masked>",
+                "address": "<masked>",
+                "addressNumber": "<masked>",
+                "province": "<masked>",
+                "postalCode": "<masked>",
+            },
+        )
+        can_send_http = bool(
+            target_allowed
+            and executable_request.headers_configured
+            and http_post is not None
+        )
+
+        if not can_send_http:
+            return AsaasSandboxSubaccountFirstControlledPostAttemptResult(
+                record_contract=record_contract,
+                prepared_request=masked_request,
+                manual_authorization_registered=manual_authorization_registered,
+                final_operator_confirmation_registered=final_operator_confirmation,
+                can_create_subaccount=False,
+                can_send_http=False,
+                network_call_allowed=False,
+                http_call_executed=False,
+                sanitized_attempt_record_created=False,
+            )
+
+        try:
+            http_status_code, raw_response = http_post(executable_request)
+        except Exception:
+            return AsaasSandboxSubaccountFirstControlledPostAttemptResult(
+                record_contract=record_contract,
+                prepared_request=masked_request,
+                manual_authorization_registered=manual_authorization_registered,
+                final_operator_confirmation_registered=final_operator_confirmation,
+                http_status_code=None,
+                can_create_subaccount=False,
+                can_send_http=True,
+                network_call_allowed=True,
+                http_call_executed=True,
+                sanitized_attempt_record_created=True,
+                next_step_required="review_sanitized_transport_error_and_stop",
+            )
+
+        sanitized = self.sanitize_subaccount_response(raw_response)
+        sanitized_output = sanitized.sanitized_output
+        success_status = http_status_code in (200, 201)
+        subaccount_created = bool(
+            success_status and sanitized_output.get("account_id_present")
+        )
+        next_step_required = (
+            "validate_subaccount_permissions_and_onboarding_url"
+            if subaccount_created
+            else "review_sanitized_provider_error_and_stop"
+        )
+
+        return AsaasSandboxSubaccountFirstControlledPostAttemptResult(
+            record_contract=record_contract,
+            prepared_request=masked_request,
+            manual_authorization_registered=manual_authorization_registered,
+            final_operator_confirmation_registered=final_operator_confirmation,
+            http_status_code=http_status_code,
+            subaccount_created=subaccount_created,
+            object=sanitized_output.get("object"),
+            api_key_present=bool(sanitized_output.get("api_key_present")),
+            wallet_id_present=bool(sanitized_output.get("wallet_id_present")),
+            account_id_present=bool(sanitized_output.get("account_id_present")),
+            onboarding_url_present=bool(
+                sanitized_output.get("onboarding_url_present")
+            ),
+            can_create_subaccount=subaccount_created,
+            can_send_http=True,
+            network_call_allowed=True,
+            http_call_executed=True,
+            sanitized_attempt_record_created=True,
+            next_step_required=next_step_required,
+        )
+
 
     def gate_first_customer_http_call(
         self,
