@@ -3351,6 +3351,7 @@ def test_subaccount_first_controlled_post_attempt_stays_blocked_without_final_co
         cpf_cnpj="19540550000121",
         mobile_phone="47999999999",
         income_value=Decimal("1000.00"),
+        company_type="MEI",
         address="Rua Teste",
         address_number="123",
         province="Centro",
@@ -3400,6 +3401,7 @@ def test_subaccount_first_controlled_post_attempt_uses_injected_transport_once_a
         cpf_cnpj="19540550000121",
         mobile_phone="47999999999",
         income_value=Decimal("1000.00"),
+        company_type="MEI",
         address="Rua Teste",
         address_number="123",
         province="Centro",
@@ -3417,6 +3419,7 @@ def test_subaccount_first_controlled_post_attempt_uses_injected_transport_once_a
         "create_subaccount_first_controlled_post_attempt"
     )
     assert calls[0].json["cpfCnpj"] == "19540550000121"
+    assert calls[0].json["companyType"] == "MEI"
 
     assert attempt.can_create_subaccount is True
     assert attempt.can_send_http is True
@@ -3466,6 +3469,7 @@ def test_subaccount_first_controlled_post_attempt_blocks_invalid_phrase_even_wit
         cpf_cnpj="19540550000121",
         mobile_phone="47999999999",
         income_value=Decimal("1000.00"),
+        company_type="MEI",
         address="Rua Teste",
         address_number="123",
         province="Centro",
@@ -3500,6 +3504,7 @@ def test_subaccount_first_controlled_post_attempt_does_not_mark_error_response_a
         cpf_cnpj="19540550000121",
         mobile_phone="47999999999",
         income_value=Decimal("1000.00"),
+        company_type="MEI",
         address="Rua Teste",
         address_number="123",
         province="Centro",
@@ -3538,6 +3543,7 @@ def test_subaccount_first_controlled_post_attempt_sanitizes_transport_exception(
         cpf_cnpj="19540550000121",
         mobile_phone="47999999999",
         income_value=Decimal("1000.00"),
+        company_type="MEI",
         address="Rua Teste",
         address_number="123",
         province="Centro",
