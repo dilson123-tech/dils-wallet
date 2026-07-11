@@ -3276,3 +3276,67 @@ def test_subaccount_first_controlled_attempt_preflight_blocks_invalid_phrase_and
     assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
     assert "sandbox-api-key-for-test-only" not in rendered_summary
     assert "sandbox-webhook-token-for-test-only" not in rendered_summary
+
+def test_subaccount_first_controlled_attempt_record_contract_is_sanitized():
+    client = make_client()
+
+    contract = client.build_subaccount_first_controlled_attempt_record_contract(
+        manual_authorization_phrase=ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE,
+    )
+    summary = contract.safe_summary()
+
+    assert contract.record_contract_reference == (
+        "subaccount-first-controlled-attempt-record-contract-sandbox"
+    )
+    assert contract.record_contract_defined is True
+    assert contract.record_contract_valid is True
+    assert contract.can_create_record_after_future_attempt is True
+    assert contract.raw_payload_storage_allowed is False
+    assert contract.raw_response_storage_allowed is False
+    assert contract.raw_error_storage_allowed is False
+    assert contract.raw_headers_storage_allowed is False
+    assert contract.can_create_subaccount is False
+    assert contract.can_send_http is False
+    assert contract.network_call_allowed is False
+    assert contract.real_money is False
+    assert contract.http_call_executed is False
+
+    assert summary["operation"] == (
+        "subaccount_first_controlled_attempt_record_contract"
+    )
+    assert summary["record_contract_valid"] is True
+    assert summary["ready_for_http_execution"] is False
+    assert summary["next_step_required"] == (
+        "manual_first_controlled_sandbox_attempt_decision"
+    )
+
+    assert "api_key_present" in summary["allowed_record_fields"]
+    assert "wallet_id_present" in summary["allowed_record_fields"]
+    assert "onboarding_url_present" in summary["allowed_record_fields"]
+    assert "raw_payload" in summary["forbidden_record_fields"]
+    assert "raw_response" in summary["forbidden_record_fields"]
+    assert "raw_headers" in summary["forbidden_record_fields"]
+
+    rendered_summary = repr(summary)
+    assert "subaccount-api-key-for-test-only" not in rendered_summary
+    assert "wallet-id-for-test-only" not in rendered_summary
+    assert "acct_subaccount_for_test_only" not in rendered_summary
+    assert "https://sandbox.asaas.com/onboarding/test-only" not in rendered_summary
+
+
+def test_subaccount_first_controlled_attempt_record_contract_blocks_invalid_gate():
+    client = make_client()
+
+    contract = client.build_subaccount_first_controlled_attempt_record_contract(
+        manual_authorization_phrase="EXECUTAR POST SANDBOX SUBCONTA AGORA",
+    )
+    summary = contract.safe_summary()
+
+    assert contract.record_contract_valid is False
+    assert contract.can_create_record_after_future_attempt is False
+    assert summary["record_contract_valid"] is False
+    assert summary["can_create_record_after_future_attempt"] is False
+    assert summary["can_create_subaccount"] is False
+    assert summary["can_send_http"] is False
+    assert summary["network_call_allowed"] is False
+    assert summary["http_call_executed"] is False
