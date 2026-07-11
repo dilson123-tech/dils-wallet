@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 
-ASAAS_SANDBOX_BASE_URL = "https://sandbox.asaas.com/api/v3"
+ASAAS_SANDBOX_BASE_URL = "https://api-sandbox.asaas.com/v3"
 ASAAS_PRODUCTION_BASE_URL = "https://api.asaas.com/v3"
 
 ASAAS_SANDBOX_MANUAL_AUTHORIZATION_PHRASE = (
