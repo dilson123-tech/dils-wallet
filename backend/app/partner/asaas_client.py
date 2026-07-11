@@ -716,6 +716,95 @@ class AsaasSandboxSubaccountFirstControlledAttemptPreflightResult:
             ),
         }
 
+
+@dataclass(frozen=True)
+class AsaasSandboxSubaccountFirstControlledAttemptRecordContractResult:
+    preflight: AsaasSandboxSubaccountFirstControlledAttemptPreflightResult
+    record_contract_reference: str = (
+        "subaccount-first-controlled-attempt-record-contract-sandbox"
+    )
+    allowed_record_fields: tuple[str, ...] = (
+        "operation",
+        "environment",
+        "target_method",
+        "target_path",
+        "request_executed",
+        "http_call_executed",
+        "http_status_code",
+        "subaccount_created",
+        "object",
+        "api_key_present",
+        "wallet_id_present",
+        "account_id_present",
+        "onboarding_url_present",
+        "sensitive_response_values_masked",
+        "raw_payload_stored",
+        "raw_response_stored",
+        "raw_error_stored",
+        "raw_headers_stored",
+        "production_used",
+        "real_money",
+        "retry_loop_used",
+        "next_step_required",
+    )
+    forbidden_record_fields: tuple[str, ...] = (
+        "access_token",
+        "apiKey",
+        "walletId",
+        "id",
+        "onboardingUrl",
+        "raw_payload",
+        "raw_response",
+        "raw_error",
+        "raw_headers",
+        "webhook_token",
+        "env_file",
+    )
+    record_contract_defined: bool = True
+    record_contract_valid: bool = False
+    can_create_record_after_future_attempt: bool = False
+    raw_payload_storage_allowed: bool = False
+    raw_response_storage_allowed: bool = False
+    raw_error_storage_allowed: bool = False
+    raw_headers_storage_allowed: bool = False
+    can_create_subaccount: bool = False
+    can_send_http: bool = False
+    network_call_allowed: bool = False
+    real_money: bool = False
+    http_call_executed: bool = False
+    sandbox_only: bool = True
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": (
+                "subaccount_first_controlled_attempt_record_contract"
+            ),
+            "record_contract_reference": self.record_contract_reference,
+            "preflight": self.preflight.safe_summary(),
+            "allowed_record_fields": list(self.allowed_record_fields),
+            "forbidden_record_fields": list(self.forbidden_record_fields),
+            "record_contract_defined": self.record_contract_defined,
+            "record_contract_valid": self.record_contract_valid,
+            "can_create_record_after_future_attempt": (
+                self.can_create_record_after_future_attempt
+            ),
+            "raw_payload_storage_allowed": self.raw_payload_storage_allowed,
+            "raw_response_storage_allowed": self.raw_response_storage_allowed,
+            "raw_error_storage_allowed": self.raw_error_storage_allowed,
+            "raw_headers_storage_allowed": self.raw_headers_storage_allowed,
+            "can_create_subaccount": self.can_create_subaccount,
+            "can_send_http": self.can_send_http,
+            "network_call_allowed": self.network_call_allowed,
+            "real_money": self.real_money,
+            "http_call_executed": self.http_call_executed,
+            "sandbox_only": self.sandbox_only,
+            "ready_for_http_execution": False,
+            "next_step_required": (
+                "manual_first_controlled_sandbox_attempt_decision"
+            ),
+        }
+
+
 @dataclass(frozen=True)
 class AsaasFirstCustomerHttpClientGateResult:
     prepared_request: AsaasPreparedRequest
@@ -2699,6 +2788,29 @@ class AsaasSandboxClient:
             http_call_executed=manual_execution_gate.http_call_executed,
             sandbox_only=manual_execution_gate.sandbox_only,
             production_blocked=manual_execution_gate.production_blocked,
+        )
+
+
+    def build_subaccount_first_controlled_attempt_record_contract(
+        self,
+        *,
+        manual_authorization_phrase: str = "",
+    ) -> AsaasSandboxSubaccountFirstControlledAttemptRecordContractResult:
+        preflight = self.build_subaccount_first_controlled_attempt_preflight(
+            manual_authorization_phrase=manual_authorization_phrase,
+        )
+        contract_valid = preflight.first_controlled_attempt_preflight_valid
+
+        return AsaasSandboxSubaccountFirstControlledAttemptRecordContractResult(
+            preflight=preflight,
+            record_contract_valid=contract_valid,
+            can_create_record_after_future_attempt=contract_valid,
+            can_create_subaccount=False,
+            can_send_http=False,
+            network_call_allowed=False,
+            real_money=False,
+            http_call_executed=False,
+            sandbox_only=preflight.sandbox_only,
         )
 
     def gate_first_customer_http_call(
