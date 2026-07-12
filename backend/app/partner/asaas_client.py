@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, Mapping
 
 from app.partner.asaas_config import (
     ASAAS_SANDBOX_BASE_URL,
@@ -802,6 +802,74 @@ class AsaasSandboxSubaccountFirstControlledAttemptRecordContractResult:
             "ready_for_http_execution": False,
             "next_step_required": (
                 "manual_first_controlled_sandbox_attempt_decision"
+            ),
+        }
+
+
+@dataclass(frozen=True)
+class AsaasSanitizedRateLimitAndErrorResult:
+    status_code: int
+    category: str
+    safe_message: str
+    retryable: bool
+    retry_delay_seconds: int | None = None
+    rate_limit_limit_present: bool = False
+    rate_limit_remaining_present: bool = False
+    rate_limit_reset_present: bool = False
+    retry_after_present: bool = False
+    rate_limit_remaining_zero: bool = False
+    provider_error_code_present: bool = False
+    rate_limit_limit: int | None = None
+    rate_limit_remaining: int | None = None
+    rate_limit_reset_seconds: int | None = None
+    retry_after_seconds: int | None = None
+    rate_limit_near_limit: bool = False
+    retry_loop_enabled: bool = False
+    raw_headers_stored: bool = False
+    raw_response_stored: bool = False
+    raw_error_stored: bool = False
+    secret_values_allowed: bool = False
+    production_used: bool = False
+    real_money: bool = False
+
+    def safe_summary(self) -> dict[str, Any]:
+        return {
+            "operation": "asaas_rate_limit_and_error_classification",
+            "status_code": self.status_code,
+            "category": self.category,
+            "safe_message": self.safe_message,
+            "retryable": self.retryable,
+            "retry_delay_seconds": self.retry_delay_seconds,
+            "rate_limit_limit_present": self.rate_limit_limit_present,
+            "rate_limit_remaining_present": (
+                self.rate_limit_remaining_present
+            ),
+            "rate_limit_reset_present": self.rate_limit_reset_present,
+            "retry_after_present": self.retry_after_present,
+            "rate_limit_remaining_zero": self.rate_limit_remaining_zero,
+            "provider_error_code_present": (
+                self.provider_error_code_present
+            ),
+            "rate_limit_limit": self.rate_limit_limit,
+            "rate_limit_remaining": self.rate_limit_remaining,
+            "rate_limit_reset_seconds": self.rate_limit_reset_seconds,
+            "retry_after_seconds": self.retry_after_seconds,
+            "rate_limit_near_limit": self.rate_limit_near_limit,
+            "retry_loop_enabled": self.retry_loop_enabled,
+            "raw_headers_stored": self.raw_headers_stored,
+            "raw_response_stored": self.raw_response_stored,
+            "raw_error_stored": self.raw_error_stored,
+            "secret_values_allowed": self.secret_values_allowed,
+            "production_used": self.production_used,
+            "real_money": self.real_money,
+            "next_step_required": (
+                "schedule_bounded_retry_after_delay"
+                if self.retryable and self.retry_delay_seconds is not None
+                else (
+                    "manual_retry_review_required"
+                    if self.retryable
+                    else "fix_request_or_configuration_before_retry"
+                )
             ),
         }
 
@@ -2913,6 +2981,115 @@ class AsaasSandboxClient:
             real_money=False,
             http_call_executed=False,
             sandbox_only=preflight.sandbox_only,
+        )
+
+
+    def classify_rate_limit_and_error_response(
+        self,
+        *,
+        status_code: int,
+        headers: Mapping[str, str] | None = None,
+        provider_error_code: str | None = None,
+    ) -> AsaasSanitizedRateLimitAndErrorResult:
+        normalized_headers = {
+            str(name).strip().lower(): str(value).strip()
+            for name, value in (headers or {}).items()
+        }
+
+        def parse_non_negative_int(header_name: str) -> int | None:
+            raw_value = normalized_headers.get(header_name.lower())
+            if raw_value is None:
+                return None
+            try:
+                parsed = int(raw_value)
+            except (TypeError, ValueError):
+                return None
+            return parsed if parsed >= 0 else None
+
+        rate_limit_limit = parse_non_negative_int("ratelimit-limit")
+        rate_limit_remaining = parse_non_negative_int(
+            "ratelimit-remaining"
+        )
+        rate_limit_reset = parse_non_negative_int("ratelimit-reset")
+        retry_after = parse_non_negative_int("retry-after")
+
+        retry_delay_seconds = (
+            retry_after
+            if retry_after is not None
+            else rate_limit_reset
+        )
+
+        if 200 <= status_code < 300:
+            category = "provider_success"
+            safe_message = "provider_request_succeeded"
+            retryable = False
+        elif status_code in (400, 422):
+            category = "provider_validation_error"
+            safe_message = "provider_rejected_invalid_request"
+            retryable = False
+        elif status_code == 401:
+            category = "provider_authentication_error"
+            safe_message = "provider_authentication_failed"
+            retryable = False
+        elif status_code == 403:
+            category = "provider_authorization_error"
+            safe_message = "provider_authorization_denied"
+            retryable = False
+        elif status_code == 404:
+            category = "provider_not_found"
+            safe_message = "provider_resource_not_found"
+            retryable = False
+        elif status_code == 408:
+            category = "provider_timeout"
+            safe_message = "provider_request_timeout"
+            retryable = True
+        elif status_code == 429:
+            category = "provider_rate_limit_error"
+            safe_message = "provider_rate_limit_reached"
+            retryable = True
+        elif 500 <= status_code <= 599:
+            category = "provider_unavailable"
+            safe_message = "provider_temporarily_unavailable"
+            retryable = True
+        else:
+            category = "unexpected_provider_error"
+            safe_message = "unexpected_provider_response"
+            retryable = False
+
+        if not retryable:
+            retry_delay_seconds = None
+
+        rate_limit_near_limit = bool(
+            rate_limit_limit is not None
+            and rate_limit_limit > 0
+            and rate_limit_remaining is not None
+            and rate_limit_remaining
+            <= max(1, rate_limit_limit // 10)
+        )
+
+        return AsaasSanitizedRateLimitAndErrorResult(
+            status_code=status_code,
+            category=category,
+            safe_message=safe_message,
+            retryable=retryable,
+            retry_delay_seconds=retry_delay_seconds,
+            rate_limit_limit_present=(
+                "ratelimit-limit" in normalized_headers
+            ),
+            rate_limit_remaining_present=(
+                "ratelimit-remaining" in normalized_headers
+            ),
+            rate_limit_reset_present=(
+                "ratelimit-reset" in normalized_headers
+            ),
+            retry_after_present="retry-after" in normalized_headers,
+            rate_limit_remaining_zero=rate_limit_remaining == 0,
+            provider_error_code_present=bool(provider_error_code),
+            rate_limit_limit=rate_limit_limit,
+            rate_limit_remaining=rate_limit_remaining,
+            rate_limit_reset_seconds=rate_limit_reset,
+            retry_after_seconds=retry_after,
+            rate_limit_near_limit=rate_limit_near_limit,
         )
 
 
