@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.v1.routes import wallet as wallet_routes
 
@@ -46,11 +46,13 @@ class FakeQuery:
 
 
 class FakeDb:
-    def __init__(self):
+    def __init__(self, *, fail_commit=False):
         self.records = {}
         self.pending = None
         self.committed = False
         self.rolled_back = False
+        self.fail_commit = fail_commit
+        self.transaction_inserted_keys = []
 
     def add(self, record):
         self.pending = record
@@ -58,14 +60,25 @@ class FakeDb:
     def flush(self):
         if self.pending.key in self.records:
             raise IntegrityError("duplicate", {}, Exception("duplicate"))
-        self.records[self.pending.key] = self.pending
+        inserted_key = self.pending.key
+        self.records[inserted_key] = self.pending
+        self.transaction_inserted_keys.append(inserted_key)
         self.pending = None
 
     def rollback(self):
         self.rolled_back = True
+        self.pending = None
+        for key in self.transaction_inserted_keys:
+            self.records.pop(key, None)
+        self.transaction_inserted_keys.clear()
 
     def commit(self):
+        if self.fail_commit:
+            raise SQLAlchemyError(
+                "database commit failure with secret test value"
+            )
         self.committed = True
+        self.transaction_inserted_keys.clear()
 
     def query(self, _model):
         return FakeQuery(self)
@@ -318,3 +331,76 @@ def test_asaas_sandbox_webhook_audit_history_ignores_malformed_or_non_asaas_reco
     assert len(items) == 1
     assert items[0]["provider"] == "asaas"
     assert items[0]["event_type"] == "PAYMENT_RECEIVED"
+
+
+
+def test_asaas_sandbox_webhook_returns_503_for_incomplete_duplicate():
+    db = FakeDb()
+    payload = _valid_payload()
+    event_id = wallet_routes._asaas_sandbox_webhook_event_id(payload)
+    idem_key = wallet_routes._asaas_sandbox_webhook_idempotency_key(
+        event_id
+    )
+    request_hash = wallet_routes._asaas_sandbox_webhook_hash(payload)
+
+    db.records[idem_key] = SimpleNamespace(
+        key=idem_key,
+        request_hash=request_hash,
+        status_code=None,
+        response_json=None,
+        created_at=None,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=payload,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+
+    rendered = json.dumps(
+        {
+            "detail": exc.value.detail,
+            "headers": exc.value.headers,
+        },
+        ensure_ascii=False,
+    )
+
+    assert exc.value.status_code == 503
+    assert exc.value.headers == {"Retry-After": "30"}
+    assert db.rolled_back is True
+    assert db.committed is False
+    assert idem_key in db.records
+    assert "secret-token" not in rendered
+    assert "evt_test_unique_001" not in rendered
+    assert "pay_real_sandbox_must_not_leak" not in rendered
+
+
+def test_asaas_sandbox_webhook_commit_failure_rolls_back_and_returns_503():
+    db = FakeDb(fail_commit=True)
+
+    with pytest.raises(HTTPException) as exc:
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=_valid_payload(),
+            db=db,
+            asaas_access_token="secret-token",
+        )
+
+    rendered = json.dumps(
+        {
+            "detail": exc.value.detail,
+            "headers": exc.value.headers,
+        },
+        ensure_ascii=False,
+    )
+
+    assert exc.value.status_code == 503
+    assert exc.value.headers == {"Retry-After": "30"}
+    assert db.rolled_back is True
+    assert db.committed is False
+    assert db.records == {}
+    assert "database commit failure" not in rendered
+    assert "secret test value" not in rendered
+    assert "secret-token" not in rendered
+    assert "evt_test_unique_001" not in rendered
+    assert "pay_real_sandbox_must_not_leak" not in rendered
