@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from decimal import Decimal
 from datetime import datetime, timezone
 import hashlib
@@ -949,34 +949,15 @@ def handle_asaas_sandbox_webhook_receiver(
             response["can_mark_real_paid"] = False
             return response
 
-        return {
-            "ok": True,
-            "service": "aurea-wallet",
-            "duplicated": True,
-            "event": {
-                "provider": "asaas",
-                "environment": "sandbox",
-                "event_id_present": True,
-                "event_type": event_type,
-                "status": "in_progress",
-            },
-            "wallet": {
-                "mode": WALLET_MODE,
-                "provider": provider,
-                "source": "asaas_sandbox",
-                "real_money_enabled": False,
-            },
-            "idempotency": {
-                "key": idem_key,
-                "request_hash": request_hash,
-                "replayed": True,
-                "state": "in_progress",
-            },
-            "can_credit_balance": False,
-            "can_generate_real_receipt": False,
-            "can_mark_real_paid": False,
-            "notice": "Evento Asaas Sandbox já está em processamento. Nenhum dinheiro real foi movimentado.",
-        }
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Evento Asaas Sandbox aguardando conclusão "
+                "do processamento anterior."
+            ),
+            headers={"Retry-After": "30"},
+        )
+
 
     accepted = event_type in _ASAAS_SANDBOX_WEBHOOK_ACCEPTED_EVENTS
     payment_payload = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
@@ -1067,8 +1048,21 @@ def handle_asaas_sandbox_webhook_receiver(
     }
 
     record.status_code = 200
-    record.response_json = json.dumps(response, ensure_ascii=False, default=str)
-    db.commit()
+    record.response_json = json.dumps(
+        response,
+        ensure_ascii=False,
+        default=str,
+    )
+
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Webhook Asaas Sandbox temporariamente indisponível.",
+            headers={"Retry-After": "30"},
+        ) from None
 
     return response
 
