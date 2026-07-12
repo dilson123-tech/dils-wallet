@@ -3567,3 +3567,129 @@ def test_subaccount_first_controlled_post_attempt_sanitizes_transport_exception(
     rendered_summary = repr(summary)
     assert "raw transport failure" not in rendered_summary
     assert "secret test value" not in rendered_summary
+
+
+def test_asaas_rate_limit_classifier_handles_429_with_reset_without_raw_headers():
+    client = make_client()
+
+    result = client.classify_rate_limit_and_error_response(
+        status_code=429,
+        headers={
+            "RateLimit-Limit": "100",
+            "RateLimit-Remaining": "0",
+            "RateLimit-Reset": "30",
+            "access_token": "sandbox-secret-for-test-only",
+        },
+        provider_error_code="rate_limit_exceeded",
+    )
+    summary = result.safe_summary()
+
+    assert result.category == "provider_rate_limit_error"
+    assert result.retryable is True
+    assert result.retry_delay_seconds == 30
+    assert result.rate_limit_limit_present is True
+    assert result.rate_limit_remaining_present is True
+    assert result.rate_limit_reset_present is True
+    assert result.rate_limit_remaining_zero is True
+    assert result.provider_error_code_present is True
+    assert result.retry_loop_enabled is False
+    assert result.raw_headers_stored is False
+    assert result.raw_response_stored is False
+    assert result.raw_error_stored is False
+    assert result.secret_values_allowed is False
+
+    assert summary["rate_limit_limit"] == 100
+    assert summary["rate_limit_remaining"] == 0
+    assert summary["rate_limit_reset_seconds"] == 30
+    assert summary["retry_after_seconds"] is None
+    assert summary["rate_limit_near_limit"] is True
+    assert summary["next_step_required"] == (
+        "schedule_bounded_retry_after_delay"
+    )
+
+    rendered_summary = repr(summary)
+    assert "sandbox-secret-for-test-only" not in rendered_summary
+    assert "access_token" not in rendered_summary
+    assert "rate_limit_exceeded" not in rendered_summary
+
+
+def test_asaas_error_classifier_maps_non_retryable_client_errors():
+    client = make_client()
+
+    expected = {
+        400: "provider_validation_error",
+        401: "provider_authentication_error",
+        403: "provider_authorization_error",
+        404: "provider_not_found",
+        422: "provider_validation_error",
+    }
+
+    for status_code, category in expected.items():
+        result = client.classify_rate_limit_and_error_response(
+            status_code=status_code,
+            headers={"RateLimit-Remaining": "99"},
+        )
+        summary = result.safe_summary()
+
+        assert result.category == category
+        assert result.retryable is False
+        assert result.retry_delay_seconds is None
+        assert result.retry_loop_enabled is False
+        assert summary["next_step_required"] == (
+            "fix_request_or_configuration_before_retry"
+        )
+
+
+def test_asaas_error_classifier_marks_timeout_and_server_errors_retryable_without_loop():
+    client = make_client()
+
+    for status_code in (408, 500, 502, 503):
+        result = client.classify_rate_limit_and_error_response(
+            status_code=status_code,
+        )
+        summary = result.safe_summary()
+
+        assert result.retryable is True
+        assert result.retry_delay_seconds is None
+        assert result.retry_loop_enabled is False
+        assert result.production_used is False
+        assert result.real_money is False
+        assert summary["next_step_required"] == (
+            "manual_retry_review_required"
+        )
+
+
+def test_asaas_rate_limit_classifier_ignores_malformed_header_values_safely():
+    client = make_client()
+
+    result = client.classify_rate_limit_and_error_response(
+        status_code=429,
+        headers={
+            "RateLimit-Limit": "not-a-number",
+            "RateLimit-Remaining": "-1",
+            "RateLimit-Reset": "secret-reset-value",
+            "Retry-After": "invalid",
+        },
+    )
+    summary = result.safe_summary()
+
+    assert result.category == "provider_rate_limit_error"
+    assert result.retryable is True
+    assert result.retry_delay_seconds is None
+    assert result.rate_limit_limit_present is True
+    assert result.rate_limit_remaining_present is True
+    assert result.rate_limit_reset_present is True
+    assert result.retry_after_present is True
+    assert result.rate_limit_limit is None
+    assert result.rate_limit_remaining is None
+    assert result.rate_limit_reset_seconds is None
+    assert result.retry_after_seconds is None
+    assert result.rate_limit_near_limit is False
+    assert result.rate_limit_remaining_zero is False
+    assert summary["next_step_required"] == (
+        "manual_retry_review_required"
+    )
+
+    rendered_summary = repr(summary)
+    assert "not-a-number" not in rendered_summary
+    assert "secret-reset-value" not in rendered_summary
