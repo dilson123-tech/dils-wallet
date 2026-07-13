@@ -4032,6 +4032,7 @@ class AsaasSandboxClient:
         value: Decimal,
         due_date: str,
         description: str,
+        external_reference: str | None = None,
     ) -> AsaasPreparedRequest:
         payload = {
             "customer": customer_id,
@@ -4040,6 +4041,12 @@ class AsaasSandboxClient:
             "dueDate": due_date,
             "description": description,
         }
+
+        if external_reference is not None:
+            normalized_external_reference = str(external_reference).strip()
+            if not normalized_external_reference:
+                raise ValueError("external_reference não pode ser vazio.")
+            payload["externalReference"] = normalized_external_reference
 
         return self._prepare(
             method="POST",
@@ -4055,12 +4062,14 @@ class AsaasSandboxClient:
         value: Decimal,
         due_date: str,
         description: str,
+        external_reference: str | None = None,
     ) -> AsaasPaymentDryRunResult:
         prepared_request = self.prepare_create_pix_payment(
             customer_id=customer_id,
             value=value,
             due_date=due_date,
             description=description,
+            external_reference=external_reference,
         )
 
         return AsaasPaymentDryRunResult(prepared_request=prepared_request)
