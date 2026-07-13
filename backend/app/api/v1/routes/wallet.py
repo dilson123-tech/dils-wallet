@@ -14,7 +14,11 @@ from app.models.transaction import Transaction
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
-from app.partner import PartnerWebhookEvent, get_partner_adapter
+from app.partner import (
+    PartnerWebhookEvent,
+    StatementItem,
+    get_partner_adapter,
+)
 from app.partner.asaas_config import AsaasConfigError, load_asaas_sandbox_config
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
@@ -211,10 +215,90 @@ def _statement_item_payload(item, *, source: str, real_money_enabled: bool) -> d
     }
 
 
+def _sandbox_statement_items_from_webhooks(
+    db: Session,
+    *,
+    user_id: int,
+    limit: int,
+) -> list[StatementItem]:
+    safe_limit = max(1, min(int(limit or 50), 100))
+    rows = (
+        db.query(IdempotencyKey)
+        .filter(IdempotencyKey.key.like("wallet-sandbox-webhook:%"))
+        .order_by(IdempotencyKey.created_at.desc())
+        .limit(min(safe_limit * 4, 400))
+        .all()
+    )
+
+    items: list[StatementItem] = []
+    seen_references: set[str] = set()
+
+    for row in rows:
+        raw_response = getattr(row, "response_json", None)
+        if not raw_response:
+            continue
+
+        try:
+            response = json.loads(raw_response)
+        except (TypeError, ValueError):
+            continue
+
+        if response.get("user_id") != user_id:
+            continue
+
+        event = response.get("event") or {}
+        event_type = str(event.get("event_type") or "").strip()
+        status = str(event.get("status") or "").strip().lower()
+
+        if event_type != "pix.payment.confirmed" or status != "confirmed":
+            continue
+
+        provider_reference = _safe_receipt_part(
+            event.get("provider_reference")
+        )
+        if (
+            provider_reference == "not-provided"
+            or provider_reference in seen_references
+        ):
+            continue
+
+        try:
+            amount = Decimal(str(event.get("amount") or "0.00"))
+        except Exception:
+            continue
+
+        if amount <= Decimal("0.00"):
+            continue
+
+        seen_references.add(provider_reference)
+        items.append(
+            StatementItem(
+                provider_reference=provider_reference,
+                amount=amount,
+                direction="credit",
+                status="confirmed",
+                description="PIX sandbox confirmado",
+                created_at=event.get("received_at"),
+                raw={
+                    "sandbox": True,
+                    "real_money": False,
+                    "source": "wallet_sandbox_webhook",
+                },
+            )
+        )
+
+        if len(items) >= safe_limit:
+            break
+
+    return items
+
+
+
 @router.get("/api/v1/wallet/structured-statement")
 def get_wallet_structured_statement(
     limit: int = 50,
     current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
 ):
     """
     Extrato estruturado da wallet.
@@ -236,13 +320,32 @@ def get_wallet_structured_statement(
     try:
         adapter = get_partner_adapter()
         provider = adapter.provider_name
-        statement = get_partner_wallet_statement(
-            user_id=current_user.id,
-            limit=safe_limit,
+        statement = list(
+            get_partner_wallet_statement(
+                user_id=current_user.id,
+                limit=safe_limit,
+            )
         )
+
+        if provider == "sandbox":
+            statement.extend(
+                _sandbox_statement_items_from_webhooks(
+                    db,
+                    user_id=current_user.id,
+                    limit=safe_limit,
+                )
+            )
+            statement = statement[:safe_limit]
+
         mode = WALLET_MODE
-        source = "partner" if IS_PARTNER_WALLET else "demo"
-        real_money_enabled = bool(IS_PARTNER_WALLET)
+        source = (
+            "sandbox"
+            if provider == "sandbox"
+            else ("partner" if IS_PARTNER_WALLET else "demo")
+        )
+        real_money_enabled = bool(
+            IS_PARTNER_WALLET and provider != "sandbox"
+        )
         adapter_error = None
     except Exception as exc:
         provider = "not_configured"
@@ -1186,6 +1289,7 @@ def handle_wallet_pix_sandbox_webhook(
     response = {
         "ok": True,
         "service": "aurea-wallet",
+        "user_id": getattr(current_user, "id", None),
         "duplicated": False,
         "event": {
             "provider": "sandbox",
