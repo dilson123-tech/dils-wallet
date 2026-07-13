@@ -2303,6 +2303,23 @@ def test_prepare_create_pix_payment_builds_sandbox_request_without_http_call():
     }
 
 
+def test_prepare_create_pix_payment_includes_opaque_external_reference():
+    client = make_client()
+    external_reference = f"agpay_{'f' * 32}"
+
+    request = client.prepare_create_pix_payment(
+        customer_id="cus_external_reference_xxxxxxxx",
+        value=Decimal("50.00"),
+        due_date="2026-07-10",
+        description="Correlação Pix Sandbox Aurea Gold",
+        external_reference=external_reference,
+    )
+
+    assert request.json["externalReference"] == external_reference
+    assert request.real_money is False
+    assert request.http_call_executed is False
+
+
 def test_prepare_get_pix_qr_code_builds_sandbox_request_without_http_call():
     client = make_client()
 
