@@ -20,6 +20,9 @@ from app.partner import (
     get_partner_adapter,
 )
 from app.partner.asaas_config import AsaasConfigError, load_asaas_sandbox_config
+from app.partner.asaas_payment_correlation import (
+    resolve_asaas_payment_user_correlation_from_payment,
+)
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
     get_wallet_balance as get_partner_wallet_balance,
@@ -967,6 +970,77 @@ def _asaas_sandbox_webhook_idempotency_key(event_id: str) -> str:
     return f"asaas-sandbox-webhook:{digest}"
 
 
+def _asaas_sandbox_payment_correlation(
+    db,
+    *,
+    accepted: bool,
+    payment_payload: dict,
+):
+    raw_external_reference = (
+        payment_payload.get("externalReference")
+        or payment_payload.get("external_reference")
+    )
+    external_reference_present = bool(
+        str(raw_external_reference or "").strip()
+    )
+
+    base_summary = {
+        "provider": "asaas",
+        "environment": "sandbox",
+        "user_id_present": False,
+        "correlation_key_present": False,
+        "external_reference_present": external_reference_present,
+        "raw_external_reference_stored": False,
+        "can_credit_balance": False,
+    }
+
+    if not accepted:
+        return {
+            **base_summary,
+            "correlation_status": "not_applicable",
+        }, None
+
+    correlation = (
+        resolve_asaas_payment_user_correlation_from_payment(
+            db,
+            payment_payload=payment_payload,
+        )
+    )
+
+    if correlation is None:
+        return {
+            **base_summary,
+            "correlation_status": (
+                "unresolved"
+                if external_reference_present
+                else "missing"
+            ),
+        }, None
+
+    return {
+        **correlation.safe_summary(),
+        "can_credit_balance": False,
+    }, correlation
+
+
+def _asaas_sandbox_webhook_public_response(
+    stored_response: dict,
+) -> dict:
+    public_response = json.loads(
+        json.dumps(
+            stored_response,
+            ensure_ascii=False,
+            default=str,
+        )
+    )
+
+    audit = public_response.get("audit")
+    if isinstance(audit, dict):
+        audit.pop("correlation_storage", None)
+
+    return public_response
+
+
 @router.post("/api/v1/partners")
 @router.post("/api/v1/partners/")
 @router.post("/api/v1/partners/asaas/webhooks/sandbox")
@@ -1021,7 +1095,10 @@ def handle_asaas_sandbox_webhook_receiver(
             )
 
         if existing.response_json:
-            response = json.loads(existing.response_json)
+            stored_response = json.loads(existing.response_json)
+            response = _asaas_sandbox_webhook_public_response(
+                stored_response
+            )
             response["duplicated"] = True
             response.setdefault("idempotency", {})["replayed"] = True
             response["idempotency"]["state"] = "replayed"
@@ -1063,7 +1140,18 @@ def handle_asaas_sandbox_webhook_receiver(
 
 
     accepted = event_type in _ASAAS_SANDBOX_WEBHOOK_ACCEPTED_EVENTS
-    payment_payload = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
+    payment_payload = (
+        payload.get("payment")
+        if isinstance(payload.get("payment"), dict)
+        else {}
+    )
+    correlation_summary, payment_correlation = (
+        _asaas_sandbox_payment_correlation(
+            db,
+            accepted=accepted,
+            payment_payload=payment_payload,
+        )
+    )
     now = datetime.now(timezone.utc)
 
     audit_record = {
@@ -1082,6 +1170,7 @@ def handle_asaas_sandbox_webhook_receiver(
         "payment_id_present": bool(payment_payload.get("id")),
         "payment_status": payment_payload.get("status"),
         "billing_type": payment_payload.get("billingType"),
+        "correlation": correlation_summary,
         "received_at": now.isoformat(),
         "storage": {
             "source": "idempotency_keys",
@@ -1119,7 +1208,11 @@ def handle_asaas_sandbox_webhook_receiver(
             "payment_id_present": bool(payment_payload.get("id")),
             "status": payment_payload.get("status"),
             "billing_type": payment_payload.get("billingType"),
+            "external_reference_present": correlation_summary[
+                "external_reference_present"
+            ],
         },
+        "correlation": correlation_summary,
         "wallet": {
             "mode": WALLET_MODE,
             "provider": provider,
@@ -1150,9 +1243,33 @@ def handle_asaas_sandbox_webhook_receiver(
         ],
     }
 
+    stored_response = json.loads(
+        json.dumps(
+            response,
+            ensure_ascii=False,
+            default=str,
+        )
+    )
+
+    if payment_correlation is not None:
+        stored_response.setdefault("audit", {})[
+            "correlation_storage"
+        ] = {
+            "contract": (
+                "asaas_payment_received_user_correlation_v1"
+            ),
+            "user_id": payment_correlation.user_id,
+            "correlation_key": (
+                payment_correlation.correlation_key
+            ),
+            "raw_external_reference_stored": False,
+            "can_credit_balance": False,
+            "real_money_enabled": False,
+        }
+
     record.status_code = 200
     record.response_json = json.dumps(
-        response,
+        stored_response,
         ensure_ascii=False,
         default=str,
     )
