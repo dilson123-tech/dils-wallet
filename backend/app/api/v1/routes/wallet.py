@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 import hashlib
 import hmac
@@ -218,6 +218,38 @@ def _statement_item_payload(item, *, source: str, real_money_enabled: bool) -> d
     }
 
 
+def _asaas_sandbox_positive_amount(
+    raw_value,
+) -> Decimal | None:
+    if raw_value is None or isinstance(raw_value, bool):
+        return None
+
+    try:
+        amount = Decimal(str(raw_value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+    if not amount.is_finite() or amount <= Decimal("0.00"):
+        return None
+
+    return amount
+
+
+def _asaas_sandbox_statement_reference(
+    correlation_key: str,
+) -> str | None:
+    normalized = str(correlation_key or "").strip()
+
+    if not normalized.startswith("asaas-payment-correlation:"):
+        return None
+
+    digest = hashlib.sha256(
+        normalized.encode("utf-8")
+    ).hexdigest()
+
+    return f"asaas-sandbox-payment-{digest[:24]}"
+
+
 def _sandbox_statement_items_from_webhooks(
     db: Session,
     *,
@@ -297,6 +329,117 @@ def _sandbox_statement_items_from_webhooks(
 
 
 
+def _asaas_sandbox_statement_items_from_webhooks(
+    db: Session,
+    *,
+    user_id: int,
+    limit: int,
+) -> list[StatementItem]:
+    safe_limit = max(1, min(int(limit or 50), 100))
+    rows = (
+        db.query(IdempotencyKey)
+        .filter(
+            IdempotencyKey.key.like(
+                "asaas-sandbox-webhook:%"
+            )
+        )
+        .order_by(IdempotencyKey.created_at.desc())
+        .limit(min(safe_limit * 4, 400))
+        .all()
+    )
+
+    items: list[StatementItem] = []
+    seen_references: set[str] = set()
+
+    for row in rows:
+        row_key = str(getattr(row, "key", "") or "")
+        if not row_key.startswith("asaas-sandbox-webhook:"):
+            continue
+
+        raw_response = getattr(row, "response_json", None)
+        if not raw_response:
+            continue
+
+        try:
+            response = json.loads(raw_response)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+
+        event = response.get("event") or {}
+        audit = response.get("audit") or {}
+        correlation_storage = (
+            audit.get("correlation_storage") or {}
+        )
+
+        if (
+            event.get("event_type") != "PAYMENT_RECEIVED"
+            or event.get("accepted") is not True
+        ):
+            continue
+
+        if (
+            correlation_storage.get("contract")
+            != "asaas_payment_received_user_correlation_v1"
+        ):
+            continue
+
+        if correlation_storage.get("user_id") != user_id:
+            continue
+
+        if (
+            correlation_storage.get("real_money_enabled")
+            is not False
+            or correlation_storage.get("can_credit_balance")
+            is not False
+        ):
+            continue
+
+        amount = _asaas_sandbox_positive_amount(
+            correlation_storage.get("amount")
+        )
+        if amount is None:
+            continue
+
+        provider_reference = (
+            _asaas_sandbox_statement_reference(
+                correlation_storage.get("correlation_key")
+            )
+        )
+        if (
+            provider_reference is None
+            or provider_reference in seen_references
+        ):
+            continue
+
+        seen_references.add(provider_reference)
+        items.append(
+            StatementItem(
+                provider_reference=provider_reference,
+                amount=amount,
+                direction="credit",
+                status="confirmed",
+                description="PIX Asaas Sandbox recebido",
+                created_at=(
+                    event.get("received_at")
+                    or audit.get("received_at")
+                ),
+                raw={
+                    "sandbox": True,
+                    "real_money": False,
+                    "source": (
+                        "asaas_sandbox_payment_received"
+                    ),
+                },
+            )
+        )
+
+        if len(items) >= safe_limit:
+            break
+
+    return items
+
+
+
 @router.get("/api/v1/wallet/structured-statement")
 def get_wallet_structured_statement(
     limit: int = 50,
@@ -333,6 +476,13 @@ def get_wallet_structured_statement(
         if provider == "sandbox":
             statement.extend(
                 _sandbox_statement_items_from_webhooks(
+                    db,
+                    user_id=current_user.id,
+                    limit=safe_limit,
+                )
+            )
+            statement.extend(
+                _asaas_sandbox_statement_items_from_webhooks(
                     db,
                     user_id=current_user.id,
                     limit=safe_limit,
@@ -1152,6 +1302,9 @@ def handle_asaas_sandbox_webhook_receiver(
             payment_payload=payment_payload,
         )
     )
+    payment_amount = _asaas_sandbox_positive_amount(
+        payment_payload.get("value")
+    )
     now = datetime.now(timezone.utc)
 
     audit_record = {
@@ -1252,9 +1405,7 @@ def handle_asaas_sandbox_webhook_receiver(
     )
 
     if payment_correlation is not None:
-        stored_response.setdefault("audit", {})[
-            "correlation_storage"
-        ] = {
+        correlation_storage = {
             "contract": (
                 "asaas_payment_received_user_correlation_v1"
             ),
@@ -1262,10 +1413,21 @@ def handle_asaas_sandbox_webhook_receiver(
             "correlation_key": (
                 payment_correlation.correlation_key
             ),
+            "amount_present": payment_amount is not None,
+            "currency": "BRL",
             "raw_external_reference_stored": False,
             "can_credit_balance": False,
             "real_money_enabled": False,
         }
+
+        if payment_amount is not None:
+            correlation_storage["amount"] = (
+                _decimal_as_money(payment_amount)
+            )
+
+        stored_response.setdefault("audit", {})[
+            "correlation_storage"
+        ] = correlation_storage
 
     record.status_code = 200
     record.response_json = json.dumps(
