@@ -10,6 +10,9 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.routes import wallet as wallet_routes
 from app.partner import PixPaymentRequest, SandboxPartnerAdapter
+from app.partner.asaas_payment_correlation import (
+    build_asaas_payment_user_correlation_record,
+)
 
 
 class FakeQuery:
@@ -226,3 +229,183 @@ def test_sandbox_statement_does_not_mix_events_between_users(monkeypatch):
     assert second_statement["statement"]["count"] == 0
     assert second_statement["statement"]["items"] == []
     assert second_statement["wallet"]["real_money_enabled"] is False
+
+def test_asaas_correlated_payment_received_projects_once_to_statement(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+    monkeypatch.setattr(
+        wallet_routes,
+        "load_asaas_sandbox_config",
+        lambda: SimpleNamespace(
+            webhook_token="secret-token",
+            env="sandbox",
+        ),
+    )
+
+    db = FakeDb()
+    owner = SimpleNamespace(id=321)
+    other_user = SimpleNamespace(id=654)
+    external_reference = f"agpay_{'a' * 32}"
+
+    correlation_record = (
+        build_asaas_payment_user_correlation_record(
+            user_id=owner.id,
+            external_reference=external_reference,
+        )
+    )
+    db.records[correlation_record.key] = correlation_record
+
+    payload = {
+        "id": "evt_statement_projection_001",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": "pay_statement_projection_must_not_leak",
+            "status": "RECEIVED",
+            "billingType": "PIX",
+            "externalReference": external_reference,
+            "value": 47.30,
+        },
+    }
+
+    first = (
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=payload,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+    )
+    replay = (
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=payload,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+    )
+
+    owner_statement = (
+        wallet_routes.get_wallet_structured_statement(
+            limit=50,
+            current_user=owner,
+            db=db,
+        )
+    )
+    other_statement = (
+        wallet_routes.get_wallet_structured_statement(
+            limit=50,
+            current_user=other_user,
+            db=db,
+        )
+    )
+
+    assert first["duplicated"] is False
+    assert first["can_credit_balance"] is False
+    assert replay["duplicated"] is True
+    assert replay["idempotency"]["replayed"] is True
+
+    assert owner_statement["statement"]["count"] == 1
+    assert other_statement["statement"]["count"] == 0
+    assert (
+        owner_statement["wallet"]["real_money_enabled"]
+        is False
+    )
+
+    item = owner_statement["statement"]["items"][0]
+
+    assert item["provider_reference"].startswith(
+        "asaas-sandbox-payment-"
+    )
+    assert item["direction"] == "credit"
+    assert item["amount"] == "47.30"
+    assert item["status"] == "confirmed"
+    assert (
+        item["description"]
+        == "PIX Asaas Sandbox recebido"
+    )
+    assert item["source"] == "sandbox"
+    assert item["real_money_enabled"] is False
+
+    rendered = json.dumps(
+        owner_statement,
+        ensure_ascii=False,
+        default=str,
+    )
+
+    assert external_reference not in rendered
+    assert (
+        "pay_statement_projection_must_not_leak"
+        not in rendered
+    )
+    assert "correlation_key" not in rendered
+    assert "user_id" not in item
+
+
+def test_asaas_unresolved_or_amountless_event_is_not_projected(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+    monkeypatch.setattr(
+        wallet_routes,
+        "load_asaas_sandbox_config",
+        lambda: SimpleNamespace(
+            webhook_token="secret-token",
+            env="sandbox",
+        ),
+    )
+
+    db = FakeDb()
+    user = SimpleNamespace(id=321)
+
+    unresolved_payload = {
+        "id": "evt_statement_unresolved_001",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": "pay_unresolved_must_not_leak",
+            "status": "RECEIVED",
+            "billingType": "PIX",
+            "externalReference": f"agpay_{'b' * 32}",
+            "value": 25.00,
+        },
+    }
+
+    wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        payload=unresolved_payload,
+        db=db,
+        asaas_access_token="secret-token",
+    )
+
+    correlated_reference = f"agpay_{'c' * 32}"
+    correlation_record = (
+        build_asaas_payment_user_correlation_record(
+            user_id=user.id,
+            external_reference=correlated_reference,
+        )
+    )
+    db.records[correlation_record.key] = correlation_record
+
+    amountless_payload = {
+        "id": "evt_statement_amountless_001",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": "pay_amountless_must_not_leak",
+            "status": "RECEIVED",
+            "billingType": "PIX",
+            "externalReference": correlated_reference,
+        },
+    }
+
+    wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        payload=amountless_payload,
+        db=db,
+        asaas_access_token="secret-token",
+    )
+
+    statement = wallet_routes.get_wallet_structured_statement(
+        limit=50,
+        current_user=user,
+        db=db,
+    )
+
+    assert statement["statement"]["count"] == 0
+    assert statement["statement"]["items"] == []
+    assert statement["wallet"]["real_money_enabled"] is False
