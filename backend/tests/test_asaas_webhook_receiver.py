@@ -11,6 +11,10 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.v1.routes import wallet as wallet_routes
+from app.partner.asaas_payment_correlation import (
+    asaas_payment_correlation_key,
+    build_asaas_payment_user_correlation_record,
+)
 
 
 class FakeQuery:
@@ -404,3 +408,169 @@ def test_asaas_sandbox_webhook_commit_failure_rolls_back_and_returns_503():
     assert "secret-token" not in rendered
     assert "evt_test_unique_001" not in rendered
     assert "pay_real_sandbox_must_not_leak" not in rendered
+
+def test_payment_received_resolves_pre_registered_user_without_public_leak():
+    db = FakeDb()
+    external_reference = f"agpay_{'a' * 32}"
+
+    correlation_record = (
+        build_asaas_payment_user_correlation_record(
+            user_id=321,
+            external_reference=external_reference,
+        )
+    )
+    db.records[correlation_record.key] = correlation_record
+
+    payload = _valid_payload()
+    payload["id"] = "evt_correlated_payment_received_001"
+    payload["payment"]["externalReference"] = external_reference
+
+    response = (
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=payload,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+    )
+
+    encoded = json.dumps(
+        response,
+        ensure_ascii=False,
+        default=str,
+    )
+
+    assert response["event"]["accepted"] is True
+    assert response["payment"]["external_reference_present"] is True
+    assert (
+        response["correlation"]["correlation_status"]
+        == "resolved"
+    )
+    assert response["correlation"]["user_id_present"] is True
+    assert (
+        response["correlation"]["correlation_key_present"]
+        is True
+    )
+    assert (
+        response["correlation"]["raw_external_reference_stored"]
+        is False
+    )
+    assert response["correlation"]["can_credit_balance"] is False
+    assert "user_id" not in response["correlation"]
+    assert "correlation_key" not in response["correlation"]
+    assert "correlation_storage" not in response["audit"]
+    assert external_reference not in encoded
+
+    event_key = (
+        wallet_routes._asaas_sandbox_webhook_idempotency_key(
+            payload["id"]
+        )
+    )
+    stored_response = json.loads(
+        db.records[event_key].response_json
+    )
+    correlation_storage = stored_response["audit"][
+        "correlation_storage"
+    ]
+
+    assert correlation_storage["user_id"] == 321
+    assert correlation_storage["correlation_key"] == (
+        asaas_payment_correlation_key(external_reference)
+    )
+    assert (
+        correlation_storage["raw_external_reference_stored"]
+        is False
+    )
+    assert correlation_storage["can_credit_balance"] is False
+    assert external_reference not in db.records[event_key].response_json
+
+
+def test_payment_received_with_unknown_reference_remains_unresolved():
+    db = FakeDb()
+    external_reference = f"agpay_{'b' * 32}"
+
+    payload = _valid_payload()
+    payload["id"] = "evt_unknown_correlation_001"
+    payload["payment"]["externalReference"] = external_reference
+
+    response = (
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=payload,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+    )
+
+    assert (
+        response["correlation"]["correlation_status"]
+        == "unresolved"
+    )
+    assert response["correlation"]["user_id_present"] is False
+    assert (
+        response["correlation"]["correlation_key_present"]
+        is False
+    )
+    assert response["can_credit_balance"] is False
+
+    event_key = (
+        wallet_routes._asaas_sandbox_webhook_idempotency_key(
+            payload["id"]
+        )
+    )
+    stored_response = json.loads(
+        db.records[event_key].response_json
+    )
+
+    assert (
+        "correlation_storage"
+        not in stored_response["audit"]
+    )
+    assert external_reference not in db.records[event_key].response_json
+
+
+def test_correlated_payment_received_replay_remains_sanitized():
+    db = FakeDb()
+    external_reference = f"agpay_{'c' * 32}"
+
+    correlation_record = (
+        build_asaas_payment_user_correlation_record(
+            user_id=654,
+            external_reference=external_reference,
+        )
+    )
+    db.records[correlation_record.key] = correlation_record
+
+    payload = _valid_payload()
+    payload["id"] = "evt_correlated_replay_001"
+    payload["payment"]["externalReference"] = external_reference
+
+    wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        payload=payload,
+        db=db,
+        asaas_access_token="secret-token",
+    )
+    replay = (
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            payload=payload,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+    )
+
+    encoded = json.dumps(
+        replay,
+        ensure_ascii=False,
+        default=str,
+    )
+
+    assert replay["duplicated"] is True
+    assert replay["idempotency"]["replayed"] is True
+    assert (
+        replay["correlation"]["correlation_status"]
+        == "resolved"
+    )
+    assert replay["correlation"]["user_id_present"] is True
+    assert "correlation_storage" not in replay["audit"]
+    assert "user_id" not in replay["correlation"]
+    assert "correlation_key" not in replay["correlation"]
+    assert external_reference not in encoded
+    assert replay["can_credit_balance"] is False
