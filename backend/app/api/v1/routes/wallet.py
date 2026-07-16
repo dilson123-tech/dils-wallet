@@ -20,8 +20,14 @@ from app.partner import (
     get_partner_adapter,
 )
 from app.partner.asaas_config import AsaasConfigError, load_asaas_sandbox_config
+from app.partner.asaas_client import AsaasSandboxClient
 from app.partner.asaas_payment_correlation import (
     resolve_asaas_payment_user_correlation_from_payment,
+)
+from app.services.asaas_correlated_pix_payment_service import (
+    AsaasCorrelatedPixPaymentConflictError,
+    AsaasCorrelatedPixPaymentStorageError,
+    prepare_asaas_correlated_pix_payment as prepare_correlated_pix_payment,
 )
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
@@ -2069,6 +2075,122 @@ def get_asaas_sandbox_webhook_audit_history(
             "Adicionar filtros por event_type e audit_status em fase futura.",
             "Persistir eventos em tabela própria de auditoria em fase futura.",
             "Integrar histórico real somente após parceiro financeiro homologado.",
+        ],
+    }
+
+
+
+class WalletAsaasCorrelatedPixPaymentPreparationIn(BaseModel):
+    customer_id: str
+    amount: Decimal
+    due_date: str
+    description: str = "Cobrança PIX Asaas Sandbox Aurea Gold"
+
+
+@router.post("/api/v1/wallet/pix/asaas/sandbox/prepare")
+def prepare_wallet_asaas_correlated_pix_payment(
+    payload: WalletAsaasCorrelatedPixPaymentPreparationIn,
+    current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
+):
+    """
+    Prepara localmente uma cobrança PIX Asaas Sandbox correlacionada.
+
+    Segurança:
+    - Exige usuário autenticado.
+    - Registra correlação interna antes da entrega da preparação.
+    - Não executa chamada HTTP.
+    - Não cria cobrança no Asaas.
+    - Não expõe customer_id, externalReference, chave de correlação
+      nem conteúdo bruto da requisição preparada.
+    - Não movimenta dinheiro real.
+    """
+    raw_user_id = getattr(current_user, "id", None)
+
+    try:
+        user_id = int(raw_user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=403,
+            detail="Usuário autenticado inválido para preparação PIX.",
+        ) from None
+
+    if user_id <= 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Usuário autenticado inválido para preparação PIX.",
+        )
+
+    try:
+        config = load_asaas_sandbox_config()
+    except AsaasConfigError:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Configuração Asaas Sandbox indisponível "
+                "para preparação PIX."
+            ),
+        ) from None
+
+    client = AsaasSandboxClient(config=config)
+
+    try:
+        result = prepare_correlated_pix_payment(
+            db,
+            client=client,
+            user_id=user_id,
+            customer_id=payload.customer_id,
+            value=payload.amount,
+            due_date=payload.due_date,
+            description=payload.description,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from None
+    except AsaasCorrelatedPixPaymentConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Referência da preparação PIX já utilizada "
+                "com dados diferentes."
+            ),
+        ) from None
+    except AsaasCorrelatedPixPaymentStorageError:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Não foi possível registrar a preparação "
+                "PIX Asaas Sandbox."
+            ),
+        ) from None
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "operation": "prepare_asaas_correlated_pix_payment",
+        "preparation": result.safe_summary(),
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": "asaas",
+            "environment": "sandbox",
+            "real_money_enabled": False,
+        },
+        "can_send_http": False,
+        "can_create_charge": False,
+        "can_credit_balance": False,
+        "notice": (
+            "Preparação PIX Asaas Sandbox registrada localmente. "
+            "Nenhuma requisição foi enviada ao Asaas."
+        ),
+        "limitations": [
+            "Não executa HTTP.",
+            "Não cria cobrança no Asaas.",
+            "Não expõe customer_id.",
+            "Não expõe externalReference.",
+            "Não expõe chave de correlação.",
+            "Não movimenta dinheiro real.",
         ],
     }
 
