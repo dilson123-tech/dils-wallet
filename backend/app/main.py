@@ -15,7 +15,6 @@ from app.config import WALLET_MODE
 
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
-from app.routers import admin_dbfix                              # módulo com .router
 from app.api.v1.routes.ai import router as ai_router_v1          # já é APIRouter
 from app.api.v1.routes.ai_chat import router as ai_chat_router
 from app.api.v1.routes.users import router as users_router
@@ -73,7 +72,6 @@ app.include_router(ai_chat_router)
 app.include_router(users_router)
 app.include_router(whoami_router)
 app.include_router(wallet_router)
-app.include_router(admin_dbfix.router, prefix="/admin")
 app.include_router(dev_seed.router)
 
 from app.api.v1.ai import chat_lab_router
