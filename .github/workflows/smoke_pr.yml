@@ -32,7 +32,6 @@ jobs:
           cache: pip
           cache-dependency-path: |
             backend/requirements.txt
-            backend/requirements.lock.txt
 
       - name: Install deps
         run: |
