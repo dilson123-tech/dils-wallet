@@ -1,7 +1,7 @@
 import logging
 logger = logging.getLogger("aurea.pix")
 from app.core.rate_limit import limiter
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import calendar
 from decimal import Decimal
 from fastapi.responses import JSONResponse
@@ -50,6 +50,53 @@ def _resolve_user_id(db, request, x_user_email: Optional[str]):
         if row:
             return int(row[0])
     return None
+
+def _ultimos_7d_dates() -> list:
+    """Janela fixa de 7 dias: hoje e os 6 dias anteriores, em ordem crescente."""
+    hoje = date.today()
+    return [hoje - timedelta(days=i) for i in range(6, -1, -1)]
+
+def _empty_ultimos_7d() -> list:
+    return [
+        {"dia": d.isoformat(), "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
+        for d in _ultimos_7d_dates()
+    ]
+
+def _ultimos_7d_from_ledger(db: Session, user_id: int) -> list:
+    from app.models.pix_ledger import PixLedger
+
+    dias = _ultimos_7d_dates()
+    day_map = {
+        d.isoformat(): {"dia": d.isoformat(), "entradas": 0.0, "saidas": 0.0, "saldo_dia": 0.0}
+        for d in dias
+    }
+
+    rows = (
+        db.query(PixLedger)
+        .filter(PixLedger.user_id == user_id)
+        .order_by(PixLedger.id.desc())
+        .limit(500)
+        .all()
+    )
+
+    for row in rows:
+        dt = row.created_at
+        if dt is None:
+            continue
+        dia = dt.date().isoformat()
+        if dia not in day_map:
+            continue
+        amount = float(row.amount or 0)
+        if row.kind == "credit":
+            day_map[dia]["entradas"] += amount
+        elif row.kind == "debit":
+            day_map[dia]["saidas"] += amount
+
+    ultimos_7d = [day_map[d.isoformat()] for d in dias]
+    for item in ultimos_7d:
+        item["saldo_dia"] = item["entradas"] - item["saidas"]
+    return ultimos_7d
+
 router = APIRouter(prefix="/api/v1/pix", tags=["pix"])
 
 @router.get("/balance")
@@ -82,14 +129,16 @@ def get_balance(
 
         return {
             "saldo": saldo,
-            "source": "real"
+            "source": "real",
+            "ultimos_7d": _ultimos_7d_from_ledger(db, current_user.id),
         }
 
     except Exception as e:
         print("[AUREA PIX] erro ao calcular saldo:", e)
         return {
             "saldo": 0.0,
-            "source": "lab"
+            "source": "lab",
+            "ultimos_7d": _empty_ultimos_7d(),
         }
 
 
