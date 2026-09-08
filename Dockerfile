@@ -13,7 +13,8 @@ WORKDIR /app
 # dependências
 COPY requirements.txt /app/requirements.txt
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN python -m pip install --upgrade pip && pip install -r /app/requirements.txt -r /app/backend/requirements.txt
+COPY backend/constraints-prod.txt /app/backend/constraints-prod.txt
+RUN python -m pip install --upgrade pip && pip install -r /app/requirements.txt -r /app/backend/requirements.txt -c /app/backend/constraints-prod.txt
 
 # código da app
 COPY backend /app/backend
