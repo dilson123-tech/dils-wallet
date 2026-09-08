@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install -r backend/requirements.txt || pip install -r requirements.txt"
+buildCommand = "pip install -r backend/requirements.txt -c backend/constraints-prod.txt || pip install -r requirements.txt -c backend/constraints-prod.txt"
 
 [deploy]
 startCommand = "bash backend/start.sh"

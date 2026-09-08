@@ -36,7 +36,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install -U pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -c constraints-prod.txt
 
       - name: Start API
         run: |
