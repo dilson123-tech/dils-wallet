@@ -19,6 +19,14 @@ function buildPixHeaders(withJson: boolean = false): Record<string, string> {
   return h;
 }
 
+// Uma chave nova por intenção de envio (nunca reutilizada entre chamadas).
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `pix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 
 type PixTx = {
   id: number;
@@ -75,7 +83,7 @@ export default function QuickPixActions() {
     try {
       const r = await fetch(`${API_BASE}/api/v1/pix/send`, {
           method: "POST",
-          headers: buildPixHeaders(true),
+          headers: { ...buildPixHeaders(true), "Idempotency-Key": generateIdempotencyKey() },
           body: JSON.stringify({ dest, valor: Number(valor), descricao: msg || null }),
         });
       if (!r.ok) {

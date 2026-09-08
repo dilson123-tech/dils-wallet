@@ -55,8 +55,8 @@ if (!r.ok) {
   return (await r.json()) as T;
 }
 
-async function apiPost<T>(path: string, body: any): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+async function apiPost<T>(path: string, body: any, extraHeaders?: Record<string, string>): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
 const r = await authFetch(`${API_BASE}${path}`, {
     method: "POST",
     headers,
@@ -451,6 +451,15 @@ export type PixSendPayload = {
   descricao?: string | null;
 };
 
+// Uma chave nova por intenção de envio (nunca reutilizada entre chamadas),
+// salvo quando o próprio caller já fornece idem_key explicitamente.
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `pix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 // overload: aceita payload OU (dest, valor, msg)
 export function sendPix(payload: PixSendPayload): Promise<any>;
 export function sendPix(dest: string, valor: number, msg?: string | null): Promise<any>;
@@ -472,5 +481,15 @@ export function sendPix(arg1: any, arg2?: any, arg3?: any): Promise<any> {
     idem_key: payload.idem_key ?? null,
   };
 
-  return apiPost<any>("/api/v1/pix/send", out);
+  // Se o caller já forneceu idem_key não vazio, reutiliza exatamente esse
+  // valor no header (preserva retry controlado pelo caller). Caso
+  // contrário, gera uma chave nova para esta intenção de envio.
+  const effectiveIdempotencyKey =
+    payload.idem_key && payload.idem_key.length > 0
+      ? payload.idem_key
+      : generateIdempotencyKey();
+
+  return apiPost<any>("/api/v1/pix/send", out, {
+    "Idempotency-Key": effectiveIdempotencyKey,
+  });
 }
