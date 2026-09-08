@@ -25,10 +25,13 @@ BODY='{"chave_pix":"teste-chave-pix-123","valor":1.00,"descricao":"smoke-rate-li
 
 last=""
 for i in $(seq 1 11); do
+  # chave nova por chamada (intenção de envio distinta a cada iteração)
+  idem_key="smoke-$(date +%s%N)-$RANDOM-$i"
   last="$(curl --ipv4 --max-time 5 -sS -o /dev/null -w "%{http_code}" \
     -X POST "$BASE/api/v1/pix/send" \
     -H "Authorization: Bearer $AT" \
     -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $idem_key" \
     -d "$BODY" || echo "000")"
   echo "[smoke] $i -> $last"
 done
