@@ -474,11 +474,14 @@ export function sendPix(arg1: any, arg2?: any, arg3?: any): Promise<any> {
 
   // normaliza legado: "descricao" -> "msg"
   const msg = (payload.msg ?? payload.descricao ?? null);
+
+  // Objeto de rede: nomes exatos do contrato real do backend
+  // (PixSendRequest em backend/app/schemas/pix_send.py). idem_key nunca
+  // vai no body — a idempotência é sempre pelo header Idempotency-Key.
   const out = {
-    dest: payload.dest,
+    chave_pix: payload.dest,
     valor: payload.valor,
-    msg,
-    idem_key: payload.idem_key ?? null,
+    descricao: msg,
   };
 
   // Se o caller já forneceu idem_key não vazio, reutiliza exatamente esse
