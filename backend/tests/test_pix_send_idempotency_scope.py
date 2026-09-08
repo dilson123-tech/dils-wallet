@@ -32,12 +32,17 @@ from app.models.transaction import Transaction
 from app.services.pix_service import (
     PIX_SEND_IDEMPOTENCY_KEY_MAX_LENGTH,
     PIX_SEND_SCOPED_KEY_PREFIX,
+    _get_user_balance,
     _idem_hash,
     _pix_send_scoped_key,
     _round_money,
     send_pix,
 )
 from decimal import Decimal
+
+# M1.2b: mensagem exata exigida quando Idempotency-Key está ausente,
+# vazia ou é whitespace-only.
+REQUIRED_KEY_MESSAGE = "Idempotency-Key é obrigatória e não pode ser vazia."
 
 
 def _expected_hash(*, user_id, valor, chave_pix, descricao):
@@ -429,3 +434,98 @@ def test_operational_failure_before_commit_leaves_no_orphaned_rows(db_session):
 
     assert _count(db_session, IdempotencyKey) == 0
     assert _count(db_session, Transaction) == 0
+
+
+# --- 18-22: M1.2b — Idempotency-Key obrigatória -----------------------------
+
+
+def test_send_pix_rejects_missing_idempotency_key(db_session):
+    _fund(db_session, user_id=1, amount=100)
+
+    with pytest.raises(ValueError) as exc:
+        send_pix(
+            db_session, user_id=1, valor=10, chave_pix="dest@a", descricao="PIX",
+            idempotency_key=None,
+        )
+
+    assert str(exc.value) == REQUIRED_KEY_MESSAGE
+    assert _count(db_session, IdempotencyKey) == 0
+    assert _count(db_session, Transaction) == 0
+    assert _count(db_session, PixLedger) == 1  # somente o crédito de fundo
+    assert _get_user_balance(db_session, 1) == Decimal("100")
+
+
+def test_send_pix_rejects_empty_idempotency_key(db_session):
+    _fund(db_session, user_id=1, amount=100)
+
+    with pytest.raises(ValueError) as exc:
+        send_pix(
+            db_session, user_id=1, valor=10, chave_pix="dest@a", descricao="PIX",
+            idempotency_key="",
+        )
+
+    assert str(exc.value) == REQUIRED_KEY_MESSAGE
+    assert _count(db_session, IdempotencyKey) == 0
+    assert _count(db_session, Transaction) == 0
+    assert _count(db_session, PixLedger) == 1
+    assert _get_user_balance(db_session, 1) == Decimal("100")
+
+
+def test_send_pix_rejects_whitespace_only_idempotency_key(db_session):
+    _fund(db_session, user_id=1, amount=100)
+
+    with pytest.raises(ValueError) as exc:
+        send_pix(
+            db_session, user_id=1, valor=10, chave_pix="dest@a", descricao="PIX",
+            idempotency_key="   ",
+        )
+
+    assert str(exc.value) == REQUIRED_KEY_MESSAGE
+    assert _count(db_session, IdempotencyKey) == 0
+    assert _count(db_session, Transaction) == 0
+    assert _count(db_session, PixLedger) == 1
+    assert _get_user_balance(db_session, 1) == Decimal("100")
+
+
+def test_send_pix_accepts_single_character_idempotency_key(db_session):
+    _fund(db_session, user_id=1, amount=100)
+
+    result = send_pix(
+        db_session, user_id=1, valor=10, chave_pix="dest@a", descricao="PIX",
+        idempotency_key="a",
+    )
+
+    assert isinstance(result, Transaction)
+    assert _count(db_session, Transaction) == 1
+
+
+def test_send_pix_preserves_leading_trailing_whitespace_as_distinct_key(db_session):
+    # " K " e "K" devem continuar sendo chaves DIFERENTES -- nenhuma
+    # normalização/trim é aplicada ao valor usado no raw bridge/scoped key.
+    _fund(db_session, user_id=1, amount=100)
+
+    result_padded = send_pix(
+        db_session, user_id=1, valor=10, chave_pix="dest@a", descricao="PIX",
+        idempotency_key=" K ",
+    )
+    result_plain = send_pix(
+        db_session, user_id=1, valor=10, chave_pix="dest@a", descricao="PIX",
+        idempotency_key="K",
+    )
+
+    assert isinstance(result_padded, Transaction)
+    assert isinstance(result_plain, Transaction)
+    assert result_padded.id != result_plain.id  # duas operações independentes
+
+    padded_raw = db_session.query(IdempotencyKey).filter_by(key=" K ").first()
+    plain_raw = db_session.query(IdempotencyKey).filter_by(key="K").first()
+    assert padded_raw is not None
+    assert plain_raw is not None
+    assert padded_raw.key == " K "  # valor original preservado, sem strip
+    assert plain_raw.key == "K"
+
+    scoped_padded = _pix_send_scoped_key(1, " K ")
+    scoped_plain = _pix_send_scoped_key(1, "K")
+    assert scoped_padded != scoped_plain
+    assert db_session.query(IdempotencyKey).filter_by(key=scoped_padded).first() is not None
+    assert db_session.query(IdempotencyKey).filter_by(key=scoped_plain).first() is not None
