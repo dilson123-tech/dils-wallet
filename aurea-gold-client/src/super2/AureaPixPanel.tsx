@@ -15,7 +15,8 @@ import {
 import { API_BASE, USER_EMAIL, fetchPixHistory, fetchWalletPartnerStatus, type PixHistoryItem, type WalletPartnerStatus } from "./api";
 import { apiGet } from "../app/lib/http";
 import { withAuth } from "../lib/api";
-import { getToken } from "../lib/auth";
+import { getToken, decodeJwtPayload } from "../lib/auth";
+import { pixIntentManager, type PixIntentPayload } from "../lib/pixIntentManager";
 
 type PixAction = "send" | "charge" | "statement" | null;
 
@@ -355,24 +356,47 @@ const saldo =
         return;
       }
 
-      try {
-        setSendPixLoading(true);
+      const token = getToken();
 
-        const idemKey =
-          typeof crypto !== "undefined" &&
-          "randomUUID" in crypto &&
-          typeof crypto.randomUUID === "function"
-            ? crypto.randomUUID()
-            : `pix-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (!token) {
+        setSendPixError("Você precisa entrar na Aurea Gold para enviar PIX.");
+        return;
+      }
 
-        const token = getToken();
+      const ownerId = decodeJwtPayload(token)?.sub;
 
-        if (!token) {
-          setSendPixError("Você precisa entrar na Aurea Gold para enviar PIX.");
+      if (typeof ownerId !== "string" || ownerId.trim() === "") {
+        setSendPixError(
+          "Não foi possível identificar sua sessão. Entre novamente na Aurea Gold."
+        );
+        return;
+      }
+
+      const descricao = sendPixDescription.trim() || null;
+      const intentPayload: PixIntentPayload = { dest: key, valor: amount, descricao };
+
+      const intentResult = pixIntentManager.keyFor(ownerId, intentPayload);
+
+      let idemKey: string;
+
+      if (intentResult.status === "pending_conflict") {
+        const confirmado = window.confirm(
+          "Existe uma tentativa de PIX anterior sem confirmação.\n" +
+          "Ela pode ter sido processada.\n" +
+          "Deseja iniciar uma nova operação com os dados alterados?"
+        );
+
+        if (!confirmado) {
           return;
         }
 
-        const descricao = sendPixDescription.trim() || null;
+        idemKey = pixIntentManager.beginNewIntent(ownerId, intentPayload);
+      } else {
+        idemKey = intentResult.key;
+      }
+
+      try {
+        setSendPixLoading(true);
 
         const resp = await fetch(`${API_BASE}/api/v1/pix/send`, withAuth({
           method: "POST",
@@ -394,6 +418,8 @@ const saldo =
           );
           return;
         }
+
+        pixIntentManager.complete(ownerId, idemKey);
 
         const result: any = await resp.json().catch(() => null);
 
