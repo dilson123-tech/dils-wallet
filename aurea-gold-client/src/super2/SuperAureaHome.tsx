@@ -5,8 +5,9 @@ import { IaHeadlineLab } from "./IaHeadlineLab";
 import AureaAIChat from "./AureaAIChat";
 import AureaPixChart from "./AureaPixChart";
 import { apiGet } from "../lib/api";
-import { getToken, getSessionUserDisplayName } from "../lib/auth";
+import { getToken, getSessionUserDisplayName, decodeJwtPayload } from "../lib/auth";
 import { saveTokens } from "../auth/authClient";
+import { pixIntentManager, type PixIntentPayload } from "../lib/pixIntentManager";
 import {
   Wallet,
   TrendingUp,
@@ -455,6 +456,16 @@ async function handleHomeInsight() {
       setPixSendErr("Sem token. Abra pelo link/QR com #at=...");
       return;
     }
+
+    const ownerId = decodeJwtPayload(tok)?.sub;
+
+    if (typeof ownerId !== "string" || ownerId.trim() === "") {
+      setPixSendErr(
+        "Não foi possível identificar sua sessão. Entre novamente na Aurea Gold."
+      );
+      return;
+    }
+
     const dest = pixSendDest.trim();
     const v = Number(String(pixSendValor).replace(",", "."));
     if (!dest) {
@@ -465,10 +476,35 @@ async function handleHomeInsight() {
       setPixSendErr("Informe um valor válido.");
       return;
     }
+
+    const descricao = pixSendMsg.trim() || null;
+    const intentPayload: PixIntentPayload = { dest, valor: v, descricao };
+
+    const intentResult = pixIntentManager.keyFor(ownerId, intentPayload);
+
+    let idemKey: string;
+
+    if (intentResult.status === "pending_conflict") {
+      const confirmado = window.confirm(
+        "Existe uma tentativa de PIX anterior sem confirmação.\n" +
+        "Ela pode ter sido processada.\n" +
+        "Deseja iniciar uma nova operação com os dados alterados?"
+      );
+
+      if (!confirmado) {
+        return;
+      }
+
+      idemKey = pixIntentManager.beginNewIntent(ownerId, intentPayload);
+    } else {
+      idemKey = intentResult.key;
+    }
+
     setPixSendBusy(true);
     setPixSendErr(null);
     try {
-      await sendPix({ dest, valor: v, msg: (pixSendMsg.trim() || null) });
+      await sendPix({ dest, valor: v, msg: descricao, idem_key: idemKey });
+      pixIntentManager.complete(ownerId, idemKey);
       setPixSendOk("PIX enviado ✅");
       setPixSendDest("");
       setPixSendValor("");
