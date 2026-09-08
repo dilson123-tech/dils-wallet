@@ -372,6 +372,8 @@ const saldo =
           return;
         }
 
+        const descricao = sendPixDescription.trim() || null;
+
         const resp = await fetch(`${API_BASE}/api/v1/pix/send`, withAuth({
           method: "POST",
           headers: {
@@ -379,9 +381,9 @@ const saldo =
             "Idempotency-Key": idemKey,
           },
           body: JSON.stringify({
-            dest: key,
+            chave_pix: key,
             valor: amount,
-            msg: (sendPixDescription || "PIX enviado pelo app Aurea Gold").trim(),
+            descricao,
           }),
         }));
 
