@@ -167,6 +167,16 @@ def send_pix(
     # inequívoca, a uma Transaction real via Transaction.id -> user_id.
     # Qualquer caso indeterminado é fail-closed (IDEMPOTENCY_IN_PROGRESS).
     # -----------------------------
+    # M1.2b: Idempotency-Key é obrigatória. None, "" e whitespace-only são
+    # rejeitados ANTES de qualquer efeito (nenhum IdempotencyKey/Transaction/
+    # PixLedger criado, nenhum saldo lido/alterado). .strip() é usado
+    # SOMENTE como predicado para detectar whitespace-only — o valor
+    # original de idempotency_key nunca é reatribuído/normalizado, e
+    # continua sendo usado integralmente pelo raw bridge, scoped key/hash,
+    # replay, conflito e ownership legado logo abaixo.
+    if idempotency_key is None or idempotency_key.strip() == "":
+        raise ValueError("Idempotency-Key é obrigatória e não pode ser vazia.")
+
     raw_bridge_record = None
     raw_freshly_claimed = False
     scoped_record = None
