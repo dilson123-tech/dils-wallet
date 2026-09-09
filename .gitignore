@@ -30,6 +30,11 @@ Thumbs.db
 # Alembic (artefatos)
 migrations/**/__pycache__/
 
+# Node
+node_modules/
+*.tmp
+aurea-gold-admin/.vite.pid
+
 # Dev artifacts
 *.bak*
 *.sqlite*
@@ -62,9 +67,6 @@ backend/app.db
 *.bak_*
 *.fixbak*
 backups/
-
-# lixo acidental
-so e infinito nao acaba nunca
 
 # local LAN helpers (ignore)
 _lan_links/
