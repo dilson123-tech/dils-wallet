@@ -35,6 +35,9 @@ node_modules/
 *.tmp
 aurea-gold-admin/.vite.pid
 
+# Backend main.py local backups
+backend/app/main.backup-*.py
+
 # Dev artifacts
 *.bak*
 *.sqlite*
