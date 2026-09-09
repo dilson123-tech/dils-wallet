@@ -72,7 +72,11 @@ app.include_router(ai_chat_router)
 app.include_router(users_router)
 app.include_router(whoami_router)
 app.include_router(wallet_router)
-app.include_router(dev_seed.router)
+# Router de desenvolvimento: opt-in explícito via ALLOW_DEV_SEED.
+# Os guards internos de dev_seed.py continuam obrigatórios mesmo quando
+# montado — isto é uma camada adicional, não um substituto.
+if _allow_dev_seed():
+    app.include_router(dev_seed.router)
 
 from app.api.v1.ai import chat_lab_router
 app.include_router(chat_lab_router, prefix="/api/v1/ai")
