@@ -2,9 +2,9 @@
 
 ## Executive Overview
 
-Aurea Gold is a production-grade fintech platform designed to deliver secure digital wallet infrastructure, PIX operations, and premium financial control for both individuals and businesses.
+Aurea Gold is a production-grade wallet and payments technology platform, designed to deliver secure digital wallet experiences, PIX integration, and premium transaction control for both individuals and businesses.
 
-This product is not positioned as an experimental system. It is being engineered and matured with a clear objective: to operate as a reliable, secure, and commercially viable financial platform.
+This product is not positioned as an experimental system. It is being engineered and matured with a clear objective: to become a reliable, secure, and commercially viable wallet technology platform, ready to integrate with regulated financial partners.
 
 The current maturity level reflects a strong technical foundation combined with ongoing evolution in commercial positioning, visual perception, and market readiness.
 
@@ -14,7 +14,7 @@ The current maturity level reflects a strong technical foundation combined with 
 
 Aurea Gold is structured on the following strategic pillars:
 
-- **Financial Infrastructure**
+- **Wallet & Payments Technology**
   Core wallet logic, transaction control, and PIX operations with idempotency and reliability.
 
 - **Security & Governance**
@@ -47,7 +47,7 @@ Aurea Gold is structured on the following strategic pillars:
 
 ## Market Positioning
 
-Aurea Gold is positioned as a **digital financial infrastructure platform**, not just a wallet.
+Aurea Gold is positioned as a **wallet and payments technology platform** built for real-world reliability, not just a demo wallet.
 
 Its value proposition is based on:
 
@@ -57,7 +57,7 @@ Its value proposition is based on:
 - scalable architecture
 - premium product direction
 
-The platform is designed to support real-world usage scenarios, including controlled financial operations, transaction tracking, and business-level usage.
+The platform is designed to support real-world usage scenarios, including controlled transaction flows via approved partners, transaction tracking, and business-level usage.
 
 ---
 

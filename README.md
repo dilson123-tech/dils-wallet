@@ -4,9 +4,9 @@
 
 # Aurea Gold
 
-**Aurea Gold** is a production-grade digital wallet and PIX platform built for real financial operations.
+**Aurea Gold** is a production-grade digital wallet and PIX technology platform, engineered to support real financial operations through an approved payment/PSP partner.
 
-Designed with reliability, payment integrity, and operational discipline at its core, Aurea Gold is not a demo system — it is a fintech foundation ready for real-world usage.
+Designed with reliability, payment integrity, and operational discipline at its core, Aurea Gold is not a demo system — it is a production-oriented wallet technology foundation, built for real-world usage once integrated with an approved payment/PSP partner.
 
 ## What Aurea Gold Is
 
@@ -18,6 +18,12 @@ Aurea Gold is a complete digital wallet platform that enables:
 - premium interfaces for both clients and administrators
 
 The system is built with a **production-first mindset**, ensuring that every validated behavior is deterministic and reliable.
+
+## Operating Model
+
+Aurea Gold is a technology platform for wallet and PIX experiences. It does not act as a bank, financial institution, or payment institution, and it does not custody or process funds on its own.
+
+Real financial operations depend on integration with an approved payment/PSP/BaaS partner. Until that integration is fully enabled and authorized, the platform operates in demo/sandbox mode, with real money movement disabled.
 
 ## Why It Matters
 
@@ -128,7 +134,7 @@ The current product phase is focused on:
 
 ## Status
 
-Aurea Gold is an active fintech product under structured development, focused on production readiness, payment reliability, and premium delivery quality.
+Aurea Gold is an active technology product under structured development, focused on production readiness, payment integration reliability, and premium delivery quality.
 
 ## Author
 

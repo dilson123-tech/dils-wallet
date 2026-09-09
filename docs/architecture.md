@@ -1,12 +1,12 @@
-# Aurea Gold — Financial Infrastructure Architecture
+# Aurea Gold — Wallet & Payments Technology Architecture
 
 ## Executive Overview
 
-Aurea Gold operates as a production-grade financial infrastructure platform designed to support secure wallet operations, PIX transactions, and controlled financial flows.
+Aurea Gold is architected as a production-grade wallet and payments technology platform, designed to support secure wallet operations, PIX integration, and controlled transaction flows through an approved payment/PSP partner.
 
 The architecture is intentionally structured to ensure reliability, transactional safety, and operational governance — not just API delivery.
 
-Rather than a simple backend service, Aurea Gold is built as a multi-layer financial system with clear separation between transaction logic, control mechanisms, and user experience.
+Rather than a simple backend service, Aurea Gold is built as a multi-layer financial technology system, with clear separation between transaction logic, control mechanisms, and user experience.
 
 ---
 
@@ -89,7 +89,7 @@ The architecture is designed to support:
 - scaling of client and admin interfaces independently  
 - integration with external financial services  
 
-This enables Aurea Gold to evolve into a broader financial platform without architectural rework.
+This enables Aurea Gold to evolve into a broader payments technology platform without architectural rework.
 
 ---
 
@@ -109,10 +109,10 @@ The current architectural focus is:
 
 Aurea Gold is not structured as a simple API product.
 
-It is engineered as a controlled financial infrastructure where:
+It is engineered as a controlled financial technology architecture where:
 
 - transactions are validated and protected  
 - operations are governed and auditable  
 - user interaction is separated from financial authority  
 
-This architectural approach is essential for building trust in real financial environments.
+This architectural approach is essential for building trust as the platform integrates with regulated financial partners.
