@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Aurea Gold is an active production-oriented fintech platform under continuous development.
+Aurea Gold is an active production-oriented technology platform for wallet and PIX experiences, under continuous development.
 Security fixes are prioritized for the current `main` branch and the latest production-aligned deployment.
 
 | Version | Supported |
@@ -57,4 +57,4 @@ Aurea Gold will make a best effort to:
 
 ## Notes
 
-Security is treated as a product priority because Aurea Gold is positioned as a real fintech platform, not a demo repository.
+Security is treated as a product priority because Aurea Gold is a production-oriented technology platform designed for regulated financial integrations, not a demo repository.
