@@ -61,6 +61,7 @@ backend/app.db
 # backups / lixo local
 *.bak_*
 *.fixbak*
+backups/
 
 # lixo acidental
 so e infinito nao acaba nunca
