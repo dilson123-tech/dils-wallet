@@ -22,11 +22,7 @@ from app.api.v1.routes.whoami import router as whoami_router
 from app.api.v1.routes.wallet import router as wallet_router
 
 # PIX Super2 (nossas rotas novas)
-from app.api.v1.routes import pix_balance_get                    # módulo com .router
 from app.api.v1.routes.pix import router as pix_router
-from app.api.v1.routes import pix_history_get                    # módulo com .router
-from app.api.v1.routes import pix_7d
-from app.api.v1.routes import pix_forecast_get                             # módulo com .router
 from app.routers import dev_seed
 
 
@@ -55,7 +51,6 @@ def root():
 
 
 register_auth(app)
-# app.include_router(pix_balance_get.router)
 app.include_router(pix_router)
 
 # --- Observability (request_id + logs + metrics) ---
