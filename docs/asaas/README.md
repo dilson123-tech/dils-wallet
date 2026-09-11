@@ -1,25 +1,58 @@
 # Aurea Gold — Asaas Sandbox Documentation Index
 
-Este é o documento canônico de entrada para toda a documentação relacionada à integração com o Asaas Sandbox. O estado técnico e comercial atual está consolidado nos 6 documentos canônicos deste diretório (`ARCHITECTURE.md`, `HTTP_CLIENT_CONTRACT.md`, `SUBACCOUNTS.md`, `DRY_RUN.md`, `WEBHOOKS.md`, `PARTNERSHIP.md`). Os 48 documentos históricos que deram origem a esses canônicos foram arquivados em `docs/archive/asaas/` (ME1-C) — preservados por valor histórico, sem representar necessariamente o estado atual — e estão organizados abaixo por tema. `docs/product-maturity.md` permanece em `docs/` (não é um documento histórico específico do Asaas).
+Este é o documento canônico de entrada para toda a documentação relacionada à
+integração com o Asaas Sandbox.
 
-## Status atual real (confirmado por inspeção de código em 2026-09-10)
+## 1. Propósito
 
-- **Chamadas HTTP de saída ao Asaas (criar cliente, subconta, pagamento): bloqueadas/não implementadas.** Todo o código em `backend/app/partner/asaas_client.py` (36 classes) é uma cadeia de gates/contratos que nunca executa uma requisição HTTP real (`can_send_http=False`, `http_call_executed=False` em todas as classes).
-- **Webhook receiver do Asaas Sandbox: implementado e montado no runtime atual da aplicação** em `POST /api/v1/partners/asaas/webhooks/sandbox`, com histórico de auditoria em `GET /api/v1/partners/asaas/webhooks/sandbox/audit-history`.
-- **Dinheiro real: não habilitado no estado atual.** `REAL_MONEY_ENABLED` é validado como obrigatoriamente `false` em `backend/app/partner/asaas_config.py`.
-- **Integração Asaas de saída:** somente Sandbox no estado atual. A URL de produção do Asaas é explicitamente bloqueada pelo código.
+Orientar a leitura da documentação Asaas: onde está o estado atual, onde está
+o histórico, e em que ordem ler.
 
-### URL Sandbox oficial (correção)
+## 2. Estado atual resumido
 
-A URL Sandbox realmente usada pelo código e por `backend/.env.example` é:
+- Sandbox é o único ambiente Asaas habilitado/permitido no estado atual do
+  projeto; Production não está habilitada.
+- HTTP de saída ao Asaas (cliente, subconta, pagamento): sem transporte
+  executável — ver [`HTTP_CLIENT_CONTRACT.md`](./HTTP_CLIENT_CONTRACT.md).
+- Preparação PIX local: existe um endpoint runtime local ativo e testado
+  para preparação — ver [`DRY_RUN.md`](./DRY_RUN.md).
+- Webhook Asaas Sandbox (inbound): implementado, autenticado e testado — ver
+  [`WEBHOOKS.md`](./WEBHOOKS.md).
+- Subcontas: apenas contrato representacional, nenhuma criada — ver
+  [`SUBACCOUNTS.md`](./SUBACCOUNTS.md).
+- Dinheiro real: desabilitado por configuração obrigatória — ver
+  [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+- Onboarding comercial com o Asaas já foi iniciado e está pausado no
+  requisito de CNPJ da Aurea Gold, com retomada esperada do mesmo processo
+  quando o CNPJ estiver ativo — ver [`PARTNERSHIP.md`](./PARTNERSHIP.md).
 
-```
-ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
-```
+Este resumo não substitui os documentos linkados — qualquer detalhe técnico
+ou comercial deve ser verificado no documento correspondente.
 
-⚠️ Alguns documentos mais antigos desta pasta ([`WALLET_ASAAS_SANDBOX_CONFIG_GUARDS_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_CONFIG_GUARDS_V1.md), [`WALLET_ASAAS_SANDBOX_FIRST_SPIKE_PLAN_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_FIRST_SPIKE_PLAN_V1.md)) mencionam `https://sandbox.asaas.com/api/v3`, que **não é** a URL aceita pelo código atual. Use sempre o valor acima.
+## 3. Leitura principal — documentos canônicos
 
-## Mapa de documentos por tema
+| Ordem | Documento | Cobre |
+|---|---|---|
+| 1 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Fronteira Aurea Gold↔Asaas, configuração obrigatória, guards |
+| 2 | [`HTTP_CLIENT_CONTRACT.md`](./HTTP_CLIENT_CONTRACT.md) | Contrato representacional da cadeia de criação de cliente |
+| 3 | [`SUBACCOUNTS.md`](./SUBACCOUNTS.md) | Modelo de subcontas, split, reconciliação, rate limit |
+| 4 | [`DRY_RUN.md`](./DRY_RUN.md) | Preparação PIX local e endpoint runtime de preparação |
+| 5 | [`WEBHOOKS.md`](./WEBHOOKS.md) | Recebimento de webhook Asaas — o único fluxo inbound real |
+| 6 | [`PARTNERSHIP.md`](./PARTNERSHIP.md) | Estado comercial e onboarding |
+
+## 4. Limites atuais da integração
+
+Nenhuma chamada HTTP de saída ao Asaas é executada hoje; nenhuma subconta é
+criada; nenhum dinheiro real é movimentado; produção não está habilitada.
+Detalhes e evidência de cada limite estão nos documentos da seção 3 — este
+índice não os repete.
+
+## 5. Arquivo histórico
+
+Os 48 documentos que originaram os 6 canônicos acima foram preservados em
+[`docs/archive/asaas/`](../archive/asaas/) por valor histórico. Eles **não
+representam o estado atual** e podem conter informação superada (datas, URLs,
+decisões). Organizados por tema:
 
 ### Setup / configuração Sandbox
 - [`WALLET_ASAAS_SANDBOX_VALIDATION_PLAN_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_VALIDATION_PLAN_V1.md)
@@ -30,10 +63,10 @@ ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
 - [`WALLET_ASAAS_SANDBOX_ACCESS_CONFIRMATION_NOTES_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_ACCESS_CONFIRMATION_NOTES_V1.md)
 - [`WALLET_ASAAS_SANDBOX_TECHNICAL_CONFIRMATION_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_TECHNICAL_CONFIRMATION_V1.md) — documento mais consolidado deste grupo
 - [`WALLET_ASAAS_SANDBOX_API_WEBHOOK_NOTES_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_API_WEBHOOK_NOTES_V1.md)
-- [`WALLET_ASAAS_SANDBOX_CONFIG_GUARDS_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_CONFIG_GUARDS_V1.md) ⚠️ contém a URL desatualizada acima
+- [`WALLET_ASAAS_SANDBOX_CONFIG_GUARDS_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_CONFIG_GUARDS_V1.md) ⚠️ contém a URL de Sandbox anterior à correção de 11/07/2026 — ver [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - [`WALLET_ASAAS_SANDBOX_ENV_EXAMPLE_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_ENV_EXAMPLE_V1.md)
 - [`WALLET_ASAAS_SANDBOX_CLIENT_SKELETON_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_CLIENT_SKELETON_V1.md)
-- [`WALLET_ASAAS_SANDBOX_FIRST_SPIKE_PLAN_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_FIRST_SPIKE_PLAN_V1.md) ⚠️ contém a URL desatualizada acima
+- [`WALLET_ASAAS_SANDBOX_FIRST_SPIKE_PLAN_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_FIRST_SPIKE_PLAN_V1.md) ⚠️ contém a URL de Sandbox anterior à correção de 11/07/2026 — ver [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ### Dry-run (PIX / pagamentos)
 - [`WALLET_ASAAS_SANDBOX_CUSTOMER_DRY_RUN_V1.md`](../archive/asaas/WALLET_ASAAS_SANDBOX_CUSTOMER_DRY_RUN_V1.md)
@@ -79,9 +112,26 @@ ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
 - [`WALLET_PSP_BAAS_SHORTLIST_V1.md`](../archive/asaas/WALLET_PSP_BAAS_SHORTLIST_V1.md)
 - [`WALLET_PARTNER_CONTACT_CHANNELS_AND_OUTREACH_V1.md`](../archive/asaas/WALLET_PARTNER_CONTACT_CHANNELS_AND_OUTREACH_V1.md)
 
-### Maturidade / histórico transversal
-- [`product-maturity.md`](../product-maturity.md) — contém histórico/changelog relacionado ao Asaas; a redundância com o README.md da raiz será tratada separadamente em ME1-D.
+Um aviso de enquadramento histórico está disponível em
+[`docs/archive/asaas/README.md`](../archive/asaas/README.md).
 
-## Limites deste documento
+## 6. Documentos transversais
 
-Este README organiza e contextualiza os 48 documentos históricos arquivados em `docs/archive/asaas/` (ME1-C) e o documento de maturidade transversal (`product-maturity.md`, não movido). A consolidação de conteúdo desses históricos nos 6 documentos canônicos foi feita em ME1-B1 a ME1-B6. Uma reorganização editorial mais ampla deste índice (por exemplo, destacar os 6 canônicos como leitura primária) permanece em aberto para ME1-D.
+[`docs/product-maturity.md`](../product-maturity.md) cobre a maturidade geral
+do produto (não específica ao Asaas). Uma seção sua ("Asaas Sandbox Execution
+Gate") resume, em nível mais alto, o mesmo estado já detalhado em
+[`HTTP_CLIENT_CONTRACT.md`](./HTTP_CLIENT_CONTRACT.md).
+
+## 7. O que NÃO deve ser inferido
+
+- Sandbox funcional não implica Production liberada.
+- Onboarding iniciado não implica parceria aprovada.
+- Webhook inbound funcional não implica outbound habilitado.
+- Um documento arquivado não implica que sua informação ainda é válida —
+  verifique sempre o canônico correspondente.
+
+## 8. Manutenção futura
+
+Ao criar ou substituir um documento canônico, atualize a tabela da seção 3.
+Ao arquivar um novo documento histórico, adicione-o à seção 5 e não o liste
+em nenhum outro lugar.

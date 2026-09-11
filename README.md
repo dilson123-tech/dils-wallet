@@ -82,8 +82,7 @@ Detailed project documentation is available in:
 - `docs/pix-operation.md`
 - `docs/panels.md`
 - `docs/product-maturity.md`
-- `docs/archive/asaas/WALLET_ASAAS_SANDBOX_MANUAL_EXECUTION_GATE_V1.md`
-- `docs/archive/asaas/WALLET_ASAAS_SANDBOX_FIRST_HTTP_CALL_RUNBOOK_V1.md`
+- `docs/asaas/README.md`
 
 ## Tech Stack
 
