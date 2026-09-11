@@ -81,6 +81,6 @@ Ver o mapa completo em [`docs/asaas/README.md`](./README.md).
 
 ## 14. Fontes e limites
 
-As seções 3 a 5 (status comercial, histórico até a resposta técnica do Asaas) são sustentadas por `docs/WALLET_PARTNER_CONTACT_LOG_V1.md`, `docs/WALLET_PSP_BAAS_SHORTLIST_V1.md` e `docs/WALLET_PARTNER_CONTACT_CHANNELS_AND_OUTREACH_V1.md`, todos rastreados neste repositório.
+As seções 3 a 5 (status comercial, histórico até a resposta técnica do Asaas) são sustentadas por `docs/archive/asaas/WALLET_PARTNER_CONTACT_LOG_V1.md`, `docs/archive/asaas/WALLET_PSP_BAAS_SHORTLIST_V1.md` e `docs/archive/asaas/WALLET_PARTNER_CONTACT_CHANNELS_AND_OUTREACH_V1.md`, todos rastreados neste repositório (arquivados em `docs/archive/asaas/` no ME1-C).
 
 A informação de que o onboarding foi interrompido especificamente pelo requisito de CNPJ da Aurea Gold (seções 5 a 8) é um estado operacional confirmado diretamente pelo responsável do projeto durante a elaboração deste documento — não há registro textual equivalente em nenhum arquivo do repositório até a data desta consolidação. Futuras atualizações deste documento devem substituir essa informação por evidência documental assim que ela existir.
