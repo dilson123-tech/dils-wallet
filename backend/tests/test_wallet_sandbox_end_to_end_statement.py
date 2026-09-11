@@ -9,7 +9,7 @@ os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.routes import wallet as wallet_routes
-from app.partner import PixPaymentRequest, SandboxPartnerAdapter
+from app.partner import InternalSandboxPartnerAdapter, PixPaymentRequest
 from app.partner.asaas_payment_correlation import (
     build_asaas_payment_user_correlation_record,
 )
@@ -77,7 +77,7 @@ class FakeDb:
 
 
 def _configure_sandbox(monkeypatch):
-    adapter = SandboxPartnerAdapter()
+    adapter = InternalSandboxPartnerAdapter()
 
     monkeypatch.setattr(wallet_routes, "WALLET_MODE", "partner")
     monkeypatch.setattr(wallet_routes, "IS_PARTNER_WALLET", True)

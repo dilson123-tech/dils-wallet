@@ -14,7 +14,7 @@ from app.partner.types import (
 )
 
 
-class SandboxPartnerAdapter(PartnerAdapter):
+class InternalSandboxPartnerAdapter(PartnerAdapter):
     """
     Adapter sandbox controlado para simular contrato de PSP/BaaS.
 
