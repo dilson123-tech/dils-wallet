@@ -34,7 +34,7 @@ def _env_bool(name: str, default: bool) -> bool:
         return default
     return v.strip().lower() in {"1","true","yes","y","on"}
 
-DOCS_PUBLIC = _env_bool("DOCS_PUBLIC", True)
+DOCS_PUBLIC = _env_bool("DOCS_PUBLIC", False)
 app = FastAPI(title="Dils Wallet API", version="0.3.0",
     docs_url="/docs" if DOCS_PUBLIC else None,
     redoc_url="/redoc" if DOCS_PUBLIC else None,

@@ -20,6 +20,7 @@ jobs:
       LOGIN_USER: customer@aurea.local
       LOGIN_PASS: dev
       SECRET_KEY: ci-local-smoke-secret-1234567890
+      DOCS_PUBLIC: "1"
 
     steps:
       - name: Checkout
