@@ -33,9 +33,9 @@ from app.services.pix_service import (
     PIX_SEND_IDEMPOTENCY_KEY_MAX_LENGTH,
     PIX_SEND_SCOPED_KEY_PREFIX,
     _get_user_balance,
-    _idem_hash,
     _pix_send_scoped_key,
-    _round_money,
+    pix_send_request_hash,
+    round_pix_money,
     send_pix,
 )
 from decimal import Decimal
@@ -50,9 +50,9 @@ def _expected_hash(*, user_id, valor, chave_pix, descricao):
     antes de calcular o hash, para que o request_hash de uma linha
     legada seedada em teste seja diretamente comparável ao que send_pix
     recalcula internamente."""
-    return _idem_hash(
+    return pix_send_request_hash(
         user_id=user_id,
-        valor=_round_money(Decimal(valor)),
+        valor=round_pix_money(Decimal(valor)),
         chave_pix=chave_pix,
         descricao=descricao,
     )

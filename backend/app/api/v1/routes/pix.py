@@ -374,7 +374,19 @@ def get_forecast(
 
 from fastapi import Request, HTTPException
 from time import perf_counter
-from app.schemas.pix_send import PixSendRequest, PixSendResponse
+from app.schemas.pix_send import (
+    PixSendIntentAckRequest,
+    PixSendIntentAckResponse,
+    PixSendIntentRequest,
+    PixSendIntentResponse,
+    PixSendRequest,
+    PixSendResponse,
+)
+from app.services.pix_send_intent_service import (
+    PixSendIntentAckError,
+    acknowledge_pix_send_intent,
+    reserve_pix_send_intent,
+)
 from app.services.pix_service import send_pix
 from app.core.rate_limit import Limiter
 from app.core.observability import PIX_SEND_TOTAL, PIX_SEND_DURATION_SECONDS
@@ -442,3 +454,70 @@ def post_pix_send(
             PIX_SEND_DURATION_SECONDS.labels(outcome=outcome).observe(dur)
         except Exception:
             pass
+
+
+@router.post("/send/intent", response_model=PixSendIntentResponse)
+@limiter.limit("10/minute")
+def post_pix_send_intent(
+    request: Request,
+    body: PixSendIntentRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_customer),
+):
+    """
+    Reserva/recupera/renova a intent server-side de um envio PIX (M2).
+
+    Nunca recebe user_id/fingerprint do chamador: o usuário vem sempre de
+    current_user (JWT verificado) e o fingerprint é recalculado aqui a
+    partir do payload já validado por este schema — nunca do JSON cru.
+
+    Ver backend/app/services/pix_send_intent_service.py para o contrato
+    completo (fail-closed em toda ambiguidade; nunca gera uma segunda
+    send_key enquanto a intent anterior estiver pending).
+    """
+    try:
+        result = reserve_pix_send_intent(
+            db=db,
+            user_id=current_user.id,
+            valor=body.valor,
+            chave_pix=body.chave_pix,
+            descricao=body.descricao or "PIX",
+            force_new=body.force_new,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    if result.get("force_new_rejected"):
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            status_code=409,
+        )
+
+    return result
+
+
+@router.post("/send/intent/ack", response_model=PixSendIntentAckResponse)
+@limiter.limit("10/minute")
+def post_pix_send_intent_ack(
+    request: Request,
+    body: PixSendIntentAckRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_customer),
+):
+    """
+    Confirma (ack) que a send_key da intent atual foi genuinamente
+    processada com sucesso — verificado sempre server-side contra o
+    mecanismo real de idempotência do PIX (`pix-send:`), nunca contra a
+    alegação do chamador de que "recebeu 200". Idempotente: chamar de
+    novo uma intent já acknowledged não falha.
+    """
+    try:
+        result = acknowledge_pix_send_intent(
+            db=db,
+            user_id=current_user.id,
+            send_key=body.send_key,
+        )
+    except PixSendIntentAckError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    return result

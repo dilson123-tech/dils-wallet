@@ -34,12 +34,26 @@ _PIX_SEND_RESPONSE_FIELDS = (
 )
 
 
-def _round_money(value: Decimal) -> Decimal:
+def round_pix_money(value: Decimal) -> Decimal:
+    """Canonicaliza um valor monetário de PIX (2 casas, HALF_UP).
+
+    Público (sem "_") porque é reaproveitado fora deste módulo por
+    `pix_send_intent_service.py`, que precisa da MESMA canonicalização ao
+    calcular o fingerprint de uma intenção — para que representações
+    equivalentes do mesmo valor (ex. "10.005") nunca produzam um
+    fingerprint diferente do valor efetivamente debitado aqui.
+    """
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _idem_hash(user_id: int, valor: Decimal, chave_pix: str, descricao: str) -> str:
-    # hash estável e auditável (64 hex chars)
+def pix_send_request_hash(user_id: int, valor: Decimal, chave_pix: str, descricao: str) -> str:
+    """Hash estável e auditável (64 hex chars) do "formato" de um envio PIX.
+
+    Público (sem "_") porque é a MESMA fórmula usada por
+    `pix_send_intent_service.py` como fingerprint_hash da intenção —
+    fonte de verdade única, para nunca haver duas definições divergentes
+    do que conta como "o mesmo PIX".
+    """
     msg = f"{user_id}|{str(valor)}|{chave_pix}|{descricao}".encode("utf-8")
     return hashlib.sha256(msg).hexdigest()
 
@@ -143,7 +157,7 @@ def send_pix(
     descricao: str = "PIX",
     idempotency_key: str | None = None,
 ):
-    valor = _round_money(Decimal(valor))
+    valor = round_pix_money(Decimal(valor))
     # -----------------------------
     # Idempotency (fintech-grade) — M1.1 Fase 1
     #
@@ -190,7 +204,7 @@ def send_pix(
                 f"({PIX_SEND_IDEMPOTENCY_KEY_MAX_LENGTH} caracteres)."
             )
 
-        req_hash = _idem_hash(user_id=user_id, valor=valor, chave_pix=chave_pix, descricao=descricao)
+        req_hash = pix_send_request_hash(user_id=user_id, valor=valor, chave_pix=chave_pix, descricao=descricao)
         scoped_key = _pix_send_scoped_key(user_id, idempotency_key)
 
         # --- 1) Raw compatibility bridge ---
