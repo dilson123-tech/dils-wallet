@@ -12,6 +12,7 @@ from app.database import Base, engine
 from app.core.rate_limit import init_rate_limiter
 from app.core.observability import setup_logging, observability_middleware, metrics_response
 from app.config import WALLET_MODE
+from app.sentry_init import setup_sentry
 
 # Routers principais / legados
 from app.api.v1.routes import assist as assist_router_v1         # módulo com .router
@@ -35,6 +36,10 @@ def _env_bool(name: str, default: bool) -> bool:
     return v.strip().lower() in {"1","true","yes","y","on"}
 
 DOCS_PUBLIC = _env_bool("DOCS_PUBLIC", False)
+
+# Sentry (fail-safe: no-op sem SENTRY_DSN válido; nunca derruba o startup)
+setup_sentry()
+
 app = FastAPI(title="Dils Wallet API", version="0.3.0",
     docs_url="/docs" if DOCS_PUBLIC else None,
     redoc_url="/redoc" if DOCS_PUBLIC else None,

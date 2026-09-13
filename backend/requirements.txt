@@ -16,3 +16,4 @@ email-validator==2.1.1
 # observability
 prometheus-client==0.20.0
 python-json-logger==2.0.7
+sentry-sdk==2.39.0
