@@ -59,9 +59,9 @@ from app.models.transaction import Transaction
 from app.models.user_main import User
 from app.services.pix_service import (
     _get_user_balance,
-    _idem_hash,
     _pix_send_scoped_key,
-    _round_money,
+    pix_send_request_hash,
+    round_pix_money,
     send_pix,
 )
 
@@ -176,9 +176,9 @@ def _counts(session_factory):
 
 
 def _expected_hash(*, user_id, valor, chave_pix, descricao):
-    return _idem_hash(
+    return pix_send_request_hash(
         user_id=user_id,
-        valor=_round_money(Decimal(valor)),
+        valor=round_pix_money(Decimal(valor)),
         chave_pix=chave_pix,
         descricao=descricao,
     )

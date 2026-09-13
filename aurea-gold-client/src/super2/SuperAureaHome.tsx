@@ -480,40 +480,90 @@ async function handleHomeInsight() {
     const descricao = pixSendMsg.trim() || null;
     const intentPayload: PixIntentPayload = { dest, valor: v, descricao };
 
-    const intentResult = pixIntentManager.keyFor(ownerId, intentPayload);
-
-    let idemKey: string;
-
-    if (intentResult.status === "pending_conflict") {
-      const confirmado = window.confirm(
-        "Existe uma tentativa de PIX anterior sem confirmação.\n" +
-        "Ela pode ter sido processada.\n" +
-        "Deseja iniciar uma nova operação com os dados alterados?"
-      );
-
-      if (!confirmado) {
-        return;
-      }
-
-      idemKey = pixIntentManager.beginNewIntent(ownerId, intentPayload);
-    } else {
-      idemKey = intentResult.key;
-    }
-
     setPixSendBusy(true);
     setPixSendErr(null);
     try {
-      await sendPix({ dest, valor: v, msg: descricao, idem_key: idemKey });
-      pixIntentManager.complete(ownerId, idemKey);
-      setPixSendOk("PIX enviado ✅");
+      // 1) Reserva/recupera a intent — a send_key é sempre a que o
+      // backend devolver, nunca gerada localmente.
+      let reservation;
+      try {
+        reservation = await pixIntentManager.reserveIntent(intentPayload);
+      } catch (err) {
+        console.error("[SuperAureaHome] Falha ao reservar intent PIX:", err);
+        setPixSendErr("Não consegui verificar essa operação agora. Tente novamente em instantes.");
+        return;
+      }
+
+      if (reservation.state === "acknowledged") {
+        // Já existe um PIX concluído para exatamente este payload —
+        // exige confirmação humana explícita antes de qualquer coisa.
+        const confirmado = window.confirm(
+          "Um PIX com estes mesmos dados já foi concluído.\n" +
+          "Deseja enviar outro PIX igual?"
+        );
+
+        if (!confirmado) {
+          return;
+        }
+
+        let renewed;
+        try {
+          renewed = await pixIntentManager.reserveNewIntent(intentPayload);
+        } catch (err) {
+          console.error("[SuperAureaHome] Falha ao iniciar nova intent PIX:", err);
+          setPixSendErr("Não consegui iniciar uma nova operação agora. Tente novamente em instantes.");
+          return;
+        }
+
+        if (renewed.forceNewRejected || !renewed.canSend || !renewed.sendKey) {
+          // Fail-closed: o backend recusou (ainda há uma operação
+          // pendente/em reconciliação). Nunca gerar K2 localmente.
+          setPixSendErr("Existe uma operação ainda pendente para estes dados. Tente novamente em instantes.");
+          return;
+        }
+
+        reservation = renewed;
+      }
+
+      if (!reservation.canSend || !reservation.sendKey) {
+        setPixSendErr("Não foi possível preparar o envio agora. Tente novamente em instantes.");
+        return;
+      }
+
+      const sendKey = reservation.sendKey;
+
+      // 2) Envio real — payload idêntico ao usado na reserva, idem_key =
+      // exatamente a send_key devolvida pelo backend (vai no header
+      // Idempotency-Key dentro de sendPix()).
+      try {
+        await sendPix({ dest, valor: v, msg: descricao, idem_key: sendKey });
+      } catch (e: any) {
+        // Timeout/erro de rede/HTTP: NÃO chamar ack, NÃO gerar nova key.
+        // Uma nova tentativa fará reserveIntent() recuperar esta mesma
+        // send_key no backend.
+        const msg = String(e?.message || e);
+        if (/401|Token ausente/i.test(msg)) setNeedAuth(true);
+        setPixSendErr("Falha ao enviar PIX.");
+        return;
+      }
+
+      // 3) A partir daqui o PIX já pode estar concluído (2xx real) — uma
+      // falha no ack NUNCA deve ser mostrada como falha financeira.
+      try {
+        await pixIntentManager.acknowledgeIntent(sendKey);
+        setPixSendOk("PIX enviado ✅");
+      } catch (ackErr) {
+        console.error("[SuperAureaHome] PIX enviado, mas ack falhou:", ackErr);
+        setPixSendOk(
+          "PIX enviado com sucesso. A confirmação de segurança está pendente. " +
+          "Se necessário, tente novamente; o sistema reutilizará a mesma operação."
+        );
+      }
+
       setPixSendDest("");
       setPixSendValor("");
       setPixSendMsg("");
       setReloadKey((k) => k + 1);
-    } catch (e: any) {
-      const msg = String(e?.message || e);
-      if (/401|Token ausente/i.test(msg)) setNeedAuth(true);
-      setPixSendErr("Falha ao enviar PIX.");
     } finally {
       setPixSendBusy(false);
     }
