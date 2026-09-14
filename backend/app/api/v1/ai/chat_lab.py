@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from datetime import datetime
 import httpx
 
+from app.core.rate_limit import limiter
+
 
 from sqlalchemy import text
 import json, base64
@@ -214,7 +216,8 @@ def format_response(intent: str, data: dict, msg: str) -> str:
     )
 
 @router.post("/chat_lab")
-async def chat_lab(payload: ChatPayload, x_user_email: str = Header(None)):
+@limiter.limit("30/minute")
+async def chat_lab(request: Request, payload: ChatPayload, x_user_email: str = Header(None)):
     """
     Endpoint LAB da IA 3.0 Premium.
     Não altera nada no painel oficial, só lê dados reais e responde melhor.

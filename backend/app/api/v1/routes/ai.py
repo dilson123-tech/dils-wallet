@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from app.database import get_db
+from app.core.rate_limit import limiter
 
 # Modelos podem variar; tratamos campos ausentes com getattr(...)
 try:
@@ -42,7 +43,9 @@ def _is_receb(tipo: Optional[str]) -> bool:
     return t in ("pix", "recebimento", "credito", "entrada", "in")
 
 @router.get("/summary")
+@limiter.limit("30/minute")
 def summary(
+    request: Request,
     db: Session = Depends(get_db),
     x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
     limit: int = 50,

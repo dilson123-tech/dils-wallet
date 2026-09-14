@@ -1,5 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
+
+from app.core.rate_limit import limiter
+
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 class Ask(BaseModel):
@@ -7,7 +10,8 @@ class Ask(BaseModel):
     user_id: int | None = None
 
 @router.post("/assist")
-def assist(a: Ask):
+@limiter.limit("30/minute")
+def assist(request: Request, a: Ask):
     # stub: aqui plugaremos o provedor da IA 3.0
     return {
         "reply": f"Recebi: {a.msg}. Em breve, IA 3.0 com contexto financeiro.",

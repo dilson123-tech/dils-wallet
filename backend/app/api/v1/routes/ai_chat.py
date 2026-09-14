@@ -6,6 +6,8 @@ import asyncio
 import json
 from urllib import request, error as urlerror  # noqa: F401
 
+from app.core.rate_limit import limiter
+
 
 from sqlalchemy import text
 import json, base64
@@ -317,6 +319,7 @@ def _build_gasto_mais_reply(history: list) -> str:
 
 
 @router.post("/chat", response_model=ChatResponse)
+@limiter.limit("30/minute")
 async def ai_chat(
     payload: ChatRequest,
     request: Request,
@@ -884,7 +887,8 @@ def _ia3_build_saidas_mes_reply(resumo: dict) -> str:
 # === IA 3.0 – Laboratório de Pagamentos ===
 
 @router.post("/pagamentos_lab")
-async def pagamentos_lab(payload: dict, x_user_email: str = Header(None)):
+@limiter.limit("30/minute")
+async def pagamentos_lab(request: Request, payload: dict, x_user_email: str = Header(None)):
     msg = (payload.get("message") or "").strip()
     norm = (msg or "").lower()
 
@@ -960,7 +964,8 @@ from fastapi import Header
 
 # === IA 3.0 – Insight oficial do PIX (dados reais) ===
 @router.post("/ai/pix-insight")
-async def ia_pix_insight(x_user_email: str = Header(None)):
+@limiter.limit("30/minute")
+async def ia_pix_insight(request: Request, x_user_email: str = Header(None)):
     """IA 3.0 lendo o extrato oficial de PIX do usuário logado.
 
     Consulta a tabela pix_transactions filtrando pelo usuário
@@ -1125,7 +1130,8 @@ async def ia_pix_insight(x_user_email: str = Header(None)):
 
 @router.post("/headline")
 @router.post("/headline-lab")
-async def ia_headline_lab(x_user_email: str = Header(None)):
+@limiter.limit("30/minute")
+async def ia_headline_lab(request: Request, x_user_email: str = Header(None)):
     """Versão LAB do Headline IA 3.0.
 
     Usa números de exemplo para não depender do ledger real.
