@@ -169,8 +169,38 @@ class RefreshRequest(BaseModel):
 
 # se já existir TokenResponse/Token, a gente não briga: só adiciona o campo no retorno do login
 @router.post("/refresh")
-def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
+def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db)):
     rt = (body.refresh_token or "").strip()
+
+    # --- Rate limit (volume/amplificação de DB) ---
+    # Roda ANTES de qualquer validação JWT ou consulta ao banco. Cada
+    # tentativa que chega aqui consome o bucket por IP, independentemente
+    # de terminar em sucesso ou falha (diferente do /login, que só
+    # consome em falha) -- o objetivo é limitar volume de chamadas ao
+    # endpoint, não só tentativas de autenticação malsucedidas.
+    #
+    # Somente por IP (rl_client_ip -- ver docstring de rl_client_ip sobre
+    # X-Forwarded-For): deliberadamente NÃO existe bucket derivado do
+    # refresh token/fingerprint. _BUCKETS nunca remove suas próprias
+    # chaves (confirmado por investigação e simulação dedicadas), então
+    # uma chave por-token, alimentada por qualquer string arbitrária que
+    # o cliente escolha enviar no body, permitiria crescimento permanente
+    # e não limitado do dicionário -- inclusive continuando a crescer
+    # mesmo depois que o próprio IP já estivesse bloqueado. O bucket por
+    # IP sozinho já cumpre o objetivo desta correção (limitar volume
+    # antes de qualquer trabalho de banco), sem esse risco.
+    rl_on = os.getenv('REFRESH_RL_ENABLED', '1').strip().lower() not in ('0', 'false', 'no', 'off')
+    if rl_on:
+        ip = rl_client_ip(request)
+
+        win = int(os.getenv('REFRESH_RL_WINDOW_SEC', '60'))
+        max_ip = int(os.getenv('REFRESH_RL_MAX_PER_IP', '30'))
+
+        ip_ok, ip_retry = rl_check(f'refresh:ip:{ip}', max_ip, win)
+
+        if not ip_ok:
+            raise HTTPException(status_code=429, detail='Muitas tentativas. Aguarde e tente novamente.', headers={'Retry-After': str(ip_retry)})
+
     if not rt:
         raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
 
