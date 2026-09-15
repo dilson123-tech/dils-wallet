@@ -398,3 +398,180 @@ def test_endpoints_do_not_share_bucket():
     # deliberadamente incompatível, provando que o bucket de E é
     # independente do de A sem precisar de um segundo subprocess/env.
     assert e_result["status"] == 503, e_result
+
+
+# ---------------------------------------------------------------------
+# Microvalidação HTTP real dos limites de entrada P0-A (auditoria de
+# contenção de storage do Wallet Sandbox): prova, pela camada HTTP real
+# do FastAPI/TestClient (não pela construção direta do schema Pydantic
+# em Python, como já feito em test_wallet_sandbox_end_to_end_statement.py
+# e test_wallet_asaas_correlated_pix_payment_preparation_endpoint.py),
+# que os limites de Field(max_length=...) realmente resultam em HTTP 422
+# quando o corpo chega via requisição real, e que nenhuma linha nova é
+# persistida em idempotency_keys nesses casos.
+#
+# Usa um probe dedicado (não o _PROBE_SCRIPT/_run_probe acima, para não
+# alterar nada do que já está validado e passando): mesma infraestrutura
+# de usuário/JWT em SQLite descartável, mas ao final consulta a própria
+# tabela idempotency_keys por prefixo e devolve as contagens junto com
+# as respostas HTTP -- prova direta de "zero persistência", não apenas
+# inferida pelo status HTTP.
+# ---------------------------------------------------------------------
+
+_PROBE_SCRIPT_INPUT_LIMITS = r"""
+import json
+import os
+
+import jwt
+
+from app.database import Base, engine, SessionLocal
+from app.main import app
+from app.models.idempotency import IdempotencyKey
+from app.models.user_main import User
+from app.utils.security import ALGORITHM, SECRET_KEY, hash_password
+from fastapi.testclient import TestClient
+
+Base.metadata.create_all(bind=engine)
+
+db = SessionLocal()
+user = User(
+    email="input-limits-probe-user@example.com",
+    hashed_password=hash_password("input-limits-probe-password"),
+    role="customer",
+)
+db.add(user)
+db.commit()
+db.refresh(user)
+db.close()
+
+_token = jwt.encode({"sub": user.email}, SECRET_KEY, algorithm=ALGORITHM)
+_auth_headers = {"Authorization": f"Bearer {_token}"}
+
+client = TestClient(app)
+
+steps = json.loads(os.environ["PROBE_STEPS"])
+results = []
+
+for step in steps:
+    method = step["method"]
+    path = step["path"]
+    body = step.get("body")
+    headers = dict(step.get("headers") or {})
+    if step.get("auth", True):
+        headers.update(_auth_headers)
+
+    if method == "GET":
+        r = client.get(path, headers=headers)
+    else:
+        r = client.post(path, json=body, headers=headers)
+
+    try:
+        parsed_body = r.json()
+    except Exception:
+        parsed_body = None
+
+    results.append({"status": r.status_code, "body": parsed_body})
+
+count_db = SessionLocal()
+counts = {
+    "wallet-sandbox-webhook": (
+        count_db.query(IdempotencyKey)
+        .filter(IdempotencyKey.key.like("wallet-sandbox-webhook:%"))
+        .count()
+    ),
+    "asaas-payment-correlation": (
+        count_db.query(IdempotencyKey)
+        .filter(IdempotencyKey.key.like("asaas-payment-correlation:%"))
+        .count()
+    ),
+}
+count_db.close()
+
+print(json.dumps({"results": results, "counts": counts}))
+"""
+
+
+def _run_probe_input_limits(steps: list, *, env_overrides: dict) -> dict:
+    with tempfile.TemporaryDirectory() as tmp:
+        env = dict(os.environ)
+        env["SECRET_KEY"] = env.get("SECRET_KEY") or "sandbox-input-limits-test-secret"
+        env["JWT_SECRET"] = env.get("JWT_SECRET") or env["SECRET_KEY"]
+        env["DATABASE_URL"] = f"sqlite:///{tmp}/probe.db"
+        env["PROBE_STEPS"] = json.dumps(steps)
+        env.update(env_overrides)
+
+        proc = subprocess.run(
+            [sys.executable, "-c", _PROBE_SCRIPT_INPUT_LIMITS],
+            cwd=str(BACKEND_DIR),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+        assert proc.returncode == 0, (
+            f"subprocess falhou:\nstdout={proc.stdout}\nstderr={proc.stderr}"
+        )
+
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+
+
+def test_http_sandbox_webhook_provider_reference_over_limit_returns_422():
+    step = _webhook_step("x" * 81)
+
+    outcome = _run_probe_input_limits([step], env_overrides=_sandbox_env())
+
+    assert outcome["results"][0]["status"] == 422, outcome
+    assert outcome["counts"]["wallet-sandbox-webhook"] == 0, outcome
+
+
+def test_http_sandbox_webhook_event_type_over_limit_returns_422():
+    step = _webhook_step("provider-ref-event-type-case")
+    step["body"]["event_type"] = "e" * 65
+
+    outcome = _run_probe_input_limits([step], env_overrides=_sandbox_env())
+
+    assert outcome["results"][0]["status"] == 422, outcome
+    assert outcome["counts"]["wallet-sandbox-webhook"] == 0, outcome
+
+
+def test_http_sandbox_webhook_body_idempotency_key_over_limit_returns_422():
+    step = _webhook_step("provider-ref-body-key-case")
+    step["body"]["idempotency_key"] = "k" * 129
+
+    outcome = _run_probe_input_limits([step], env_overrides=_sandbox_env())
+
+    assert outcome["results"][0]["status"] == 422, outcome
+    assert outcome["counts"]["wallet-sandbox-webhook"] == 0, outcome
+
+
+def test_http_asaas_prepare_customer_id_over_limit_returns_422():
+    step = _prepare_step()
+    step["body"]["customer_id"] = "c" * 65
+
+    outcome = _run_probe_input_limits([step], env_overrides=_ASAAS_ENV)
+
+    assert outcome["results"][0]["status"] == 422, outcome
+    assert outcome["counts"]["asaas-payment-correlation"] == 0, outcome
+
+
+def test_http_asaas_prepare_description_over_limit_returns_422():
+    step = _prepare_step()
+    step["body"]["description"] = "d" * 201
+
+    outcome = _run_probe_input_limits([step], env_overrides=_ASAAS_ENV)
+
+    assert outcome["results"][0]["status"] == 422, outcome
+    assert outcome["counts"]["asaas-payment-correlation"] == 0, outcome
+
+
+def test_http_asaas_prepare_due_date_over_limit_returns_422():
+    step = _prepare_step()
+    over_33 = "2026-07-30 " + ("d" * 22)
+    assert len(over_33) == 33
+    step["body"]["due_date"] = over_33
+
+    outcome = _run_probe_input_limits([step], env_overrides=_ASAAS_ENV)
+
+    assert outcome["results"][0]["status"] == 422, outcome
+    assert outcome["counts"]["asaas-payment-correlation"] == 0, outcome

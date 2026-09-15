@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.utils.authz import require_customer
@@ -1016,11 +1016,19 @@ _SANDBOX_WEBHOOK_ALLOWED_STATUSES = {
 
 
 class WalletPixSandboxWebhookIn(BaseModel):
-    provider_reference: str
-    event_type: str = "pix.payment.confirmed"
+    # Limites fail-closed (P0-A da auditoria de contenção de storage do
+    # Wallet Sandbox): provider_reference precisa caber em 80 caracteres
+    # porque get_wallet_pix_sandbox_reconciliation normaliza a referência
+    # recebida via _safe_receipt_part (trunca para 80) antes de comparar
+    # -- um provider_reference maior que 80 nunca seria reconciliável.
+    # Nenhum truncamento silencioso é feito aqui: acima do limite é 422,
+    # nunca gravado, para nunca divergir do hash/idempotência calculado
+    # sobre o valor exatamente como o cliente enviou.
+    provider_reference: str = Field(..., max_length=80)
+    event_type: str = Field("pix.payment.confirmed", max_length=64)
     status: str = "confirmed"
     amount: Decimal | None = None
-    idempotency_key: str | None = None
+    idempotency_key: str | None = Field(None, max_length=128)
     raw: dict | None = None
 
 
@@ -1545,6 +1553,16 @@ def handle_wallet_pix_sandbox_webhook(
         raise HTTPException(
             status_code=422,
             detail="status sandbox inválido.",
+        )
+
+    # Header Idempotency-Key não passa pelo schema Pydantic do body, então
+    # precisa da mesma validação fail-closed manual, ANTES de qualquer
+    # hash/query/insert (mesmo limite de 128 caracteres do body
+    # idempotency_key e do valor cru usado no bridge pix-send).
+    if x_idempotency_key is not None and len(x_idempotency_key) > 128:
+        raise HTTPException(
+            status_code=422,
+            detail="Header Idempotency-Key excede o tamanho máximo permitido (128 caracteres).",
         )
 
     try:
@@ -2178,10 +2196,17 @@ def get_asaas_sandbox_webhook_audit_history(
 
 
 class WalletAsaasCorrelatedPixPaymentPreparationIn(BaseModel):
-    customer_id: str
+    # Limites fail-closed (P0-A da auditoria de contenção de storage do
+    # Wallet Sandbox). Nenhum destes 3 campos termina persistido cru em
+    # response_json hoje (confirmado na auditoria), mas ainda assim
+    # limitamos o tamanho aceito na entrada para conter o custo
+    # transiente de CPU/parse por requisição.
+    customer_id: str = Field(..., max_length=64)
     amount: Decimal
-    due_date: str
-    description: str = "Cobrança PIX Asaas Sandbox Aurea Gold"
+    due_date: str = Field(..., max_length=32)
+    description: str = Field(
+        "Cobrança PIX Asaas Sandbox Aurea Gold", max_length=200
+    )
 
 
 @router.post("/api/v1/wallet/pix/asaas/sandbox/prepare")
