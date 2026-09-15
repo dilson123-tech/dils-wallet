@@ -6,6 +6,7 @@ from types import SimpleNamespace
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 
+from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from starlette.requests import Request as StarletteRequest
 
@@ -439,3 +440,249 @@ def test_asaas_unresolved_or_amountless_event_is_not_projected(
     assert statement["statement"]["count"] == 0
     assert statement["statement"]["items"] == []
     assert statement["wallet"]["real_money_enabled"] is False
+
+
+# ---------------------------------------------------------------------
+# Isolamento cross-customer do Wallet PIX Sandbox (idempotência do
+# webhook, reconciliation e audit-history). Ver investigação/design
+# dedicados desta sessão: a chave de idempotência do webhook agora é
+# namespaced por user_id (sha256(f"{user_id}|{raw_key}")), e os dois
+# consumidores de leitura (reconciliation, audit-history) só devolvem
+# eventos cujo response_json["user_id"] bate com o usuário autenticado
+# -- campo sempre gravado server-side, nunca vindo do payload/header do
+# cliente. Registros legados sem esse campo nunca são retornados
+# (fail-closed), sem tentar adivinhar a quem pertenciam.
+# ---------------------------------------------------------------------
+
+
+def test_sandbox_webhook_idempotency_key_is_scoped_per_user(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user_a = SimpleNamespace(id=111)
+    user_b = SimpleNamespace(id=222)
+
+    shared_raw_key = "shared-raw-idempotency-key"
+
+    payload_a = wallet_routes.WalletPixSandboxWebhookIn(
+        provider_reference="user-a-ref",
+        event_type="pix.payment.confirmed",
+        status="confirmed",
+        amount=Decimal("10.00"),
+        idempotency_key=shared_raw_key,
+    )
+
+    # 1) mesmo usuário + mesma chave + mesmo payload => replay correto.
+    first_a = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        payload=payload_a,
+        current_user=user_a,
+        db=db,
+        x_idempotency_key=shared_raw_key,
+    )
+    replay_a = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        payload=payload_a,
+        current_user=user_a,
+        db=db,
+        x_idempotency_key=shared_raw_key,
+    )
+
+    assert first_a["duplicated"] is False
+    assert first_a["user_id"] == 111
+    assert replay_a["duplicated"] is True
+    assert replay_a["idempotency"]["replayed"] is True
+
+    # 2) mesmo usuário + mesma chave + payload diferente => 409.
+    payload_a_different = wallet_routes.WalletPixSandboxWebhookIn(
+        provider_reference="user-a-ref-different",
+        event_type="pix.payment.confirmed",
+        status="confirmed",
+        amount=Decimal("10.00"),
+        idempotency_key=shared_raw_key,
+    )
+
+    try:
+        wallet_routes.handle_wallet_pix_sandbox_webhook(
+            payload=payload_a_different,
+            current_user=user_a,
+            db=db,
+            x_idempotency_key=shared_raw_key,
+        )
+        raise AssertionError("esperava HTTPException 409 para payload divergente")
+    except HTTPException as exc:
+        assert exc.status_code == 409
+
+    # 3) usuário DIFERENTE usando a MESMA raw key => operação
+    # independente, sem IntegrityError entre usuários, sem replay
+    # cruzado (duplicated=False, é um evento novo e próprio de B).
+    payload_b = wallet_routes.WalletPixSandboxWebhookIn(
+        provider_reference="user-b-ref",
+        event_type="pix.payment.confirmed",
+        status="confirmed",
+        amount=Decimal("20.00"),
+        idempotency_key=shared_raw_key,
+    )
+
+    first_b = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        payload=payload_b,
+        current_user=user_b,
+        db=db,
+        x_idempotency_key=shared_raw_key,
+    )
+
+    assert first_b["duplicated"] is False
+    assert first_b["user_id"] == 222
+    assert first_b["event"]["provider_reference"] == "user-b-ref"
+
+
+def test_sandbox_reconciliation_is_scoped_per_user_and_ignores_legacy_records(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user_a = SimpleNamespace(id=333)
+    user_b = SimpleNamespace(id=444)
+
+    wallet_routes.handle_wallet_pix_sandbox_webhook(
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="private-ref-a",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("15.00"),
+            idempotency_key="reconciliation-key-a",
+        ),
+        current_user=user_a,
+        db=db,
+        x_idempotency_key="reconciliation-key-a",
+    )
+
+    # 5) A consulta a própria referência => encontra normalmente.
+    own_reconciliation = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        provider_reference="private-ref-a",
+        current_user=user_a,
+        db=db,
+    )
+    assert own_reconciliation["reconciliation"]["event_found"] is True
+    assert own_reconciliation["reconciliation"]["status"] == "confirmed"
+
+    # 4) B tenta reconciliar a MESMA provider_reference de A => não
+    # recebe o evento de A (mesmo formato de "não encontrado").
+    cross_reconciliation = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        provider_reference="private-ref-a",
+        current_user=user_b,
+        db=db,
+    )
+    assert cross_reconciliation["reconciliation"]["event_found"] is False
+    assert cross_reconciliation["reconciliation"]["status"] == "not_found"
+
+    # 6) registro legado (sem "user_id" no response_json, simulando um
+    # evento anterior a este isolamento) nunca é devolvido a ninguém.
+    legacy_response = {
+        "ok": True,
+        "duplicated": False,
+        "event": {
+            "provider": "sandbox",
+            "provider_reference": "legacy-ref-no-owner",
+            "event_type": "pix.payment.confirmed",
+            "status": "confirmed",
+            "amount": "5.00",
+            "received_at": "2026-01-01T00:00:00+00:00",
+        },
+        # Deliberadamente sem "user_id".
+    }
+    legacy_key = "wallet-sandbox-webhook:legacy-digest-without-owner"
+    db.records[legacy_key] = SimpleNamespace(
+        key=legacy_key,
+        request_hash="legacy-hash",
+        status_code=200,
+        response_json=json.dumps(legacy_response),
+        created_at=None,
+    )
+
+    legacy_for_a = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        provider_reference="legacy-ref-no-owner",
+        current_user=user_a,
+        db=db,
+    )
+    legacy_for_b = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        provider_reference="legacy-ref-no-owner",
+        current_user=user_b,
+        db=db,
+    )
+
+    assert legacy_for_a["reconciliation"]["event_found"] is False
+    assert legacy_for_b["reconciliation"]["event_found"] is False
+
+
+def test_sandbox_audit_history_is_scoped_per_user_and_ignores_legacy_records(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user_a = SimpleNamespace(id=555)
+    user_b = SimpleNamespace(id=666)
+
+    wallet_routes.handle_wallet_pix_sandbox_webhook(
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="audit-ref-a",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("30.00"),
+            idempotency_key="audit-key-a",
+        ),
+        current_user=user_a,
+        db=db,
+        x_idempotency_key="audit-key-a",
+    )
+    wallet_routes.handle_wallet_pix_sandbox_webhook(
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="audit-ref-b",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("40.00"),
+            idempotency_key="audit-key-b",
+        ),
+        current_user=user_b,
+        db=db,
+        x_idempotency_key="audit-key-b",
+    )
+
+    # registro legado sem "user_id" no response_json.
+    legacy_response = {
+        "event": {
+            "provider_reference": "audit-ref-legacy",
+            "event_type": "pix.payment.confirmed",
+            "status": "confirmed",
+        },
+    }
+    legacy_key = "wallet-sandbox-webhook:legacy-digest-audit"
+    db.records[legacy_key] = SimpleNamespace(
+        key=legacy_key,
+        request_hash="legacy-hash-audit",
+        status_code=200,
+        response_json=json.dumps(legacy_response),
+        created_at=None,
+    )
+
+    # 7/8) cada usuário vê somente os próprios eventos.
+    history_a = wallet_routes.get_wallet_pix_sandbox_audit_history(
+        limit=20,
+        current_user=user_a,
+        db=db,
+    )
+    history_b = wallet_routes.get_wallet_pix_sandbox_audit_history(
+        limit=20,
+        current_user=user_b,
+        db=db,
+    )
+
+    refs_a = {item["provider_reference"] for item in history_a["items"]}
+    refs_b = {item["provider_reference"] for item in history_b["items"]}
+
+    assert refs_a == {"audit-ref-a"}
+    assert refs_b == {"audit-ref-b"}
+
+    # 9) o registro legado nunca aparece, para nenhum dos dois usuários.
+    assert "audit-ref-legacy" not in refs_a
+    assert "audit-ref-legacy" not in refs_b
