@@ -9,12 +9,40 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from starlette.requests import Request as StarletteRequest
 
 from app.api.v1.routes import wallet as wallet_routes
 from app.partner.asaas_payment_correlation import (
     asaas_payment_correlation_key,
     build_asaas_payment_user_correlation_record,
 )
+
+
+def _make_partner_webhook_request(client_host: str, *, path: str = "/api/v1/partners") -> StarletteRequest:
+    """
+    Request ASGI mínimo e determinístico para exercitar diretamente
+    handle_asaas_sandbox_webhook_receiver nestes testes unitários, agora
+    que a função é decorada com @limiter.shared_limit(...) e o wrapper do
+    SlowAPI exige um starlette.requests.Request real em toda chamada
+    (HTTP real ou direta). client_host é fixo/escolhido pelo próprio
+    teste -- nunca lido de X-Forwarded-For -- e cada teste abaixo usa um
+    host dedicado, isolando seu próprio orçamento de rate limit do dos
+    demais testes deste arquivo, sem depender de nenhum reset de estado
+    global do limiter.
+    """
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": path,
+        "raw_path": path.encode("utf-8"),
+        "headers": [],
+        "query_string": b"",
+        "server": ("testserver", 80),
+        "client": (client_host, 12345),
+        "scheme": "http",
+        "app": None,
+    }
+    return StarletteRequest(scope)
 
 
 class FakeQuery:
@@ -113,6 +141,7 @@ def test_asaas_sandbox_webhook_accepts_payment_received_without_exposing_sensiti
     db = FakeDb()
 
     response = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.1"),
         payload=_valid_payload(),
         db=db,
         asaas_access_token="secret-token",
@@ -151,6 +180,7 @@ def test_asaas_sandbox_webhook_rejects_invalid_token():
 
     with pytest.raises(HTTPException) as exc:
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.2"),
             payload=_valid_payload(),
             db=db,
             asaas_access_token="wrong-token",
@@ -163,11 +193,13 @@ def test_asaas_sandbox_webhook_is_idempotent_for_same_event():
     db = FakeDb()
 
     first = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.3"),
         payload=_valid_payload(),
         db=db,
         asaas_access_token="secret-token",
     )
     second = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.3"),
         payload=_valid_payload(),
         db=db,
         asaas_access_token="secret-token",
@@ -217,6 +249,7 @@ def test_asaas_sandbox_webhook_ignores_non_payment_received_events_safely():
     }
 
     response = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.4"),
         payload=payload,
         db=db,
         asaas_access_token="secret-token",
@@ -252,6 +285,7 @@ def test_asaas_sandbox_webhook_audit_history_lists_safe_records_without_sensitiv
     db = FakeDb()
 
     wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.5"),
         payload=_valid_payload(),
         db=db,
         asaas_access_token="secret-token",
@@ -299,6 +333,7 @@ def test_asaas_sandbox_webhook_audit_history_ignores_malformed_or_non_asaas_reco
     db = FakeDb()
 
     wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.6"),
         payload=_valid_payload(),
         db=db,
         asaas_access_token="secret-token",
@@ -357,6 +392,7 @@ def test_asaas_sandbox_webhook_returns_503_for_incomplete_duplicate():
 
     with pytest.raises(HTTPException) as exc:
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.7"),
             payload=payload,
             db=db,
             asaas_access_token="secret-token",
@@ -385,6 +421,7 @@ def test_asaas_sandbox_webhook_commit_failure_rolls_back_and_returns_503():
 
     with pytest.raises(HTTPException) as exc:
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.8"),
             payload=_valid_payload(),
             db=db,
             asaas_access_token="secret-token",
@@ -427,6 +464,7 @@ def test_payment_received_resolves_pre_registered_user_without_public_leak():
 
     response = (
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.9"),
             payload=payload,
             db=db,
             asaas_access_token="secret-token",
@@ -494,6 +532,7 @@ def test_payment_received_with_unknown_reference_remains_unresolved():
 
     response = (
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.10"),
             payload=payload,
             db=db,
             asaas_access_token="secret-token",
@@ -544,12 +583,14 @@ def test_correlated_payment_received_replay_remains_sanitized():
     payload["payment"]["externalReference"] = external_reference
 
     wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.11"),
         payload=payload,
         db=db,
         asaas_access_token="secret-token",
     )
     replay = (
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.11"),
             payload=payload,
             db=db,
             asaas_access_token="secret-token",

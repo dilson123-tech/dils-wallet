@@ -7,12 +7,38 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 
 from sqlalchemy.exc import IntegrityError
+from starlette.requests import Request as StarletteRequest
 
 from app.api.v1.routes import wallet as wallet_routes
 from app.partner import InternalSandboxPartnerAdapter, PixPaymentRequest
 from app.partner.asaas_payment_correlation import (
     build_asaas_payment_user_correlation_record,
 )
+
+
+def _make_partner_webhook_request(client_host: str, *, path: str = "/api/v1/partners") -> StarletteRequest:
+    """
+    Request ASGI mínimo e determinístico para exercitar diretamente
+    handle_asaas_sandbox_webhook_receiver neste teste, agora que a função
+    é decorada com @limiter.shared_limit(...) e o wrapper do SlowAPI
+    exige um starlette.requests.Request real em toda chamada (HTTP real
+    ou direta). client_host é fixo/escolhido pelo próprio teste -- nunca
+    lido de X-Forwarded-For -- e isolado dos hosts já usados em
+    test_asaas_webhook_receiver.py, evitando colisão de orçamento.
+    """
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": path,
+        "raw_path": path.encode("utf-8"),
+        "headers": [],
+        "query_string": b"",
+        "server": ("testserver", 80),
+        "client": (client_host, 12345),
+        "scheme": "http",
+        "app": None,
+    }
+    return StarletteRequest(scope)
 
 
 class FakeQuery:
@@ -270,6 +296,7 @@ def test_asaas_correlated_payment_received_projects_once_to_statement(
 
     first = (
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.21"),
             payload=payload,
             db=db,
             asaas_access_token="secret-token",
@@ -277,6 +304,7 @@ def test_asaas_correlated_payment_received_projects_once_to_statement(
     )
     replay = (
         wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.21"),
             payload=payload,
             db=db,
             asaas_access_token="secret-token",
@@ -369,6 +397,7 @@ def test_asaas_unresolved_or_amountless_event_is_not_projected(
     }
 
     wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.22"),
         payload=unresolved_payload,
         db=db,
         asaas_access_token="secret-token",
@@ -395,6 +424,7 @@ def test_asaas_unresolved_or_amountless_event_is_not_projected(
     }
 
     wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.22"),
         payload=amountless_payload,
         db=db,
         asaas_access_token="secret-token",
