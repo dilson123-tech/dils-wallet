@@ -271,19 +271,52 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     if not sub:
         raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
 
+    # rotaciona: novo token puro -> salva hash
+    new_rt = secrets.token_hex(32)
+    new_hash = hashlib.sha256(new_rt.encode("utf-8")).hexdigest()
+
+    # CAS (compare-and-swap) contra corrida de rotação concorrente: duas
+    # requisições podem chegar aqui com o MESMO obj (mesmo refresh token
+    # ainda válido) e cada uma calcular seu próprio new_rt/new_hash. Sem
+    # uma condição no WHERE que reconfirme o token_hash lido, um UPDATE
+    # incondicional por id permitiria que a segunda a commitar
+    # sobrescrevesse silenciosamente a primeira -- fazendo o cliente que
+    # "perdeu" a corrida receber HTTP 200 com um refresh_token que já
+    # nasce inválido (confirmado empiricamente em SQLite e PostgreSQL
+    # real antes desta correção).
+    #
+    # expected_token_hash é o valor de token_hash EFETIVAMENTE
+    # encontrado no SELECT acima -- nunca presumido como rt_hash --
+    # porque também protege o fallback ultra-legacy (linha em que
+    # token_hash foi historicamente salvo como o token cru, sem hash).
+    expected_token_hash = obj.token_hash
+
+    update_values = {"token_hash": new_hash}
+    if hasattr(obj, "expires_at"):
+        update_values["expires_at"] = now + timedelta(days=30)
+
+    rows_updated = (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.id == obj.id,
+            RefreshToken.token_hash == expected_token_hash,
+        )
+        .update(update_values, synchronize_session=False)
+    )
+
+    if rows_updated != 1:
+        # 0 => outra requisição já rotacionou este token primeiro
+        # (perdeu a corrida). >1 nunca deveria ocorrer (id é chave
+        # primária) -- tratado fail-closed do mesmo jeito, nunca
+        # aceito silenciosamente.
+        db.rollback()
+        raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
+
     try:
         new_access = create_access_token({"sub": sub})
     except Exception:
         new_access = create_access_token(sub=sub)  # type: ignore
 
-    # rotaciona: novo token puro -> salva hash
-    new_rt = secrets.token_hex(32)
-    obj.token_hash = hashlib.sha256(new_rt.encode("utf-8")).hexdigest()
-
-    if hasattr(obj, "expires_at"):
-        obj.expires_at = now + timedelta(days=30)
-
-    db.add(obj)
     db.commit()
 
     return {"access_token": new_access, "refresh_token": new_rt, "token_type": "bearer"}
