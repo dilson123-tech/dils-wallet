@@ -1034,16 +1034,60 @@ def _sandbox_webhook_hash(payload: WalletPixSandboxWebhookIn) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _require_sandbox_owner_user_id(current_user: User) -> int:
+    """
+    Resolve e valida fail-closed o user_id do usuário autenticado, usado
+    como namespace de isolamento cross-customer nos endpoints Wallet PIX
+    Sandbox (idempotência do webhook, reconciliation e audit-history).
+
+    Nunca aceita user_id vindo de payload/header do cliente -- somente
+    current_user já resolvido e verificado por require_customer. Se o
+    id não puder ser resolvido como um inteiro positivo válido, falha
+    fechado (403) em vez de permitir que um valor ausente (None) vire
+    silenciosamente um namespace válido do tipo "None|raw_key".
+    """
+    raw_user_id = getattr(current_user, "id", None)
+    try:
+        user_id = int(raw_user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=403,
+            detail="Usuário autenticado inválido para operação sandbox.",
+        ) from None
+
+    if user_id <= 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Usuário autenticado inválido para operação sandbox.",
+        )
+
+    return user_id
+
+
 def _sandbox_webhook_idempotency_key(
     payload: WalletPixSandboxWebhookIn,
     header_key: str | None,
+    *,
+    user_id: int,
 ) -> str:
+    """
+    Chave de idempotência do webhook PIX sandbox, namespaced por usuário.
+
+    Mesmo padrão já usado e comprovado em
+    pix_service.py::_pix_send_scoped_key: sha256(f"{user_id}|{raw_key}")
+    faz com que a mesma raw_key produza chaves totalmente distintas para
+    usuários diferentes (isolamento cross-user), preservando o replay
+    correto para o MESMO usuário. Prefixo preservado
+    ("wallet-sandbox-webhook:") -- registros antigos (calculados sem
+    user_id) nunca colidem com uma chave nova, e nunca são reaproveitados
+    por engano; nenhuma compatibility bridge é necessária ou desejada.
+    """
     raw_key = (
         header_key
         or payload.idempotency_key
         or f"{payload.provider_reference}:{payload.event_type}:{payload.status}"
     )
-    digest = hashlib.sha256(str(raw_key).encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(f"{user_id}|{raw_key}".encode("utf-8")).hexdigest()
     return f"wallet-sandbox-webhook:{digest}"
 
 
@@ -1517,8 +1561,12 @@ def handle_wallet_pix_sandbox_webhook(
             ),
         )
 
+    owner_user_id = _require_sandbox_owner_user_id(current_user)
+
     request_hash = _sandbox_webhook_hash(payload)
-    idem_key = _sandbox_webhook_idempotency_key(payload, x_idempotency_key)
+    idem_key = _sandbox_webhook_idempotency_key(
+        payload, x_idempotency_key, user_id=owner_user_id
+    )
 
     try:
         record = IdempotencyKey(key=idem_key, request_hash=request_hash)
@@ -1637,12 +1685,21 @@ def handle_wallet_pix_sandbox_webhook(
 def _find_sandbox_webhook_event_by_reference(
     db: Session,
     provider_reference: str,
+    *,
+    user_id: int,
 ) -> dict | None:
     """
     Busca evento sandbox registrado pela idempotência.
 
     Fase 10: fundação de reconciliação sem nova tabela.
     Não consulta PSP real, não credita saldo e não emite comprovante real.
+
+    Isolamento cross-customer: só considera linhas cujo response_json
+    tenha sido gravado com o mesmo user_id do chamador (campo
+    "user_id", sempre gravado server-side a partir de current_user,
+    nunca vindo do payload do cliente). Um registro sem esse campo
+    (legado, anterior a este isolamento) nunca é retornado a ninguém --
+    fail-closed, sem tentar adivinhar a quem pertencia.
     """
     rows = (
         db.query(IdempotencyKey)
@@ -1660,6 +1717,9 @@ def _find_sandbox_webhook_event_by_reference(
         try:
             response = json.loads(raw_response)
         except Exception:
+            continue
+
+        if response.get("user_id") != user_id:
             continue
 
         event = response.get("event") or {}
@@ -1714,7 +1774,10 @@ def get_wallet_pix_sandbox_reconciliation(
             ),
         )
 
-    match = _find_sandbox_webhook_event_by_reference(db, safe_reference)
+    owner_user_id = _require_sandbox_owner_user_id(current_user)
+    match = _find_sandbox_webhook_event_by_reference(
+        db, safe_reference, user_id=owner_user_id
+    )
 
     if not match:
         return {
@@ -1806,20 +1869,32 @@ def get_wallet_pix_sandbox_reconciliation(
 def _list_sandbox_webhook_events(
     db: Session,
     limit: int = 20,
+    *,
+    user_id: int,
 ) -> list[dict]:
     """
     Lista eventos sandbox registrados pela idempotência.
 
     Fase 12: histórico/auditoria sandbox sem nova tabela.
     Não consulta PSP real, não credita saldo e não emite comprovante real.
+
+    Isolamento cross-customer: mesmo mecanismo de
+    _find_sandbox_webhook_event_by_reference -- só considera linhas cujo
+    response_json tenha sido gravado com o mesmo user_id do chamador.
+    Registro legado sem esse campo nunca é retornado (fail-closed).
     """
     safe_limit = max(1, min(int(limit or 20), 100))
 
+    # Busca mais linhas brutas do que safe_limit: o filtro de ownership
+    # abaixo acontece depois da query, então limitar a query já em
+    # safe_limit poderia "esconder" eventos legítimos do próprio usuário
+    # se eventos de OUTROS usuários estiverem intercalados mais recentes.
+    # Mesmo padrão já usado em _sandbox_statement_items_from_webhooks.
     rows = (
         db.query(IdempotencyKey)
         .filter(IdempotencyKey.key.like("wallet-sandbox-webhook:%"))
         .order_by(IdempotencyKey.created_at.desc())
-        .limit(safe_limit)
+        .limit(min(safe_limit * 4, 400))
         .all()
     )
 
@@ -1833,6 +1908,9 @@ def _list_sandbox_webhook_events(
         try:
             response = json.loads(raw_response)
         except Exception:
+            continue
+
+        if response.get("user_id") != user_id:
             continue
 
         event = response.get("event") or {}
@@ -1863,7 +1941,7 @@ def _list_sandbox_webhook_events(
             "can_mark_real_paid": False,
         })
 
-    return items
+    return items[:safe_limit]
 
 
 @router.get("/api/v1/wallet/pix/sandbox-audit-history")
@@ -1901,7 +1979,8 @@ def get_wallet_pix_sandbox_audit_history(
         )
 
     safe_limit = max(1, min(int(limit or 20), 100))
-    items = _list_sandbox_webhook_events(db, safe_limit)
+    owner_user_id = _require_sandbox_owner_user_id(current_user)
+    items = _list_sandbox_webhook_events(db, safe_limit, user_id=owner_user_id)
 
     return {
         "ok": True,
