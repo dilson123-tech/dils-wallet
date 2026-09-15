@@ -42,6 +42,42 @@ def _make_partner_webhook_request(client_host: str, *, path: str = "/api/v1/part
     return StarletteRequest(scope)
 
 
+def _make_sandbox_wallet_request(
+    client_host: str, *, method: str = "POST", path: str
+) -> StarletteRequest:
+    """
+    Request ASGI mínimo e determinístico para exercitar diretamente os
+    handlers Wallet PIX Sandbox (sandbox-payment, sandbox-webhook,
+    sandbox-reconciliation, sandbox-audit-history) neste teste, agora
+    que cada um é decorado com @limiter.limit(...) individual e o
+    wrapper do SlowAPI exige um starlette.requests.Request real em toda
+    chamada (HTTP real ou direta). Mesmo padrão de
+    _make_partner_webhook_request, generalizado para GET/POST.
+
+    client_host é fixo/escolhido por FUNÇÃO de teste (nunca reaproveitado
+    entre funções de teste diferentes, para não acumular orçamento entre
+    elas). Cada chamada ao handler decorado, porém, deve invocar este
+    helper de novo para obter uma instância NOVA de Request -- nunca
+    reaproveitar o mesmo objeto entre duas chamadas, pois o SlowAPI marca
+    request.state._rate_limiting_complete na primeira checagem, e uma
+    segunda chamada com o MESMO objeto Request pularia silenciosamente a
+    checagem do limiter.
+    """
+    scope = {
+        "type": "http",
+        "method": method,
+        "path": path,
+        "raw_path": path.encode("utf-8"),
+        "headers": [],
+        "query_string": b"",
+        "server": ("testserver", 80),
+        "client": (client_host, 12345),
+        "scheme": "http",
+        "app": None,
+    }
+    return StarletteRequest(scope)
+
+
 class FakeQuery:
     def __init__(self, db):
         self.db = db
@@ -144,6 +180,9 @@ def test_wallet_sandbox_end_to_end_payment_webhook_statement(monkeypatch):
     user = SimpleNamespace(id=321)
 
     payment = wallet_routes.create_wallet_pix_sandbox_payment(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.1", path="/api/v1/wallet/pix/sandbox-payment"
+        ),
         payload=wallet_routes.WalletPixSandboxPaymentIn(
             amount=Decimal("99.90"),
             description="Fluxo ponta a ponta Sandbox",
@@ -172,12 +211,18 @@ def test_wallet_sandbox_end_to_end_payment_webhook_statement(monkeypatch):
     )
 
     first = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.1", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=webhook_payload,
         current_user=user,
         db=db,
         x_idempotency_key="e2e-webhook-001",
     )
     replay = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.1", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=webhook_payload,
         current_user=user,
         db=db,
@@ -235,6 +280,9 @@ def test_sandbox_statement_does_not_mix_events_between_users(monkeypatch):
     second_user = SimpleNamespace(id=654)
 
     wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.2", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=wallet_routes.WalletPixSandboxWebhookIn(
             provider_reference="private-user-321-payment",
             event_type="pix.payment.confirmed",
@@ -474,12 +522,18 @@ def test_sandbox_webhook_idempotency_key_is_scoped_per_user(monkeypatch):
 
     # 1) mesmo usuário + mesma chave + mesmo payload => replay correto.
     first_a = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.3", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=payload_a,
         current_user=user_a,
         db=db,
         x_idempotency_key=shared_raw_key,
     )
     replay_a = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.3", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=payload_a,
         current_user=user_a,
         db=db,
@@ -502,6 +556,9 @@ def test_sandbox_webhook_idempotency_key_is_scoped_per_user(monkeypatch):
 
     try:
         wallet_routes.handle_wallet_pix_sandbox_webhook(
+            request=_make_sandbox_wallet_request(
+                "198.51.100.3", path="/api/v1/wallet/pix/sandbox-webhook"
+            ),
             payload=payload_a_different,
             current_user=user_a,
             db=db,
@@ -523,6 +580,9 @@ def test_sandbox_webhook_idempotency_key_is_scoped_per_user(monkeypatch):
     )
 
     first_b = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.3", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=payload_b,
         current_user=user_b,
         db=db,
@@ -544,6 +604,9 @@ def test_sandbox_reconciliation_is_scoped_per_user_and_ignores_legacy_records(
     user_b = SimpleNamespace(id=444)
 
     wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.4", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=wallet_routes.WalletPixSandboxWebhookIn(
             provider_reference="private-ref-a",
             event_type="pix.payment.confirmed",
@@ -558,6 +621,11 @@ def test_sandbox_reconciliation_is_scoped_per_user_and_ignores_legacy_records(
 
     # 5) A consulta a própria referência => encontra normalmente.
     own_reconciliation = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.4",
+            method="GET",
+            path="/api/v1/wallet/pix/sandbox-reconciliation/private-ref-a",
+        ),
         provider_reference="private-ref-a",
         current_user=user_a,
         db=db,
@@ -568,6 +636,11 @@ def test_sandbox_reconciliation_is_scoped_per_user_and_ignores_legacy_records(
     # 4) B tenta reconciliar a MESMA provider_reference de A => não
     # recebe o evento de A (mesmo formato de "não encontrado").
     cross_reconciliation = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.4",
+            method="GET",
+            path="/api/v1/wallet/pix/sandbox-reconciliation/private-ref-a",
+        ),
         provider_reference="private-ref-a",
         current_user=user_b,
         db=db,
@@ -600,11 +673,21 @@ def test_sandbox_reconciliation_is_scoped_per_user_and_ignores_legacy_records(
     )
 
     legacy_for_a = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.4",
+            method="GET",
+            path="/api/v1/wallet/pix/sandbox-reconciliation/legacy-ref-no-owner",
+        ),
         provider_reference="legacy-ref-no-owner",
         current_user=user_a,
         db=db,
     )
     legacy_for_b = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.4",
+            method="GET",
+            path="/api/v1/wallet/pix/sandbox-reconciliation/legacy-ref-no-owner",
+        ),
         provider_reference="legacy-ref-no-owner",
         current_user=user_b,
         db=db,
@@ -624,6 +707,9 @@ def test_sandbox_audit_history_is_scoped_per_user_and_ignores_legacy_records(
     user_b = SimpleNamespace(id=666)
 
     wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.5", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=wallet_routes.WalletPixSandboxWebhookIn(
             provider_reference="audit-ref-a",
             event_type="pix.payment.confirmed",
@@ -636,6 +722,9 @@ def test_sandbox_audit_history_is_scoped_per_user_and_ignores_legacy_records(
         x_idempotency_key="audit-key-a",
     )
     wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.5", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
         payload=wallet_routes.WalletPixSandboxWebhookIn(
             provider_reference="audit-ref-b",
             event_type="pix.payment.confirmed",
@@ -667,11 +756,21 @@ def test_sandbox_audit_history_is_scoped_per_user_and_ignores_legacy_records(
 
     # 7/8) cada usuário vê somente os próprios eventos.
     history_a = wallet_routes.get_wallet_pix_sandbox_audit_history(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.5",
+            method="GET",
+            path="/api/v1/wallet/pix/sandbox-audit-history",
+        ),
         limit=20,
         current_user=user_a,
         db=db,
     )
     history_b = wallet_routes.get_wallet_pix_sandbox_audit_history(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.5",
+            method="GET",
+            path="/api/v1/wallet/pix/sandbox-audit-history",
+        ),
         limit=20,
         current_user=user_b,
         db=db,

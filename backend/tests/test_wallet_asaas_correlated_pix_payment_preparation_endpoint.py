@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from starlette.requests import Request as StarletteRequest
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
@@ -89,6 +90,39 @@ class FakeDb:
         return FakeQuery(self)
 
 
+def _make_prepare_endpoint_request(client_host: str) -> StarletteRequest:
+    """
+    Request ASGI mínimo e determinístico para exercitar diretamente
+    prepare_wallet_asaas_correlated_pix_payment neste teste, agora que a
+    função é decorada com @limiter.limit("10/minute") e o wrapper do
+    SlowAPI exige um starlette.requests.Request real em toda chamada
+    (HTTP real ou direta). Mesmo padrão de
+    test_wallet_sandbox_end_to_end_statement.py::_make_sandbox_wallet_request.
+
+    client_host é fixo/escolhido por FUNÇÃO de teste (nunca reaproveitado
+    entre funções de teste diferentes). Cada chamada ao handler decorado
+    invoca este helper de novo para obter uma instância NOVA de Request
+    -- nunca reaproveitar o mesmo objeto entre duas chamadas, pois o
+    SlowAPI marca request.state._rate_limiting_complete na primeira
+    checagem, e uma segunda chamada com o MESMO objeto Request pularia
+    silenciosamente a checagem do limiter.
+    """
+    path = "/api/v1/wallet/pix/asaas/sandbox/prepare"
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": path,
+        "raw_path": path.encode("utf-8"),
+        "headers": [],
+        "query_string": b"",
+        "server": ("testserver", 80),
+        "client": (client_host, 12345),
+        "scheme": "http",
+        "app": None,
+    }
+    return StarletteRequest(scope)
+
+
 def _configure_sandbox(monkeypatch):
     monkeypatch.setattr(
         wallet_routes,
@@ -131,6 +165,7 @@ def test_endpoint_prepares_correlated_pix_without_http_or_sensitive_output(
     response = (
         wallet_routes
         .prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.1"),
             payload=_payload(),
             current_user=user,
             db=db,
@@ -188,6 +223,7 @@ def test_endpoint_replays_identical_preparation_idempotently(
     first = (
         wallet_routes
         .prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.2"),
             payload=payload,
             current_user=user,
             db=db,
@@ -196,6 +232,7 @@ def test_endpoint_replays_identical_preparation_idempotently(
     replay = (
         wallet_routes
         .prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.2"),
             payload=payload,
             current_user=user,
             db=db,
@@ -225,6 +262,7 @@ def test_endpoint_rejects_reference_reuse_with_changed_data(
     user = SimpleNamespace(id=321)
 
     wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.3"),
         payload=_payload(amount=Decimal("10.00")),
         current_user=user,
         db=db,
@@ -232,6 +270,7 @@ def test_endpoint_rejects_reference_reuse_with_changed_data(
 
     with pytest.raises(HTTPException) as captured:
         wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.3"),
             payload=_payload(amount=Decimal("11.00")),
             current_user=user,
             db=db,
@@ -259,6 +298,7 @@ def test_endpoint_rejects_non_positive_amount(
 
     with pytest.raises(HTTPException) as captured:
         wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.4"),
             payload=_payload(amount=amount),
             current_user=SimpleNamespace(id=321),
             db=FakeDb(),
@@ -282,6 +322,7 @@ def test_endpoint_maps_storage_failure_to_sanitized_503(
 
     with pytest.raises(HTTPException) as captured:
         wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.5"),
             payload=_payload(),
             current_user=SimpleNamespace(id=321),
             db=FakeDb(fail_commit=True),
@@ -301,6 +342,7 @@ def test_endpoint_rejects_invalid_authenticated_user(
 
     with pytest.raises(HTTPException) as captured:
         wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.6"),
             payload=_payload(),
             current_user=SimpleNamespace(id=None),
             db=FakeDb(),
@@ -322,6 +364,7 @@ def test_endpoint_maps_invalid_sandbox_config_to_sanitized_503(
 
     with pytest.raises(HTTPException) as captured:
         wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.7"),
             payload=_payload(),
             current_user=SimpleNamespace(id=321),
             db=FakeDb(),

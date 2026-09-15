@@ -903,7 +903,9 @@ class WalletPixSandboxPaymentIn(BaseModel):
 
 
 @router.post("/api/v1/wallet/pix/sandbox-payment")
+@limiter.limit("20/minute")
 def create_wallet_pix_sandbox_payment(
+    request: Request,
     payload: WalletPixSandboxPaymentIn,
     current_user: User = Depends(require_customer),
 ):
@@ -1511,7 +1513,9 @@ def handle_asaas_sandbox_webhook_receiver(
 
 
 @router.post("/api/v1/wallet/pix/sandbox-webhook")
+@limiter.limit("10/minute")
 def handle_wallet_pix_sandbox_webhook(
+    request: Request,
     payload: WalletPixSandboxWebhookIn,
     current_user: User = Depends(require_customer),
     db: Session = Depends(get_db),
@@ -1736,7 +1740,9 @@ def _find_sandbox_webhook_event_by_reference(
 
 
 @router.get("/api/v1/wallet/pix/sandbox-reconciliation/{provider_reference}")
+@limiter.limit("30/minute")
 def get_wallet_pix_sandbox_reconciliation(
+    request: Request,
     provider_reference: str,
     current_user: User = Depends(require_customer),
     db: Session = Depends(get_db),
@@ -1945,7 +1951,9 @@ def _list_sandbox_webhook_events(
 
 
 @router.get("/api/v1/wallet/pix/sandbox-audit-history")
+@limiter.limit("20/minute")
 def get_wallet_pix_sandbox_audit_history(
+    request: Request,
     limit: int = 20,
     current_user: User = Depends(require_customer),
     db: Session = Depends(get_db),
@@ -2177,7 +2185,9 @@ class WalletAsaasCorrelatedPixPaymentPreparationIn(BaseModel):
 
 
 @router.post("/api/v1/wallet/pix/asaas/sandbox/prepare")
+@limiter.limit("10/minute")
 def prepare_wallet_asaas_correlated_pix_payment(
+    request: Request,
     payload: WalletAsaasCorrelatedPixPaymentPreparationIn,
     current_user: User = Depends(require_customer),
     db: Session = Depends(get_db),
