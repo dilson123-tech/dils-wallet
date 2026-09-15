@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.requests import Request as StarletteRequest
 
@@ -135,14 +136,16 @@ def _payload(
     *,
     amount=Decimal("49.90"),
     customer_id="cus_endpoint_must_not_leak",
+    due_date="2026-07-30",
+    description="Cobrança correlacionada via endpoint",
 ):
     return (
         wallet_routes
         .WalletAsaasCorrelatedPixPaymentPreparationIn(
             customer_id=customer_id,
             amount=amount,
-            due_date="2026-07-30",
-            description="Cobrança correlacionada via endpoint",
+            due_date=due_date,
+            description=description,
         )
     )
 
@@ -374,3 +377,110 @@ def test_endpoint_maps_invalid_sandbox_config_to_sanitized_503(
     assert "sensitive config detail" not in str(
         captured.value.detail
     )
+
+
+# ---------------------------------------------------------------------
+# Limites de entrada (P0-A da auditoria de contenção de storage do
+# Wallet Sandbox): customer_id/due_date/description agora são
+# fail-closed via Field(max_length=...) no schema Pydantic -- acima do
+# limite, a própria construção do payload levanta
+# pydantic.ValidationError, ANTES de qualquer chamada ao
+# handler/db.add/commit (nenhum truncamento silencioso). Nenhum destes
+# campos termina persistido cru em response_json hoje, mas o limite de
+# entrada segue contendo o custo transiente de CPU/parse por requisição.
+# ---------------------------------------------------------------------
+
+
+def test_endpoint_customer_id_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    external_reference = f"agpay_{'e' * 32}"
+    monkeypatch.setattr(
+        correlated_service,
+        "generate_asaas_payment_external_reference",
+        lambda: external_reference,
+    )
+
+    db = FakeDb()
+    exactly_64 = "c" * 64
+
+    response = wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.8"),
+        payload=_payload(customer_id=exactly_64),
+        current_user=SimpleNamespace(id=321),
+        db=db,
+    )
+    assert response["ok"] is True
+    assert len(db.records) == 1
+
+    over_65 = "c" * 65
+    with pytest.raises(ValidationError):
+        _payload(customer_id=over_65)
+
+    # payload de 65 caracteres nunca chegou a existir -> nenhuma linha
+    # nova foi (nem poderia ter sido) criada.
+    assert len(db.records) == 1
+
+
+def test_endpoint_due_date_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    external_reference = f"agpay_{'f' * 32}"
+    monkeypatch.setattr(
+        correlated_service,
+        "generate_asaas_payment_external_reference",
+        lambda: external_reference,
+    )
+
+    db = FakeDb()
+    # due_date não tem validação semântica de formato de data hoje
+    # (_required_text só exige não-vazio) -- uma string arbitrária de 32
+    # caracteres é, portanto, um caso válido real para testar o
+    # max_length sem enfraquecer nenhuma validação existente.
+    exactly_32 = "2026-07-30 " + ("d" * 21)
+    assert len(exactly_32) == 32
+
+    response = wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.9"),
+        payload=_payload(due_date=exactly_32),
+        current_user=SimpleNamespace(id=321),
+        db=db,
+    )
+    assert response["ok"] is True
+    assert len(db.records) == 1
+
+    over_33 = exactly_32 + "x"
+    assert len(over_33) == 33
+    with pytest.raises(ValidationError):
+        _payload(due_date=over_33)
+
+    assert len(db.records) == 1
+
+
+def test_endpoint_description_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    external_reference = f"agpay_{'0' * 32}"
+    monkeypatch.setattr(
+        correlated_service,
+        "generate_asaas_payment_external_reference",
+        lambda: external_reference,
+    )
+
+    db = FakeDb()
+    exactly_200 = "d" * 200
+
+    response = wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.10"),
+        payload=_payload(description=exactly_200),
+        current_user=SimpleNamespace(id=321),
+        db=db,
+    )
+    assert response["ok"] is True
+    assert len(db.records) == 1
+
+    over_201 = "d" * 201
+    with pytest.raises(ValidationError):
+        _payload(description=over_201)
+
+    assert len(db.records) == 1

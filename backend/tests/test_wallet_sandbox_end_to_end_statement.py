@@ -7,6 +7,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from starlette.requests import Request as StarletteRequest
 
@@ -785,3 +786,242 @@ def test_sandbox_audit_history_is_scoped_per_user_and_ignores_legacy_records(
     # 9) o registro legado nunca aparece, para nenhum dos dois usuários.
     assert "audit-ref-legacy" not in refs_a
     assert "audit-ref-legacy" not in refs_b
+
+
+# ---------------------------------------------------------------------
+# Limites de entrada (P0-A da auditoria de contenção de storage do
+# Wallet Sandbox): provider_reference/event_type/idempotency_key (body)
+# do webhook PIX sandbox agora são fail-closed via Field(max_length=...)
+# no schema Pydantic -- acima do limite, a própria construção do payload
+# levanta pydantic.ValidationError, ANTES de qualquer chamada ao
+# handler/hash/query/insert (nenhum truncamento silencioso). O header
+# Idempotency-Key não passa pelo schema do body, então tem checagem
+# manual equivalente dentro do handler (HTTPException 422).
+# ---------------------------------------------------------------------
+
+
+def test_sandbox_webhook_provider_reference_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user = SimpleNamespace(id=771)
+
+    exactly_80 = "r" * 80
+    result = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.6", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference=exactly_80,
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key="boundary-provider-ref-80",
+        ),
+        current_user=user,
+        db=db,
+        x_idempotency_key="boundary-provider-ref-80",
+    )
+    assert result["ok"] is True
+    assert result["event"]["provider_reference"] == exactly_80
+    assert len(db.records) == 1
+
+    over_81 = "r" * 81
+    try:
+        wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference=over_81,
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key="boundary-provider-ref-81",
+        )
+        raise AssertionError(
+            "esperava ValidationError para provider_reference de 81 caracteres"
+        )
+    except ValidationError:
+        pass
+
+    # payload de 81 caracteres nunca chegou a existir -> nenhuma linha
+    # nova foi (nem poderia ter sido) criada.
+    assert len(db.records) == 1
+
+
+def test_sandbox_webhook_event_type_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user = SimpleNamespace(id=772)
+
+    exactly_64 = "e" * 64
+    result = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.7", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="boundary-event-type-64",
+            event_type=exactly_64,
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key="boundary-event-type-64",
+        ),
+        current_user=user,
+        db=db,
+        x_idempotency_key="boundary-event-type-64",
+    )
+    assert result["ok"] is True
+    assert result["event"]["event_type"] == exactly_64
+    assert len(db.records) == 1
+
+    over_65 = "e" * 65
+    try:
+        wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="boundary-event-type-65",
+            event_type=over_65,
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key="boundary-event-type-65",
+        )
+        raise AssertionError(
+            "esperava ValidationError para event_type de 65 caracteres"
+        )
+    except ValidationError:
+        pass
+
+    assert len(db.records) == 1
+
+
+def test_sandbox_webhook_body_idempotency_key_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user = SimpleNamespace(id=773)
+
+    exactly_128 = "k" * 128
+    result = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.8", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="boundary-body-key-128",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key=exactly_128,
+        ),
+        current_user=user,
+        db=db,
+        # Sem header -- força o handler a usar payload.idempotency_key
+        # (o body de 128 caracteres) como raw_key.
+        x_idempotency_key=None,
+    )
+    assert result["ok"] is True
+    assert len(db.records) == 1
+
+    over_129 = "k" * 129
+    try:
+        wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="boundary-body-key-129",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key=over_129,
+        )
+        raise AssertionError(
+            "esperava ValidationError para idempotency_key (body) de 129 caracteres"
+        )
+    except ValidationError:
+        pass
+
+    assert len(db.records) == 1
+
+
+def test_sandbox_webhook_header_idempotency_key_max_length_boundary(monkeypatch):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user = SimpleNamespace(id=774)
+
+    exactly_128 = "h" * 128
+    result = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.9", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="boundary-header-key-128",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+        ),
+        current_user=user,
+        db=db,
+        x_idempotency_key=exactly_128,
+    )
+    assert result["ok"] is True
+    assert len(db.records) == 1
+
+    over_129 = "h" * 129
+    try:
+        wallet_routes.handle_wallet_pix_sandbox_webhook(
+            request=_make_sandbox_wallet_request(
+                "198.51.100.9", path="/api/v1/wallet/pix/sandbox-webhook"
+            ),
+            payload=wallet_routes.WalletPixSandboxWebhookIn(
+                provider_reference="boundary-header-key-129",
+                event_type="pix.payment.confirmed",
+                status="confirmed",
+                amount=Decimal("10.00"),
+            ),
+            current_user=user,
+            db=db,
+            x_idempotency_key=over_129,
+        )
+        raise AssertionError(
+            "esperava HTTPException 422 para header Idempotency-Key de 129 caracteres"
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 422
+
+    # a checagem do header acontece ANTES de qualquer db.add/flush ->
+    # continua exatamente 1 linha (a do caso válido de 128 acima).
+    assert len(db.records) == 1
+
+
+def test_sandbox_webhook_provider_reference_80_chars_remains_reconciliable(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+
+    db = FakeDb()
+    user = SimpleNamespace(id=775)
+
+    provider_reference_80 = "z" * 80
+
+    wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.10", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference=provider_reference_80,
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key="reconciliation-boundary-80",
+        ),
+        current_user=user,
+        db=db,
+        x_idempotency_key="reconciliation-boundary-80",
+    )
+
+    reconciliation = wallet_routes.get_wallet_pix_sandbox_reconciliation(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.10",
+            method="GET",
+            path=f"/api/v1/wallet/pix/sandbox-reconciliation/{provider_reference_80}",
+        ),
+        provider_reference=provider_reference_80,
+        current_user=user,
+        db=db,
+    )
+
+    assert reconciliation["reconciliation"]["event_found"] is True
+    assert reconciliation["reconciliation"]["status"] == "confirmed"
