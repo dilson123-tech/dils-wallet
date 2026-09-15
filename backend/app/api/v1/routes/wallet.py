@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends, Header, HTTPException
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from decimal import Decimal, InvalidOperation
@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.utils.authz import require_customer
+from app.core.rate_limit import limiter
 from app.models.transaction import Transaction
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
@@ -1200,7 +1201,16 @@ def _asaas_sandbox_webhook_public_response(
 @router.post("/api/v1/partners")
 @router.post("/api/v1/partners/")
 @router.post("/api/v1/partners/asaas/webhooks/sandbox")
+# shared_limit (não limit()) é usado deliberadamente: os três decorators
+# acima apontam para a MESMA função, mas o SlowAPI (Limiter padrão deste
+# projeto, key_style="url") escopa o rate limit pelo path literal da
+# requisição por padrão -- sem um scope constante e explícito, cada um
+# dos três aliases ganharia seu próprio orçamento (3x30/minute = 90),
+# permitindo burlar o limite só alternando entre eles. shared_limit com
+# um scope fixo força os três a consumirem o MESMO bucket por IP.
+@limiter.shared_limit("30/minute", scope="partner_asaas_webhook")
 def handle_asaas_sandbox_webhook_receiver(
+    request: Request,
     payload: dict = Body(...),
     db: Session = Depends(get_db),
     asaas_access_token: str | None = Header(default=None, alias="asaas-access-token"),
