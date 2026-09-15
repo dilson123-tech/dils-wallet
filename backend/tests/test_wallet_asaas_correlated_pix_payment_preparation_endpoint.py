@@ -13,6 +13,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 
 from app.api.v1.routes import wallet as wallet_routes
+from app.services import sandbox_namespace_cap as _sandbox_namespace_cap_module
 from app.partner.asaas_config import (
     ASAAS_SANDBOX_BASE_URL,
     AsaasConfigError,
@@ -38,13 +39,37 @@ class FakeQuery:
     def __init__(self, db):
         self.db = db
         self.key = None
+        self.like_prefix = None
 
     def filter_by(self, **kwargs):
         self.key = kwargs.get("key")
         return self
 
+    def filter(self, *args, **_kwargs):
+        # Captura o prefixo de IdempotencyKey.key.like("<prefixo>%"),
+        # a mesma expressão usada pela produção -- sem isso, count()
+        # não reproduziria fielmente o WHERE key LIKE '<namespace>:%'
+        # real, e poderia esconder um count() que soma namespaces
+        # diferentes por engano.
+        for arg in args:
+            pattern = getattr(getattr(arg, "right", None), "value", None)
+            if isinstance(pattern, str) and pattern.endswith("%"):
+                self.like_prefix = pattern[:-1]
+        return self
+
     def first(self):
         return self.db.records.get(self.key)
+
+    def count(self):
+        if self.like_prefix is None:
+            return len(self.db.records)
+        return len(
+            [
+                row
+                for row in self.db.records.values()
+                if str(row.key).startswith(self.like_prefix)
+            ]
+        )
 
 
 class FakeDb:
@@ -483,4 +508,91 @@ def test_endpoint_description_max_length_boundary(monkeypatch):
     with pytest.raises(ValidationError):
         _payload(description=over_201)
 
+    assert len(db.records) == 1
+
+
+# ---------------------------------------------------------------------
+# Soft cap operacional de cardinalidade por namespace sandbox (P0-B):
+# WALLET_SANDBOX_NAMESPACE_MAX_ROWS. Integração ponta a ponta do
+# endpoint E (preparação nova rejeitada com 503 quando o namespace
+# asaas-payment-correlation: já está no limite, zero linha líquida
+# nova, replay preservado mesmo com o namespace "cheio").
+# ---------------------------------------------------------------------
+
+
+def test_endpoint_new_preparation_rejected_when_namespace_cap_exceeded(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+    monkeypatch.setattr(
+        _sandbox_namespace_cap_module, "WALLET_SANDBOX_NAMESPACE_MAX_ROWS", 1
+    )
+
+    references = iter(
+        [f"agpay_{'e' * 32}", f"agpay_{'f' * 32}"]
+    )
+    monkeypatch.setattr(
+        correlated_service,
+        "generate_asaas_payment_external_reference",
+        lambda: next(references),
+    )
+
+    db = FakeDb()
+    user = SimpleNamespace(id=891)
+
+    first = wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.20"),
+        payload=_payload(),
+        current_user=user,
+        db=db,
+    )
+    assert first["ok"] is True
+    assert len(db.records) == 1
+
+    with pytest.raises(HTTPException) as captured:
+        wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+            request=_make_prepare_endpoint_request("198.51.101.20"),
+            payload=_payload(),
+            current_user=user,
+            db=db,
+        )
+
+    assert captured.value.status_code == 503
+    assert captured.value.headers.get("Retry-After") == "30"
+    assert len(db.records) == 1
+
+
+def test_endpoint_replay_still_works_when_namespace_cap_full(monkeypatch):
+    _configure_sandbox(monkeypatch)
+    monkeypatch.setattr(
+        _sandbox_namespace_cap_module, "WALLET_SANDBOX_NAMESPACE_MAX_ROWS", 1
+    )
+
+    external_reference = f"agpay_{'0' * 32}"
+    monkeypatch.setattr(
+        correlated_service,
+        "generate_asaas_payment_external_reference",
+        lambda: external_reference,
+    )
+
+    db = FakeDb()
+    user = SimpleNamespace(id=892)
+    payload = _payload()
+
+    first = wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.21"),
+        payload=payload,
+        current_user=user,
+        db=db,
+    )
+    assert first["preparation"]["correlation_replayed"] is False
+    assert len(db.records) == 1
+
+    replay = wallet_routes.prepare_wallet_asaas_correlated_pix_payment(
+        request=_make_prepare_endpoint_request("198.51.101.21"),
+        payload=payload,
+        current_user=user,
+        db=db,
+    )
+    assert replay["preparation"]["correlation_replayed"] is True
     assert len(db.records) == 1

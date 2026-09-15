@@ -14,9 +14,14 @@ from app.partner.asaas_client import (
     AsaasSandboxClient,
 )
 from app.partner.asaas_payment_correlation import (
+    ASAAS_PAYMENT_CORRELATION_KEY_PREFIX,
     build_asaas_payment_user_correlation_record,
     generate_asaas_payment_external_reference,
     validate_asaas_payment_external_reference,
+)
+from app.services.sandbox_namespace_cap import (
+    SandboxNamespaceCapExceeded,
+    enforce_sandbox_namespace_cap,
 )
 
 
@@ -30,6 +35,17 @@ class AsaasCorrelatedPixPaymentConflictError(RuntimeError):
 
 
 class AsaasCorrelatedPixPaymentStorageError(RuntimeError):
+    pass
+
+
+class AsaasCorrelatedPixPaymentCapacityError(RuntimeError):
+    """
+    Levantada quando o namespace sandbox asaas-payment-correlation:
+    atingiu o soft cap operacional P0-B (WALLET_SANDBOX_NAMESPACE_MAX_ROWS)
+    no momento em que uma preparação genuinamente nova acabou de ser
+    inserida. Nunca levantada para replay de uma preparação já
+    existente.
+    """
     pass
 
 
@@ -285,7 +301,6 @@ def prepare_asaas_correlated_pix_payment(
     try:
         db.add(correlation_record)
         db.flush()
-        db.commit()
     except IntegrityError:
         db.rollback()
         existing = (
@@ -310,6 +325,29 @@ def prepare_asaas_correlated_pix_payment(
             "Não foi possível registrar a correlação "
             "da cobrança Asaas Sandbox."
         ) from None
+    else:
+        # Chave genuinamente nova (o branch de IntegrityError acima já
+        # cobre replay/conflito) -- soft cap operacional P0-B, nunca
+        # interfere em replay.
+        try:
+            enforce_sandbox_namespace_cap(
+                db,
+                namespace_prefix=ASAAS_PAYMENT_CORRELATION_KEY_PREFIX,
+            )
+        except SandboxNamespaceCapExceeded:
+            db.rollback()
+            raise AsaasCorrelatedPixPaymentCapacityError(
+                "Capacidade sandbox temporariamente indisponível."
+            ) from None
+
+        try:
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            raise AsaasCorrelatedPixPaymentStorageError(
+                "Não foi possível registrar a correlação "
+                "da cobrança Asaas Sandbox."
+            ) from None
 
     return AsaasCorrelatedPixPaymentPreparation(
         user_id=normalized_user_id,
