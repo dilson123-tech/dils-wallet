@@ -36,13 +36,37 @@ class FakeQuery:
     def __init__(self, db):
         self.db = db
         self.key = None
+        self.like_prefix = None
 
     def filter_by(self, **kwargs):
         self.key = kwargs.get("key")
         return self
 
+    def filter(self, *args, **_kwargs):
+        # Captura o prefixo de IdempotencyKey.key.like("<prefixo>%"),
+        # a mesma expressão usada pela produção -- sem isso, count()
+        # não reproduziria fielmente o WHERE key LIKE '<namespace>:%'
+        # real, e poderia esconder um count() que soma namespaces
+        # diferentes por engano.
+        for arg in args:
+            pattern = getattr(getattr(arg, "right", None), "value", None)
+            if isinstance(pattern, str) and pattern.endswith("%"):
+                self.like_prefix = pattern[:-1]
+        return self
+
     def first(self):
         return self.db.records.get(self.key)
+
+    def count(self):
+        if self.like_prefix is None:
+            return len(self.db.records)
+        return len(
+            [
+                row
+                for row in self.db.records.values()
+                if str(row.key).startswith(self.like_prefix)
+            ]
+        )
 
 
 class FakeDb:

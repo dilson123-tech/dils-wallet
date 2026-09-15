@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.requests import Request as StarletteRequest
 
 from app.api.v1.routes import wallet as wallet_routes
+from app.services import sandbox_namespace_cap as _sandbox_namespace_cap_module
 from app.partner import InternalSandboxPartnerAdapter, PixPaymentRequest
 from app.partner.asaas_payment_correlation import (
     build_asaas_payment_user_correlation_record,
@@ -84,12 +85,22 @@ class FakeQuery:
         self.db = db
         self.key = None
         self.row_limit = None
+        self.like_prefix = None
 
     def filter_by(self, **kwargs):
         self.key = kwargs.get("key")
         return self
 
-    def filter(self, *_args, **_kwargs):
+    def filter(self, *args, **_kwargs):
+        # Captura o prefixo de IdempotencyKey.key.like("<prefixo>%"),
+        # a mesma expressão usada pela produção -- sem isso, count()
+        # não reproduziria fielmente o WHERE key LIKE '<namespace>:%'
+        # real, e poderia esconder um count() que soma namespaces
+        # diferentes por engano.
+        for arg in args:
+            pattern = getattr(getattr(arg, "right", None), "value", None)
+            if isinstance(pattern, str) and pattern.endswith("%"):
+                self.like_prefix = pattern[:-1]
         return self
 
     def order_by(self, *_args, **_kwargs):
@@ -107,6 +118,17 @@ class FakeQuery:
         if self.row_limit is not None:
             rows = rows[: self.row_limit]
         return rows
+
+    def count(self):
+        if self.like_prefix is None:
+            return len(self.db.records)
+        return len(
+            [
+                row
+                for row in self.db.records.values()
+                if str(row.key).startswith(self.like_prefix)
+            ]
+        )
 
 
 class FakeDb:
@@ -1025,3 +1047,160 @@ def test_sandbox_webhook_provider_reference_80_chars_remains_reconciliable(
 
     assert reconciliation["reconciliation"]["event_found"] is True
     assert reconciliation["reconciliation"]["status"] == "confirmed"
+
+
+# ---------------------------------------------------------------------
+# Soft cap operacional de cardinalidade por namespace sandbox (P0-B):
+# WALLET_SANDBOX_NAMESPACE_MAX_ROWS. Aqui provamos a integração ponta a
+# ponta do endpoint B (chave nova rejeitada com 503 quando o namespace
+# já está no limite, zero linha líquida nova, replay preservado mesmo
+# com o namespace "cheio"). O cap em si (parsing, isolamento entre
+# namespaces, segurança real-money) é testado isoladamente em
+# test_wallet_sandbox_namespace_cap.py, com um SQLite real.
+# ---------------------------------------------------------------------
+
+
+def test_sandbox_webhook_new_key_rejected_when_namespace_cap_exceeded(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+    monkeypatch.setattr(
+        _sandbox_namespace_cap_module, "WALLET_SANDBOX_NAMESPACE_MAX_ROWS", 1
+    )
+
+    db = FakeDb()
+    user = SimpleNamespace(id=881)
+
+    first = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.20", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=wallet_routes.WalletPixSandboxWebhookIn(
+            provider_reference="cap-boundary-a",
+            event_type="pix.payment.confirmed",
+            status="confirmed",
+            amount=Decimal("10.00"),
+            idempotency_key="cap-boundary-a",
+        ),
+        current_user=user,
+        db=db,
+        x_idempotency_key="cap-boundary-a",
+    )
+    assert first["ok"] is True
+    assert len(db.records) == 1
+
+    # chave NOVA (referência/idempotency_key diferentes) -> count
+    # passaria a 2, acima do limite 1 -> 503, zero linha líquida nova.
+    try:
+        wallet_routes.handle_wallet_pix_sandbox_webhook(
+            request=_make_sandbox_wallet_request(
+                "198.51.100.20", path="/api/v1/wallet/pix/sandbox-webhook"
+            ),
+            payload=wallet_routes.WalletPixSandboxWebhookIn(
+                provider_reference="cap-boundary-b",
+                event_type="pix.payment.confirmed",
+                status="confirmed",
+                amount=Decimal("10.00"),
+                idempotency_key="cap-boundary-b",
+            ),
+            current_user=user,
+            db=db,
+            x_idempotency_key="cap-boundary-b",
+        )
+        raise AssertionError(
+            "esperava HTTPException 503 por soft cap de namespace excedido"
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 503
+        assert exc.headers.get("Retry-After") == "30"
+
+    assert len(db.records) == 1
+
+
+def test_sandbox_webhook_replay_still_works_when_namespace_cap_full(
+    monkeypatch,
+):
+    _configure_sandbox(monkeypatch)
+    monkeypatch.setattr(
+        _sandbox_namespace_cap_module, "WALLET_SANDBOX_NAMESPACE_MAX_ROWS", 1
+    )
+
+    db = FakeDb()
+    user = SimpleNamespace(id=882)
+
+    payload = wallet_routes.WalletPixSandboxWebhookIn(
+        provider_reference="cap-replay-a",
+        event_type="pix.payment.confirmed",
+        status="confirmed",
+        amount=Decimal("10.00"),
+        idempotency_key="cap-replay-a",
+    )
+
+    first = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.21", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=payload,
+        current_user=user,
+        db=db,
+        x_idempotency_key="cap-replay-a",
+    )
+    assert first["duplicated"] is False
+    assert len(db.records) == 1
+
+    # replay da MESMA chave -- deve continuar funcionando normalmente,
+    # mesmo com o namespace já "cheio" (limite=1, ocupado por essa
+    # própria linha).
+    replay = wallet_routes.handle_wallet_pix_sandbox_webhook(
+        request=_make_sandbox_wallet_request(
+            "198.51.100.21", path="/api/v1/wallet/pix/sandbox-webhook"
+        ),
+        payload=payload,
+        current_user=user,
+        db=db,
+        x_idempotency_key="cap-replay-a",
+    )
+    assert replay["duplicated"] is True
+    assert len(db.records) == 1
+
+
+def test_fake_query_count_is_scoped_to_like_prefix_with_mixed_namespaces():
+    """
+    Prova de fidelidade do próprio FakeQuery/FakeDb usados acima: um
+    FakeDb contendo registros de DOIS namespaces sandbox diferentes
+    (mesma tabela compartilhada, igual à produção) não pode fazer
+    count() de um namespace somar linhas do outro -- exatamente o
+    WHERE key LIKE '<namespace>:%' real de
+    enforce_sandbox_namespace_cap (app/services/sandbox_namespace_cap.py).
+    """
+    db = FakeDb()
+
+    for i in range(3):
+        key = f"wallet-sandbox-webhook:row-{i}"
+        db.records[key] = SimpleNamespace(key=key)
+
+    for i in range(5):
+        key = f"asaas-payment-correlation:row-{i}"
+        db.records[key] = SimpleNamespace(key=key)
+
+    wallet_sandbox_count = (
+        db.query(wallet_routes.IdempotencyKey)
+        .filter(
+            wallet_routes.IdempotencyKey.key.like(
+                "wallet-sandbox-webhook:%"
+            )
+        )
+        .count()
+    )
+    asaas_correlation_count = (
+        db.query(wallet_routes.IdempotencyKey)
+        .filter(
+            wallet_routes.IdempotencyKey.key.like(
+                "asaas-payment-correlation:%"
+            )
+        )
+        .count()
+    )
+
+    assert wallet_sandbox_count == 3
+    assert asaas_correlation_count == 5

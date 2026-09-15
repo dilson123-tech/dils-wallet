@@ -16,6 +16,7 @@ from app.partner.asaas_payment_correlation import (
     asaas_payment_correlation_key,
     build_asaas_payment_user_correlation_record,
 )
+from app.services import sandbox_namespace_cap as _sandbox_namespace_cap_module
 
 
 def _make_partner_webhook_request(client_host: str, *, path: str = "/api/v1/partners") -> StarletteRequest:
@@ -50,12 +51,22 @@ class FakeQuery:
         self.db = db
         self.key = None
         self.row_limit = None
+        self.like_prefix = None
 
     def filter_by(self, **kwargs):
         self.key = kwargs.get("key")
         return self
 
-    def filter(self, *_args, **_kwargs):
+    def filter(self, *args, **_kwargs):
+        # Captura o prefixo de IdempotencyKey.key.like("<prefixo>%"),
+        # a mesma expressão usada pela produção -- sem isso, count()
+        # não reproduziria fielmente o WHERE key LIKE '<namespace>:%'
+        # real, e poderia esconder um count() que soma namespaces
+        # diferentes por engano.
+        for arg in args:
+            pattern = getattr(getattr(arg, "right", None), "value", None)
+            if isinstance(pattern, str) and pattern.endswith("%"):
+                self.like_prefix = pattern[:-1]
         return self
 
     def order_by(self, *_args, **_kwargs):
@@ -75,6 +86,17 @@ class FakeQuery:
         if self.row_limit is not None:
             rows = rows[: self.row_limit]
         return rows
+
+    def count(self):
+        if self.like_prefix is None:
+            return len(self.db.records)
+        return len(
+            [
+                row
+                for row in self.db.records.values()
+                if str(row.key).startswith(self.like_prefix)
+            ]
+        )
 
 
 class FakeDb:
@@ -615,3 +637,99 @@ def test_correlated_payment_received_replay_remains_sanitized():
     assert "correlation_key" not in replay["correlation"]
     assert external_reference not in encoded
     assert replay["can_credit_balance"] is False
+
+
+# ---------------------------------------------------------------------
+# Soft cap operacional de cardinalidade por namespace sandbox (P0-B):
+# WALLET_SANDBOX_NAMESPACE_MAX_ROWS. Integração ponta a ponta do
+# endpoint F (evento novo rejeitado com 503 quando o namespace
+# asaas-sandbox-webhook: já está no limite, zero linha líquida nova,
+# replay preservado mesmo com o namespace "cheio").
+# ---------------------------------------------------------------------
+
+
+def test_asaas_sandbox_webhook_new_event_rejected_when_namespace_cap_exceeded(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        _sandbox_namespace_cap_module, "WALLET_SANDBOX_NAMESPACE_MAX_ROWS", 1
+    )
+
+    db = FakeDb()
+
+    payload_a = {
+        "id": "evt_cap_boundary_a",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": "pay_cap_boundary_a_must_not_leak",
+            "status": "RECEIVED",
+            "billingType": "PIX",
+        },
+    }
+    payload_b = {
+        "id": "evt_cap_boundary_b",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": "pay_cap_boundary_b_must_not_leak",
+            "status": "RECEIVED",
+            "billingType": "PIX",
+        },
+    }
+
+    first = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.90"),
+        payload=payload_a,
+        db=db,
+        asaas_access_token="secret-token",
+    )
+    assert first["duplicated"] is False
+    assert len(db.records) == 1
+
+    with pytest.raises(HTTPException) as captured:
+        wallet_routes.handle_asaas_sandbox_webhook_receiver(
+            request=_make_partner_webhook_request("203.0.113.90"),
+            payload=payload_b,
+            db=db,
+            asaas_access_token="secret-token",
+        )
+
+    assert captured.value.status_code == 503
+    assert captured.value.headers.get("Retry-After") == "30"
+    assert len(db.records) == 1
+
+
+def test_asaas_sandbox_webhook_replay_still_works_when_namespace_cap_full(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        _sandbox_namespace_cap_module, "WALLET_SANDBOX_NAMESPACE_MAX_ROWS", 1
+    )
+
+    db = FakeDb()
+    payload = {
+        "id": "evt_cap_replay_a",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": "pay_cap_replay_must_not_leak",
+            "status": "RECEIVED",
+            "billingType": "PIX",
+        },
+    }
+
+    first = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.91"),
+        payload=payload,
+        db=db,
+        asaas_access_token="secret-token",
+    )
+    assert first["duplicated"] is False
+    assert len(db.records) == 1
+
+    replay = wallet_routes.handle_asaas_sandbox_webhook_receiver(
+        request=_make_partner_webhook_request("203.0.113.91"),
+        payload=payload,
+        db=db,
+        asaas_access_token="secret-token",
+    )
+    assert replay["duplicated"] is True
+    assert len(db.records) == 1

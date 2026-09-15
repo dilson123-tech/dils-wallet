@@ -26,9 +26,14 @@ from app.partner.asaas_payment_correlation import (
     resolve_asaas_payment_user_correlation_from_payment,
 )
 from app.services.asaas_correlated_pix_payment_service import (
+    AsaasCorrelatedPixPaymentCapacityError,
     AsaasCorrelatedPixPaymentConflictError,
     AsaasCorrelatedPixPaymentStorageError,
     prepare_asaas_correlated_pix_payment as prepare_correlated_pix_payment,
+)
+from app.services.sandbox_namespace_cap import (
+    SandboxNamespaceCapExceeded,
+    enforce_sandbox_namespace_cap,
 )
 from app.services.wallet_partner_service import (
     create_wallet_pix_payment as create_partner_pix_payment,
@@ -1358,6 +1363,23 @@ def handle_asaas_sandbox_webhook_receiver(
             headers={"Retry-After": "30"},
         )
 
+    # Chave genuinamente nova (o bloco acima já teria retornado em
+    # qualquer caso de replay/conflito) -- soft cap operacional P0-B,
+    # nunca interfere em replay.
+    try:
+        enforce_sandbox_namespace_cap(
+            db, namespace_prefix="asaas-sandbox-webhook:"
+        )
+    except SandboxNamespaceCapExceeded:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Sandbox temporariamente indisponível. "
+                "Tente novamente em instantes."
+            ),
+            headers={"Retry-After": "30"},
+        ) from None
 
     accepted = event_type in _ASAAS_SANDBOX_WEBHOOK_ACCEPTED_EVENTS
     payment_payload = (
@@ -1639,6 +1661,24 @@ def handle_wallet_pix_sandbox_webhook(
             "can_mark_real_paid": False,
             "notice": "Evento sandbox já está em processamento. Nenhum dinheiro real foi movimentado.",
         }
+
+    # Chave genuinamente nova (o bloco acima já teria retornado em
+    # qualquer caso de replay/conflito) -- soft cap operacional P0-B,
+    # nunca interfere em replay.
+    try:
+        enforce_sandbox_namespace_cap(
+            db, namespace_prefix="wallet-sandbox-webhook:"
+        )
+    except SandboxNamespaceCapExceeded:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Sandbox temporariamente indisponível. "
+                "Tente novamente em instantes."
+            ),
+            headers={"Retry-After": "30"},
+        ) from None
 
     webhook_result = handle_partner_wallet_webhook(
         PartnerWebhookEvent(
@@ -2288,6 +2328,15 @@ def prepare_wallet_asaas_correlated_pix_payment(
                 "Não foi possível registrar a preparação "
                 "PIX Asaas Sandbox."
             ),
+        ) from None
+    except AsaasCorrelatedPixPaymentCapacityError:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Sandbox temporariamente indisponível. "
+                "Tente novamente em instantes."
+            ),
+            headers={"Retry-After": "30"},
         ) from None
 
     return {
