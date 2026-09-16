@@ -27,6 +27,22 @@ ela pode falhar (connection refused, já que não há servidor real
 escutando na porta 8000 durante o teste) sem quebrar a asserção, pois
 os handlers tratam esse erro internamente e retornam 200 com um
 fallback textual, não uma exceção.
+
+Atualizado após a correção de segurança em
+POST /api/v1/ai/ai/pix-insight (branch
+security/ai-chat-pix-insight-auth, ver
+tests/test_ai_chat_pix_insight_auth.py): esse endpoint passou a exigir
+Depends(require_customer) -- identidade vem sempre do token Bearer
+autenticado, nunca do header X-User-Email. Por isso ele não pode mais
+compartilhar os cenários genéricos "sem token" dos outros 7 endpoints
+(_ENDPOINTS abaixo): sem token, ele agora responde 401 antes mesmo do
+SlowAPI contar a chamada, então a cobertura de rate limit dele foi
+movida para dois testes dedicados que sempre autenticam a chamada com
+um usuário real, criado no próprio banco SQLite descartável do
+subprocess e assinado com o mesmo SECRET_KEY/JWT_SECRET do ambiente de
+teste (via app.utils.security.create_access_token, a mesma função
+canônica usada em produção -- nenhuma lógica de JWT é reimplementada
+aqui).
 """
 import json
 import os
@@ -37,10 +53,14 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
+# Os 7 endpoints que continuam sem exigir autenticação -- cobertura
+# genérica inalterada (testes A e E abaixo). pix_insight saiu deste
+# dict porque hoje exige Depends(require_customer): sua cobertura de
+# rate limit vive em test_pix_insight_requires_valid_authentication_now
+# e test_pix_insight_rate_limit_enforced_with_valid_authentication.
 _ENDPOINTS = {
     "chat": ("POST", "/api/v1/ai/chat", {"message": "oi"}),
     "pagamentos_lab": ("POST", "/api/v1/ai/pagamentos_lab", {"message": "oi"}),
-    "pix_insight": ("POST", "/api/v1/ai/ai/pix-insight", None),
     "headline": ("POST", "/api/v1/ai/headline", None),
     "headline_lab": ("POST", "/api/v1/ai/headline-lab", None),
     "summary": ("GET", "/api/v1/ai/summary", None),
@@ -48,17 +68,38 @@ _ENDPOINTS = {
     "chat_lab": ("POST", "/api/v1/ai/chat_lab", {"message": "oi"}),
 }
 
+_PIX_INSIGHT_PATH = "/api/v1/ai/ai/pix-insight"
+_PIX_INSIGHT_AUTH_EMAIL = "ai-rate-limit-probe@test.local"
+
 _PROBE_SCRIPT = r"""
 import json
 import os
 
-from app.database import Base, engine
+from app.database import Base, engine, SessionLocal
 from app.main import app
 from fastapi.testclient import TestClient
 
 Base.metadata.create_all(bind=engine)
 
 client = TestClient(app)
+
+# Se PROBE_AUTH_USER_EMAIL estiver definido, cria esse usuário no
+# banco descartável deste subprocess e assina um token de acesso real
+# para ele, via a mesma função canônica usada em produção -- nenhuma
+# lógica de JWT é reimplementada aqui.
+auth_token = None
+auth_email = os.environ.get("PROBE_AUTH_USER_EMAIL")
+if auth_email:
+    from app.models.user_main import User
+    from app.utils.security import create_access_token, hash_password
+
+    db = SessionLocal()
+    try:
+        db.add(User(email=auth_email, hashed_password=hash_password("x"), role="customer"))
+        db.commit()
+    finally:
+        db.close()
+    auth_token = create_access_token({"sub": auth_email})
 
 steps = json.loads(os.environ["PROBE_STEPS"])
 results = []
@@ -67,7 +108,9 @@ for step in steps:
     method = step["method"]
     path = step["path"]
     body = step.get("body")
-    headers = step.get("headers") or {}
+    headers = dict(step.get("headers") or {})
+    if step.get("auth"):
+        headers["Authorization"] = f"Bearer {auth_token}"
 
     if method == "GET":
         r = client.get(path, headers=headers)
@@ -83,13 +126,15 @@ print(json.dumps(results))
 """
 
 
-def _run_probe(steps: list) -> list:
+def _run_probe(steps: list, *, auth_user_email: str | None = None) -> list:
     with tempfile.TemporaryDirectory() as tmp:
         env = dict(os.environ)
         env["SECRET_KEY"] = env.get("SECRET_KEY") or "ai-rl-test-secret"
         env["JWT_SECRET"] = env.get("JWT_SECRET") or env["SECRET_KEY"]
         env["DATABASE_URL"] = f"sqlite:///{tmp}/probe.db"
         env["PROBE_STEPS"] = json.dumps(steps)
+        if auth_user_email:
+            env["PROBE_AUTH_USER_EMAIL"] = auth_user_email
 
         proc = subprocess.run(
             [sys.executable, "-c", _PROBE_SCRIPT],
@@ -116,12 +161,14 @@ def _step(name: str, **extra) -> dict:
     return step
 
 
-# A) os 8 endpoints estão efetivamente registrados com rate limiting:
-# uma única chamada a cada um funciona normalmente (nenhum 429/500 por
-# causa do wiring do decorator), e o limite de 31 chamadas no MESMO
-# endpoint estoura em 429 -- provando que o decorator está de fato
-# ativo em cada rota, uma de cada vez.
-def test_all_8_endpoints_are_registered_with_rate_limiting():
+# A) os 7 endpoints sem autenticação estão efetivamente registrados
+# com rate limiting: uma única chamada a cada um funciona normalmente
+# (nenhum 429/500 por causa do wiring do decorator), e o limite de 31
+# chamadas no MESMO endpoint estoura em 429 -- provando que o
+# decorator está de fato ativo em cada rota, uma de cada vez.
+# pix_insight (8º endpoint) tem cobertura equivalente, mas autenticada,
+# em test_pix_insight_rate_limit_enforced_with_valid_authentication.
+def test_all_7_unauthenticated_endpoints_are_registered_with_rate_limiting():
     for name in _ENDPOINTS:
         steps = [_step(name) for _ in range(31)]
         results = _run_probe(steps)
@@ -131,6 +178,32 @@ def test_all_8_endpoints_are_registered_with_rate_limiting():
         # tem que funcionar normalmente -- prova que o rate limit não
         # quebrou o comportamento funcional preexistente).
         assert statuses[0] != 429, (name, statuses)
+
+
+# A2) pix_insight, sem token, responde 401 -- nunca 200/500 -- em toda
+# a faixa testada (1 chamada é suficiente para provar o contrato; não
+# há necessidade de estourar o limite aqui, isso é feito com token
+# válido no teste seguinte).
+def test_pix_insight_requires_valid_authentication_now():
+    results = _run_probe([{"method": "POST", "path": _PIX_INSIGHT_PATH}])
+    assert results[0]["status"] == 401, results
+
+
+# A3) pix_insight, autenticado com um token válido (usuário real criado
+# no banco descartável do subprocess, token assinado pela função
+# canônica create_access_token), continua coberto pelo mesmo rate
+# limit "30/minute": a primeira chamada funciona (200), e a 31ª estoura
+# em 429 -- mesma prova da A, agora sob o novo contrato autenticado.
+def test_pix_insight_rate_limit_enforced_with_valid_authentication():
+    steps = [
+        {"method": "POST", "path": _PIX_INSIGHT_PATH, "auth": True}
+        for _ in range(31)
+    ]
+    results = _run_probe(steps, auth_user_email=_PIX_INSIGHT_AUTH_EMAIL)
+    statuses = [r["status"] for r in results]
+    assert statuses[0] == 200, statuses
+    assert statuses[:30].count(429) == 0, statuses
+    assert 429 in statuses[30:], statuses
 
 
 # B) chamadas repetidas do MESMO IP recebem 429 ao exceder o limite
@@ -180,7 +253,11 @@ def test_varying_declared_identity_does_not_bypass_limit():
 
 
 # E) requests abaixo do limite mantêm o comportamento HTTP funcional
-# preexistente (200, sem 429/500) para cada um dos 8 endpoints.
+# preexistente (200, sem 429/500) para cada um dos 7 endpoints sem
+# autenticação. pix_insight (8º) tem seu próprio contrato funcional
+# verificado em test_pix_insight_requires_valid_authentication_now
+# (401 sem token) e test_pix_insight_rate_limit_enforced_with_valid_authentication
+# (200 com token válido).
 def test_requests_below_limit_keep_previous_functional_behavior():
     for name in _ENDPOINTS:
         results = _run_probe([_step(name)])
