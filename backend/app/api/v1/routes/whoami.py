@@ -1,79 +1,53 @@
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from typing import Optional
-from sqlalchemy.orm import Session
 import jwt
-import time
 
-from app.database import get_db
 from app.models import User  # User vem de app/models/__init__.py
-from app.auth import JWT_SECRET, JWT_ALG  # segredo e algoritmo do token
+from app.utils.authz import require_customer
+from app.utils.security import SECRET_KEY, ALGORITHM
 
 router = APIRouter(tags=["auth"])
 
-def get_user_from_claims(claims: dict, db: Session) -> Optional[User]:
-    ident = claims.get("sub") or claims.get("username") or claims.get("email")
-
-    if not ident:
-        return None
-
-    # tenta identificar por id ou email
-    try:
-        # se ident é número -> tenta id
-        if isinstance(ident, str) and ident.isdigit():
-            return db.query(User).filter(User.id == int(ident)).first()
-        # senão tenta por email
-        return db.query(User).filter(User.email == ident).first()
-    except Exception:
-        return None
 
 @router.get("/api/v1/whoami")
 def whoami(
-    authorization: Optional[str] = Header(None)
-    # ex: "Authorization: Bearer <token>"
+    authorization: Optional[str] = Header(None),
+    current_user: User = Depends(require_customer),
 ):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="missing_bearer_token"
-        )
+    """Identidade e claims do usuário autenticado.
 
+    A resolução do usuário vem sempre de Depends(require_customer) --
+    o mesmo pipeline canônico usado em /api/v1/users/me
+    (app/utils/authz.py::get_current_user). Nunca mais interpreta um
+    claim "sub" numérico como User.id cru: se o token não passar pela
+    validação canônica (assinatura, expiração, sub == username/email
+    de um usuário real), a própria dependência já responde 401 antes
+    deste corpo rodar.
+
+    O token só é decodificado de novo aqui para ecoar "claims"/"algo"
+    no contrato de resposta já existente -- isso nunca influencia
+    quem é o usuário retornado.
+    """
     token = authorization.split(" ", 1)[1].strip()
-
-    # valida token JWT
     try:
-        claims = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="token_expired")
+        claims = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except Exception:
-        raise HTTPException(status_code=401, detail="invalid_token")
+        claims = {}
 
-    # checa exp
-    exp = claims.get("exp")
-    if exp and time.time() > float(exp):
-        raise HTTPException(status_code=401, detail="token_expired")
-
-    # abre sessão no banco e resolve usuário
-    db = next(get_db())
-    user = get_user_from_claims(claims, db)
-
-    if not user:
-        raise HTTPException(status_code=401, detail="user_not_found_for_token")
-
-    # checa status do usuário (ativos, verificados, etc.)
-    if hasattr(user, "is_active") and not getattr(user, "is_active"):
+    if hasattr(current_user, "is_active") and not getattr(current_user, "is_active"):
         raise HTTPException(status_code=401, detail="user_inactive")
-    if hasattr(user, "is_verified") and not getattr(user, "is_verified"):
+    if hasattr(current_user, "is_verified") and not getattr(current_user, "is_verified"):
         raise HTTPException(status_code=401, detail="user_unverified")
 
     return {
         "ok": True,
         "user": {
-            "id": getattr(user, "id", None),
-            "email": getattr(user, "email", None),
-            "full_name": getattr(user, "full_name", None),
-            "type": getattr(user, "type", None),
-            "role": getattr(user, "role", None),
+            "id": getattr(current_user, "id", None),
+            "email": getattr(current_user, "email", None),
+            "full_name": getattr(current_user, "full_name", None),
+            "type": getattr(current_user, "type", None),
+            "role": getattr(current_user, "role", None),
         },
         "claims": {k: v for k, v in claims.items() if k not in ("exp", "iat")},
-        "algo": JWT_ALG,
+        "algo": ALGORITHM,
     }
