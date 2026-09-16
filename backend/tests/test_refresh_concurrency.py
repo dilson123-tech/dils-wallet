@@ -72,7 +72,16 @@ def session_factory():
        (confirmado empiricamente antes de aplicar este fixture);
        apenas escritor-vs-escritor continua serializado -- exatamente
        o comportamento que expõe (e que o CAS corrige) a race real."""
-    tmp = tempfile.mktemp(suffix=".db")
+    # mkstemp() (não mktemp()) cria o arquivo de forma atômica e seletiva
+    # já na chamada -- mktemp() só devolve um nome de caminho, sem criar
+    # nada, deixando uma janela real de TOCTOU (outro processo/usuário
+    # poderia criar um arquivo malicioso nesse mesmo caminho antes do
+    # SQLAlchemy chegar a abri-lo). O fd é fechado imediatamente: só
+    # precisamos do path -- o arquivo já criado por mkstemp() -- para o
+    # SQLAlchemy/sqlite3 abrirem por conta própria; manter o fd aberto
+    # não teria função aqui e só vazaria um descritor.
+    fd, tmp = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     engines = []
 
     def _make():
