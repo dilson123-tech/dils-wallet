@@ -190,12 +190,8 @@ def admin_reset_passwd(request: Request):
         from app.utils.security import get_password_hash  # type: ignore
         hp = get_password_hash(new_pass)
     except Exception:
-        try:
-            from app.security import get_password_hash  # type: ignore
-            hp = get_password_hash(new_pass)
-        except Exception:
-            from passlib.context import CryptContext
-            hp = CryptContext(schemes=["bcrypt"], deprecated="auto").hash(new_pass)
+        from passlib.context import CryptContext
+        hp = CryptContext(schemes=["bcrypt"], deprecated="auto").hash(new_pass)
 
     table = _env_pick("USER_TABLE", "user_table") or "users"
     if not re.match(r"^[A-Za-z0-9_]+$", table):
