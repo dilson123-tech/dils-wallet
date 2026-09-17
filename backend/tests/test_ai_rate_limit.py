@@ -34,7 +34,7 @@ security/ai-chat-pix-insight-auth, ver
 tests/test_ai_chat_pix_insight_auth.py): esse endpoint passou a exigir
 Depends(require_customer) -- identidade vem sempre do token Bearer
 autenticado, nunca do header X-User-Email. Por isso ele não pode mais
-compartilhar os cenários genéricos "sem token" dos outros 7 endpoints
+compartilhar os cenários genéricos "sem token" dos outros endpoints
 (_ENDPOINTS abaixo): sem token, ele agora responde 401 antes mesmo do
 SlowAPI contar a chamada, então a cobertura de rate limit dele foi
 movida para dois testes dedicados que sempre autenticam a chamada com
@@ -43,6 +43,19 @@ subprocess e assinado com o mesmo SECRET_KEY/JWT_SECRET do ambiente de
 teste (via app.utils.security.create_access_token, a mesma função
 canônica usada em produção -- nenhuma lógica de JWT é reimplementada
 aqui).
+
+Atualizado de novo (issue #271) após os Blocos 3E e 3F: POST
+/api/v1/ai/chat (Bloco 3E, security/ai-chat-auth-characterization-
+block3e) e GET /api/v1/ai/summary (Bloco 3F,
+security/ai-summary-auth-characterization-block3f) também passaram a
+exigir Depends(require_customer). Pelo mesmo motivo do pix_insight,
+os dois saíram de _ENDPOINTS e ganharam a mesma cobertura dedicada
+(401 sem token + rate limit efetivo com token válido). Os cenários
+"IP repetido" / "XFF variável" / "identidade declarada variável" que
+antes exercitavam /api/v1/ai/chat sem token agora autenticam a
+chamada primeiro (mesmo padrão de auth_user_email já usado para
+pix_insight), preservando a mesma cobertura desses três eixos de
+bypass contra o novo contrato autenticado.
 """
 import json
 import os
@@ -53,23 +66,31 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
-# Os 7 endpoints que continuam sem exigir autenticação -- cobertura
-# genérica inalterada (testes A e E abaixo). pix_insight saiu deste
-# dict porque hoje exige Depends(require_customer): sua cobertura de
-# rate limit vive em test_pix_insight_requires_valid_authentication_now
-# e test_pix_insight_rate_limit_enforced_with_valid_authentication.
+# Os 5 endpoints que continuam sem exigir autenticação -- cobertura
+# genérica inalterada (testes A e E abaixo). pix_insight, chat e
+# summary saíram deste dict porque hoje exigem Depends(require_customer):
+# suas coberturas de rate limit vivem em testes dedicados
+# (test_pix_insight_*, test_chat_*, test_summary_* abaixo).
 _ENDPOINTS = {
-    "chat": ("POST", "/api/v1/ai/chat", {"message": "oi"}),
     "pagamentos_lab": ("POST", "/api/v1/ai/pagamentos_lab", {"message": "oi"}),
     "headline": ("POST", "/api/v1/ai/headline", None),
     "headline_lab": ("POST", "/api/v1/ai/headline-lab", None),
-    "summary": ("GET", "/api/v1/ai/summary", None),
     "assist": ("POST", "/api/v1/ai/assist", {"msg": "oi"}),
     "chat_lab": ("POST", "/api/v1/ai/chat_lab", {"message": "oi"}),
 }
 
+_CHAT_STEP = ("POST", "/api/v1/ai/chat", {"message": "oi"})
+_SUMMARY_STEP = ("GET", "/api/v1/ai/summary", None)
+
+# _step() abaixo também sabe montar chamadas para chat/summary (usado
+# pelos testes B/C/D, que agora autenticam a chamada antes de testar
+# os eixos de bypass), mesmo eles não fazendo mais parte de _ENDPOINTS.
+_ALL_STEPS = {**_ENDPOINTS, "chat": _CHAT_STEP, "summary": _SUMMARY_STEP}
+
 _PIX_INSIGHT_PATH = "/api/v1/ai/ai/pix-insight"
 _PIX_INSIGHT_AUTH_EMAIL = "ai-rate-limit-probe@test.local"
+_CHAT_AUTH_EMAIL = "ai-rate-limit-chat-probe@test.local"
+_SUMMARY_AUTH_EMAIL = "ai-rate-limit-summary-probe@test.local"
 
 _PROBE_SCRIPT = r"""
 import json
@@ -153,7 +174,7 @@ def _run_probe(steps: list, *, auth_user_email: str | None = None) -> list:
 
 
 def _step(name: str, **extra) -> dict:
-    method, path, body = _ENDPOINTS[name]
+    method, path, body = _ALL_STEPS[name]
     step = {"method": method, "path": path}
     if body is not None:
         step["body"] = body
@@ -161,14 +182,15 @@ def _step(name: str, **extra) -> dict:
     return step
 
 
-# A) os 7 endpoints sem autenticação estão efetivamente registrados
+# A) os 5 endpoints sem autenticação estão efetivamente registrados
 # com rate limiting: uma única chamada a cada um funciona normalmente
 # (nenhum 429/500 por causa do wiring do decorator), e o limite de 31
 # chamadas no MESMO endpoint estoura em 429 -- provando que o
 # decorator está de fato ativo em cada rota, uma de cada vez.
-# pix_insight (8º endpoint) tem cobertura equivalente, mas autenticada,
-# em test_pix_insight_rate_limit_enforced_with_valid_authentication.
-def test_all_7_unauthenticated_endpoints_are_registered_with_rate_limiting():
+# pix_insight, chat e summary (os outros 3 endpoints ativos) têm
+# cobertura equivalente, mas autenticada, nos testes dedicados abaixo
+# (test_pix_insight_*, test_chat_*, test_summary_*).
+def test_all_5_unauthenticated_endpoints_are_registered_with_rate_limiting():
     for name in _ENDPOINTS:
         steps = [_step(name) for _ in range(31)]
         results = _run_probe(steps)
@@ -206,11 +228,60 @@ def test_pix_insight_rate_limit_enforced_with_valid_authentication():
     assert 429 in statuses[30:], statuses
 
 
+# A4) chat (POST /api/v1/ai/chat), sem token, responde 401 -- nunca
+# 200/500 -- desde a canonicalização de auth do Bloco 3E. Mesmo padrão
+# do A2 para pix_insight.
+def test_chat_requires_valid_authentication_now():
+    results = _run_probe([{"method": "POST", "path": _CHAT_STEP[1], "body": _CHAT_STEP[2]}])
+    assert results[0]["status"] == 401, results
+
+
+# A5) chat, autenticado com um token válido, continua coberto pelo
+# mesmo rate limit "30/minute": 1ª chamada funciona (200), 31ª estoura
+# em 429. Mesmo padrão do A3 para pix_insight.
+def test_chat_rate_limit_enforced_with_valid_authentication():
+    steps = [
+        {"method": "POST", "path": _CHAT_STEP[1], "body": _CHAT_STEP[2], "auth": True}
+        for _ in range(31)
+    ]
+    results = _run_probe(steps, auth_user_email=_CHAT_AUTH_EMAIL)
+    statuses = [r["status"] for r in results]
+    assert statuses[0] == 200, statuses
+    assert statuses[:30].count(429) == 0, statuses
+    assert 429 in statuses[30:], statuses
+
+
+# A6) summary (GET /api/v1/ai/summary), sem token, responde 401 --
+# nunca 200/500 -- desde a canonicalização de auth do Bloco 3F. Mesmo
+# padrão do A2 para pix_insight.
+def test_summary_requires_valid_authentication_now():
+    results = _run_probe([{"method": "GET", "path": _SUMMARY_STEP[1]}])
+    assert results[0]["status"] == 401, results
+
+
+# A7) summary, autenticado com um token válido, continua coberto pelo
+# mesmo rate limit "30/minute": 1ª chamada funciona (200), 31ª estoura
+# em 429. Mesmo padrão do A3 para pix_insight.
+def test_summary_rate_limit_enforced_with_valid_authentication():
+    steps = [
+        {"method": "GET", "path": _SUMMARY_STEP[1], "auth": True}
+        for _ in range(31)
+    ]
+    results = _run_probe(steps, auth_user_email=_SUMMARY_AUTH_EMAIL)
+    statuses = [r["status"] for r in results]
+    assert statuses[0] == 200, statuses
+    assert statuses[:30].count(429) == 0, statuses
+    assert 429 in statuses[30:], statuses
+
+
 # B) chamadas repetidas do MESMO IP recebem 429 ao exceder o limite
-# (30/minute) -- verificado em detalhe para o endpoint mais exposto.
+# (30/minute) -- verificado em detalhe para o endpoint mais exposto
+# (chat), agora autenticando a chamada primeiro (chat exige
+# Depends(require_customer) desde o Bloco 3E; sem token, o SlowAPI
+# nunca chega a contar a chamada -- ver test_chat_requires_valid_authentication_now).
 def test_repeated_calls_same_ip_hit_429_after_limit():
-    steps = [_step("chat") for _ in range(35)]
-    results = _run_probe(steps)
+    steps = [_step("chat", auth=True) for _ in range(35)]
+    results = _run_probe(steps, auth_user_email=_CHAT_AUTH_EMAIL)
     statuses = [r["status"] for r in results]
 
     assert statuses[:30].count(429) == 0, statuses
@@ -219,30 +290,35 @@ def test_repeated_calls_same_ip_hit_429_after_limit():
 
 # C) variar X-Forwarded-For não permite bypass no ambiente de teste
 # (request.client permanece o mesmo -- TestClient -- então o SlowAPI,
-# via get_remote_address, sempre resolve o mesmo IP).
+# via get_remote_address, sempre resolve o mesmo IP). Chamada
+# autenticada, pelo mesmo motivo do teste B.
 def test_varying_xff_does_not_bypass_limit():
     steps = [
-        _step("chat", headers={"X-Forwarded-For": f"10.0.0.{i}"})
+        _step("chat", auth=True, headers={"X-Forwarded-For": f"10.0.0.{i}"})
         for i in range(35)
     ]
-    results = _run_probe(steps)
+    results = _run_probe(steps, auth_user_email=_CHAT_AUTH_EMAIL)
     statuses = [r["status"] for r in results]
     assert 429 in statuses, statuses
 
 
 # D) variar X-User-Email/user_id não cria uma segunda dimensão nem
 # permite contornar o limite -- todas as chamadas, com identidades
-# diferentes, ainda caem no mesmo bucket por IP.
+# declaradas diferentes, ainda caem no mesmo bucket por IP (a
+# identidade real, do token, é sempre a mesma -- X-User-Email nunca
+# selecionou identidade, mesmo antes do Bloco 3E). Chamada autenticada,
+# pelo mesmo motivo do teste B.
 def test_varying_declared_identity_does_not_bypass_limit():
     steps = [
-        _step("chat", headers={"X-User-Email": f"user-{i}@test.local"})
+        _step("chat", auth=True, headers={"X-User-Email": f"user-{i}@test.local"})
         for i in range(35)
     ]
-    results = _run_probe(steps)
+    results = _run_probe(steps, auth_user_email=_CHAT_AUTH_EMAIL)
     statuses = [r["status"] for r in results]
     assert 429 in statuses, statuses
 
-    # também para o corpo (assist aceita user_id no body)
+    # também para o corpo (assist aceita user_id no body; assist
+    # continua genuinamente sem autenticação, não precisa de token)
     steps_body = [
         {"method": "POST", "path": "/api/v1/ai/assist", "body": {"msg": "oi", "user_id": i}}
         for i in range(35)
@@ -253,11 +329,11 @@ def test_varying_declared_identity_does_not_bypass_limit():
 
 
 # E) requests abaixo do limite mantêm o comportamento HTTP funcional
-# preexistente (200, sem 429/500) para cada um dos 7 endpoints sem
-# autenticação. pix_insight (8º) tem seu próprio contrato funcional
-# verificado em test_pix_insight_requires_valid_authentication_now
-# (401 sem token) e test_pix_insight_rate_limit_enforced_with_valid_authentication
-# (200 com token válido).
+# preexistente (200, sem 429/500) para cada um dos 5 endpoints sem
+# autenticação. pix_insight, chat e summary têm seus próprios
+# contratos funcionais verificados nos testes test_*_requires_valid_
+# authentication_now (401 sem token) e test_*_rate_limit_enforced_
+# with_valid_authentication (200 com token válido).
 def test_requests_below_limit_keep_previous_functional_behavior():
     for name in _ENDPOINTS:
         results = _run_probe([_step(name)])
