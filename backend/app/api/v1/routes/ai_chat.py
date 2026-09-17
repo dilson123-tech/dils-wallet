@@ -401,54 +401,6 @@ async def ai_chat(
     history: Optional[list] = None
 
 
-        # Atalhos diretos para botões do painel Super2:
-    # "Entradas do mês no PIX" e "Histórico/Saídas do mês"
-    try:
-        if any(
-            p in norm_msg
-            for p in [
-                "entradas do mes no pix",
-                "entradas do mês no pix",
-                "entradas no pix esse mes",
-                "entradas no pix esse mês",
-            ]
-        ):
-            resumo = _ia3_get_pix_month_summary(x_user_email)
-            if resumo:
-                reply = _ia3_build_entradas_mes_reply(resumo)
-            else:
-                reply = (
-                    "Não consegui carregar agora as entradas do mês via PIX.\n\n"
-                    "Tente novamente em alguns instantes ou confira as entradas no painel Super2."
-                )
-            return {"reply": reply, "tema": "entradas_mes_pix"}
-
-        if any(
-            p in norm_msg
-            for p in [
-                "saidas do mes no pix",
-                "saídas do mês no pix",
-                "gastos do mes no pix",
-                "gastos do mês no pix",
-            ]
-        ):
-            resumo = _ia3_get_pix_month_summary(x_user_email)
-            if resumo:
-                reply = _ia3_build_saidas_mes_reply(resumo)
-            else:
-                reply = (
-                    "Não consegui carregar agora as saídas do mês via PIX.\n\n"
-                    "Tente novamente em alguns instantes ou confira as saídas no painel Super2."
-                )
-            return {"reply": reply, "tema": "saidas_mes_pix"}
-    except Exception:
-        # Se der qualquer erro interno, não quebra a API:
-        reply = (
-            "Não consegui processar agora os dados de ENTRADAS/SAÍDAS do mês via PIX.\n\n"
-            "Tente novamente em alguns instantes ou confira os valores direto no painel Super2."
-        )
-        return {"reply": reply, "tema": "erro_pix_mes"}
-
     if any(p in norm_msg for p in ["saldo", "quanto tenho", "quanto eu tenho"]):
         tema_label = "saldo"
         balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
@@ -606,125 +558,6 @@ o "resumo do mês".
 """
 
 
-def _ia3_get_month_range_now():
-    """
-    Retorna (início_do_mês, início_próximo_mês) em UTC
-    para filtrar transações do mês atual.
-    """
-    from datetime import datetime
-
-    hoje = datetime.utcnow()
-    inicio_mes = hoje.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    if hoje.month == 12:
-        inicio_prox = hoje.replace(
-            year=hoje.year + 1,
-            month=1,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-        )
-    else:
-        inicio_prox = hoje.replace(
-            month=hoje.month + 1,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-        )
-
-    return inicio_mes, inicio_prox
-
-
-def _ia3_get_pix_month_summary(user_email: str) -> dict:
-    """
-    Versão definitiva e robusta do resumo do mês.
-
-    Nunca deve derrubar a API:
-    - Se não conseguir importar SessionLocal ou PixTransaction → retorna tudo 0.
-    - Se a query der erro → retorna tudo 0.
-    """
-    from sqlalchemy.orm import Session
-    from sqlalchemy import func
-
-    zeros = {
-        "entradas_mes": 0.0,
-        "saidas_mes": 0.0,
-        "net_mes": 0.0,
-        "qtd_transacoes": 0,
-    }
-
-    # Tenta importar SessionLocal em caminhos diferentes
-    try:
-        try:
-            from app.db.session import SessionLocal  # se existir app/db/session.py
-        except Exception:
-            from app.database.session import SessionLocal  # fallback comum
-    except Exception as e:
-        print("IA3 resumo_mes: não consegui importar SessionLocal:", e)
-        return zeros
-
-    # Tenta importar PixTransaction em caminhos diferentes
-    try:
-        try:
-            from app.models.pix_transaction import PixTransaction
-        except Exception:
-            from app.models.pix import PixTransaction
-    except Exception as e:
-        print("IA3 resumo_mes: não consegui importar PixTransaction:", e)
-        return zeros
-
-    inicio_mes, inicio_prox = _ia3_get_month_range_now()
-    db: Session = SessionLocal()
-    try:
-        base_query = (
-            db.query(
-                PixTransaction.kind,
-                func.sum(PixTransaction.amount).label("total"),
-                func.count().label("qtd"),
-            )
-            .filter(
-                PixTransaction.user_email == user_email,
-                PixTransaction.created_at >= inicio_mes,
-                PixTransaction.created_at < inicio_prox,
-            )
-            .group_by(PixTransaction.kind)
-        )
-
-        entradas = 0.0
-        saidas = 0.0
-        total_qtd = 0
-
-        for row in base_query:
-            kind = (row.kind or "").lower()
-            valor = float(row.total or 0)
-            qtd = int(row.qtd or 0)
-            total_qtd += qtd
-
-            if kind == "entrada":
-                entradas += valor
-            elif kind == "saida":
-                saidas += valor
-
-        net = entradas - saidas
-
-        return {
-            "entradas_mes": float(entradas),
-            "saidas_mes": float(saidas),
-            "net_mes": float(net),
-            "qtd_transacoes": int(total_qtd),
-        }
-    except Exception as e:
-        print("IA3 resumo_mes: erro ao consultar transações:", e)
-        return zeros
-    finally:
-        db.close()
-
-
-
 def _ia3_build_consulting_reply(balance: dict | None) -> str:
     """Monta a resposta da IA 3.0 em modo consultor financeiro PIX, com nível de risco do mês."""
     if not balance:
@@ -811,55 +644,6 @@ def _ia3_build_consulting_reply(balance: dict | None) -> str:
     return texto
 
 
-def _ia3_build_entradas_mes_reply(resumo: dict) -> str:
-    """Resposta IA 3.0 focada nas ENTRADAS do mês via PIX."""
-    saldo_atual = resumo["saldo_atual"]
-    entradas = resumo["entradas_mes"]
-    saidas = resumo["saidas_mes"]
-    resultado_mes = resumo["resultado_mes"]
-
-    def fmt_brl(v: float) -> str:
-        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    return (
-        "💰 IA 3.0 da Aurea Gold\n\n"
-        "Aqui está o panorama das **entradas do mês via PIX**:\n\n"
-        f"• Entradas no mês (PIX): **{fmt_brl(entradas)}**\n"
-        f"• Saídas no mês (PIX): {fmt_brl(saidas)}\n"
-        f"• Resultado do mês (PIX): {fmt_brl(resultado_mes)}\n"
-        f"• Saldo atual na carteira PIX: {fmt_brl(saldo_atual)}\n\n"
-        "O que isso quer dizer:\n"
-        "- Se as entradas estão fortes, está entrando bastante dinheiro via PIX.\n"
-        "- Se estiver baixo, pode ser sinal de que você precisa reforçar vendas, cobranças e recorrências.\n\n"
-        "Se quiser, posso te ajudar também com **saídas do mês no PIX** ou ativar o "
-        "**modo consultor financeiro** para um diagnóstico mais completo do seu mês."
-    )
-
-
-def _ia3_build_saidas_mes_reply(resumo: dict) -> str:
-    """Resposta IA 3.0 focada nas SAÍDAS do mês via PIX."""
-    saldo_atual = resumo["saldo_atual"]
-    entradas = resumo["entradas_mes"]
-    saidas = resumo["saidas_mes"]
-    resultado_mes = resumo["resultado_mes"]
-
-    def fmt_brl(v: float) -> str:
-        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    return (
-        "💳 IA 3.0 da Aurea Gold\n\n"
-        "Aqui está o panorama das **saídas do mês via PIX**:\n\n"
-        f"• Saídas no mês (PIX): **{fmt_brl(saidas)}**\n"
-        f"• Entradas no mês (PIX): {fmt_brl(entradas)}\n"
-        f"• Resultado do mês (PIX): {fmt_brl(resultado_mes)}\n"
-        f"• Saldo atual na carteira PIX: {fmt_brl(saldo_atual)}\n\n"
-        "Como interpretar:\n"
-        "- Se as saídas estão muito altas, pode ser sinal de gastos puxados no mês.\n"
-        "- Se estiver equilibrado com as entradas, o fluxo está mais controlado.\n"
-        "- Se o resultado do mês estiver negativo, vale revisar onde está indo a maior parte do dinheiro.\n\n"
-        "Se quiser, posso ligar o **modo consultor financeiro** para te dar um diagnóstico completo "
-        "do mês e recomendações práticas sobre como organizar melhor seus PIX."
-    )
 # === IA 3.0 – Laboratório de Pagamentos ===
 
 @router.post("/pagamentos_lab")
@@ -923,14 +707,6 @@ async def pagamentos_lab(request: Request, payload: dict, x_user_email: str = He
         )
 
     return {"reply": reply, "tema": "pagamentos_lab"}
-
-
-# === Alias de compatibilidade para IA 3.0 (consultor financeiro) ===
-# Alguns pontos da codebase ainda chamam ia3_build_consulting_replyv (com "v").
-# Este alias só repassa para a função oficial ia3_build_consulting_reply.
-def ia3_build_consulting_replyv(*args, **kwargs):
-    """Alias de compatibilidade: delega para ia3_build_consulting_reply."""
-    return ia3_build_consulting_reply(*args, **kwargs)
 
 
 from app.api.v1.ai import build_ia_headline_panel
