@@ -1,35 +1,62 @@
 from fastapi.testclient import TestClient
-from app.main import app
-from app.database import Base, engine, SessionLocal
-from app import models
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 import pytest
+
+from app.database import Base, get_db
+from app.main import app
+from app import models
 from app.utils.security import hash_password
 
 client = TestClient(app)
 
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
+    # SQLite em memória, descartável, isolado deste módulo -- nunca
+    # backend/app.db. StaticPool garante uma única conexão compartilhada
+    # entre todas as sessões abertas via get_db durante o módulo, então
+    # dados de uma requisição (ex.: o usuário criado abaixo, ou o
+    # refresh_token gravado pelo /login) ficam visíveis nas requisições
+    # seguintes do mesmo teste.
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    # cria usuário de teste direto no banco
-    u = db.query(models.User).filter(models.User.email == "test@local").first()
-    if not u:
-        u = models.User(
-            username="test",
-            email="test@local",
-            hashed_password=hash_password("test123"),
-            role="user",
+    session_factory = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+    def _override_get_db():
+        db = session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _override_get_db
+
+    db = session_factory()
+    try:
+        # cria usuário de teste direto no banco descartável deste módulo
+        db.add(
+            models.User(
+                username="test",
+                email="test@local",
+                hashed_password=hash_password("test123"),
+                role="user",
+            )
         )
-        db.add(u)
-    else:
-        u.hashed_password = hash_password("test123")
-        if not getattr(u, "username", None):
-            u.username = "test"
-        if not getattr(u, "role", None):
-            u.role = "user"
-    db.commit()
-    db.close()
+        db.commit()
+    finally:
+        db.close()
+
     yield
+
+    app.dependency_overrides.pop(get_db, None)
+    engine.dispose()
+
 
 def test_login_and_balance_flow():
     resp = client.post("/api/v1/auth/login", json={"username": "test@local", "password": "test123"})
