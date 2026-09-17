@@ -299,11 +299,17 @@ def _build_gasto_mais_reply(history: list) -> str:
 async def ai_chat(
     payload: ChatRequest,
     request: Request,
+    current_user: User = Depends(require_customer),
     x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
 ):
     """
     IA 3.0 da Aurea Gold — versão Premium com explicação organizada
     e, sempre que possível, usando dados reais de PIX do próprio painel.
+
+    x_user_email é aceito apenas por compatibilidade de header com
+    clientes existentes e NUNCA é usado para selecionar o usuário
+    consultado -- a identidade vem exclusivamente do usuário autenticado
+    via Depends(require_customer)/get_current_user (token Bearer).
     """
     auth = request.headers.get('authorization') or request.headers.get('Authorization')
 
@@ -319,7 +325,7 @@ async def ai_chat(
             "entradas no pix esse mês",
         ]
     ):
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         if balance:
             reply = _build_entradas_reply(balance)
         else:
@@ -338,7 +344,7 @@ async def ai_chat(
             "gastos do mês no pix",
         ]
     ):
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         if balance:
             reply = _build_saidas_reply(balance)
         else:
@@ -363,26 +369,12 @@ async def ai_chat(
             "como foi meu mes no pix",
         ]
     ):
-        if not x_user_email:
-            return {
-                "reply": (
-                    "✨ IA 3.0 Premium – Resumo do mês no PIX\n\n"
-
-                    "Para montar o resumo do mês, preciso que o app envie o header "
-                    "X-User-Email com o seu e-mail Aurea Gold."
-                )
-            }
-
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         _reply = _ia3_build_consulting_reply(balance)
         return {"reply": _reply}
 
-    user_hint = (
-        f"\n\nAtendo você usando o cadastro: {x_user_email}."
-        if x_user_email
-        else ""
-    )
+    user_hint = f"\n\nAtendo você usando o cadastro: {current_user.email}."
 
     intro = (
         "Olá! Eu sou a IA 3.0 da Aurea Gold.\n\n"
@@ -403,7 +395,7 @@ async def ai_chat(
 
     if any(p in norm_msg for p in ["saldo", "quanto tenho", "quanto eu tenho"]):
         tema_label = "saldo"
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         if balance:
             tema_reply = _build_saldo_reply(balance)
         else:
@@ -417,7 +409,7 @@ async def ai_chat(
 
     elif any(p in norm_msg for p in ["entrada", "entradas", "receb", "ganho", "ganhos"]):
         tema_label = "entradas"
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         if balance:
             tema_reply = _build_entradas_reply(balance)
         else:
@@ -430,7 +422,7 @@ async def ai_chat(
 
     elif any(p in norm_msg for p in ["saida", "saidas", "gasto", "gastos", "paguei", "pagamento"]):
         tema_label = "saídas"
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         if balance:
             tema_reply = _build_saidas_reply(balance)
         else:
@@ -443,11 +435,11 @@ async def ai_chat(
 
     elif any(p in norm_msg for p in ["onde gasto mais", "onde eu gasto mais", "onde gasto", "gasto mais", "meus gastos", "maiores gastos"]):
         tema_label = "onde_gasto_mais"
-        history = await _get_pix_history(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        history = await _get_pix_history(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         tema_reply = _build_gasto_mais_reply(history or [])
     elif any(p in norm_msg for p in ["historico", "historico pix", "ultimas movimentacoes", "movimentacao"]):
         tema_label = "histórico de PIX"
-        history = await _get_pix_history(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        history = await _get_pix_history(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         tema_reply = _build_history_reply(history or [])
 
     # IA 3.0 – Modo consultor financeiro focado em PIX (usa resumo do mês)
@@ -476,7 +468,7 @@ async def ai_chat(
         ]
     ):
         tema_label = "modo consultor financeiro"
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         tema_reply = _ia3_build_consulting_reply(balance)
         intro = ""
 
@@ -519,7 +511,7 @@ async def ai_chat(
         ]
     ):
         tema_label = "modo consultor financeiro"
-        balance = await _get_pix_balance(x_user_email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
         tema_reply = _ia3_build_consulting_reply(balance)
 
     else:

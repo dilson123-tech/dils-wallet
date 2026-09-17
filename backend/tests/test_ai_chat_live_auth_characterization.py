@@ -1,11 +1,20 @@
 """
-Bloco AI Chat auth — testes de CARACTERIZAÇÃO (não de correção) de
+Bloco AI Chat auth — testes de CARACTERIZAÇÃO de
 POST /api/v1/ai/chat (backend/app/api/v1/routes/ai_chat.py::ai_chat).
 
-Objetivo: documentar com precisão o comportamento ATUAL, real, em
-produção, antes de qualquer migração para Depends(require_customer).
-Este arquivo NÃO altera nenhum código de produção, NÃO muda o
-contrato 200 -> 401 e NÃO toca em chat_lab.py.
+Objetivo: documentar com precisão o comportamento do endpoint agora
+que ele usa Depends(require_customer) na borda (identidade sempre do
+token Bearer autenticado, nunca de X-User-Email). Este arquivo NÃO
+toca em chat_lab.py.
+
+Mudança intencional de contrato nesta revisão: sem Authorization, com
+Authorization expirado ou com Authorization inválido, o endpoint agora
+responde 401 (antes respondia 200 com uma resposta de fallback). Os
+cenários com token válido continuam em 200: a identidade sempre foi
+resolvida a partir do token nas chamadas internas de PIX
+(pix.py também usa Depends(require_customer)), então um X-User-Email
+conflitante nunca teve efeito prático nesses dois casos -- e continua
+sem ter, agora de forma explícita também dentro de ai_chat.py.
 
 Por que precisa de um servidor HTTP real (não basta TestClient/ASGI
 in-process): `/chat` não lê o banco diretamente. Ele resolve
@@ -208,42 +217,41 @@ def test_token_b_with_x_user_email_a_never_returns_a_data(live_chat_results):
 
 
 # ---------------------------------------------------------------------
-# 3) Sem Authorization: documenta o contrato ATUAL -- 200 com resposta
-# de fallback, NUNCA 401, e sem nenhum dado real de PIX (nem de A, que
-# foi mandado via X-User-Email, nem de B).
+# 3) Sem Authorization: contrato canônico agora é 401 (Depends(require_customer)
+# rejeita antes de qualquer lógica de negócio rodar) -- sem nenhum dado
+# real de PIX vazando (nem de A, que foi mandado via X-User-Email, nem de B).
 # ---------------------------------------------------------------------
-def test_no_authorization_current_contract_is_200_with_fallback(live_chat_results):
+def test_no_authorization_returns_401(live_chat_results):
     status = live_chat_results["s3_no_authorization_status"]
     reply = live_chat_results["s3_no_authorization_reply"]
 
-    assert status == 200, (
-        "contrato atual documentado é 200 (não 401) sem Authorization; "
-        "se isso mudou, é uma migração intencional de comportamento, não uma regressão deste teste"
+    assert status == 401, (
+        "mudança intencional de contrato: sem Authorization agora é 401, "
+        "identidade nunca mais vem de X-User-Email"
     )
     assert "111,00" not in reply
     assert "222,00" not in reply
-    assert "não encontrei movimentações" in reply.lower()
 
 
 # ---------------------------------------------------------------------
-# 4) Authorization inválido/expirado: documenta que, mesmo com
-# X-User-Email de outro usuário mandado propositalmente, não há
-# vazamento de dado real -- nem do dono nominal do token expirado, nem
-# do usuário indicado no header.
+# 4) Authorization inválido/expirado: contrato canônico agora é 401,
+# mesmo com X-User-Email de outro usuário mandado propositalmente --
+# sem vazamento de dado real, nem do dono nominal do token expirado,
+# nem do usuário indicado no header.
 # ---------------------------------------------------------------------
-def test_expired_authorization_no_data_leak(live_chat_results):
+def test_expired_authorization_returns_401(live_chat_results):
     status = live_chat_results["s4a_expired_token_status"]
     reply = live_chat_results["s4a_expired_token_reply"]
 
-    assert status == 200, "contrato atual documentado é 200 mesmo com token expirado"
+    assert status == 401, "mudança intencional de contrato: token expirado agora é 401"
     assert "111,00" not in reply
     assert "222,00" not in reply
 
 
-def test_invalid_authorization_no_data_leak(live_chat_results):
+def test_invalid_authorization_returns_401(live_chat_results):
     status = live_chat_results["s4b_garbage_token_status"]
     reply = live_chat_results["s4b_garbage_token_reply"]
 
-    assert status == 200, "contrato atual documentado é 200 mesmo com token inválido"
+    assert status == 401, "mudança intencional de contrato: token inválido agora é 401"
     assert "111,00" not in reply
     assert "222,00" not in reply
