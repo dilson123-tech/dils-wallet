@@ -5,6 +5,8 @@ from datetime import datetime
 
 from app.database import get_db
 from app.core.rate_limit import limiter
+from app.models import User
+from app.utils.authz import require_customer
 
 # Modelos podem variar; tratamos campos ausentes com getattr(...)
 try:
@@ -46,6 +48,7 @@ def _is_receb(tipo: Optional[str]) -> bool:
 @limiter.limit("30/minute")
 def summary(
     request: Request,
+    current_user: User = Depends(require_customer),
     db: Session = Depends(get_db),
     x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
     limit: int = 50,
@@ -61,6 +64,11 @@ def summary(
       "saldo_estimado": number,
       "txs": [{ id, tipo, valor, descricao, created_at }]
     }
+
+    x_user_email é aceito apenas por compatibilidade de header com
+    clientes existentes e NUNCA é usado para selecionar o usuário
+    consultado -- a identidade vem exclusivamente do usuário
+    autenticado via Depends(require_customer).
     """
     if PixTransaction is None:
         # ambiente sem modelos carregados: responde vazio, mas padronizado
@@ -73,9 +81,7 @@ def summary(
             "txs": [],
         }
 
-    q = db.query(PixTransaction)
-    # Se você filtra por usuário por e-mail em outra tabela, dá pra adaptar aqui.
-    # Por ora retorna geral. (Se quiser, depois mapeamos X-User-Email -> user_id.)
+    q = db.query(PixTransaction).filter(PixTransaction.user_id == current_user.id)
 
     # últimas transações (mais recentes primeiro)
     q = q.order_by(PixTransaction.id.desc()).limit(limit)
