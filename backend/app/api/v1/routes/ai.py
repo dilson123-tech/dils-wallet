@@ -10,24 +10,27 @@ from app.utils.authz import require_customer
 
 # Modelos podem variar; tratamos campos ausentes com getattr(...)
 try:
-    from app.models.pix_transaction import PixTransaction  # id, user_id, tipo, valor, descricao, created_at
+    from app.models.pix_transaction import PixTransaction  # id, user_id, tipo, valor, referencia, criado_em
 except Exception:
     PixTransaction = None  # fallback para não quebrar import em fase de build
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 def _rows_to_dicts(rows: List[Any]) -> List[Dict[str, Any]]:
+    # As chaves de saída "descricao"/"created_at" são o contrato JSON
+    # já consumido pelo front -- só a origem do dado muda: o model
+    # real (Transaction) usa "referencia"/"criado_em".
     out = []
     for r in rows:
         out.append({
             "id": getattr(r, "id", None),
             "tipo": getattr(r, "tipo", None),
             "valor": float(getattr(r, "valor", 0) or 0),
-            "descricao": getattr(r, "descricao", "") or "",
+            "descricao": getattr(r, "referencia", "") or "",
             "created_at": (
-                getattr(r, "created_at", None).isoformat()
-                if hasattr(r, "created_at") and isinstance(getattr(r, "created_at"), datetime)
-                else getattr(r, "created_at", None)
+                getattr(r, "criado_em", None).isoformat()
+                if hasattr(r, "criado_em") and isinstance(getattr(r, "criado_em"), datetime)
+                else getattr(r, "criado_em", None)
             ),
             "user_id": getattr(r, "user_id", None),
         })
