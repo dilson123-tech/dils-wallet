@@ -69,7 +69,7 @@ def _account_status_payload(current_user: User) -> dict:
     except Exception as exc:
         provider = None
         adapter_ready = False
-        adapter_error = str(exc)
+        adapter_error = "partner_adapter_unavailable"
 
     real_money_enabled = bool(IS_PARTNER_WALLET and adapter_ready)
 
@@ -175,7 +175,7 @@ def get_wallet_structured_balance(
         provider = "not_configured"
         mode = WALLET_MODE
         source = "unavailable"
-        adapter_error = str(exc)
+        adapter_error = "partner_adapter_unavailable"
 
     return {
         "ok": True,
@@ -518,7 +518,7 @@ def get_wallet_structured_statement(
         mode = WALLET_MODE
         source = "unavailable"
         real_money_enabled = False
-        adapter_error = str(exc)
+        adapter_error = "partner_adapter_unavailable"
 
     items = [
         _statement_item_payload(
@@ -586,7 +586,7 @@ def get_wallet_receipt_reconciliation(
         adapter_error = None
     except Exception as exc:
         provider = "not_configured"
-        adapter_error = str(exc)
+        adapter_error = "partner_adapter_unavailable"
 
     real_money_enabled = bool(IS_PARTNER_WALLET and adapter_error is None)
     source = "partner" if real_money_enabled else "demo"
@@ -669,7 +669,7 @@ def get_wallet_operational_limits(
     except Exception as exc:
         provider = "not_configured"
         adapter_ready = False
-        adapter_error = str(exc)
+        adapter_error = "partner_adapter_unavailable"
 
     real_money_enabled = bool(IS_PARTNER_WALLET and adapter_ready)
     source = "partner" if real_money_enabled else "demo"
@@ -780,7 +780,7 @@ def _onboarding_status_payload(current_user: User) -> dict:
     except Exception as exc:
         provider = "not_configured"
         adapter_ready = False
-        adapter_error = str(exc)
+        adapter_error = "partner_adapter_unavailable"
 
     real_money_enabled = bool(IS_PARTNER_WALLET and adapter_ready)
 
