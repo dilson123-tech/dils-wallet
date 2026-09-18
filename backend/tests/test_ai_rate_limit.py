@@ -1,9 +1,14 @@
 """
-Testes do rate limiting por IP adicionado aos 8 endpoints ativos de
-IA/chat (backend/app/api/v1/routes/ai_chat.py, ai.py, assist.py e
-backend/app/api/v1/ai/chat_lab.py), usando o SlowAPI já existente
-(backend/app/core/rate_limit.py) -- mesmo padrão já usado em
-/api/v1/pix/send.
+Testes do rate limiting por IP adicionado aos 7 endpoints ativos de
+IA/chat (backend/app/api/v1/routes/ai_chat.py, ai.py, assist.py),
+usando o SlowAPI já existente (backend/app/core/rate_limit.py) --
+mesmo padrão já usado em /api/v1/pix/send.
+
+Bloco 3J: POST /api/v1/ai/chat_lab (backend/app/api/v1/ai/chat_lab.py)
+foi removido -- endpoint órfão/quebrado, sem caller vivo no frontend e
+sem caminho de dados funcional (a chamada interna para pix.py nunca
+encaminhava Authorization, então qualquer intent além de "geral"
+sempre respondia 500). Saiu de _ENDPOINTS abaixo.
 
 Nenhum teste aqui usa backend/app/utils/rate_limit.py (_BUCKETS): essa
 correção não toca o limiter artesanal.
@@ -15,7 +20,7 @@ backend/app.db. Isso também garante que cada cenário começa com o
 estado do SlowAPI limpo (processo novo).
 
 Nenhum teste faz chamada real a OpenAI ou qualquer outro provedor
-externo: os 8 endpoints protegidos aqui não chamam nenhum provedor de
+externo: os 7 endpoints protegidos aqui não chamam nenhum provedor de
 IA externo hoje (confirmado por investigação dedicada -- os únicos
 caminhos que chamariam OpenAI são código morto, não montado no app).
 O único acesso de rede que alguns desses endpoints fazem é uma chamada
@@ -66,17 +71,17 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
-# Os 5 endpoints que continuam sem exigir autenticação -- cobertura
+# Os 4 endpoints que continuam sem exigir autenticação -- cobertura
 # genérica inalterada (testes A e E abaixo). pix_insight, chat e
 # summary saíram deste dict porque hoje exigem Depends(require_customer):
 # suas coberturas de rate limit vivem em testes dedicados
-# (test_pix_insight_*, test_chat_*, test_summary_* abaixo).
+# (test_pix_insight_*, test_chat_*, test_summary_* abaixo). chat_lab
+# saiu por ter sido removido no Bloco 3J (endpoint órfão/quebrado).
 _ENDPOINTS = {
     "pagamentos_lab": ("POST", "/api/v1/ai/pagamentos_lab", {"message": "oi"}),
     "headline": ("POST", "/api/v1/ai/headline", None),
     "headline_lab": ("POST", "/api/v1/ai/headline-lab", None),
     "assist": ("POST", "/api/v1/ai/assist", {"msg": "oi"}),
-    "chat_lab": ("POST", "/api/v1/ai/chat_lab", {"message": "oi"}),
 }
 
 _CHAT_STEP = ("POST", "/api/v1/ai/chat", {"message": "oi"})
@@ -182,7 +187,7 @@ def _step(name: str, **extra) -> dict:
     return step
 
 
-# A) os 5 endpoints sem autenticação estão efetivamente registrados
+# A) os 4 endpoints sem autenticação estão efetivamente registrados
 # com rate limiting: uma única chamada a cada um funciona normalmente
 # (nenhum 429/500 por causa do wiring do decorator), e o limite de 31
 # chamadas no MESMO endpoint estoura em 429 -- provando que o
@@ -190,7 +195,7 @@ def _step(name: str, **extra) -> dict:
 # pix_insight, chat e summary (os outros 3 endpoints ativos) têm
 # cobertura equivalente, mas autenticada, nos testes dedicados abaixo
 # (test_pix_insight_*, test_chat_*, test_summary_*).
-def test_all_5_unauthenticated_endpoints_are_registered_with_rate_limiting():
+def test_all_4_unauthenticated_endpoints_are_registered_with_rate_limiting():
     for name in _ENDPOINTS:
         steps = [_step(name) for _ in range(31)]
         results = _run_probe(steps)
@@ -329,7 +334,7 @@ def test_varying_declared_identity_does_not_bypass_limit():
 
 
 # E) requests abaixo do limite mantêm o comportamento HTTP funcional
-# preexistente (200, sem 429/500) para cada um dos 5 endpoints sem
+# preexistente (200, sem 429/500) para cada um dos 4 endpoints sem
 # autenticação. pix_insight, chat e summary têm seus próprios
 # contratos funcionais verificados nos testes test_*_requires_valid_
 # authentication_now (401 sem token) e test_*_rate_limit_enforced_
@@ -342,7 +347,7 @@ def test_requests_below_limit_keep_previous_functional_behavior():
 
 # G) a implementação não usa backend/app/utils/rate_limit.py nem cria
 # novas chaves em _BUCKETS -- confirmado inspecionando o estado do
-# limiter artesanal após bater nos 8 endpoints repetidamente.
+# limiter artesanal após bater nos 7 endpoints repetidamente.
 def test_no_new_buckets_created_in_artisanal_limiter():
     probe = r"""
 import json
