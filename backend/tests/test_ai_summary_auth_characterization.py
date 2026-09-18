@@ -18,15 +18,22 @@ header sempre foi decorativo; a diferença é que agora existe filtro
 de verdade por usuário em vez de nenhum filtro).
 
 Dois achados da auditoria pós-Bloco-3E foram DELIBERADAMENTE deixados
-de fora desta correção (fora de escopo deste commit):
-- o parâmetro `limit` continua sem teto superior no servidor;
-- `_rows_to_dicts` (ai.py) continua usando getattr com defaults para
+de fora desta correção original (fora de escopo do Bloco 3F) e
+corrigidos depois, em blocos dedicados:
+- o parâmetro `limit` não tinha teto superior no servidor -- corrigido
+  no Bloco 3H (backend/app/api/v1/routes/ai.py agora aplica
+  safe_limit = max(1, min(int(limit or 50), 100)); os 8 valores de
+  fronteira têm cobertura dedicada em
+  test_ai_summary_limit_characterization.py, e este arquivo mantém só
+  um teste de isolamento sob limit alto -- ver
+  test_huge_limit_is_clamped_to_100_and_still_isolated_per_user);
+- `_rows_to_dicts` (ai.py) usava getattr com defaults para
   `descricao`/`created_at`, colunas que não existem no model real
-  `Transaction` (que tem `referencia`/`criado_em`) -- esses dois
-  campos continuam sempre vazios/nulos na resposta.
-Os testes de `limit` abaixo foram só ajustados para autenticar (já que
-o endpoint agora exige token), mas continuam provando a ausência de
-teto -- isso não foi corrigido.
+  `Transaction` (que tem `referencia`/`criado_em`) -- corrigido no
+  Bloco 3G (ver test_ai_summary_field_mapping_characterization.py).
+Os demais testes de `limit` abaixo continuam válidos como estavam:
+`limit` default/valores dentro da faixa 1..100 sempre funcionaram
+corretamente, com ou sem o clamp.
 
 Estratégia: TestClient real contra app.main.app, com
 app.dependency_overrides para `get_db` (SQLite em memória isolado,
@@ -256,17 +263,38 @@ def test_limit_param_restricts_aggregate_row_count(client, db_session):
     assert body["total_transacoes"] == 3, "limit=3 restringe os agregados às 3 transações mais recentes"
 
 
-def test_limit_has_no_server_side_upper_bound(client, db_session):
+def test_huge_limit_is_clamped_to_100_and_still_isolated_per_user(client, db_session):
+    """
+    Bloco 3H: `limit` agora é clampado em 100 no servidor
+    (backend/app/api/v1/routes/ai.py: safe_limit = max(1, min(int(limit or 50), 100))).
+    Os 8 valores de fronteira do clamp (ausente/0/negativo/1/50/100/
+    101/1_000_000) já têm cobertura dedicada em
+    test_ai_summary_limit_characterization.py -- não duplicados aqui.
+
+    O que este teste (auth-characterization) prova, de forma única a
+    este arquivo: mesmo com um `limit` absurdamente alto (1_000_000),
+    autenticado como A, (1) o resultado é clampado em 100 -- nunca
+    "sem teto" -- e (2) nunca inclui nenhuma transação real de B,
+    mesmo B tendo dado real suficiente para aparecer se o filtro por
+    usuário falhasse.
+    """
     user_a = _create_user(db_session, "summary-limit-c@test.local")
-    for i in range(20):
+    user_b = _create_user(db_session, "summary-limit-c-other@test.local")
+
+    for _ in range(150):
         _create_tx(db_session, user_id=user_a.id, tipo="recebimento", valor=1.0)
+    for _ in range(5):
+        _create_tx(db_session, user_id=user_b.id, tipo="recebimento", valor=999.0)
 
     token_a = _token_for(user_a.email)
-    # limit muito acima do dataset real (20 linhas): o servidor aceita
-    # sem erro, sem clamp -- nada rejeita ou limita esse valor antes de
-    # chegar ao .limit() do SQL. Isso NÃO foi corrigido nesta revisão.
     response = client.get(PATH, headers={"Authorization": f"Bearer {token_a}"}, params={"limit": 1_000_000})
 
-    assert response.status_code == 200, "nenhum teto de `limit` é aplicado pelo servidor"
+    assert response.status_code == 200
     body = response.json()
-    assert body["total_transacoes"] == 20  # não estourou; só não havia mais linhas do próprio usuário
+    assert body["total_transacoes"] == 100, (
+        "mudança intencional de contrato (Bloco 3H): limit=1_000_000 agora é clampado em 100, "
+        "mesmo A tendo 150 transações reais"
+    )
+    assert all(t["valor"] != 999.0 for t in body["txs"]), (
+        "nunca deve vazar dado real de B, mesmo com limit absurdo e o clamp em jogo"
+    )
