@@ -78,8 +78,6 @@ app.include_router(wallet_router)
 if _allow_dev_seed():
     app.include_router(dev_seed.router)
 
-from app.api.v1.ai import chat_lab_router
-app.include_router(chat_lab_router, prefix="/api/v1/ai")
 # AUREA_ENV_CORS
 cors_env = os.getenv("CORS_ORIGINS", "").strip()
 origins = [o.strip() for o in cors_env.split(",") if o.strip()]
