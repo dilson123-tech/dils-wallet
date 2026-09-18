@@ -68,33 +68,6 @@ def _fmt_brl(v: Optional[float]) -> str:
 
 
 
-def _email_from_auth_header(auth_header):
-    """
-    Extrai 'sub' (email/username) do JWT para usar como X-User-Email quando o client não envia.
-    Não derruba a IA se falhar.
-    """
-    if not auth_header:
-        return None
-    ah = str(auth_header).strip()
-    if not ah:
-        return None
-    token = ah.split(None, 1)[1].strip() if ah.lower().startswith("bearer ") else ah
-
-    try:
-        import os
-        import jwt
-
-        secret = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "dev-secret"
-        alg = os.getenv("JWT_ALG") or os.getenv("JWT_ALGORITHM") or os.getenv("ALGORITHM") or "HS256"
-
-        payload = jwt.decode(token, secret, algorithms=[alg])
-        sub = payload.get("sub")
-        return str(sub) if sub else None
-    except Exception:
-        return None
-
-
-
 async def _fetch_internal_json(
     path: str,
     x_user_email: Optional[str],
@@ -142,8 +115,6 @@ async def _get_pix_balance(
     x_user_email: Optional[str],
     authorization: Optional[str],
 ) -> Optional[dict]:
-    if not x_user_email and authorization:
-        x_user_email = _email_from_auth_header(authorization)
     return await _fetch_internal_json("/api/v1/pix/balance", x_user_email, authorization)
 
 
@@ -151,8 +122,6 @@ async def _get_pix_history(
     x_user_email: Optional[str],
     authorization: Optional[str],
 ) -> Optional[list]:
-    if not x_user_email and authorization:
-        x_user_email = _email_from_auth_header(authorization)
     data = await _fetch_internal_json("/api/v1/pix/history", x_user_email, authorization)
 
     # casos: lista direta
