@@ -86,8 +86,14 @@ def summary(
 
     q = db.query(PixTransaction).filter(PixTransaction.user_id == current_user.id)
 
+    # mesmo padrão de clamp já usado em pix.py::get_list e em
+    # wallet.py (_sandbox_statement_items_from_webhooks,
+    # _list_sandbox_webhook_events, _list_asaas_sandbox_webhook_audit_events):
+    # piso 1, teto 100, com 0/None caindo no default.
+    safe_limit = max(1, min(int(limit or 50), 100))
+
     # últimas transações (mais recentes primeiro)
-    q = q.order_by(PixTransaction.id.desc()).limit(limit)
+    q = q.order_by(PixTransaction.id.desc()).limit(safe_limit)
     rows = q.all() or []
     txs = _rows_to_dicts(rows)
 
