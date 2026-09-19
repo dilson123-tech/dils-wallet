@@ -8,8 +8,7 @@ on:
 
 jobs:
   smoke:
-    runs-on:
-  pull_request: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: Dependências do runner (jq/uuidgen)
@@ -17,4 +16,6 @@ jobs:
       - name: Rodar smoke contra API
         env:
           API_BASE: ${{ secrets.AUREA_API_BASE }}
+          AUREA_USER: ${{ secrets.AUREA_USER }}
+          AUREA_PASS: ${{ secrets.AUREA_PASS }}
         run: bash backend/scripts/smoke_pix_idempotency.sh
