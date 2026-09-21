@@ -1,3 +1,4 @@
+import math
 import textwrap
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Header, Request
@@ -140,40 +141,64 @@ async def _get_pix_history(
     return None
 
 
+def _real_saldo(balance) -> Optional[float]:
+    """
+    Retorna o saldo somente se for confiável: chave "saldo" numérica finita
+    (não bool) e source == "real". Caso contrário, None (fail-closed).
+    """
+    if not isinstance(balance, dict) or balance.get("source") != "real":
+        return None
+    v = balance.get("saldo")
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    if not math.isfinite(v):
+        return None
+    return float(v)
+
+
+_SALDO_INDISPONIVEL = (
+    "Não consegui confirmar seu saldo real agora, então prefiro não mostrar um valor "
+    "que possa estar errado. Confira direto no painel Super2 ou tente novamente em "
+    "alguns instantes."
+)
+
+
 def _build_saldo_reply(balance: dict) -> str:
-    saldo = _fmt_brl(balance.get("saldo_atual"))
-    ent = _fmt_brl(balance.get("entradas_mes"))
-    sai = _fmt_brl(balance.get("saidas_mes"))
+    saldo = _real_saldo(balance)
+    if saldo is None:
+        return (
+            "📌 Visão geral do seu saldo atual\n\n"
+            "- Saldo disponível agora: indisponível\n"
+            "- Entradas no mês: indisponível\n"
+            "- Saídas no mês: indisponível\n\n"
+            + _SALDO_INDISPONIVEL
+        )
 
     return (
         "📌 Visão geral do seu saldo atual\n\n"
-        f"- Saldo disponível agora: {saldo}\n"
-        f"- Entradas no mês: {ent}\n"
-        f"- Saídas no mês: {sai}\n\n"
-        "Isso é exatamente o que o painel Super2 mostra no topo: o valor real que "
-        "você tem para usar, já considerando as movimentações recentes."
+        f"- Saldo disponível agora: {_fmt_brl(saldo)}\n"
+        "- Entradas no mês: indisponível\n"
+        "- Saídas no mês: indisponível\n\n"
+        "O saldo acima é o saldo disponível confirmado pela fonte da carteira. Entradas e saídas do mês "
+        "ainda não estão disponíveis por aqui."
     )
 
 
 def _build_entradas_reply(balance: dict) -> str:
-    ent = _fmt_brl(balance.get("entradas_mes"))
     return (
         "📥 Entradas do mês\n\n"
-        f"- Total de entradas no mês: {ent}\n\n"
-        "Essas entradas somam tudo o que entrou via PIX e outros créditos. No painel, "
-        "você enxerga esse número junto com o saldo para saber se está em modo de "
-        "acumular ou só manter a conta rodando."
+        "- Total de entradas no mês: indisponível\n\n"
+        "Ainda não tenho o total mensal de entradas de forma confiável, então não vou "
+        "estimar um valor. Confira os detalhes no painel Super2."
     )
 
 
 def _build_saidas_reply(balance: dict) -> str:
-    sai = _fmt_brl(balance.get("saidas_mes"))
     return (
         "📤 Saídas do mês\n\n"
-        f"- Total de saídas no mês: {sai}\n\n"
-        "As saídas representam pagamentos, transferências e débitos gerais. Comparar "
-        "entradas x saídas ajuda a ver se o mês está mais saudável ou se é hora de "
-        "pisar no freio em alguns gastos."
+        "- Total de saídas no mês: indisponível\n\n"
+        "Ainda não tenho o total mensal de saídas de forma confiável, então não vou "
+        "estimar um valor. Confira os detalhes no painel Super2."
     )
 
 
