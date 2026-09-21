@@ -331,7 +331,6 @@ def get_forecast(
                 "Atualize a página do painel pix e tente novamente.",
                 "Se o problema persistir, fale com o suporte Aurea Gold."
             ],
-        "debug_error": str(e),
         }
         return JSONResponse(
             content=jsonable_encoder(payload, custom_encoder={Decimal: float}),
