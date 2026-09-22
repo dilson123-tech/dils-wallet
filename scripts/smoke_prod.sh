@@ -65,8 +65,12 @@ for suf in "/api/v1" "/api" "/v1"; do
   [[ "$ORIGIN" == *"$suf" ]] && ORIGIN="${ORIGIN%$suf}"
 done
 API_BASE="${ORIGIN}/api/v1"
-EMAIL="${EMAIL:-smoke+${GITHUB_RUN_ID:-local}@dils-wallet.dev}"
-PASS="${PASS:-123456}"
+SMOKE_USER="${SMOKE_USER:-}"
+SMOKE_PASS="${SMOKE_PASS:-}"
+[[ -n "$SMOKE_USER" ]] || fail "FALTA SMOKE_USER"
+[[ -n "$SMOKE_PASS" ]] || fail "FALTA SMOKE_PASS"
+EMAIL="$SMOKE_USER"
+PASS="$SMOKE_PASS"
 AMOUNT="${AMOUNT:-37.50}"
 DESC="${DESC:-smoke-test $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 WITHDRAW="${WITHDRAW:-5.00}"
@@ -111,22 +115,25 @@ fi
 
 
 # === PIX_ONLY_MODE_AUTODETECT =====================================
-# Se o OpenAPI não expõe /api/v1/auth/login, este deploy é PIX-only.
-OPENAPI_FILE="${OPENAPI_FILE:-/tmp/openapi.json}"
+# Detecta se este deploy expõe /api/v1/auth/login testando a rota
+# diretamente (POST leve, sem credenciais reais). Não depende mais de
+# /openapi.json, que fica oculto (404) em produção quando DOCS_PUBLIC=0
+# — só a ausência real da rota (HTTP 404) indica modo PIX-only agora.
 API_BASE="${API_BASE:-${BASE%/}/api/v1}"
 POST_CODE="${POST_CODE:-SKIPPED}"
 WD_CODE="${WD_CODE:-SKIPPED}"
 
-# garante openapi local pra inspeção
-if [[ ! -s "$OPENAPI_FILE" ]]; then
-  curlx -sS -o "$OPENAPI_FILE" "${BASE%/}/openapi.json" || true
+AUTH_PROBE_CODE=$(curlx -sS -o /dev/null -w "%{http_code}" -X POST \
+  -H "Content-Type: application/json" -d '{}' "$API_BASE/auth/login" || true)
+if [[ "$AUTH_PROBE_CODE" == "404" ]]; then
+  HAS_AUTH="false"
+else
+  HAS_AUTH="true"
 fi
-
-HAS_AUTH=$(jq -r ".paths | has(\"/api/v1/auth/login\")" "$OPENAPI_FILE" 2>/dev/null || echo false)
 PIX_ONLY="${PIX_ONLY:-0}"
 if [[ "$HAS_AUTH" != "true" ]]; then
   PIX_ONLY=1
-  warn "OpenAPI sem /api/v1/auth/login → modo PIX-only (pula register/login/transactions)"
+  warn "POST $API_BASE/auth/login -> HTTP $AUTH_PROBE_CODE (rota ausente) → modo PIX-only (pula register/login/transactions)"
 
   pix_get(){
     local url="$1" out="$2" code
@@ -160,16 +167,17 @@ fi
 
 if [[ "${PIX_ONLY:-0}" != "1" ]]; then
 
-# === PIX-ONLY fastpath (OpenAPI sem /auth) ===
-# PROD atual (Railway) pode expor só PIX + health. Se não houver /auth no OpenAPI, não tenta login.
+# === PIX-ONLY fastpath (sem /auth) ===
+# PROD atual (Railway) pode expor só PIX + health. Reaproveita a
+# detecção real de /auth/login feita acima (não depende de /openapi.json,
+# que fica 404 quando DOCS_PUBLIC=0). O OpenAPI ainda é buscado, best-effort,
+# só para escolher os paths de balance/saldo/list logo abaixo.
 OPENAPI_URL="${OPENAPI_URL:-${ORIGIN:-$BASE}/openapi.json}"
 OPENAPI="/tmp/openapi.json"
-O_CODE=$(curlx -sS -o "$OPENAPI" -w "%{http_code}" "$OPENAPI_URL" || true)
+curlx -sS -o "$OPENAPI" -w "%{http_code}" "$OPENAPI_URL" >/dev/null || true
 
 AUTH_PRESENT=0
-if [[ "$O_CODE" == "200" ]] && jq -e '.paths|keys|map(test("/api/v1/auth/|/auth/|/token$|/login$"))|any' "$OPENAPI" >/dev/null 2>&1; then
-  AUTH_PRESENT=1
-fi
+[[ "$HAS_AUTH" == "true" ]] && AUTH_PRESENT=1
 
 try_get_json() {
   local url="$1" out="$2" code
@@ -225,12 +233,6 @@ if [[ "$AUTH_PRESENT" != "1" ]]; then
   exit 0
 fi
 # === END PIX-ONLY fastpath ===
-
-say "Registrar usuário (idempotente)"
-REG_CODE=$(curlx -s -o /tmp/reg.json -w "%{http_code}" \
-  -X POST "$API_BASE/auth/register" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
 
 say "Login (autodetect via OpenAPI)"
 OPENAPI_FILE="/tmp/openapi.json"
