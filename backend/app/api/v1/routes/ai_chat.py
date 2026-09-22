@@ -545,89 +545,27 @@ o "resumo do mês".
 
 
 def _ia3_build_consulting_reply(balance: dict | None) -> str:
-    """Monta a resposta da IA 3.0 em modo consultor financeiro PIX, com nível de risco do mês."""
-    if not balance:
+    """Resumo consultor PIX, fail-closed.
+
+    /api/v1/pix/balance não fornece entradas/saídas mensais confiáveis, então
+    nenhum resultado mensal nem nível de risco é emitido.
+    """
+    saldo = _real_saldo(balance)
+    if saldo is None:
         return (
             "Olá! Eu sou a IA 3.0 da Aurea Gold.\n\n"
-            "Para te ajudar como consultor financeiro no PIX, eu preciso enxergar o resumo do seu mês. "
-            "Por enquanto não encontrei os dados de saldo, entradas e saídas.\n\n"
-            "Tenta novamente em alguns instantes ou verifica se o painel Super2 está carregando os valores normalmente."
+            "Não consegui confirmar seus dados reais de PIX agora, então prefiro não "
+            "apresentar um resumo do mês nem uma classificação de risco que possa estar errada.\n\n"
+            "Confira direto no painel Super2 ou tente novamente em alguns instantes."
         )
 
-    def _num(val) -> float:
-        try:
-            return float(val or 0)
-        except Exception:
-            return 0.0
-
-    # Tentativas de campos que já usamos no saldo/entradas/saídas
-    saldo_atual = _num(
-        balance.get("saldo_atual")
-        or balance.get("saldo")
-        or balance.get("available")
-    )
-    entradas_mes = _num(
-        balance.get("entradas_mes")
-        or balance.get("total_entradas_mes")
-        or balance.get("entradas")
-    )
-    saidas_mes = _num(
-        balance.get("saidas_mes")
-        or balance.get("total_saidas_mes")
-        or balance.get("saidas")
-    )
-    resultado = entradas_mes - saidas_mes  # Entradas - Saídas
-
-    def fmt_brl(v: float) -> str:
-        # Formata em estilo brasileiro: R$ 9.015,99
-        s = f"{v:,.2f}"
-        s = s.replace(",", "X").replace(".", ",").replace("X", ".")
-        return f"R$ {s}"
-
-    # Classificação de risco do mês
-    if resultado >= 0:
-        nivel = "🟢 Nível tranquilo"
-        comentario = (
-            "Você fechou o mês no positivo ou muito próximo do equilíbrio. "
-            "Do ponto de vista de PIX, sua relação entre entradas e saídas está saudável. "
-            "Vale manter esse padrão, guardando uma parte das entradas como reserva."
-        )
-    elif resultado >= -1000:
-        nivel = "🟡 Nível de atenção"
-        comentario = (
-            "Você está fechando o mês levemente no negativo via PIX. "
-            "Não é um desastre, mas já indica que alguns gastos podem ser ajustados. "
-            "Vale revisar PIX recorrentes, transferências por impulso e compras não essenciais."
-        )
-    else:
-        nivel = "🔴 Alerta vermelho"
-        comentario = (
-            "Você está fechando o mês bem no negativo via PIX. "
-            "Saiu muito mais do que entrou, o que tende a pressionar seu caixa nos próximos meses. "
-            "Aqui é importante cortar gastos supérfluos, negociar contas maiores e, se possível, "
-            "aumentar entradas (freelas, vendas, serviços)."
-        )
-
-    texto = (
+    return (
         "Olá! Eu sou a IA 3.0 da Aurea Gold.\n\n"
-        "Estou aqui para te ajudar com saldos, PIX, movimentações e dúvidas do dia a dia, sempre de um jeito simples e direto.\n"
-        f"Você perguntou: \"to gastando muito no pix esse mes\".\n\n"
-        "✨ IA 3.0 – Consultor financeiro PIX\n"
-        "Olhei o resumo do seu mês no PIX e montei uma visão geral:\n\n"
-        f"- Saldo atual (aprox.): {fmt_brl(saldo_atual)}\n"
-        f"- Entradas no mês via PIX: {fmt_brl(entradas_mes)}\n"
-        f"- Saídas no mês via PIX: {fmt_brl(saidas_mes)}\n"
-        f"- Resultado do mês (Entradas - Saídas): {fmt_brl(resultado)}\n\n"
-        "Resumo de risco do mês:\n"
-        f"{nivel}: {comentario}\n\n"
-        "O que isso significa na prática:\n"
-        "Se o resultado está negativo, o ideal é reduzir gastos por impulso, revisar assinaturas e priorizar contas essenciais. "
-        "Se estiver positivo, é uma boa hora para organizar uma reserva e planejar metas.\n\n"
-        "Se quiser, pode perguntar também por 'entradas do mês', 'saídas do mês' ou 'histórico do PIX' que eu trago mais detalhes.\n\n"
-        "Resumo rápido: estou te ajudando agora com modo consultor financeiro.\n\n"
-        f"Atendo você usando o cadastro: {balance.get('email') or 'seu usuário Aurea Gold'}."
+        "Resumo do mês indisponível: ainda não tenho entradas e saídas mensais confiáveis "
+        "do PIX, então não vou calcular resultado do mês nem classificar seu risco.\n\n"
+        f"- Saldo disponível agora: {_fmt_brl(saldo)}\n\n"
+        "Confira o detalhamento das movimentações no painel Super2."
     )
-    return texto
 
 
 # === IA 3.0 – Laboratório de Pagamentos ===
