@@ -34,6 +34,8 @@ jobs:
           FORCE_FAIL_SMOKE_PROD: ${{ inputs.FORCE_FAIL_SMOKE_PROD }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID:   ${{ secrets.TG_CHAT_ID }}
+          SMOKE_USER: ${{ secrets.SMOKE_USER }}
+          SMOKE_PASS: ${{ secrets.SMOKE_PASS }}
         run: |
           chmod +x scripts/smoke_prod.sh
           ./scripts/smoke_prod.sh
