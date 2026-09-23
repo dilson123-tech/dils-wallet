@@ -22,17 +22,28 @@ import sys
 
 
 def _guard_against_production() -> None:
-    """Recusa rodar se variáveis típicas de produção estiverem presentes.
+    """Recusa rodar se variáveis típicas de produção estiverem presentes,
+    a menos que uma autorização explícita e literal esteja presente.
 
     Precisa ser chamado ANTES de qualquer import de app.database, pois esse
     módulo cria o engine (e tenta conectar) no nível de módulo. Checar depois
     do import seria tarde demais.
     """
     db_url = os.environ.get("DATABASE_URL", "")
-    if "railway" in db_url.lower() or os.environ.get("RAILWAY_ENVIRONMENT"):
+    is_production = "railway" in db_url.lower() or bool(os.environ.get("RAILWAY_ENVIRONMENT"))
+    if not is_production:
+        return
+
+    # Autorização explícita e única para esta execução. Só o valor literal
+    # "1" é aceito — nenhuma variação ("true", "yes", "on" etc.) libera a
+    # execução, para reduzir o risco de liberação acidental por engano ou
+    # por variável residual/herdada de outro contexto.
+    authorized = os.environ.get("ALLOW_PRODUCTION_SMOKE_PROVISION") == "1"
+    if not authorized:
         raise SystemExit(
             "provision_smoke_user.py: recusando executar — ambiente parece ser "
-            "produção/Railway (DATABASE_URL/RAILWAY_ENVIRONMENT detectados)."
+            "produção/Railway (DATABASE_URL/RAILWAY_ENVIRONMENT detectados) e "
+            "ALLOW_PRODUCTION_SMOKE_PROVISION=1 não foi definida explicitamente."
         )
 
 
