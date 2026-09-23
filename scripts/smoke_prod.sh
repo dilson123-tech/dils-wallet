@@ -251,7 +251,7 @@ echo "DEBUG openapi_ok=$OPENAPI_OK openapi_url=${OPENAPI_URL:-unset}"
 # === API_BASE auto (from openapi) ===
 # Se o OpenAPI tiver paths começando com /api/v1, usamos prefixo. Senão, API_BASE=ORIGIN puro.
 OPENAPI_PATH="${OPENAPI_PATH:-/tmp/openapi.json}"
-if [[ "${openapi_ok:-0}" = "1" ]] && [[ -s "${OPENAPI_PATH}" ]]; then
+if [[ "${OPENAPI_OK:-0}" = "1" ]] && [[ -s "${OPENAPI_PATH}" ]]; then
   if jq -e '.paths | keys[] | select(startswith("/api/v1/"))' "${OPENAPI_PATH}" >/dev/null 2>&1; then
     API_BASE="${ORIGIN%/}/api/v1"
   else
@@ -300,7 +300,9 @@ for URL in $CAND_URLS; do
   if [[ "$CODE" == "405" ]]; then
     LAST_ALLOW=$(curlx -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
   fi
-  LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
+  if [[ "$CODE" != "404" || -z "${LAST_CODE:-}" ]]; then
+    LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
+  fi
 
   # json (email)
   CODE=$(curlx -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
@@ -314,7 +316,9 @@ for URL in $CAND_URLS; do
   if [[ "$CODE" == "405" ]]; then
     LAST_ALLOW=$(curlx -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
   fi
-  LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
+  if [[ "$CODE" != "404" || -z "${LAST_CODE:-}" ]]; then
+    LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
+  fi
 
   # json (username)
   CODE=$(curlx -sS -o /tmp/login.json -w "%{http_code}" -X POST "$URL" \
@@ -328,7 +332,9 @@ for URL in $CAND_URLS; do
   if [[ "$CODE" == "405" ]]; then
     LAST_ALLOW=$(curlx -sSI -X OPTIONS "$URL" | tr -d "\r" | awk -F": " 'tolower($1)=="allow"{print $2}' || true)
   fi
-  LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
+  if [[ "$CODE" != "404" || -z "${LAST_CODE:-}" ]]; then
+    LAST_CODE="$CODE"; LAST_BODY="$(head -c 300 /tmp/login.json 2>/dev/null || true)"
+  fi
 done
 
 if [[ "$LOGIN_OK" != "1" ]]; then
