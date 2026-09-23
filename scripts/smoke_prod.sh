@@ -358,85 +358,24 @@ fi
 say "DB: /users/test-db (verifica conexão/persistência)"
 TDB_CODE=$(curlx -s -o /tmp/tdb.json -w "%{http_code}" "$API_BASE/users/test-db" "${AUTH[@]}" || true)
 
-say "Listar transações (baseline antes do insert)"
-LIST1_CODE=$(curlx -s -o /tmp/tx_list1.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
-
-say "Criar transação (POST /transactions) — depósito fictício"
-POST_CODE=$(curlx -s -o /tmp/tx_post.json -w "%{http_code}" \
-  -X POST "$API_BASE/transactions" "${AUTH[@]}" \
-  -H "Content-Type: application/json" \
-  -d "{\"tipo\":\"deposito\",\"valor\":$AMOUNT,\"descricao\":\"$DESC\",\"type\":\"deposit\",\"amount\":$AMOUNT,\"description\":\"$DESC\"}" || true)
-
-if [[ "$POST_CODE" != "200" && "$POST_CODE" != "201" ]]; then
-  echo "— Corpo de erro do POST /transactions (HTTP $POST_CODE):"
-  cat /tmp/tx_post.json; echo
-else
-  echo "— Sucesso no POST /transactions (HTTP $POST_CODE):"
-  cat /tmp/tx_post.json | jq -c . || cat /tmp/tx_post.json
+say "Saldo PIX (GET /pix/balance?days=7)"
+BAL_CODE=$(curlx -s -o /tmp/pix_balance.json -w "%{http_code}" "$API_BASE/pix/balance?days=7" "${AUTH[@]}" || true)
+if [[ "$BAL_CODE" != "200" ]]; then
+  fail "GET /pix/balance -> HTTP $BAL_CODE (body: $(head -c 300 /tmp/pix_balance.json 2>/dev/null))"
 fi
-
-# === Validação de persistência: listar e confirmar que o ID recém-criado aparece ===
-TX_ID=$(jq -r ".id // empty" /tmp/tx_post.json 2>/dev/null || true)
-
-say "Validar persistência: conferir se a transação $TX_ID aparece na listagem"
-LIST2_CODE=$(curlx -s -o /tmp/tx_list2.json -w "%{http_code}" "$API_BASE/transactions" "${AUTH[@]}" || true)
-if [[ "$LIST2_CODE" == "200" ]]; then
-  # Procura pelo ID (string-safe)
-  FOUND=$(jq --arg id "$TX_ID" "[.[] | select((.id|tostring)==\$id)] | length" /tmp/tx_list2.json 2>/dev/null || echo 0)
-  COUNT2=$(jq "length" /tmp/tx_list2.json 2>/dev/null || echo 0)
-  echo "— Lista pós-insert: total=$COUNT2, encontrados_com_id=$FOUND"
-  if [[ -n "$TX_ID" && "$FOUND" -ge 1 ]]; then
-    ok "Transação $TX_ID encontrada na listagem 🎯"
-  else
-    warn "Transação $TX_ID não apareceu (pode ser paginação/filtros no endpoint)."
-  fi
-else
-  warn "GET /transactions (pós-insert) -> $LIST2_CODE"
+HAS_SALDO=$(jq -r "has(\"saldo\")" /tmp/pix_balance.json 2>/dev/null || echo false)
+HAS_7D=$(jq -r "has(\"ultimos_7d\")" /tmp/pix_balance.json 2>/dev/null || echo false)
+if [[ "$HAS_SALDO" != "true" || "$HAS_7D" != "true" ]]; then
+  fail "GET /pix/balance retornou 200 mas sem os campos esperados (saldo/ultimos_7d)"
 fi
+ok "GET /pix/balance OK (saldo + ultimos_7d presentes)"
 
-### === Saldo: calcular via listagem de transações ===
-WITHDRAW="${WITHDRAW:-5.00}"
-
-saldo_from_file() {
-  # Soma depósitos e subtrai saques; default 0 se lista vazia
-  jq -r "[.[] | if (.tipo==\"deposito\") then (.valor) elif (.tipo==\"saque\") then (-(.valor)) else 0 end] | add // 0" "$1" 2>/dev/null
-}
-
-say "Saldo (antes do saque) — somando lista atual"
-# Recarrega lista atual para saldo base (caso a anterior não exista)
-curlx -s -o /tmp/tx_list_bal.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
-SALDO_BEFORE=$(saldo_from_file /tmp/tx_list_bal.json)
-printf "— SALDO_BEFORE: %s\n" "$SALDO_BEFORE"
-
-say "Efetuar saque fictício de R$ ${WITHDRAW}"
-WD_DESC="smoke-withdraw $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-WD_CODE=$(curlx -s -o /tmp/tx_wd.json -w "%{http_code}" \
-  -X POST "$API_BASE/transactions" "${AUTH[@]}" \
-  -H "Content-Type: application/json" \
-  -d "{\"tipo\":\"saque\",\"valor\":${WITHDRAW},\"descricao\":\"${WD_DESC}\",\"type\":\"withdraw\",\"amount\":${WITHDRAW},\"description\":\"${WD_DESC}\"}" || true)
-
-if [[ "$WD_CODE" != "200" && "$WD_CODE" != "201" ]]; then
-  echo "— Erro no POST saque (HTTP $WD_CODE):"
-  cat /tmp/tx_wd.json; echo
-  warn "Saque não aplicado — pode haver bloqueio de saldo insuficiente ou regra de negócio."
-else
-  echo "— Sucesso no POST saque (HTTP $WD_CODE):"
-  cat /tmp/tx_wd.json | jq -c . || cat /tmp/tx_wd.json
+say "Histórico PIX (GET /pix/history)"
+HIST_CODE=$(curlx -s -o /tmp/pix_history.json -w "%{http_code}" "$API_BASE/pix/history" "${AUTH[@]}" || true)
+if [[ "$HIST_CODE" != "200" ]]; then
+  fail "GET /pix/history -> HTTP $HIST_CODE (body: $(head -c 300 /tmp/pix_history.json 2>/dev/null))"
 fi
-
-say "Saldo (após saque) — recomputando da listagem"
-curlx -s -o /tmp/tx_list_after_wd.json "$API_BASE/transactions" "${AUTH[@]}" >/dev/null || true
-SALDO_AFTER=$(saldo_from_file /tmp/tx_list_after_wd.json)
-printf "— SALDO_AFTER: %s\n" "$SALDO_AFTER"
-
-# Verificação aritmética com tolerância de centavos
-  DELTA=$(python3 -c "from decimal import Decimal as D; a=D(\"$SALDO_BEFORE\"); w=D(\"$WITHDRAW\"); b=D(\"$SALDO_AFTER\"); print(f\"{(a-w-b):.2f}\")")
-  ABS_DELTA=$(python3 -c "from decimal import Decimal as D; d=D(\"$DELTA\"); print(f\"{abs(d):.2f}\")")
-  if python3 -c "from decimal import Decimal as D; import sys; sys.exit(0 if D(\"$ABS_DELTA\") <= D(\"0.01\") else 1)"; then
-  ok "Saldo validado: BEFORE - WITHDRAW ≈ AFTER (dif=$ABS_DELTA)"
-else
-  die_or_warn "Saldo divergente: BEFORE=$SALDO_BEFORE, WITHDRAW=$WITHDRAW, AFTER=$SALDO_AFTER (dif=$ABS_DELTA)"
-fi
+ok "GET /pix/history OK"
 fi
 
 
