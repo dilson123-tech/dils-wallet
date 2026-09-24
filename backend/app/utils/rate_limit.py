@@ -6,6 +6,46 @@ from typing import Deque, Dict, Tuple
 _BUCKETS: Dict[str, Deque[float]] = {}
 _LOCK = Lock()
 
+# Eviction: sem ela, cada chave vista (ex.: login:ident:{ip}:{ident})
+# ficaria em _BUCKETS para sempre. A varredura roda no máximo uma vez por
+# _SWEEP_INTERVAL_SEC, dentro de _LOCK, disparada pelas próprias chamadas.
+# Cada chave guarda a maior janela com que já foi consultada, para que um
+# bucket ainda ativo em alguma janela nunca seja removido antes da hora.
+_SWEEP_INTERVAL_SEC = 60
+_WINDOWS: Dict[str, int] = {}
+_LAST_SWEEP = 0.0
+
+
+def _drop(key: str) -> None:
+    _BUCKETS.pop(key, None)
+    _WINDOWS.pop(key, None)
+
+
+def _maybe_sweep(now: float) -> None:
+    """Remove buckets vazios ou totalmente expirados. Chamar com _LOCK."""
+    global _LAST_SWEEP
+    if now - _LAST_SWEEP < _SWEEP_INTERVAL_SEC:
+        return
+    _LAST_SWEEP = now
+
+    expired = [
+        key
+        for key, q in _BUCKETS.items()
+        if not q or q[-1] <= now - _WINDOWS.get(key, 0)
+    ]
+    for key in expired:
+        _drop(key)
+
+    # Janelas de chaves removidas de _BUCKETS por fora (ex.: limpeza em testes).
+    for key in [k for k in _WINDOWS if k not in _BUCKETS]:
+        del _WINDOWS[key]
+
+
+def _track_window(key: str, window_sec: int) -> None:
+    if window_sec > _WINDOWS.get(key, 0):
+        _WINDOWS[key] = window_sec
+
+
 def rl_check(key: str, max_hits: int, window_sec: int) -> Tuple[bool, int]:
     """Retorna (allowed, retry_after_seconds)."""
     now = time.monotonic()
@@ -13,10 +53,13 @@ def rl_check(key: str, max_hits: int, window_sec: int) -> Tuple[bool, int]:
         return True, 0
 
     with _LOCK:
+        _maybe_sweep(now)
+
         q = _BUCKETS.get(key)
         if q is None:
             q = deque()
             _BUCKETS[key] = q
+        _track_window(key, window_sec)
 
         cutoff = now - window_sec
         while q and q[0] <= cutoff:
@@ -37,13 +80,20 @@ def rl_peek(key: str, max_hits: int, window_sec: int) -> Tuple[bool, int]:
         return True, 0
 
     with _LOCK:
+        _maybe_sweep(now)
+
         q = _BUCKETS.get(key)
         if q is None:
             return True, 0
+        _track_window(key, window_sec)
 
         cutoff = now - window_sec
         while q and q[0] <= cutoff:
             q.popleft()
+
+        if not q:
+            _drop(key)
+            return True, 0
 
         if len(q) >= max_hits:
             retry_after = int(max(1, window_sec - (now - q[0])))
