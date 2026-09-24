@@ -59,8 +59,11 @@ def generate_refresh_token() -> str:
     Gera um token aleatório grande, NÃO-JWT.
     Esse valor cru vai pro cliente.
     Só o hash fica no banco.
+
+    Formato: 64 caracteres hex (256 bits), o mesmo da rotação em
+    /auth/refresh e o único aceito pelo cliente (looksLikeRt).
     """
-    return secrets.token_urlsafe(48)
+    return secrets.token_hex(32)
 
 def hash_refresh_token(token: str) -> str:
     """

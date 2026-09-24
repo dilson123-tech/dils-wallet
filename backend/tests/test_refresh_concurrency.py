@@ -9,8 +9,12 @@ transação a commitar sobrescrevia silenciosamente token_hash, e um dos
 dois clientes ficava com um refresh_token que já nascia inválido
 (lost update). A correção substitui a mutação+commit incondicional por
 um UPDATE condicional (WHERE id = :id AND token_hash = :expected)
-checando rowcount, preservando o fallback ultra-legacy (linhas cujo
-token_hash foi salvo historicamente como o token cru, sem hash).
+checando rowcount.
+
+O antigo fallback ultra-legacy (linhas cujo token_hash foi salvo
+historicamente como o token cru, sem hash) foi REMOVIDO do endpoint:
+a seção D deste arquivo agora prova que uma linha nesse formato é
+rejeitada com 401 e permanece intocada, inclusive sob concorrência.
 
 Este arquivo chama a função real `refresh()` do endpoint diretamente
 -- nenhuma lógica de rotação é reimplementada aqui. Usa SQLite real em
@@ -168,11 +172,9 @@ class SelectPauseHook:
     """Pausa T1 logo depois que a N-ésima consulta SELECT sobre
     refresh_tokens foi efetivamente executada no banco real
     (after_cursor_execute -- statement já rodou, não apenas
-    construído), e ANTES de qualquer UPDATE/commit. select_index=1
-    cobre o caminho normal (primeira SELECT já encontra a linha);
-    select_index=2 cobre o fallback ultra-legacy (a primeira SELECT
-    por sha256 não encontra nada, a segunda -- pelo valor cru -- é a
-    que efetivamente encontra a linha)."""
+    construído), e ANTES de qualquer UPDATE/commit. O endpoint faz
+    uma única SELECT (por sha256 do token), então select_index=1 é o
+    único valor usado."""
 
     def __init__(self, connection, select_index: int = 1):
         self.connection = connection
@@ -311,50 +313,55 @@ def test_concurrent_rotation_exactly_one_winner_sqlite(session_factory):
 
 
 # ---------------------------------------------------------------------
-# D) Fallback ultra-legacy (token_hash == token cru, sem sha256).
+# D) Linha ultra-legacy (token_hash == token cru, sem sha256) agora é
+#    REJEITADA: o fallback que a aceitava foi removido.
 # ---------------------------------------------------------------------
-def test_ultra_legacy_row_rotates_correctly_with_cas(session_factory):
+def _snapshot_row(session_factory, user_id):
+    db = session_factory()
+    try:
+        row = db.query(RefreshToken).filter(RefreshToken.user_id == user_id).one()
+        return (row.id, row.token_hash, row.expires_at)
+    finally:
+        db.close()
+
+
+def test_ultra_legacy_row_is_rejected_and_left_untouched(session_factory):
     user_id = _create_user(session_factory, "ultra-legacy@test.local")
     # token_hash == token cru (SEM sha256) -- simula linha histórica
-    # salva "sem hash", exatamente o comentário original do endpoint
-    # sobre o fallback ultra-legacy.
+    # salva "sem hash", formato que o fallback removido aceitava.
     raw_rt = secrets.token_hex(20)
     _create_refresh_token_row(session_factory, user_id=user_id, token_hash=raw_rt)
+    before = _snapshot_row(session_factory, user_id)
 
     result, err = _do_refresh(session_factory, host="198.51.100.20", raw_refresh_token=raw_rt)
-    assert err is None, err
-    new_rt = result["refresh_token"]
+    assert result is None
+    assert err is not None
+    assert err.status_code == 401
+    assert err.detail == "Refresh token inválido/expirado"
 
-    _, err_old = _do_refresh(session_factory, host="198.51.100.20", raw_refresh_token=raw_rt)
-    assert err_old is not None
-    assert err_old.status_code == 401
-
-    result2, err2 = _do_refresh(session_factory, host="198.51.100.20", raw_refresh_token=new_rt)
-    assert err2 is None, err2
+    # nenhuma rotação aconteceu: token_hash e expires_at intactos.
+    assert _snapshot_row(session_factory, user_id) == before
 
 
-def test_ultra_legacy_row_concurrent_rotation_exactly_one_winner(session_factory):
-    """Prova que expected_token_hash captura o valor REAL encontrado
-    (nunca presumido como sha256(rt)) -- protege também a linha
-    ultra-legacy contra a mesma corrida de B."""
+def test_ultra_legacy_row_concurrent_submissions_both_rejected(session_factory):
+    """Mesmo sob a interleaving T1-le -> T2-completa -> T1-continua da
+    seção B, nenhuma das duas requisições com o token cru consegue
+    rotacionar a linha ultra-legacy."""
     user_id = _create_user(session_factory, "ultra-legacy-race@test.local")
     raw_rt = secrets.token_hex(20)
     _create_refresh_token_row(session_factory, user_id=user_id, token_hash=raw_rt)
+    before = _snapshot_row(session_factory, user_id)
 
-    # select_index=2: a 1a SELECT (por sha256(rt)) não encontra nada; a
-    # 2a SELECT (fallback, pelo valor cru) é a que encontra a linha --
-    # é ali que T1 deve pausar antes do CAS.
-    result_holder = _run_concurrent_rotation(session_factory, raw_rt=raw_rt, select_index=2)
+    # select_index=1: a única SELECT (por sha256(rt)) não encontra nada;
+    # T1 pausa logo depois dela, T2 roda inteira, T1 continua.
+    result_holder = _run_concurrent_rotation(session_factory, raw_rt=raw_rt, select_index=1)
 
-    t1_won = "t1" in result_holder
-    t2_won = "t2" in result_holder
-    assert t1_won != t2_won, (
-        "exatamente UMA das duas deveria vencer (200) e a outra perder (401)",
-        result_holder,
-    )
-    loser_error = result_holder.get("t1_error") or result_holder.get("t2_error")
-    assert loser_error is not None
-    assert loser_error.status_code == 401
+    assert "t1" not in result_holder, result_holder
+    assert "t2" not in result_holder, result_holder
+    assert result_holder["t1_error"].status_code == 401
+    assert result_holder["t2_error"].status_code == 401
+
+    assert _snapshot_row(session_factory, user_id) == before
 
 
 # ---------------------------------------------------------------------

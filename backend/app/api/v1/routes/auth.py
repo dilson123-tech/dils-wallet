@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -12,9 +12,8 @@ from app.utils.security import (
     generate_refresh_token,
     hash_refresh_token,
     refresh_token_expiry_dt,
-    SECRET_KEY,
-    ALGORITHM,
 )
+from app.utils.authz import get_current_user
 
 from app.utils.rate_limit import rl_check, rl_peek, rl_client_ip
 
@@ -114,49 +113,6 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     )
 
 
-# ---------------------------
-# Refresh token (JWT) - Aurea Gold
-# ---------------------------
-def _jwt_encode(payload: dict, secret: str, algo: str) -> str:
-    try:
-        from jose import jwt as _j
-        return _j.encode(payload, secret, algorithm=algo)
-    except Exception:
-        import jwt as _j
-        tok = _j.encode(payload, secret, algorithm=algo)
-        return tok.decode("utf-8") if isinstance(tok, (bytes, bytearray)) else str(tok)
-
-def _jwt_decode(token: str, secret: str, algo: str) -> dict:
-    try:
-        from jose import jwt as _j
-        return _j.decode(token, secret, algorithms=[algo])
-    except Exception:
-        import jwt as _j
-        return _j.decode(token, secret, algorithms=[algo])
-
-def create_refresh_token(subject: str) -> str:
-    import os
-    from datetime import datetime, timedelta
-
-    secret = SECRET_KEY
-    algo = ALGORITHM
-    days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
-
-    exp = datetime.utcnow() + timedelta(days=days)
-    payload = {"sub": subject, "typ": "refresh", "exp": exp}
-    return _jwt_encode(payload, secret, algo)
-
-def decode_refresh_token(token: str) -> dict:
-    import os
-    secret = SECRET_KEY
-    algo = ALGORITHM
-    payload = _jwt_decode(token, secret, algo)
-    if payload.get("typ") != "refresh":
-        raise ValueError("token typ != refresh")
-    if not payload.get("sub"):
-        raise ValueError("missing sub")
-    return payload
-
 # endpoint: /api/v1/auth/refresh  (fica no mesmo router do auth.py)
 try:
     from pydantic import BaseModel
@@ -173,7 +129,7 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     rt = (body.refresh_token or "").strip()
 
     # --- Rate limit (volume/amplificação de DB) ---
-    # Roda ANTES de qualquer validação JWT ou consulta ao banco. Cada
+    # Roda ANTES de qualquer validação do token ou consulta ao banco. Cada
     # tentativa que chega aqui consome o bucket por IP, independentemente
     # de terminar em sucesso ou falha (diferente do /login, que só
     # consome em falha) -- o objetivo é limitar volume de chamadas ao
@@ -204,23 +160,10 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     if not rt:
         raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
 
-    # Caso JWT (3 partes) — compat futuro
-    if rt.count(".") == 2:
-        try:
-            payload = decode_refresh_token(rt)
-            sub = payload.get("sub") if isinstance(payload, dict) else payload["sub"]
-        except Exception:
-            raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
-
-        try:
-            new_access = create_access_token({"sub": sub})
-        except Exception:
-            new_access = create_access_token(sub=sub)  # type: ignore
-
-        new_refresh = create_refresh_token(sub)
-        return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
-
-    # Caso OPACO (sem pontos) — DB guarda token_hash (sha256 do token puro)
+    # Único formato aceito: token OPACO. O DB guarda somente token_hash
+    # (sha256 do token puro); qualquer outro formato (JWT com pontos,
+    # token cru salvo sem hash, o próprio hash enviado como token) não
+    # encontra linha e termina em 401 genérico.
     from datetime import datetime, timezone, timedelta
     import secrets, hashlib
 
@@ -235,9 +178,6 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     rt_hash = hashlib.sha256(rt.encode("utf-8")).hexdigest()
 
     obj = db.query(RefreshToken).filter(RefreshToken.token_hash == rt_hash).first()
-    if not obj:
-        # fallback ultra-legacy (se algum dia foi salvo “sem hash”)
-        obj = db.query(RefreshToken).filter(RefreshToken.token_hash == rt).first()
 
     if not obj:
         raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
@@ -286,9 +226,7 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     # real antes desta correção).
     #
     # expected_token_hash é o valor de token_hash EFETIVAMENTE
-    # encontrado no SELECT acima -- nunca presumido como rt_hash --
-    # porque também protege o fallback ultra-legacy (linha em que
-    # token_hash foi historicamente salvo como o token cru, sem hash).
+    # encontrado no SELECT acima (reconfirmado no WHERE do UPDATE).
     expected_token_hash = obj.token_hash
 
     update_values = {"token_hash": new_hash}
@@ -321,3 +259,57 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
 
     return {"access_token": new_access, "refresh_token": new_rt, "token_type": "bearer"}
 
+
+def _logout_rate_limit(request: Request) -> None:
+    # Mesmo desenho do rate limit do /refresh: somente por IP, consome
+    # em toda chamada, roda antes de qualquer acesso ao banco. Nunca
+    # cria bucket derivado do token enviado (ver comentário no /refresh).
+    rl_on = os.getenv('LOGOUT_RL_ENABLED', '1').strip().lower() not in ('0', 'false', 'no', 'off')
+    if not rl_on:
+        return
+
+    ip = rl_client_ip(request)
+    win = int(os.getenv('LOGOUT_RL_WINDOW_SEC', '60'))
+    max_ip = int(os.getenv('LOGOUT_RL_MAX_PER_IP', '30'))
+
+    ip_ok, ip_retry = rl_check(f'logout:ip:{ip}', max_ip, win)
+    if not ip_ok:
+        raise HTTPException(status_code=429, detail='Muitas tentativas. Aguarde e tente novamente.', headers={'Retry-After': str(ip_retry)})
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(body: RefreshRequest, request: Request, db: Session = Depends(get_db)):
+    """Revoga UMA sessão: apaga a linha de refresh_tokens cujo token_hash
+    corresponde ao refresh token enviado. Depois disso, /refresh com esse
+    token responde 401.
+
+    Idempotente e sem oráculo: token vazio, desconhecido, já revogado ou
+    expirado sempre responde 204, sem revelar se a sessão existia. Nunca
+    toca outras linhas do mesmo usuário (outras sessões continuam válidas).
+    """
+    _logout_rate_limit(request)
+
+    rt = (body.refresh_token or "").strip()
+    if rt:
+        db.query(RefreshToken).filter(
+            RefreshToken.token_hash == hash_refresh_token(rt)
+        ).delete(synchronize_session=False)
+        db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+def logout_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Revoga TODAS as sessões (refresh tokens) do usuário autenticado pelo
+    access token Bearer. Não toca linhas de outros usuários. Idempotente.
+
+    Access tokens já emitidos não são revogados aqui (stateless) e seguem
+    válidos até o próprio exp.
+    """
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
