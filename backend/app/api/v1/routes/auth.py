@@ -202,7 +202,7 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     if uid is not None:
         try:
             from app.models.user_main import User
-            u = db.query(User).get(uid)
+            u = db.get(User, uid)
             if u:
                 sub = getattr(u, "username", None) or getattr(u, "email", None)
         except Exception:
