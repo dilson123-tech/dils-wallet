@@ -117,30 +117,32 @@ def get_history(
     """Retorna as últimas transações PIX do usuário autenticado."""
 
     try:
+        from app.models.pix_ledger import PixLedger
+
         user_id = getattr(current_user, "id", 1)
 
-        txs = (
-            db.query(PixTransaction)
-            .filter(PixTransaction.user_id == user_id)
-            .order_by(PixTransaction.id.desc())
+        rows = (
+            db.query(PixLedger)
+            .filter(PixLedger.user_id == user_id)
+            .order_by(PixLedger.created_at.desc(), PixLedger.id.desc())
             .limit(50)
             .all()
         )
 
+        tipo_map = {"debit": "saida", "credit": "entrada"}
+
         result = [
             {
-                "id": t.id,
-                "tipo": t.tipo,
-                "valor": float(getattr(t, "valor", 0) or 0),
-                "descricao": getattr(t, "descricao", None) or "",
-                "taxa_percentual": float(getattr(t, "taxa_percentual", 0) or 0),
-                "taxa_valor": float(getattr(t, "taxa_valor", 0) or 0),
-                "valor_liquido": float(
-                    getattr(t, "valor_liquido", getattr(t, "valor", 0)) or 0
-                ),
-                "criado_em": getattr(t, "created_at", None),
+                "id": row.id,
+                "tipo": tipo_map.get(row.kind, row.kind),
+                "valor": float(row.amount),
+                "descricao": row.description or "",
+                "taxa_percentual": 0.0,
+                "taxa_valor": 0.0,
+                "valor_liquido": float(row.amount),
+                "criado_em": row.created_at,
             }
-            for t in txs
+            for row in rows
         ]
 
 

@@ -71,7 +71,7 @@ import uvicorn
 from app.database import Base, engine, SessionLocal
 from app.utils.security import hash_password, create_access_token
 from app.models.user_main import User
-from app.models.transaction import Transaction
+from app.models.pix_ledger import PixLedger
 from app.main import app
 
 Base.metadata.create_all(bind=engine)
@@ -83,7 +83,8 @@ def make_user_with_transaction(email, valor_recebido):
     db.add(user)
     db.commit()
     db.refresh(user)
-    db.add(Transaction(user_id=user.id, tipo="recebimento", valor=valor_recebido))
+    # PixLedger é a fonte de GET /api/v1/pix/history ("credit" -> "entrada").
+    db.add(PixLedger(user_id=user.id, kind="credit", amount=valor_recebido))
     db.commit()
     db.close()
     return email
