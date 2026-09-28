@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, Header, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
-import asyncio
 import json
-from urllib import request, error as urlerror  # noqa: F401
+from starlette.concurrency import run_in_threadpool
 
 from app.core.rate_limit import limiter
+from app.api.v1.routes import pix as pix_routes
 from app.database import get_db
 from app.models import User
 from app.models.pix_transaction import PixTransaction
@@ -69,61 +69,36 @@ def _fmt_brl(v: Optional[float]) -> str:
 
 
 
-async def _fetch_internal_json(
-    path: str,
-    x_user_email: Optional[str],
-    auth_header: Optional[str] = None,
-) -> Optional[dict]:
+async def _get_pix_balance(db: Session, current_user: User) -> Optional[dict]:
     """
-    Faz uma chamada interna para a própria API (localhost:8000),
-    reaproveitando toda a lógica já existente de PIX.
-    Em caso de erro, retorna None sem derrubar a IA.
+    Consome diretamente a lógica de GET /api/v1/pix/balance (pix.get_balance),
+    in-process, com a mesma sessão de banco e o mesmo usuário autenticado
+    do /chat -- sem chamada HTTP interna. Em caso de erro, retorna None
+    sem derrubar a IA.
     """
-    url = f"http://127.0.0.1:8000{path}"
-
-    # Headers mínimos e consistentes p/ chamadas internas
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-
-    if x_user_email:
-        headers["X-User-Email"] = x_user_email
-
-    # Encaminha Authorization do request original (aceita token cru ou 'Bearer <token>')
-    if auth_header:
-        ah = auth_header.strip()
-        if not ah.lower().startswith("bearer "):
-            ah = "Bearer " + ah
-        headers["Authorization"] = ah
-
-    req = request.Request(url, headers=headers, method="GET")
-
-    loop = asyncio.get_running_loop()
-
-    def _do_request() -> Optional[dict]:
-        try:
-            with request.urlopen(req, timeout=2.5) as resp:
-                raw = resp.read().decode("utf-8")
-            return json.loads(raw)
-        except Exception:
-            return None
-
-    return await loop.run_in_executor(None, _do_request)
+    try:
+        data = await run_in_threadpool(
+            pix_routes.get_balance, db=db, current_user=current_user
+        )
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
 
 
-async def _get_pix_balance(
-    x_user_email: Optional[str],
-    authorization: Optional[str],
-) -> Optional[dict]:
-    return await _fetch_internal_json("/api/v1/pix/balance", x_user_email, authorization)
-
-
-async def _get_pix_history(
-    x_user_email: Optional[str],
-    authorization: Optional[str],
-) -> Optional[list]:
-    data = await _fetch_internal_json("/api/v1/pix/history", x_user_email, authorization)
+async def _get_pix_history(db: Session, current_user: User) -> Optional[list]:
+    """
+    Consome diretamente a lógica de GET /api/v1/pix/history (pix.get_history,
+    fonte PixLedger), in-process. O corpo JSON é decodificado exatamente como
+    o cliente HTTP o receberia. Em caso de erro, retorna None.
+    """
+    try:
+        resp = await run_in_threadpool(
+            pix_routes.get_history, current_user=current_user, db=db
+        )
+        body = getattr(resp, "body", None)
+        data = json.loads(body) if body is not None else resp
+    except Exception:
+        return None
 
     # casos: lista direta
     if isinstance(data, list):
@@ -218,9 +193,10 @@ def _build_history_reply(history: list) -> str:
             valor = float(item.get("valor") or 0)
         except (TypeError, ValueError):
             valor = 0.0
-        if "env" in tipo:
+        # contrato atual de /pix/history: "saida"/"entrada"; "env"/"rec" por compatibilidade
+        if tipo == "saida" or "env" in tipo:
             total_envios += valor
-        elif "rec" in tipo or "ent" in tipo:
+        elif tipo == "entrada" or "rec" in tipo or "ent" in tipo:
             total_recebidos += valor
 
     resumo_env = _fmt_brl(total_envios)
@@ -294,6 +270,7 @@ async def ai_chat(
     payload: ChatRequest,
     request: Request,
     current_user: User = Depends(require_customer),
+    db: Session = Depends(get_db),
     x_user_email: Optional[str] = Header(default=None, alias="X-User-Email"),
 ):
     """
@@ -319,7 +296,7 @@ async def ai_chat(
             "entradas no pix esse mês",
         ]
     ):
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         if balance:
             reply = _build_entradas_reply(balance)
         else:
@@ -338,7 +315,7 @@ async def ai_chat(
             "gastos do mês no pix",
         ]
     ):
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         if balance:
             reply = _build_saidas_reply(balance)
         else:
@@ -363,8 +340,8 @@ async def ai_chat(
             "como foi meu mes no pix",
         ]
     ):
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
+        balance = await _get_pix_balance(db, current_user)
         _reply = _ia3_build_consulting_reply(balance)
         return {"reply": _reply}
 
@@ -389,7 +366,7 @@ async def ai_chat(
 
     if any(p in norm_msg for p in ["saldo", "quanto tenho", "quanto eu tenho"]):
         tema_label = "saldo"
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         if balance:
             tema_reply = _build_saldo_reply(balance)
         else:
@@ -403,7 +380,7 @@ async def ai_chat(
 
     elif any(p in norm_msg for p in ["entrada", "entradas", "receb", "ganho", "ganhos"]):
         tema_label = "entradas"
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         if balance:
             tema_reply = _build_entradas_reply(balance)
         else:
@@ -416,7 +393,7 @@ async def ai_chat(
 
     elif any(p in norm_msg for p in ["saida", "saidas", "gasto", "gastos", "paguei", "pagamento"]):
         tema_label = "saídas"
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         if balance:
             tema_reply = _build_saidas_reply(balance)
         else:
@@ -429,11 +406,11 @@ async def ai_chat(
 
     elif any(p in norm_msg for p in ["onde gasto mais", "onde eu gasto mais", "onde gasto", "gasto mais", "meus gastos", "maiores gastos"]):
         tema_label = "onde_gasto_mais"
-        history = await _get_pix_history(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        history = await _get_pix_history(db, current_user)
         tema_reply = _build_gasto_mais_reply(history or [])
     elif any(p in norm_msg for p in ["historico", "historico pix", "ultimas movimentacoes", "movimentacao"]):
         tema_label = "histórico de PIX"
-        history = await _get_pix_history(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        history = await _get_pix_history(db, current_user)
         tema_reply = _build_history_reply(history or [])
 
     # IA 3.0 – Modo consultor financeiro focado em PIX (usa resumo do mês)
@@ -462,7 +439,7 @@ async def ai_chat(
         ]
     ):
         tema_label = "modo consultor financeiro"
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         tema_reply = _ia3_build_consulting_reply(balance)
         intro = ""
 
@@ -505,7 +482,7 @@ async def ai_chat(
         ]
     ):
         tema_label = "modo consultor financeiro"
-        balance = await _get_pix_balance(current_user.email, request.headers.get('authorization') or request.headers.get('Authorization'))
+        balance = await _get_pix_balance(db, current_user)
         tema_reply = _ia3_build_consulting_reply(balance)
 
     else:

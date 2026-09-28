@@ -30,19 +30,24 @@ export type PixHistoryItem = {
   tipo: string;
   valor: number;
   descricao?: string | null;
-  timestamp?: string | null;
-    created_at?: string | null; // compat legado
+  criado_em?: string | null; // contrato atual (PixLedger)
+  timestamp?: string | null; // compat legado
+  created_at?: string | null; // compat legado
   taxa_percentual?: number | null;
   taxa_valor?: number | null;
   valor_liquido?: number | null;
 };
 
-export type PixHistoryResponse = {
+// Formato antigo (objeto com dias/history) — mantido por compatibilidade
+export type PixHistoryLegacyResponse = {
   dias: PixHistoryDay[];
   history: PixHistoryItem[];
   updated_at: string;
   source?: string;
 };
+
+// Contrato atual: array simples de itens do PixLedger
+export type PixHistoryResponse = PixHistoryItem[] | PixHistoryLegacyResponse;
 
 export async function apiGet<T>(path: string): Promise<T> {
   // authFetch injeta Authorization (access token oficial) e pode fazer refresh/retry.

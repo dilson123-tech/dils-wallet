@@ -7,197 +7,143 @@ que ele usa Depends(require_customer) na borda (identidade sempre do
 token Bearer autenticado, nunca de X-User-Email). Este arquivo NÃO
 toca em chat_lab.py.
 
-Mudança intencional de contrato nesta revisão: sem Authorization, com
-Authorization expirado ou com Authorization inválido, o endpoint agora
-responde 401 (antes respondia 200 com uma resposta de fallback). Os
-cenários com token válido continuam em 200: a identidade sempre foi
-resolvida a partir do token nas chamadas internas de PIX
-(pix.py também usa Depends(require_customer)), então um X-User-Email
-conflitante nunca teve efeito prático nesses dois casos -- e continua
-sem ter, agora de forma explícita também dentro de ai_chat.py.
+Mudança intencional de contrato: sem Authorization, com Authorization
+expirado ou com Authorization inválido, o endpoint responde 401. Os
+cenários com token válido continuam em 200, e um X-User-Email
+conflitante nunca tem efeito sobre qual usuário é consultado.
 
-Por que precisa de um servidor HTTP real (não basta TestClient/ASGI
-in-process): `/chat` não lê o banco diretamente. Ele resolve
-saldo/histórico chamando `_get_pix_balance`/`_get_pix_history`, que
-por sua vez fazem uma chamada HTTP de verdade (via `urllib.request`)
-para `http://127.0.0.1:8000/api/v1/pix/...` -- a MESMA rota `pix.py`
-que já usa `Depends(require_customer)`. Um `TestClient` comum não
-abre essa porta (é transporte ASGI in-process), então esse caminho
-nunca seria exercitado de forma fiel. Este arquivo sobe um servidor
-uvicorn real, na porta 8000 (hardcoded na própria `_fetch_internal_json`,
-não configurável), rodando numa thread daemon dentro de um subprocess
-Python isolado -- mesmo padrão de isolamento de ambiente já usado em
-test_dev_seed_router_gate.py e test_pix_send_intent_http_contract.py
-(env definido ANTES de importar app.main, DATABASE_URL apontando para
-SQLite descartável num diretório temporário, nunca backend/app.db).
+F3: `/chat` deixou de fazer chamada HTTP interna para
+http://127.0.0.1:8000. `_get_pix_balance`/`_get_pix_history` agora
+consomem diretamente `pix.get_balance`/`pix.get_history` (in-process,
+mesma sessão de banco, mesmo `current_user` autenticado). Por isso este
+arquivo usa TestClient (ASGI in-process), sem subprocess, sem uvicorn e
+sem depender da porta 8000 -- padrão já usado em
+test_ai_summary_field_mapping_characterization.py: app.dependency_overrides
+para `get_db` (SQLite em memória isolado, StaticPool, criado/destruído
+por teste; nunca backend/app.db). Um guard de rede faz qualquer
+tentativa de conexão de socket falhar o teste, provando que nenhum
+servidor local é necessário.
 
-Limitação conhecida e aceita: como a porta é hardcoded no código de
-produção, este teste só funciona se a porta 8000 local estiver livre
-no momento da execução. Se estiver ocupada por outro processo, o
-probe falha alto e claro (RuntimeError "live server did not start"),
-nunca silenciosamente.
-
-Os 4 cenários pedidos são cobertos com UM único request por cenário,
-todos contra o mesmo servidor vivo, reaproveitando dois usuários reais
-com transações PIX distintas e verificáveis (valores diferentes por
-usuário), usando a intenção "histórico" do endpoint -- é o único ramo
-de `/chat` cujo dado final (soma de `valor` das transações reais)
-reflete o dado consultado sem passar por chaves que hoje já vêm
-zeradas por um mismatch de contrato entre `_build_saldo_reply`
-(espera `balance["saldo_atual"]`) e `pix.py::get_balance` (retorna
-`balance["saldo"]`) -- esse mismatch é um achado da investigação
-read-only anterior, não é alterado aqui.
+Os cenários usam a intenção "histórico" do endpoint, cujo dado final
+(soma de `valor` por tipo) reflete o dado consultado em PixLedger, fonte
+de GET /api/v1/pix/history ("credit" -> "entrada", "debit" -> "saida").
 """
-import json
 import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
+import socket
+from datetime import timedelta
+from decimal import Decimal
+
+os.environ.setdefault("SECRET_KEY", "ai-chat-live-auth-characterization-test-secret")
+os.environ.setdefault("JWT_SECRET", os.environ["SECRET_KEY"])
 
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-BACKEND_DIR = Path(__file__).resolve().parents[1]
-
-_PROBE_SCRIPT = r"""
-import json
-import threading
-import time
-from datetime import timedelta
-
-import requests
-import uvicorn
-
-from app.database import Base, engine, SessionLocal
-from app.utils.security import hash_password, create_access_token
-from app.models.user_main import User
-from app.models.pix_ledger import PixLedger
+from app.core.rate_limit import limiter
+from app.database import Base, get_db
 from app.main import app
+from app.models.pix_ledger import PixLedger
+from app.models.user_main import User
+from app.utils.security import create_access_token
 
-Base.metadata.create_all(bind=engine)
+PATH = "/api/v1/ai/chat"
+MSG_HISTORY = {"message": "qual é o meu histórico de pix"}
+MSG_SALDO = {"message": "qual é o meu saldo"}
+
+EMAIL_A = "chat-auth-a@test.local"
+EMAIL_B = "chat-auth-b@test.local"
 
 
-def make_user_with_transaction(email, valor_recebido):
-    db = SessionLocal()
-    user = User(email=email, hashed_password=hash_password("test123"), role="customer")
+@pytest.fixture()
+def db_session():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@pytest.fixture()
+def no_network(monkeypatch):
+    """Qualquer conexão de socket (ex.: 127.0.0.1:8000) falha o teste."""
+
+    def _blocked(*args, **kwargs):
+        raise AssertionError("conexão de rede inesperada durante /ai/chat")
+
+    monkeypatch.setattr(socket.socket, "connect", _blocked)
+    monkeypatch.setattr(socket.socket, "connect_ex", _blocked)
+    monkeypatch.setattr(socket, "create_connection", _blocked)
+
+
+@pytest.fixture()
+def client(db_session, no_network):
+    def _override_get_db():
+        yield db_session
+
+    limiter.reset()
+    app.dependency_overrides[get_db] = _override_get_db
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        limiter.reset()
+
+
+def _create_user(db, email: str) -> User:
+    user = User(email=email, hashed_password="x", role="customer")
     db.add(user)
     db.commit()
     db.refresh(user)
-    # PixLedger é a fonte de GET /api/v1/pix/history ("credit" -> "entrada").
-    db.add(PixLedger(user_id=user.id, kind="credit", amount=valor_recebido))
+    return user
+
+
+def _add_ledger(db, user: User, kind: str, amount: str) -> None:
+    db.add(PixLedger(user_id=user.id, kind=kind, amount=Decimal(amount)))
     db.commit()
-    db.close()
-    return email
 
 
-email_a = make_user_with_transaction("chat-auth-a@test.local", 111.00)
-email_b = make_user_with_transaction("chat-auth-b@test.local", 222.00)
+def _token_for(email: str) -> str:
+    return create_access_token({"sub": email})
 
-config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="warning")
-server = uvicorn.Server(config)
-server.install_signal_handlers = lambda: None
-thread = threading.Thread(target=server.run, daemon=True)
-thread.start()
 
-base = "http://127.0.0.1:8000"
-up = False
-for _ in range(80):
+@pytest.fixture()
+def two_users(db_session):
+    user_a = _create_user(db_session, EMAIL_A)
+    user_b = _create_user(db_session, EMAIL_B)
+    _add_ledger(db_session, user_a, "credit", "111.00")
+    _add_ledger(db_session, user_b, "credit", "222.00")
+    return user_a, user_b
+
+
+def _chat(client, headers, msg=MSG_HISTORY):
+    r = client.post(PATH, json=msg, headers=headers)
     try:
-        requests.get(base + "/", timeout=0.5)
-        up = True
-        break
+        reply = r.json().get("reply", "")
     except Exception:
-        time.sleep(0.1)
-if not up:
-    raise RuntimeError("live server did not start on 127.0.0.1:8000")
-
-
-def login(email):
-    r = requests.post(
-        base + "/api/v1/auth/login",
-        json={"username": email, "password": "test123"},
-        timeout=5,
-    )
-    assert r.status_code == 200, (email, r.status_code, r.text)
-    return r.json()["access_token"]
-
-
-token_a = login(email_a)
-token_b = login(email_b)
-
-MSG = {"message": "qual é o meu histórico de pix"}
-results = {}
-
-
-def _chat(headers):
-    r = requests.post(base + "/api/v1/ai/chat", json=MSG, headers=headers, timeout=10)
-    return r.status_code, r.json().get("reply", "")
-
-
-# Cenário 1: token do usuário A + X-User-Email do usuário B.
-status, reply = _chat({"Authorization": f"Bearer {token_a}", "X-User-Email": email_b})
-results["s1_token_a_header_b_status"] = status
-results["s1_token_a_header_b_reply"] = reply
-
-# Cenário 2 (inverso): token do usuário B + X-User-Email do usuário A.
-status, reply = _chat({"Authorization": f"Bearer {token_b}", "X-User-Email": email_a})
-results["s2_token_b_header_a_status"] = status
-results["s2_token_b_header_a_reply"] = reply
-
-# Cenário 3: sem Authorization nenhum (só X-User-Email de um usuário real).
-status, reply = _chat({"X-User-Email": email_a})
-results["s3_no_authorization_status"] = status
-results["s3_no_authorization_reply"] = reply
-
-# Cenário 4a: Authorization com JWT assinado e EXPIRADO (5 min no passado),
-# ainda com X-User-Email de outro usuário para maximizar a tentativa de bypass.
-expired_token = create_access_token({"sub": email_a}, expires_delta=timedelta(minutes=-5))
-status, reply = _chat({"Authorization": f"Bearer {expired_token}", "X-User-Email": email_b})
-results["s4a_expired_token_status"] = status
-results["s4a_expired_token_reply"] = reply
-
-# Cenário 4b: Authorization com token totalmente inválido (não é um JWT).
-status, reply = _chat({"Authorization": "Bearer not-a-real-jwt-token", "X-User-Email": email_b})
-results["s4b_garbage_token_status"] = status
-results["s4b_garbage_token_reply"] = reply
-
-print(json.dumps(results))
-"""
-
-
-@pytest.fixture(scope="module")
-def live_chat_results():
-    with tempfile.TemporaryDirectory() as tmp:
-        env = dict(os.environ)
-        env["SECRET_KEY"] = "ai-chat-live-auth-characterization-test-secret"
-        env["JWT_SECRET"] = env["SECRET_KEY"]
-        # Banco descartável isolado, nunca backend/app.db.
-        env["DATABASE_URL"] = f"sqlite:///{tmp}/probe.db"
-
-        proc = subprocess.run(
-            [sys.executable, "-c", _PROBE_SCRIPT],
-            cwd=str(BACKEND_DIR),
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=90,
-        )
-
-        assert proc.returncode == 0, (
-            f"subprocess do live server falhou:\nstdout={proc.stdout}\nstderr={proc.stderr}"
-        )
-
-        return json.loads(proc.stdout.strip().splitlines()[-1])
+        reply = ""
+    return r.status_code, reply
 
 
 # ---------------------------------------------------------------------
 # 1) Token do usuário A + X-User-Email do usuário B: a resposta nunca
-# pode conter o dado real de B (R$ 222,00), só o de A (R$ 111,00) ou
-# nenhum dado real.
+# pode conter o dado real de B (R$ 222,00), só o de A (R$ 111,00).
 # ---------------------------------------------------------------------
-def test_token_a_with_x_user_email_b_never_returns_b_data(live_chat_results):
-    status = live_chat_results["s1_token_a_header_b_status"]
-    reply = live_chat_results["s1_token_a_header_b_reply"]
+def test_token_a_with_x_user_email_b_never_returns_b_data(client, two_users):
+    status, reply = _chat(
+        client,
+        {"Authorization": f"Bearer {_token_for(EMAIL_A)}", "X-User-Email": EMAIL_B},
+    )
 
     assert status == 200
     assert "222,00" not in reply, "vazou o valor real do usuário B"
@@ -208,9 +154,11 @@ def test_token_a_with_x_user_email_b_never_returns_b_data(live_chat_results):
 # 2) Inverso: token do usuário B + X-User-Email do usuário A: a
 # resposta nunca pode conter o dado real de A (R$ 111,00).
 # ---------------------------------------------------------------------
-def test_token_b_with_x_user_email_a_never_returns_a_data(live_chat_results):
-    status = live_chat_results["s2_token_b_header_a_status"]
-    reply = live_chat_results["s2_token_b_header_a_reply"]
+def test_token_b_with_x_user_email_a_never_returns_a_data(client, two_users):
+    status, reply = _chat(
+        client,
+        {"Authorization": f"Bearer {_token_for(EMAIL_B)}", "X-User-Email": EMAIL_A},
+    )
 
     assert status == 200
     assert "111,00" not in reply, "vazou o valor real do usuário A"
@@ -218,13 +166,11 @@ def test_token_b_with_x_user_email_a_never_returns_a_data(live_chat_results):
 
 
 # ---------------------------------------------------------------------
-# 3) Sem Authorization: contrato canônico agora é 401 (Depends(require_customer)
-# rejeita antes de qualquer lógica de negócio rodar) -- sem nenhum dado
-# real de PIX vazando (nem de A, que foi mandado via X-User-Email, nem de B).
+# 3) Sem Authorization: 401 (Depends(require_customer) rejeita antes de
+# qualquer lógica de negócio rodar), sem nenhum dado real de PIX vazando.
 # ---------------------------------------------------------------------
-def test_no_authorization_returns_401(live_chat_results):
-    status = live_chat_results["s3_no_authorization_status"]
-    reply = live_chat_results["s3_no_authorization_reply"]
+def test_no_authorization_returns_401(client, two_users):
+    status, reply = _chat(client, {"X-User-Email": EMAIL_A})
 
     assert status == 401, (
         "mudança intencional de contrato: sem Authorization agora é 401, "
@@ -235,24 +181,64 @@ def test_no_authorization_returns_401(live_chat_results):
 
 
 # ---------------------------------------------------------------------
-# 4) Authorization inválido/expirado: contrato canônico agora é 401,
-# mesmo com X-User-Email de outro usuário mandado propositalmente --
-# sem vazamento de dado real, nem do dono nominal do token expirado,
-# nem do usuário indicado no header.
+# 4) Authorization inválido/expirado: 401, mesmo com X-User-Email de
+# outro usuário mandado propositalmente -- sem vazamento de dado real.
 # ---------------------------------------------------------------------
-def test_expired_authorization_returns_401(live_chat_results):
-    status = live_chat_results["s4a_expired_token_status"]
-    reply = live_chat_results["s4a_expired_token_reply"]
+def test_expired_authorization_returns_401(client, two_users):
+    expired_token = create_access_token({"sub": EMAIL_A}, expires_delta=timedelta(minutes=-5))
+    status, reply = _chat(
+        client,
+        {"Authorization": f"Bearer {expired_token}", "X-User-Email": EMAIL_B},
+    )
 
     assert status == 401, "mudança intencional de contrato: token expirado agora é 401"
     assert "111,00" not in reply
     assert "222,00" not in reply
 
 
-def test_invalid_authorization_returns_401(live_chat_results):
-    status = live_chat_results["s4b_garbage_token_status"]
-    reply = live_chat_results["s4b_garbage_token_reply"]
+def test_invalid_authorization_returns_401(client, two_users):
+    status, reply = _chat(
+        client,
+        {"Authorization": "Bearer not-a-real-jwt-token", "X-User-Email": EMAIL_B},
+    )
 
     assert status == 401, "mudança intencional de contrato: token inválido agora é 401"
     assert "111,00" not in reply
     assert "222,00" not in reply
+
+
+# ---------------------------------------------------------------------
+# 5) F3: débito no PixLedger vira "saida" em /pix/history e precisa ser
+# somado como enviado (antes só "env" era reconhecido, então saídas
+# reais apareciam como R$ 0,00).
+# ---------------------------------------------------------------------
+def test_history_counts_saida_as_enviado(client, db_session):
+    user = _create_user(db_session, "chat-auth-debit@test.local")
+    _add_ledger(db_session, user, "credit", "300.00")
+    _add_ledger(db_session, user, "debit", "45.50")
+    _add_ledger(db_session, user, "debit", "4.50")
+
+    status, reply = _chat(client, {"Authorization": f"Bearer {_token_for(user.email)}"})
+
+    assert status == 200
+    assert "Total aproximado enviado: R$ 50,00" in reply
+    assert "Total aproximado recebido: R$ 300,00" in reply
+
+
+# ---------------------------------------------------------------------
+# 6) F3: saldo real vem de pix.get_balance in-process (Ledger:
+# créditos - débitos), com source "real", sem chamada HTTP interna.
+# ---------------------------------------------------------------------
+def test_saldo_uses_real_ledger_balance_in_process(client, db_session):
+    user = _create_user(db_session, "chat-auth-saldo@test.local")
+    _add_ledger(db_session, user, "credit", "300.00")
+    _add_ledger(db_session, user, "debit", "45.50")
+
+    status, reply = _chat(
+        client,
+        {"Authorization": f"Bearer {_token_for(user.email)}"},
+        msg=MSG_SALDO,
+    )
+
+    assert status == 200
+    assert "R$ 254,50" in reply
