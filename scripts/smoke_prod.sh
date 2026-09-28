@@ -375,7 +375,27 @@ HIST_CODE=$(curlx -s -o /tmp/pix_history.json -w "%{http_code}" "$API_BASE/pix/h
 if [[ "$HIST_CODE" != "200" ]]; then
   fail "GET /pix/history -> HTTP $HIST_CODE (body: $(head -c 300 /tmp/pix_history.json 2>/dev/null))"
 fi
-ok "GET /pix/history OK"
+[[ -s /tmp/pix_history.json ]] || fail "GET /pix/history retornou 200 com corpo vazio"
+jq empty /tmp/pix_history.json >/dev/null 2>&1 || fail "GET /pix/history retornou 200 mas o corpo não é JSON válido"
+HIST_TYPE=$(jq -r 'type' /tmp/pix_history.json 2>/dev/null || echo "?")
+[[ "$HIST_TYPE" == "array" ]] || fail "GET /pix/history retornou 200 mas o JSON não é lista (type=${HIST_TYPE})"
+HIST_LEN=$(jq -r 'length' /tmp/pix_history.json)
+if [[ "$HIST_LEN" == "0" ]]; then
+  warn "GET /pix/history: histórico vazio (200 []). Não é erro por si só, mas o endpoint também retorna [] em falha interna — não é possível distinguir externamente."
+else
+  HIST_BAD=$(jq -r '
+    ["id","tipo","valor","descricao","taxa_percentual","taxa_valor","valor_liquido","criado_em"] as $req
+    | [ to_entries[]
+        | .key as $i | .value as $it
+        | if ($it | type) != "object" then "item[\($i)]: não é objeto"
+          else ($req - ($it | keys)) as $miss
+            | select(($miss | length) > 0)
+            | "item[\($i)]: faltando \($miss | join(","))"
+          end ]
+    | .[:5] | join("; ")' /tmp/pix_history.json) || fail "GET /pix/history: falha ao validar contrato"
+  [[ -z "$HIST_BAD" ]] || fail "GET /pix/history fora do contrato: ${HIST_BAD}"
+fi
+ok "GET /pix/history OK (itens: ${HIST_LEN})"
 fi
 
 
