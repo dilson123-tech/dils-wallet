@@ -630,7 +630,7 @@ const saldo =
       ? num(netRaw)
       : (tipo === "envio" ? Math.max(0, valor - taxa_valor) : valor);
 
-    const created_at = x.created_at ?? x.createdAt ?? x.timestamp ?? x.data ?? x.date ?? null;
+    const created_at = x.criado_em ?? x.created_at ?? x.createdAt ?? x.timestamp ?? x.data ?? x.date ?? null;
     const descricao = String(x.descricao ?? x.description ?? x.memo ?? x.nome ?? "");
 
     return {
