@@ -6,7 +6,7 @@
  */
 (function () {
   var env = (import.meta && import.meta.env) ? import.meta.env : {};
-  var API_BASE = env.VITE_API_BASE || "http://127.0.0.1:8000";
+  var API_BASE = env.VITE_API_BASE || "http://127.0.0.1:8090";
   var USER_EMAIL = env.VITE_USER_EMAIL;
 
   var PROD_BASES = [
