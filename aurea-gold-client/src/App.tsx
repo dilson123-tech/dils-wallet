@@ -212,7 +212,13 @@ function AureaAppWithAuth() {
       }
 
       setLoginCooldown(0);
-      saveTokens((r as any).token);
+      // persiste o refresh_token da resposta do login (usado no refresh automático)
+      let refreshToken: string | null = null;
+      try {
+        const rt = JSON.parse((r as any).raw || "{}")?.refresh_token;
+        if (typeof rt === "string" && rt) refreshToken = rt;
+      } catch {}
+      saveTokens((r as any).token, refreshToken);
       setIsAuthenticated(true);
     } catch (err: any) {
       setLoginError(err?.message || "Falha ao autenticar. Tente novamente.");

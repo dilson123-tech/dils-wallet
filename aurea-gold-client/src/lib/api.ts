@@ -1,5 +1,6 @@
 import { getToken } from "./auth";
 import { API_BASE } from "./apiBase";
+import { isAuthPath, refreshAccessToken } from "../auth/authClient";
 export { API_BASE };
 // ======================================================
 // AUREA GOLD • CORE HTTP LIB
@@ -156,16 +157,38 @@ async function _readText(r: Response): Promise<string> {
   try { return await r.text(); } catch { return ""; }
 }
 
+// 401 com o token que o próprio withAuth injetou → refresh (single-flight
+// em authClient) e UMA nova tentativa. keepSession=true quando o refresh
+// falhou só temporariamente (429) e a sessão não deve ser limpa.
+async function _fetchWithRefresh(
+  path: string,
+  init: RequestInit,
+): Promise<{ r: Response; keepSession: boolean }> {
+  const first = withAuth(init);
+  const r = await fetch(`${API_BASE}${path}`, first);
+
+  const callerAuth = new Headers(init.headers || {}).has("Authorization");
+  const sent = new Headers(first.headers).get("Authorization");
+  if (r.status !== 401 || callerAuth || !sent || isAuthPath(path)) {
+    return { r, keepSession: false };
+  }
+
+  const refreshed = await refreshAccessToken(sent.replace(/^Bearer\s+/i, ""), pickToken);
+  if (!refreshed.ok) return { r, keepSession: refreshed.transient };
+
+  return { r: await fetch(`${API_BASE}${path}`, withAuth(init)), keepSession: false };
+}
+
 // -----------------------------
 // GET genérico
 // -----------------------------
 export async function apiGet<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, withAuth(init));
+  const { r, keepSession } = await _fetchWithRefresh(path, init);
 
   if (!r.ok) {
     const retryAfter = _retryAfterSeconds(r);
     const txt = await _readText(r);
-    if (r.status === 401) clearTokenKeys();
+    if (r.status === 401 && !keepSession) clearTokenKeys();
     throw new ApiError(`GET ${path} -> ${r.status}`, r.status, retryAfter, txt.slice(0, 500));
   }
 
@@ -183,17 +206,17 @@ export async function apiPost<TReq, TRes>(
   const headers = new Headers(init.headers || {});
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
-  const r = await fetch(`${API_BASE}${path}`, withAuth({
+  const { r, keepSession } = await _fetchWithRefresh(path, {
     ...init,
     method: "POST",
     headers,
     body: JSON.stringify(body),
-  }));
+  });
 
   if (!r.ok) {
     const retryAfter = _retryAfterSeconds(r);
     const txt = await _readText(r);
-    if (r.status === 401) clearTokenKeys();
+    if (r.status === 401 && !keepSession) clearTokenKeys();
     throw new ApiError(`POST ${path} -> ${r.status}`, r.status, retryAfter, txt.slice(0, 500));
   }
 

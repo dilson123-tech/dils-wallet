@@ -99,13 +99,12 @@ def get_balance(
             "ultimos_7d": _ultimos_7d_from_ledger(db, current_user.id),
         }
 
-    except Exception as e:
-        print("[AUREA PIX] erro ao calcular saldo:", e)
-        return {
-            "saldo": 0.0,
-            "source": "lab",
-            "ultimos_7d": _empty_ultimos_7d(),
-        }
+    except Exception as exc:
+        logger.error("[AUREA PIX] erro ao calcular saldo (%s)", type(exc).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Saldo PIX indisponível no momento.",
+        ) from exc
 
 
 
@@ -149,9 +148,12 @@ def get_history(
         return JSONResponse(
             content=jsonable_encoder(result, custom_encoder={Decimal: float})
         )
-    except Exception as e:
-        print("[AUREA PIX] erro ao carregar histórico:", e)
-        return JSONResponse(content=[], status_code=200)
+    except Exception as exc:
+        logger.error("[AUREA PIX] erro ao carregar histórico (%s)", type(exc).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Histórico PIX indisponível no momento.",
+        ) from exc
 
 @router.get("/list")
 def get_list(
@@ -215,17 +217,18 @@ def get_forecast(
     }
     """
     try:
+        from app.models.pix_ledger import PixLedger
         rows = (
-            db.query(PixTransaction)
-            .filter(PixTransaction.user_id == current_user.id)
+            db.query(PixLedger)
+            .filter(PixLedger.user_id == current_user.id)
             .all()
         )
 
         entradas = 0.0
         saidas = 0.0
         for t in rows:
-            valor = float(t.valor)
-            if t.tipo == "entrada":
+            valor = float(t.amount)
+            if t.kind == "credit":
                 entradas += valor
             else:
                 saidas += valor

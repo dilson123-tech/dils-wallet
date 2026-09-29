@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -248,20 +249,14 @@ def test_get_balance_returns_saldo_and_source_real_with_ultimos_7d(db_session, f
     assert by_day[hoje.isoformat()]["saidas"] == 20.0
 
 
-def test_get_balance_falls_back_to_lab_with_zeroed_ultimos_7d_on_error(db_session, frozen_today):
-    # current_user sem atributo "id" força a exceção dentro de get_balance,
-    # exercitando deliberadamente o caminho de fallback já existente.
+def test_get_balance_raises_503_instead_of_fake_lab_balance_on_error(db_session, frozen_today):
+    # current_user sem atributo "id" força a exceção dentro de get_balance.
+    # Pendência #5: o erro não pode mais virar saldo 0.0 "lab" com 200.
     broken_user = SimpleNamespace()
 
-    response = get_balance(db=db_session, current_user=broken_user)
+    with pytest.raises(HTTPException) as captured:
+        get_balance(db=db_session, current_user=broken_user)
 
-    assert response["saldo"] == 0.0
-    assert response["source"] == "lab"
-    assert isinstance(response["ultimos_7d"], list)
-    assert len(response["ultimos_7d"]) == 7
-    expected_dates = [d.isoformat() for d in _ultimos_7d_dates()]
-    assert [item["dia"] for item in response["ultimos_7d"]] == expected_dates
-    for item in response["ultimos_7d"]:
-        assert item["entradas"] == 0.0
-        assert item["saidas"] == 0.0
-        assert item["saldo_dia"] == 0.0
+    assert captured.value.status_code == 503
+    assert captured.value.detail == "Saldo PIX indisponível no momento."
+    assert isinstance(captured.value.__cause__, AttributeError)

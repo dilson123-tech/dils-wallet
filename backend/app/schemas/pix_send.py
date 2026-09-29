@@ -5,7 +5,7 @@ from decimal import Decimal
 class PixSendRequest(BaseModel):
     chave_pix: str = Field(..., min_length=3, max_length=255)
     valor: Decimal = Field(..., gt=0)
-    descricao: str | None = Field(default="PIX")
+    descricao: str | None = Field(default="PIX", max_length=255)
 
 
 class PixSendResponse(BaseModel):
@@ -20,7 +20,7 @@ class PixSendResponse(BaseModel):
 class PixSendIntentRequest(BaseModel):
     chave_pix: str = Field(..., min_length=3, max_length=255)
     valor: Decimal = Field(..., gt=0)
-    descricao: str | None = Field(default="PIX")
+    descricao: str | None = Field(default="PIX", max_length=255)
     force_new: bool = Field(default=False)
 
 

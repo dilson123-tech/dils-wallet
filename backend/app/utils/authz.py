@@ -24,6 +24,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Refresh JWT legado (typ="refresh") só vale em /auth/refresh,
+        # nunca como Bearer de acesso. Access tokens não têm "typ".
+        if payload.get("typ") == "refresh":
+            raise credentials_exception
         username = payload.get("sub")
         if username is None:
             raise credentials_exception
