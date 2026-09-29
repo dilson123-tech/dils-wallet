@@ -943,7 +943,7 @@ def create_wallet_pix_sandbox_payment(
     except Exception as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"Adapter financeiro indisponível para sandbox: {exc}",
+            detail="Adapter financeiro indisponível para sandbox.",
         ) from exc
 
     if provider != "sandbox":
@@ -1119,7 +1119,7 @@ def _asaas_sandbox_webhook_config():
     except AsaasConfigError as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"Configuração Asaas Sandbox inválida para webhook: {exc}",
+            detail="Configuração Asaas Sandbox inválida para webhook.",
         ) from exc
 
 
@@ -1593,7 +1593,7 @@ def handle_wallet_pix_sandbox_webhook(
     except Exception as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"Adapter financeiro indisponível para webhook sandbox: {exc}",
+            detail="Adapter financeiro indisponível para webhook sandbox.",
         ) from exc
 
     if provider != "sandbox":
@@ -1826,7 +1826,7 @@ def get_wallet_pix_sandbox_reconciliation(
     except Exception as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"Adapter financeiro indisponível para reconciliação sandbox: {exc}",
+            detail="Adapter financeiro indisponível para reconciliação sandbox.",
         ) from exc
 
     if provider != "sandbox":
@@ -2032,7 +2032,7 @@ def get_wallet_pix_sandbox_audit_history(
     except Exception as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"Adapter financeiro indisponível para histórico sandbox: {exc}",
+            detail="Adapter financeiro indisponível para histórico sandbox.",
         ) from exc
 
     if provider != "sandbox":
