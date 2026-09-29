@@ -12,6 +12,7 @@ from app.database import get_db
 from app.utils.authz import require_customer
 from app.core.rate_limit import limiter
 from app.models.transaction import Transaction
+from app.models.pix_ledger import PixLedger
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
 from app.config import WALLET_MODE, IS_PARTNER_WALLET
@@ -2375,8 +2376,8 @@ def get_balance(current_user: User = Depends(require_customer),
     Calcula saldo do usuário = soma(credit) - soma(debit)
     """
     rows = (
-        db.query(Transaction)
-        .filter(Transaction.user_id == current_user.id)
+        db.query(PixLedger)
+        .filter(PixLedger.user_id == current_user.id)
         .all()
     )
 
@@ -2399,9 +2400,9 @@ def get_history(current_user: User = Depends(require_customer),
     Retorna lista das últimas transações do usuário autenticado.
     """
     rows = (
-        db.query(Transaction)
-        .filter(Transaction.user_id == current_user.id)
-        .order_by(Transaction.created_at.desc())
+        db.query(PixLedger)
+        .filter(PixLedger.user_id == current_user.id)
+        .order_by(PixLedger.created_at.desc(), PixLedger.id.desc())
         .limit(20)
         .all()
     )
