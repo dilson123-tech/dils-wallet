@@ -293,7 +293,7 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
 
     update_values = {"token_hash": new_hash}
     if hasattr(obj, "expires_at"):
-        update_values["expires_at"] = now + timedelta(days=30)
+        update_values["expires_at"] = refresh_token_expiry_dt()
 
     rows_updated = (
         db.query(RefreshToken)
