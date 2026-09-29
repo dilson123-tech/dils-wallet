@@ -217,17 +217,18 @@ def get_forecast(
     }
     """
     try:
+        from app.models.pix_ledger import PixLedger
         rows = (
-            db.query(PixTransaction)
-            .filter(PixTransaction.user_id == current_user.id)
+            db.query(PixLedger)
+            .filter(PixLedger.user_id == current_user.id)
             .all()
         )
 
         entradas = 0.0
         saidas = 0.0
         for t in rows:
-            valor = float(t.valor)
-            if t.tipo == "entrada":
+            valor = float(t.amount)
+            if t.kind == "credit":
                 entradas += valor
             else:
                 saidas += valor
