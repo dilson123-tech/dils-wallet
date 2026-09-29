@@ -145,14 +145,95 @@ export function authHeaders(extra?: HeadersInit): HeadersInit {
   };
 }
 
+export type RefreshResult =
+  | { ok: true; accessToken: string }
+  | { ok: false; transient: boolean };
+
+// Único refresh em andamento: 401s simultâneos aguardam a mesma promise.
+let refreshInFlight: Promise<RefreshResult> | null = null;
+
+async function doRefresh(): Promise<RefreshResult> {
+  const refreshToken = getFirst(REFRESH_TOKEN_KEYS);
+  if (!refreshToken) {
+    clearTokens();
+    return { ok: false, transient: false };
+  }
+
+  try {
+    // Sem Authorization: o refresh token vai só no body, nunca como Bearer.
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (res.status === 429) {
+      // rate limit: sessão continua válida, só não deu pra renovar agora
+      return { ok: false, transient: true };
+    }
+
+    if (res.ok) {
+      const data = (await res.json()) as Partial<TokenResponse>;
+      if (typeof data?.access_token === "string" && data.access_token) {
+        saveTokens(data.access_token, data.refresh_token ?? null);
+        return { ok: true, accessToken: data.access_token };
+      }
+    }
+  } catch {
+    // rede/JSON inválido: cai no encerramento da sessão abaixo
+  }
+
+  clearTokens();
+  return { ok: false, transient: false };
+}
+
+/**
+ * Renova o access token via POST /api/v1/auth/refresh (single-flight).
+ * `failedToken` é o token que recebeu 401: se o token atual já é outro,
+ * outro request renovou antes e não é preciso rotacionar de novo.
+ */
+export async function refreshAccessToken(
+  failedToken?: string | null,
+  currentToken: () => string | null = getAccessToken,
+): Promise<RefreshResult> {
+  if (refreshInFlight) return refreshInFlight;
+
+  if (failedToken) {
+    const cur = currentToken();
+    if (cur && cur !== failedToken) return { ok: true, accessToken: cur };
+  }
+
+  refreshInFlight = doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+export function isAuthPath(url: string): boolean {
+  return url.includes("/api/v1/auth/");
+}
+
 export async function authFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
 ): Promise<Response> {
-  const headers = authHeaders(init.headers);
+  const sentToken = getAccessToken();
+  const res = await fetch(input, {
+    ...init,
+    headers: authHeaders(init.headers),
+  });
+
+  const url =
+    typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (res.status !== 401 || !sentToken || isAuthPath(url)) return res;
+
+  const refreshed = await refreshAccessToken(sentToken);
+  if (!refreshed.ok) return res;
+
+  // uma única nova tentativa, já com o access token novo
   return fetch(input, {
     ...init,
-    headers,
+    headers: authHeaders(init.headers),
   });
 }
 
