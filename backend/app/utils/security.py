@@ -17,7 +17,7 @@ if SECRET_KEY in {"dev-insecure-default-change-me", "DEV_SECRET_CHANGE_ME", "cha
     raise RuntimeError("SECRET_KEY/JWT_SECRET inseguro no ambiente.")
 ALGORITHM = (os.getenv("ALGORITHM") or os.getenv("JWT_ALGORITHM") or "HS256").strip()
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30         # token curto
+ACCESS_TOKEN_EXPIRE_MINUTES = 30         # token curto (oficial: 30 min fixo, sem variável de ambiente)
 REFRESH_TOKEN_EXPIRE_DAYS = 7            # token longo
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

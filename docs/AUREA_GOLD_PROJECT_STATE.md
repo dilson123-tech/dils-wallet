@@ -35,7 +35,7 @@
 | PSP/BaaS | Adapter Asaas, somente sandbox | `backend/app/partner/asaas_client.py`, `backend/app/partner/asaas_config.py`, `backend/app/partner/asaas_payment_correlation.py`, `backend/app/services/asaas_correlated_pix_payment_service.py` e `backend/app/api/v1/routes/wallet.py` |
 
 - Resolução da API no frontend: `aurea-gold-client/src/lib/apiBase.ts` usa `VITE_API_BASE`, depois `http://<host>:8090`, depois `http://127.0.0.1:8090`.
-- Autenticação: JWT HS256 fail-closed (exige `SECRET_KEY`/`JWT_SECRET`), access token de 30 min e refresh token opaco (hash sha256, rotação com CAS).
+- Autenticação: JWT HS256 fail-closed (exige `SECRET_KEY`/`JWT_SECRET`), access token de 30 min (expiração oficial, fixa em `backend/app/utils/security.py`; não existe variável de ambiente para alterá-la) e refresh token opaco (hash sha256, rotação com CAS).
 
 ## 4. FUNCIONALIDADES EXISTENTES
 
@@ -172,7 +172,7 @@ Legenda: 🔴 bloqueador para dinheiro real · 🟠 importante · 🟡 hardening
 | 8 | 🟡 | Headline/Insight PIX usa texto e números fixos de LAB, sem auth | `/ai/headline`, `/headline-lab`; `aurea-gold-client/src/super2/SuperAureaHome.tsx:408`, `aurea-gold-client/src/super2/AureaIAPanel.tsx:106`, `aurea-gold-client/src/credito/AureaCreditoIAPanel.tsx:147`, `aurea-gold-client/src/super2/IaHeadlineLab.tsx:34` | UI mostra "Headline LAB funcionando" | Mudança |
 | 9 | 🟡 | Refresh de 30 vs 7 dias; JWT de refresh sem revogação; fallback ultra-legacy | auth | Superfície de sessão maior | Mudança |
 | 10 | 🟡 | Claim `typ` não checado no authz | auth | Tipo de token não validado | Mudança |
-| 11 | 🟡 | `ACCESS_TOKEN_EXPIRE_MINUTES=60` não é usado (efetivo: 30) | config | Config enganosa | Mudança |
+| 11 | 🟡 | ~~`ACCESS_TOKEN_EXPIRE_MINUTES=60` não é usado (efetivo: 30)~~ — resolvido: config morta removida de `backend/app/config.py`; expiração oficial do access token é 30 min, fixa em `backend/app/utils/security.py`, sem variável de ambiente | config | — | Resolvido |
 | 12 | 🟡 | uvicorn em `--log-level debug` | `backend/start.sh:26` | Logs verbosos em produção | Mudança |
 | 13 | 🟡 | `create_all` no boot em vez de Alembic | startup | Evolução de schema frágil | Mudança |
 | 14 | 🟡 | `{exc}` exposto no `detail` dos 503 do sandbox | `backend/app/api/v1/routes/wallet.py:946, 1596, 1829, 2035` | Possível vazamento de detalhe interno | Mudança |
