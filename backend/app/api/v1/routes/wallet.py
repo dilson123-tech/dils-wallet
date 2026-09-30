@@ -9,7 +9,7 @@ import json
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.utils.authz import require_customer
+from app.utils.authz import require_admin, require_customer
 from app.core.rate_limit import limiter
 from app.models.transaction import Transaction
 from app.models.pix_ledger import PixLedger
@@ -2176,7 +2176,7 @@ def _list_asaas_sandbox_webhook_audit_events(
 @router.get("/api/v1/partners/asaas/webhooks/sandbox/audit-history")
 def get_asaas_sandbox_webhook_audit_history(
     limit: int = 20,
-    current_user: User = Depends(require_customer),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """

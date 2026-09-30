@@ -64,6 +64,11 @@ def client():
         id=73, email="customer@example.test", full_name="Test Customer",
         type="pf", role="customer",
     )
+    # audit-history Asaas Sandbox é ADMIN ONLY (require_admin).
+    app.dependency_overrides[wallet.require_admin] = lambda: SimpleNamespace(
+        id=1, email="admin@example.test", full_name="Test Admin",
+        type="pf", role="admin",
+    )
     app.dependency_overrides[wallet.get_db] = lambda: None
     try:
         with TestClient(app) as test_client:
