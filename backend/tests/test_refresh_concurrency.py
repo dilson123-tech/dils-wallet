@@ -9,8 +9,8 @@ transação a commitar sobrescrevia silenciosamente token_hash, e um dos
 dois clientes ficava com um refresh_token que já nascia inválido
 (lost update). A correção substitui a mutação+commit incondicional por
 um UPDATE condicional (WHERE id = :id AND token_hash = :expected)
-checando rowcount, preservando o fallback ultra-legacy (linhas cujo
-token_hash foi salvo historicamente como o token cru, sem hash).
+checando rowcount. O lookup aceita somente sha256(token): não existe
+mais fallback que compare token_hash com o valor recebido cru.
 
 Este arquivo chama a função real `refresh()` do endpoint diretamente
 -- nenhuma lógica de rotação é reimplementada aqui. Usa SQLite real em
@@ -169,10 +169,8 @@ class SelectPauseHook:
     refresh_tokens foi efetivamente executada no banco real
     (after_cursor_execute -- statement já rodou, não apenas
     construído), e ANTES de qualquer UPDATE/commit. select_index=1
-    cobre o caminho normal (primeira SELECT já encontra a linha);
-    select_index=2 cobre o fallback ultra-legacy (a primeira SELECT
-    por sha256 não encontra nada, a segunda -- pelo valor cru -- é a
-    que efetivamente encontra a linha)."""
+    cobre o caminho normal (a única SELECT, por sha256, já encontra a
+    linha)."""
 
     def __init__(self, connection, select_index: int = 1):
         self.connection = connection
@@ -311,50 +309,77 @@ def test_concurrent_rotation_exactly_one_winner_sqlite(session_factory):
 
 
 # ---------------------------------------------------------------------
-# D) Fallback ultra-legacy (token_hash == token cru, sem sha256).
+# D) Somente sha256(token) é aceito -- sem fallback ultra-legacy.
+#
+# Antes, se sha256(rt) não achasse linha, o endpoint procurava
+# token_hash == rt (valor cru). Isso fazia o próprio valor armazenado
+# em token_hash (ex.: vazado de um dump/backup) funcionar como refresh
+# token. Estes testes provam que só o token original é aceito.
 # ---------------------------------------------------------------------
-def test_ultra_legacy_row_rotates_correctly_with_cas(session_factory):
-    user_id = _create_user(session_factory, "ultra-legacy@test.local")
-    # token_hash == token cru (SEM sha256) -- simula linha histórica
-    # salva "sem hash", exatamente o comentário original do endpoint
-    # sobre o fallback ultra-legacy.
-    raw_rt = secrets.token_hex(20)
-    _create_refresh_token_row(session_factory, user_id=user_id, token_hash=raw_rt)
+def _refresh_rows(session_factory, user_id):
+    db = session_factory()
+    try:
+        return sorted(
+            (row.id, row.token_hash)
+            for row in db.query(RefreshToken).filter(RefreshToken.user_id == user_id).all()
+        )
+    finally:
+        db.close()
+
+
+def test_sha256_stored_token_still_rotates(session_factory):
+    user_id = _create_user(session_factory, "sha256-only@test.local")
+    raw_rt = secrets.token_urlsafe(48)
+    rt_hash = hashlib.sha256(raw_rt.encode("utf-8")).hexdigest()
+    _create_refresh_token_row(session_factory, user_id=user_id, token_hash=rt_hash)
+    rows_before = _refresh_rows(session_factory, user_id)
 
     result, err = _do_refresh(session_factory, host="198.51.100.20", raw_refresh_token=raw_rt)
     assert err is None, err
     new_rt = result["refresh_token"]
 
-    _, err_old = _do_refresh(session_factory, host="198.51.100.20", raw_refresh_token=raw_rt)
-    assert err_old is not None
-    assert err_old.status_code == 401
-
-    result2, err2 = _do_refresh(session_factory, host="198.51.100.20", raw_refresh_token=new_rt)
-    assert err2 is None, err2
+    # rotação in-place: mesma linha, nenhuma RefreshToken nova.
+    rows_after = _refresh_rows(session_factory, user_id)
+    assert [r[0] for r in rows_after] == [r[0] for r in rows_before]
+    assert rows_after[0][1] == hashlib.sha256(new_rt.encode("utf-8")).hexdigest()
 
 
-def test_ultra_legacy_row_concurrent_rotation_exactly_one_winner(session_factory):
-    """Prova que expected_token_hash captura o valor REAL encontrado
-    (nunca presumido como sha256(rt)) -- protege também a linha
-    ultra-legacy contra a mesma corrida de B."""
-    user_id = _create_user(session_factory, "ultra-legacy-race@test.local")
-    raw_rt = secrets.token_hex(20)
+def test_raw_token_stored_in_token_hash_is_rejected(session_factory):
+    user_id = _create_user(session_factory, "raw-in-token-hash@test.local")
+    # linha artificial: token_hash contém o token cru, sem sha256.
+    raw_rt = secrets.token_hex(32)
     _create_refresh_token_row(session_factory, user_id=user_id, token_hash=raw_rt)
+    rows_before = _refresh_rows(session_factory, user_id)
 
-    # select_index=2: a 1a SELECT (por sha256(rt)) não encontra nada; a
-    # 2a SELECT (fallback, pelo valor cru) é a que encontra a linha --
-    # é ali que T1 deve pausar antes do CAS.
-    result_holder = _run_concurrent_rotation(session_factory, raw_rt=raw_rt, select_index=2)
+    result, err = _do_refresh(session_factory, host="198.51.100.21", raw_refresh_token=raw_rt)
+    assert result is None
+    assert err is not None
+    assert err.status_code == 401
 
-    t1_won = "t1" in result_holder
-    t2_won = "t2" in result_holder
-    assert t1_won != t2_won, (
-        "exatamente UMA das duas deveria vencer (200) e a outra perder (401)",
-        result_holder,
-    )
-    loser_error = result_holder.get("t1_error") or result_holder.get("t2_error")
-    assert loser_error is not None
-    assert loser_error.status_code == 401
+    # nenhuma RefreshToken criada nem rotacionada.
+    assert _refresh_rows(session_factory, user_id) == rows_before
+
+
+def test_stored_hash_presented_as_refresh_token_is_rejected(session_factory):
+    user_id = _create_user(session_factory, "stored-hash-replay@test.local")
+    raw_rt = secrets.token_urlsafe(48)
+    rt_hash = hashlib.sha256(raw_rt.encode("utf-8")).hexdigest()
+    _create_refresh_token_row(session_factory, user_id=user_id, token_hash=rt_hash)
+    rows_before = _refresh_rows(session_factory, user_id)
+
+    # quem só conhece o valor armazenado (hash) não consegue renovar.
+    result, err = _do_refresh(session_factory, host="198.51.100.22", raw_refresh_token=rt_hash)
+    assert result is None
+    assert err is not None
+    assert err.status_code == 401
+
+    # nenhuma RefreshToken criada nem rotacionada...
+    assert _refresh_rows(session_factory, user_id) == rows_before
+
+    # ...e o dono legítimo continua conseguindo renovar.
+    result2, err2 = _do_refresh(session_factory, host="198.51.100.22", raw_refresh_token=raw_rt)
+    assert err2 is None, err2
+    assert "access_token" in result2
 
 
 # ---------------------------------------------------------------------
