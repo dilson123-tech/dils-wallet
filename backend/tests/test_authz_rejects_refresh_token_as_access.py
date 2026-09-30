@@ -1,31 +1,38 @@
 """
 Pendência #10 do handoff: o refresh JWT legado (claim typ="refresh",
-emitido por app/api/v1/routes/auth.py::create_refresh_token) não pode ser
-aceito como Bearer de acesso nas rotas protegidas
-(app/utils/authz.py::get_current_user). Ele continua válido apenas em
-POST /api/v1/auth/refresh. Access tokens atuais (sem "typ") seguem
-funcionando sem mudança.
+antes emitido por app/api/v1/routes/auth.py::create_refresh_token) não pode
+ser aceito como Bearer de acesso nas rotas protegidas
+(app/utils/authz.py::get_current_user). Access tokens atuais (sem "typ")
+seguem funcionando sem mudança.
+
+A5/A6: o ramo JWT legado de POST /api/v1/auth/refresh foi removido. O único
+refresh suportado é o opaco (tabela RefreshToken); um JWT typ="refresh",
+mesmo com assinatura válida, é rejeitado ali também.
 
 TestClient contra app.main.app, com override apenas de get_db (SQLite em
-memória, StaticPool). Tokens reais, assinados pelas funções de produção.
+memória, StaticPool). O JWT legado é montado no formato antigo e assinado
+com o SECRET_KEY real de produção.
 """
 import os
 
 os.environ.setdefault("SECRET_KEY", "authz-refresh-as-access-test-secret")
 os.environ.setdefault("JWT_SECRET", os.environ["SECRET_KEY"])
 
+from datetime import datetime, timedelta, timezone
+
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.v1.routes.auth import create_refresh_token
 from app.core.rate_limit import limiter
 from app.database import Base, get_db
 from app.main import app
+from app.models.refresh_token import RefreshToken
 from app.models.user_main import User
-from app.utils.security import create_access_token
+from app.utils.security import ALGORITHM, SECRET_KEY, create_access_token
 
 WHOAMI_PATH = "/api/v1/whoami"
 USERS_ME_PATH = "/api/v1/users/me"
@@ -89,6 +96,12 @@ def admin(db_session):
     return _create_user(db_session, ADMIN_EMAIL, "admin")
 
 
+def create_legacy_refresh_jwt(subject: str) -> str:
+    # Mesmo formato do antigo auth.py::create_refresh_token (removido).
+    exp = datetime.now(timezone.utc) + timedelta(days=7)
+    return jwt.encode({"sub": subject, "typ": "refresh", "exp": exp}, SECRET_KEY, algorithm=ALGORITHM)
+
+
 def _bearer(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
@@ -101,7 +114,7 @@ def _assert_rejected_without_user_data(response, email: str) -> None:
 
 @pytest.mark.parametrize("path", PROTECTED_CUSTOMER_PATHS)
 def test_refresh_jwt_as_bearer_is_rejected(client, customer, path):
-    token = create_refresh_token(CUSTOMER_EMAIL)
+    token = create_legacy_refresh_jwt(CUSTOMER_EMAIL)
 
     response = client.get(path, headers=_bearer(token))
 
@@ -109,7 +122,7 @@ def test_refresh_jwt_as_bearer_is_rejected(client, customer, path):
 
 
 def test_admin_refresh_jwt_as_bearer_is_rejected_on_admin_route(client, admin):
-    token = create_refresh_token(ADMIN_EMAIL)
+    token = create_legacy_refresh_jwt(ADMIN_EMAIL)
 
     response = client.get(ADMIN_USERS_PATH, headers=_bearer(token))
 
@@ -133,19 +146,18 @@ def test_admin_access_token_keeps_working_on_admin_route(client, admin):
     assert response.status_code == 200
 
 
-def test_refresh_jwt_keeps_working_on_refresh_endpoint(client, customer):
-    token = create_refresh_token(CUSTOMER_EMAIL)
+def test_refresh_jwt_is_rejected_on_refresh_endpoint(client, db_session, customer):
+    token = create_legacy_refresh_jwt(CUSTOMER_EMAIL)
 
-    response = client.post(REFRESH_PATH, json={"refresh_token": token})
+    for _ in range(2):
+        response = client.post(REFRESH_PATH, json={"refresh_token": token})
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["token_type"] == "bearer"
-    assert body["refresh_token"]
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Refresh token inválido/expirado"}
+        assert "access_token" not in response.text
+        assert CUSTOMER_EMAIL not in response.text
 
-    me = client.get(USERS_ME_PATH, headers=_bearer(body["access_token"]))
-    assert me.status_code == 200
-    assert me.json()["email"] == CUSTOMER_EMAIL
+    assert db_session.query(RefreshToken).count() == 0
 
 
 def test_access_token_is_still_rejected_on_refresh_endpoint(client, customer):

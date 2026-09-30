@@ -12,8 +12,6 @@ from app.utils.security import (
     generate_refresh_token,
     hash_refresh_token,
     refresh_token_expiry_dt,
-    SECRET_KEY,
-    ALGORITHM,
 )
 
 from app.utils.rate_limit import rl_check, rl_peek, rl_client_ip
@@ -114,49 +112,6 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     )
 
 
-# ---------------------------
-# Refresh token (JWT) - Aurea Gold
-# ---------------------------
-def _jwt_encode(payload: dict, secret: str, algo: str) -> str:
-    try:
-        from jose import jwt as _j
-        return _j.encode(payload, secret, algorithm=algo)
-    except Exception:
-        import jwt as _j
-        tok = _j.encode(payload, secret, algorithm=algo)
-        return tok.decode("utf-8") if isinstance(tok, (bytes, bytearray)) else str(tok)
-
-def _jwt_decode(token: str, secret: str, algo: str) -> dict:
-    try:
-        from jose import jwt as _j
-        return _j.decode(token, secret, algorithms=[algo])
-    except Exception:
-        import jwt as _j
-        return _j.decode(token, secret, algorithms=[algo])
-
-def create_refresh_token(subject: str) -> str:
-    import os
-    from datetime import datetime, timedelta
-
-    secret = SECRET_KEY
-    algo = ALGORITHM
-    days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
-
-    exp = datetime.utcnow() + timedelta(days=days)
-    payload = {"sub": subject, "typ": "refresh", "exp": exp}
-    return _jwt_encode(payload, secret, algo)
-
-def decode_refresh_token(token: str) -> dict:
-    import os
-    secret = SECRET_KEY
-    algo = ALGORITHM
-    payload = _jwt_decode(token, secret, algo)
-    if payload.get("typ") != "refresh":
-        raise ValueError("token typ != refresh")
-    if not payload.get("sub"):
-        raise ValueError("missing sub")
-    return payload
-
 # endpoint: /api/v1/auth/refresh  (fica no mesmo router do auth.py)
 try:
     from pydantic import BaseModel
@@ -203,22 +158,6 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
 
     if not rt:
         raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
-
-    # Caso JWT (3 partes) — compat futuro
-    if rt.count(".") == 2:
-        try:
-            payload = decode_refresh_token(rt)
-            sub = payload.get("sub") if isinstance(payload, dict) else payload["sub"]
-        except Exception:
-            raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
-
-        try:
-            new_access = create_access_token({"sub": sub})
-        except Exception:
-            new_access = create_access_token(sub=sub)  # type: ignore
-
-        new_refresh = create_refresh_token(sub)
-        return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
 
     # Caso OPACO (sem pontos) — DB guarda token_hash (sha256 do token puro)
     from datetime import datetime, timezone, timedelta
