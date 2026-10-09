@@ -242,6 +242,43 @@ describe.each(["authFetch", "apiGet", "apiPost"] as const)("refresh automático 
     expect(storage.getItem("aurea.refresh_token")).toBe(OLD_RT);
   });
 
+  it("401 + Retry-After no refresh (rotação concorrente) → não limpa a sessão", async () => {
+    login();
+    fetchMock.mockImplementation(backend({
+      refresh: () => new Response(JSON.stringify({ detail: "Refresh token inválido/expirado" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", "Retry-After": "1" },
+      }),
+    }));
+
+    const r = await call();
+
+    expect(r.status).toBe(401);
+    expect(protectedCalls()).toHaveLength(1);
+    expect(sessionCleared()).toBe(false);
+    expect(storage.getItem("aurea.access_token")).toBe(OLD_AT);
+    expect(storage.getItem("aurea.refresh_token")).toBe(OLD_RT);
+  });
+
+  it("401 + Retry-After e outra aba já rotacionou → usa os tokens novos", async () => {
+    login();
+    fetchMock.mockImplementation(backend({
+      refresh: () => {
+        // outra aba venceu a rotação e gravou os tokens novos no storage
+        login(NEW_AT, NEW_RT);
+        return new Response(null, { status: 401, headers: { "Retry-After": "1" } });
+      },
+    }));
+
+    const r = await call();
+
+    expect(r.status).toBe(200);
+    expect(refreshCalls()).toHaveLength(1);
+    expect(protectedCalls()).toHaveLength(2);
+    expect(authOf(protectedCalls()[1][1])).toBe(`Bearer ${NEW_AT}`);
+    expect(storage.getItem("aurea.refresh_token")).toBe(NEW_RT);
+  });
+
   it("sem refresh token salvo → limpa sessão sem chamar /auth/refresh", async () => {
     login(OLD_AT, null);
     fetchMock.mockImplementation(backend());

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from app.database import get_db
 from app.models.user_main import User
 from app.models.refresh_token import RefreshToken
+from app.models.refresh_token_retired import RefreshTokenRetiredHash
 from app.utils.security import (
     verify_password,
     create_access_token,
@@ -19,6 +20,7 @@ from app.utils.authz import get_current_user
 
 # AUREA_DEBUG: logs sensíveis só com AUREA_DEBUG=1
 import os
+import logging
 _AUREA_DEBUG = os.getenv('AUREA_DEBUG', '0') == '1'
 def _dbg(*a, **k):
     if _AUREA_DEBUG:
@@ -26,6 +28,36 @@ def _dbg(*a, **k):
 
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+
+# F8.1 — reuse detection. Um refresh token já rotacionado reapresentado
+# até REFRESH_REUSE_GRACE_SEC depois da rotação é tratado como corrida
+# legítima (duas abas, retry): 401 transitório com Retry-After, sem
+# revogar nada. Depois disso é reuse confirmado: a família inteira
+# (a linha de refresh_tokens) é revogada.
+REFRESH_REUSE_GRACE_SEC = 15
+
+
+def _refresh_transient_401():
+    # Mesmo detail do 401 genérico; Retry-After (já exposto no CORS) é o
+    # único sinal para o cliente de que NÃO deve limpar a sessão.
+    return HTTPException(
+        status_code=401,
+        detail="Refresh token inválido/expirado",
+        headers={"Retry-After": "1"},
+    )
+
+
+def _delete_families(db: Session, family_ids_query):
+    # Apaga explicitamente os hashes aposentados antes das famílias: em
+    # SQLite (dev/testes) não há PRAGMA foreign_keys, então o ON DELETE
+    # CASCADE não dispara, e o id INTEGER pode ser reutilizado -- um hash
+    # órfão passaria a apontar para uma família nova. Em Postgres o
+    # CASCADE cobriria, isto é redundante e inofensivo.
+    db.query(RefreshTokenRetiredHash).filter(
+        RefreshTokenRetiredHash.family_id.in_(family_ids_query)
+    ).delete(synchronize_session=False)
 
 
 class LoginRequest(BaseModel):
@@ -179,10 +211,42 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     # (ex.: vazado de um dump/backup) funcionar como refresh token.
     obj = db.query(RefreshToken).filter(RefreshToken.token_hash == rt_hash).first()
 
-    if not obj:
-        raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
-
     now = datetime.now(timezone.utc)
+
+    if not obj:
+        retired = (
+            db.query(RefreshTokenRetiredHash)
+            .filter(RefreshTokenRetiredHash.token_hash == rt_hash)
+            .first()
+        )
+        family = (
+            db.query(RefreshToken).filter(RefreshToken.id == retired.family_id).first()
+            if retired is not None
+            else None
+        )
+        if family is None:
+            # desconhecido, ou família já revogada (logout/reuse)
+            raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
+
+        retired_at = retired.retired_at
+        if retired_at.tzinfo is None:
+            retired_at = retired_at.replace(tzinfo=timezone.utc)
+
+        if now - retired_at <= timedelta(seconds=REFRESH_REUSE_GRACE_SEC):
+            raise _refresh_transient_401()
+
+        # Reuse confirmado: revoga só esta família (o RT atual dela morre
+        # junto). Outras sessões do usuário seguem vivas.
+        family_id, user_id = family.id, family.user_id
+        _delete_families(db, [family_id])
+        db.query(RefreshToken).filter(RefreshToken.id == family_id).delete(
+            synchronize_session=False
+        )
+        db.commit()
+        logger.warning(
+            "refresh_token_reuse_detected family_id=%s user_id=%s", family_id, user_id
+        )
+        raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
 
     exp = getattr(obj, "expires_at", None)
     if exp:
@@ -246,9 +310,20 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
         # 0 => outra requisição já rotacionou este token primeiro
         # (perdeu a corrida). >1 nunca deveria ocorrer (id é chave
         # primária) -- tratado fail-closed do mesmo jeito, nunca
-        # aceito silenciosamente.
+        # aceito silenciosamente. O perdedor NÃO é reuse: nada é
+        # revogado, só sinalizado como transitório.
         db.rollback()
-        raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
+        raise _refresh_transient_401()
+
+    # Mesma transação da rotação: o hash antigo vira "aposentado" da
+    # família obj.id. O perdedor do CAS fez rollback e não grava nada.
+    db.add(
+        RefreshTokenRetiredHash(
+            token_hash=expected_token_hash,
+            family_id=obj.id,
+            retired_at=now,
+        )
+    )
 
     try:
         new_access = create_access_token({"sub": sub})
@@ -272,6 +347,10 @@ def logout(body: LogoutRequest, db: Session = Depends(get_db)):
     # lookup do /refresh -- sha256(rt), nunca o valor cru.
     rt = (body.refresh_token or "").strip()
     if rt:
+        family_ids = db.query(RefreshToken.id).filter(
+            RefreshToken.token_hash == hash_refresh_token(rt)
+        )
+        _delete_families(db, family_ids)
         db.query(RefreshToken).filter(
             RefreshToken.token_hash == hash_refresh_token(rt)
         ).delete(synchronize_session=False)
@@ -283,6 +362,9 @@ def logout(body: LogoutRequest, db: Session = Depends(get_db)):
 def logout_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Revoga todos os refresh tokens do usuário autenticado (todos os
     # dispositivos). Access tokens já emitidos seguem válidos até o exp.
+    _delete_families(
+        db, db.query(RefreshToken.id).filter(RefreshToken.user_id == current_user.id)
+    )
     db.query(RefreshToken).filter(
         RefreshToken.user_id == current_user.id
     ).delete(synchronize_session=False)
