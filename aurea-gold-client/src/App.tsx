@@ -10,6 +10,7 @@ import {
   saveTokens,
   getAccessToken,
   clearTokens,
+  logoutServer,
 } from "./auth/authClient";
 import { login as loginCore } from "./app/lib/auth";
 
@@ -228,6 +229,8 @@ function AureaAppWithAuth() {
   }
 
   function handleLogout() {
+    // lê o refresh token antes de clearTokens(); não espera a resposta
+    void logoutServer();
     clearTokens();
     setIsAuthenticated(false);
     setLoginUsername("");
