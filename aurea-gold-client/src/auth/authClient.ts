@@ -172,6 +172,16 @@ async function doRefresh(): Promise<RefreshResult> {
       return { ok: false, transient: true };
     }
 
+    if (res.status === 401 && res.headers.get("Retry-After")) {
+      // token acabou de ser rotacionado por outra aba/request concorrente:
+      // não é reuse, então a sessão NÃO é encerrada aqui
+      const current = getAccessToken();
+      if (current && getFirst(REFRESH_TOKEN_KEYS) !== refreshToken) {
+        return { ok: true, accessToken: current };
+      }
+      return { ok: false, transient: true };
+    }
+
     if (res.ok) {
       const data = (await res.json()) as Partial<TokenResponse>;
       if (typeof data?.access_token === "string" && data.access_token) {
