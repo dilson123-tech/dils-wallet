@@ -8,10 +8,10 @@ import AureaMaisPanel from "./mais/AureaMaisPanel";
 import PlanosPremium from "./super2-lab/PlanosPremium";
 import {
   saveTokens,
-  getAccessToken,
   clearTokens,
   logoutServer,
 } from "./auth/authClient";
+import { bootstrapSession } from "./auth/bootstrapSession";
 import { login as loginCore } from "./app/lib/auth";
 
 const isPlanosLab =
@@ -24,30 +24,6 @@ function PlanosLabApp() {
 
 interface AureaAppShellProtectedProps {
   onLogout: () => void;
-}
-
-function parseJwtPayload(token: string): Record<string, any> | null {
-  try {
-    const base64Url = token.split(".")[1];
-    if (!base64Url) return null;
-
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
-}
-
-function isJwtUsable(token: string | null | undefined): boolean {
-  if (!token || typeof token !== "string") return false;
-
-  const payload = parseJwtPayload(token);
-  if (!payload) return false;
-  if (typeof payload.exp !== "number") return true;
-
-  const now = Math.floor(Date.now() / 1000);
-  return payload.exp > now + 5;
 }
 
 function AureaAppShellProtected({ onLogout }: AureaAppShellProtectedProps) {
@@ -163,18 +139,24 @@ function AureaAppWithAuth() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginCooldown, setLoginCooldown] = useState<number>(0);
 
-  useEffect(() => {
-    const token = getAccessToken();
+  // 429 no refresh da abertura: sessão mantida, sem retry automático
+  const [authTransient, setAuthTransient] = useState(false);
 
-    if (!isJwtUsable(token)) {
-      clearTokens();
-      setIsAuthenticated(false);
-      setAuthChecking(false);
-      return;
-    }
-
-    setIsAuthenticated(true);
+  async function checkSession(isCancelled: () => boolean = () => false) {
+    setAuthChecking(true);
+    const r = await bootstrapSession();
+    if (isCancelled()) return;
+    setIsAuthenticated(r === "authenticated");
+    setAuthTransient(r === "transient");
     setAuthChecking(false);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    void checkSession(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -247,6 +229,37 @@ function AureaAppWithAuth() {
           </div>
           <div className="mt-3 text-sm ag-subtitle">
             Carregando ambiente seguro da carteira...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authTransient) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="ag-surface-elevated w-full max-w-md px-8 py-10 text-center">
+          <div className="text-[10px] tracking-[0.32em] ag-gold-text uppercase">
+            Aurea Gold
+          </div>
+          <div className="mt-3 text-sm ag-subtitle">
+            Não foi possível confirmar sua sessão agora. Aguarde alguns instantes e tente novamente.
+          </div>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => void checkSession()}
+              className="ag-btn-primary w-full px-4 py-3 text-[11px] uppercase tracking-[0.22em]"
+            >
+              Tentar novamente
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthTransient(false)}
+              className="ag-btn-secondary w-full px-4 py-2 text-[10px] uppercase tracking-[0.18em]"
+            >
+              Entrar com usuário e senha
+            </button>
           </div>
         </div>
       </div>
