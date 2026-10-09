@@ -237,6 +237,27 @@ export async function authFetch(
   });
 }
 
+// Revoga no servidor a sessão do refresh token atual. Best-effort: não
+// bloqueia nem falha o logout local (rede fora, 5xx etc. são ignorados).
+// Deve ser chamada ANTES de clearTokens(), que apaga o refresh token.
+export function logoutServer(): Promise<void> {
+  const refreshToken = getFirst(REFRESH_TOKEN_KEYS);
+  if (!refreshToken) return Promise.resolve();
+  try {
+    return fetch(`${API_BASE}/api/v1/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      keepalive: true,
+    }).then(
+      () => undefined,
+      () => undefined,
+    );
+  } catch {
+    return Promise.resolve();
+  }
+}
+
 export function clearTokens() {
   try {
     removeAll(ACCESS_TOKEN_KEYS);

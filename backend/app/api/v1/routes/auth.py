@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -15,6 +15,7 @@ from app.utils.security import (
 )
 
 from app.utils.rate_limit import rl_check, rl_peek, rl_client_ip
+from app.utils.authz import get_current_user
 
 # AUREA_DEBUG: logs sensíveis só com AUREA_DEBUG=1
 import os
@@ -258,3 +259,32 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
 
     return {"access_token": new_access, "refresh_token": new_rt, "token_type": "bearer"}
 
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(body: LogoutRequest, db: Session = Depends(get_db)):
+    # Revoga só a sessão deste refresh token (apaga a linha pelo hash).
+    # Idempotente e sempre 204: não revela se o token existia. Mesmo
+    # lookup do /refresh -- sha256(rt), nunca o valor cru.
+    rt = (body.refresh_token or "").strip()
+    if rt:
+        db.query(RefreshToken).filter(
+            RefreshToken.token_hash == hash_refresh_token(rt)
+        ).delete(synchronize_session=False)
+        db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+def logout_all(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Revoga todos os refresh tokens do usuário autenticado (todos os
+    # dispositivos). Access tokens já emitidos seguem válidos até o exp.
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id
+    ).delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
