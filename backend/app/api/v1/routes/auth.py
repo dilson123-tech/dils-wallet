@@ -173,10 +173,10 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
 
     rt_hash = hashlib.sha256(rt.encode("utf-8")).hexdigest()
 
+    # Único lookup aceito: sha256(rt). Nunca comparar token_hash com o
+    # valor recebido cru -- isso faria o próprio hash armazenado
+    # (ex.: vazado de um dump/backup) funcionar como refresh token.
     obj = db.query(RefreshToken).filter(RefreshToken.token_hash == rt_hash).first()
-    if not obj:
-        # fallback ultra-legacy (se algum dia foi salvo “sem hash”)
-        obj = db.query(RefreshToken).filter(RefreshToken.token_hash == rt).first()
 
     if not obj:
         raise HTTPException(status_code=401, detail="Refresh token inválido/expirado")
@@ -225,9 +225,7 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
     # real antes desta correção).
     #
     # expected_token_hash é o valor de token_hash EFETIVAMENTE
-    # encontrado no SELECT acima -- nunca presumido como rt_hash --
-    # porque também protege o fallback ultra-legacy (linha em que
-    # token_hash foi historicamente salvo como o token cru, sem hash).
+    # encontrado no SELECT acima (hoje sempre igual a rt_hash).
     expected_token_hash = obj.token_hash
 
     update_values = {"token_hash": new_hash}
