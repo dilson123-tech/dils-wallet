@@ -752,11 +752,17 @@ async def ia_pix_insight(
 @router.post("/headline")
 @router.post("/headline-lab")
 @limiter.limit("30/minute")
-async def ia_headline_lab(request: Request, x_user_email: str = Header(None)):
+async def ia_headline_lab(
+    request: Request,
+    current_user: User = Depends(require_customer),
+):
     """Versão LAB do Headline IA 3.0.
 
     Usa números de exemplo para não depender do ledger real.
     Depois plugamos nos dados reais do painel Super2.
+
+    Exige token Bearer válido via Depends(require_customer); a
+    identidade vem exclusivamente do token, nunca de X-User-Email.
     """
 
     # Números de exemplo para o modo LAB (simulação de fluxo PIX)

@@ -61,6 +61,13 @@ antes exercitavam /api/v1/ai/chat sem token agora autenticam a
 chamada primeiro (mesmo padrão de auth_user_email já usado para
 pix_insight), preservando a mesma cobertura desses três eixos de
 bypass contra o novo contrato autenticado.
+
+Atualizado de novo (Missão #8): POST /api/v1/ai/headline e POST
+/api/v1/ai/headline-lab também passaram a exigir
+Depends(require_customer) (ver tests/test_ai_headline_lab_auth.py).
+Pelo mesmo motivo, os dois saíram de _ENDPOINTS e ganharam a mesma
+cobertura dedicada (401 sem token + rate limit efetivo com token
+válido) em test_headline_*.
 """
 import json
 import os
@@ -71,18 +78,19 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
-# Os 4 endpoints que continuam sem exigir autenticação -- cobertura
-# genérica inalterada (testes A e E abaixo). pix_insight, chat e
-# summary saíram deste dict porque hoje exigem Depends(require_customer):
-# suas coberturas de rate limit vivem em testes dedicados
-# (test_pix_insight_*, test_chat_*, test_summary_* abaixo). chat_lab
-# saiu por ter sido removido no Bloco 3J (endpoint órfão/quebrado).
+# Os 2 endpoints que continuam sem exigir autenticação -- cobertura
+# genérica inalterada (testes A e E abaixo). pix_insight, chat,
+# summary, headline e headline-lab saíram deste dict porque hoje exigem
+# Depends(require_customer): suas coberturas de rate limit vivem em
+# testes dedicados (test_pix_insight_*, test_chat_*, test_summary_*,
+# test_headline_* abaixo). chat_lab saiu por ter sido removido no
+# Bloco 3J (endpoint órfão/quebrado).
 _ENDPOINTS = {
     "pagamentos_lab": ("POST", "/api/v1/ai/pagamentos_lab", {"message": "oi"}),
-    "headline": ("POST", "/api/v1/ai/headline", None),
-    "headline_lab": ("POST", "/api/v1/ai/headline-lab", None),
     "assist": ("POST", "/api/v1/ai/assist", {"msg": "oi"}),
 }
+
+_HEADLINE_PATHS = ["/api/v1/ai/headline", "/api/v1/ai/headline-lab"]
 
 _CHAT_STEP = ("POST", "/api/v1/ai/chat", {"message": "oi"})
 _SUMMARY_STEP = ("GET", "/api/v1/ai/summary", None)
@@ -96,6 +104,7 @@ _PIX_INSIGHT_PATH = "/api/v1/ai/ai/pix-insight"
 _PIX_INSIGHT_AUTH_EMAIL = "ai-rate-limit-probe@test.local"
 _CHAT_AUTH_EMAIL = "ai-rate-limit-chat-probe@test.local"
 _SUMMARY_AUTH_EMAIL = "ai-rate-limit-summary-probe@test.local"
+_HEADLINE_AUTH_EMAIL = "ai-rate-limit-headline-probe@test.local"
 
 _PROBE_SCRIPT = r"""
 import json
@@ -187,15 +196,16 @@ def _step(name: str, **extra) -> dict:
     return step
 
 
-# A) os 4 endpoints sem autenticação estão efetivamente registrados
+# A) os 2 endpoints sem autenticação estão efetivamente registrados
 # com rate limiting: uma única chamada a cada um funciona normalmente
 # (nenhum 429/500 por causa do wiring do decorator), e o limite de 31
 # chamadas no MESMO endpoint estoura em 429 -- provando que o
 # decorator está de fato ativo em cada rota, uma de cada vez.
-# pix_insight, chat e summary (os outros 3 endpoints ativos) têm
-# cobertura equivalente, mas autenticada, nos testes dedicados abaixo
-# (test_pix_insight_*, test_chat_*, test_summary_*).
-def test_all_4_unauthenticated_endpoints_are_registered_with_rate_limiting():
+# pix_insight, chat, summary, headline e headline-lab (os outros 5
+# endpoints ativos) têm cobertura equivalente, mas autenticada, nos
+# testes dedicados abaixo (test_pix_insight_*, test_chat_*,
+# test_summary_*, test_headline_*).
+def test_all_2_unauthenticated_endpoints_are_registered_with_rate_limiting():
     for name in _ENDPOINTS:
         steps = [_step(name) for _ in range(31)]
         results = _run_probe(steps)
@@ -279,6 +289,28 @@ def test_summary_rate_limit_enforced_with_valid_authentication():
     assert 429 in statuses[30:], statuses
 
 
+# A8) headline e headline-lab, sem token, respondem 401 -- nunca
+# 200/500 -- desde a Missão #8. Mesmo padrão do A2 para pix_insight.
+def test_headline_requires_valid_authentication_now():
+    for path in _HEADLINE_PATHS:
+        results = _run_probe([{"method": "POST", "path": path}])
+        assert results[0]["status"] == 401, (path, results)
+
+
+# A9) headline e headline-lab, autenticados com um token válido,
+# continuam cobertos pelo mesmo rate limit "30/minute": 1ª chamada
+# funciona (200), 31ª estoura em 429. Mesmo padrão do A3, uma rota por
+# subprocess (estado do SlowAPI limpo).
+def test_headline_rate_limit_enforced_with_valid_authentication():
+    for path in _HEADLINE_PATHS:
+        steps = [{"method": "POST", "path": path, "auth": True} for _ in range(31)]
+        results = _run_probe(steps, auth_user_email=_HEADLINE_AUTH_EMAIL)
+        statuses = [r["status"] for r in results]
+        assert statuses[0] == 200, (path, statuses)
+        assert statuses[:30].count(429) == 0, (path, statuses)
+        assert 429 in statuses[30:], (path, statuses)
+
+
 # B) chamadas repetidas do MESMO IP recebem 429 ao exceder o limite
 # (30/minute) -- verificado em detalhe para o endpoint mais exposto
 # (chat), agora autenticando a chamada primeiro (chat exige
@@ -334,8 +366,8 @@ def test_varying_declared_identity_does_not_bypass_limit():
 
 
 # E) requests abaixo do limite mantêm o comportamento HTTP funcional
-# preexistente (200, sem 429/500) para cada um dos 4 endpoints sem
-# autenticação. pix_insight, chat e summary têm seus próprios
+# preexistente (200, sem 429/500) para cada um dos 2 endpoints sem
+# autenticação. pix_insight, chat, summary e headline têm seus próprios
 # contratos funcionais verificados nos testes test_*_requires_valid_
 # authentication_now (401 sem token) e test_*_rate_limit_enforced_
 # with_valid_authentication (200 com token válido).
