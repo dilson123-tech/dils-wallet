@@ -365,6 +365,16 @@ from app.services.pix_send_intent_service import (
 from app.services.pix_service import send_pix
 from app.core.rate_limit import Limiter
 from app.core.observability import PIX_SEND_TOTAL, PIX_SEND_DURATION_SECONDS
+from app.config import is_pix_send_enabled
+
+
+def _pix_send_disabled_response() -> JSONResponse:
+    # P0.1: resposta estável, sem detalhes internos. Retornada antes de
+    # qualquer escrita (IdempotencyKey, Transaction, PixLedger, intent).
+    return JSONResponse(
+        content={"code": "PIX_SEND_DISABLED", "detail": "Envio de PIX indisponível."},
+        status_code=503,
+    )
 
 
 @router.post("/send", response_model=PixSendResponse)
@@ -375,6 +385,10 @@ def post_pix_send(
     db: Session = Depends(get_db),
     current_user = Depends(require_customer),
 ):
+    # P0.1: sem payout real, nenhum débito. Fora do try para não virar 500.
+    if not is_pix_send_enabled():
+        return _pix_send_disabled_response()
+
     start = perf_counter()
     outcome = "error"
     try:
@@ -450,6 +464,10 @@ def post_pix_send_intent(
     completo (fail-closed em toda ambiguidade; nunca gera uma segunda
     send_key enquanto a intent anterior estiver pending).
     """
+    # P0.1: não iniciar um fluxo que /pix/send jamais concluirá.
+    if not is_pix_send_enabled():
+        return _pix_send_disabled_response()
+
     try:
         result = reserve_pix_send_intent(
             db=db,
