@@ -21,6 +21,8 @@ jobs:
       AUREA_PASS: dev
       SECRET_KEY: ci-local-pix-idempotency-secret-1234567890
       DOCS_PUBLIC: "1"
+      # P0.1: só no servidor local efêmero do CI; default (produção) segue bloqueado.
+      PIX_SEND_ENABLED: "true"
 
     steps:
       - name: Checkout

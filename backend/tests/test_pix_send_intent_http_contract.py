@@ -184,6 +184,8 @@ def _run_probe() -> dict:
         env["JWT_SECRET"] = env.get("JWT_SECRET") or env["SECRET_KEY"]
         # Banco descartável isolado, nunca backend/app.db.
         env["DATABASE_URL"] = f"sqlite:///{tmp}/probe.db"
+        # P0.1: envio bloqueado por default; habilitado só neste probe de teste.
+        env["PIX_SEND_ENABLED"] = "true"
 
         proc = subprocess.run(
             [sys.executable, "-c", _PROBE_SCRIPT],

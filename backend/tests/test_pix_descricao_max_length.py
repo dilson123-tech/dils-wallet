@@ -44,6 +44,13 @@ DESCRICAO_255 = "d" * 255
 DESCRICAO_256 = "d" * 256
 
 
+@pytest.fixture(autouse=True)
+def _pix_send_enabled(monkeypatch):
+    # P0.1: envio bloqueado por default; este teste cobre o contrato com
+    # o envio habilitado (somente no ambiente de teste).
+    monkeypatch.setenv("PIX_SEND_ENABLED", "true")
+
+
 @pytest.fixture()
 def db_session():
     engine = create_engine(

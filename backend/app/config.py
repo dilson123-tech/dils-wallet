@@ -20,6 +20,16 @@ IS_SANDBOX_PARTNER = WALLET_MODE == "partner" and _IS_SANDBOX_PROVIDER
 IS_DEMO_WALLET = WALLET_MODE == "demo"
 IS_PARTNER_WALLET = WALLET_MODE == "partner" and not IS_SANDBOX_PARTNER
 
+# P0.1: POST /api/v1/pix/send debita o ledger, mas NÃO existe payout
+# real implementado. Enquanto não houver payout financeiro real
+# comprovado, o envio fica bloqueado. Fail-closed: só o valor literal
+# "true" (sem diferenciar maiúsculas/espaços) habilita; ausente, vazio
+# ou qualquer outro valor mantém bloqueado. Lido a cada chamada (não no
+# import) para que nenhum estado de módulo antigo reabra o fluxo.
+# NUNCA habilitar em produção sem payout real.
+def is_pix_send_enabled() -> bool:
+    return (os.getenv("PIX_SEND_ENABLED") or "").strip().lower() == "true"
+
 # Limite operacional de segurança (soft cap) de cardinalidade por
 # namespace sandbox na tabela compartilhada idempotency_keys (P0-B).
 # NÃO é TTL, NÃO é período de retenção, NÃO é capacidade derivada de
