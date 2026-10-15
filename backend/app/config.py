@@ -30,6 +30,14 @@ IS_PARTNER_WALLET = WALLET_MODE == "partner" and not IS_SANDBOX_PARTNER
 def is_pix_send_enabled() -> bool:
     return (os.getenv("PIX_SEND_ENABLED") or "").strip().lower() == "true"
 
+
+# P0.3: crédito idempotente no ledger a partir do webhook Asaas SANDBOX
+# (PAYMENT_RECEIVED). Mesmo padrão fail-closed de is_pix_send_enabled:
+# só o valor literal "true" habilita; lido a cada chamada. Apenas
+# sandbox -- nunca habilitar em produção.
+def is_asaas_sandbox_credit_enabled() -> bool:
+    return (os.getenv("ASAAS_SANDBOX_CREDIT_ENABLED") or "").strip().lower() == "true"
+
 # Limite operacional de segurança (soft cap) de cardinalidade por
 # namespace sandbox na tabela compartilhada idempotency_keys (P0-B).
 # NÃO é TTL, NÃO é período de retenção, NÃO é capacidade derivada de
