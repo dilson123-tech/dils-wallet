@@ -15,7 +15,7 @@ from app.models.transaction import Transaction
 from app.models.pix_ledger import PixLedger
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
-from app.config import WALLET_MODE, IS_PARTNER_WALLET
+from app.config import WALLET_MODE, IS_PARTNER_WALLET, is_asaas_sandbox_credit_enabled
 from app.partner import (
     PartnerWebhookEvent,
     StatementItem,
@@ -1240,6 +1240,92 @@ def _asaas_sandbox_payment_correlation(
     }, correlation
 
 
+_ASAAS_SANDBOX_CREDIT_KEY_PREFIX = "asaas-sandbox-credit:"
+_ASAAS_SANDBOX_CHARGE_CREDIT_KEY_PREFIX = "asaas-sandbox-credit-charge:"
+_ASAAS_SANDBOX_CREDIT_CONTRACT = "asaas_sandbox_payment_credit_v1"
+_ASAAS_SANDBOX_CREDIT_DESCRIPTION = "PIX Asaas Sandbox recebido"
+
+
+def _asaas_sandbox_credit_idempotency_key(payment_id: str) -> str:
+    # P0.3: o payment_id do Asaas é a identidade financeira do crédito.
+    # Só o digest é persistido (nunca o payment_id bruto); a unicidade
+    # de idempotency_keys.key garante no máximo um crédito por pagamento,
+    # independentemente de quantos eventos distintos cheguem para ele.
+    digest = hashlib.sha256(payment_id.encode("utf-8")).hexdigest()
+    return f"{_ASAAS_SANDBOX_CREDIT_KEY_PREFIX}{digest}"
+
+
+def _asaas_sandbox_charge_credit_idempotency_key(correlation_key: str) -> str:
+    # Trava complementar: a cobrança preparada (correlação) também só
+    # pode ser creditada uma vez, mesmo que chegue outro payment_id
+    # apontando para o mesmo externalReference.
+    digest = hashlib.sha256(correlation_key.encode("utf-8")).hexdigest()
+    return f"{_ASAAS_SANDBOX_CHARGE_CREDIT_KEY_PREFIX}{digest}"
+
+
+def _asaas_sandbox_credit_decision(
+    db,
+    *,
+    accepted: bool,
+    payment_payload: dict,
+    payment_correlation,
+) -> tuple[str, Decimal | None, tuple[str, str] | None]:
+    """
+    Decide, fail-closed, se o evento gera crédito sandbox no ledger.
+
+    Retorna (status, amount, credit_keys). amount/credit_keys só vêm
+    preenchidos quando status == "eligible". O valor creditado vem
+    SEMPRE da cobrança preparada (correlação), nunca do payload; o
+    valor do payload só pode confirmá-lo.
+    """
+    if not accepted:
+        return "not_applicable", None, None
+
+    if payment_correlation is None:
+        return "unresolved", None, None
+
+    payment_id = str(payment_payload.get("id") or "").strip()
+    if not payment_id:
+        return "payment_id_missing", None, None
+
+    # Fail-closed: ausência conta como divergência.
+    if payment_payload.get("billingType") != "PIX":
+        return "billing_type_not_pix", None, None
+
+    if payment_payload.get("status") != "RECEIVED":
+        return "payment_status_not_received", None, None
+
+    prepared_amount = getattr(payment_correlation, "prepared_amount", None)
+    if prepared_amount is None:
+        return "amount_unavailable", None, None
+
+    payload_amount = _asaas_sandbox_positive_amount(
+        payment_payload.get("value")
+    )
+    if payload_amount is None or payload_amount != prepared_amount:
+        return "amount_mismatch", None, None
+
+    user = (
+        db.query(User)
+        .filter(User.id == payment_correlation.user_id)
+        .first()
+    )
+    if user is None:
+        return "user_not_found", None, None
+
+    credit_keys = (
+        _asaas_sandbox_credit_idempotency_key(payment_id),
+        _asaas_sandbox_charge_credit_idempotency_key(
+            payment_correlation.correlation_key
+        ),
+    )
+    for credit_key in credit_keys:
+        if db.query(IdempotencyKey).filter_by(key=credit_key).first():
+            return "already_credited", None, None
+
+    return "eligible", prepared_amount, credit_keys
+
+
 def _asaas_sandbox_webhook_public_response(
     stored_response: dict,
 ) -> dict:
@@ -1353,6 +1439,12 @@ def handle_asaas_sandbox_webhook_receiver(
             response["can_credit_balance"] = False
             response["can_generate_real_receipt"] = False
             response["can_mark_real_paid"] = False
+
+            # P0.3: replay nunca gera crédito novo; o bloco credit
+            # original (se houver) é mantido só como histórico.
+            if isinstance(response.get("credit"), dict):
+                response["credit"]["replayed"] = True
+                response["credit"]["new_credit"] = False
             return response
 
         raise HTTPException(
@@ -1489,6 +1581,80 @@ def handle_asaas_sandbox_webhook_receiver(
         ],
     }
 
+    # P0.3: crédito sandbox idempotente por payment_id. Com a flag
+    # desligada nada abaixo roda e a resposta fica idêntica à anterior.
+    credit_rows = []
+    if is_asaas_sandbox_credit_enabled():
+        credit_status, credit_amount, credit_keys = (
+            _asaas_sandbox_credit_decision(
+                db,
+                accepted=accepted,
+                payment_payload=payment_payload,
+                payment_correlation=payment_correlation,
+            )
+        )
+        credited = credit_status == "eligible"
+
+        if credited:
+            credit_status = "credited"
+            credit_json = json.dumps(
+                {
+                    "contract": _ASAAS_SANDBOX_CREDIT_CONTRACT,
+                    "provider": "asaas",
+                    "environment": "sandbox",
+                    "user_id": payment_correlation.user_id,
+                    "amount": _decimal_as_money(credit_amount),
+                    "currency": "BRL",
+                    "event_key": idem_key,
+                    "raw_payment_id_stored": False,
+                    "real_money_enabled": False,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            credit_rows = [
+                IdempotencyKey(
+                    key=credit_key,
+                    request_hash=request_hash,
+                    status_code=200,
+                    response_json=credit_json,
+                )
+                for credit_key in credit_keys
+            ]
+            credit_rows.append(
+                PixLedger(
+                    user_id=payment_correlation.user_id,
+                    kind="credit",
+                    amount=credit_amount,
+                    description=_ASAAS_SANDBOX_CREDIT_DESCRIPTION,
+                )
+            )
+
+        response["credit"] = {
+            "provider": "asaas",
+            "environment": "sandbox",
+            "status": credit_status,
+            "credited": credited,
+            "new_credit": credited,
+            "replayed": False,
+            "amount": (
+                _decimal_as_money(credit_amount) if credited else None
+            ),
+            "currency": "BRL",
+            "amount_source": "prepared_payment",
+            "ledger": "pix_ledger",
+            "real_money_enabled": False,
+        }
+        response["can_credit_balance"] = credited
+        response["audit"]["can_credit_balance"] = credited
+        if credited:
+            response["notice"] = (
+                "Webhook Asaas Sandbox recebido com segurança. "
+                "Crédito sandbox registrado uma única vez no ledger. "
+                "Nenhum dinheiro real, comprovante real ou pagamento "
+                "real foi gerado."
+            )
+
     stored_response = json.loads(
         json.dumps(
             response,
@@ -1528,6 +1694,12 @@ def handle_asaas_sandbox_webhook_receiver(
         ensure_ascii=False,
         default=str,
     )
+
+    # Evento, chave de crédito e linha de ledger entram no MESMO commit:
+    # ou tudo persiste, ou nada (IntegrityError na chave de crédito --
+    # outro evento do mesmo pagamento em paralelo -- também cai aqui).
+    for credit_row in credit_rows:
+        db.add(credit_row)
 
     try:
         db.commit()

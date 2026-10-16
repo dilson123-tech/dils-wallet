@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 import re
@@ -15,6 +16,12 @@ ASAAS_PAYMENT_CORRELATION_KEY_PREFIX = "asaas-payment-correlation:"
 ASAAS_PAYMENT_CORRELATION_CONTRACT = (
     "asaas_payment_user_correlation_v1"
 )
+# Mesmo valor de ASAAS_CORRELATED_PIX_PAYMENT_PREPARATION_CONTRACT
+# (app/services/asaas_correlated_pix_payment_service.py). Duplicado aqui
+# para evitar import circular (o serviço importa este módulo).
+_ASAAS_PIX_PAYMENT_PREPARATION_CONTRACT = (
+    "asaas_correlated_pix_payment_preparation_v1"
+)
 
 _EXTERNAL_REFERENCE_PATTERN = re.compile(
     rf"^{ASAAS_PAYMENT_EXTERNAL_REFERENCE_PREFIX}[a-f0-9]{{32}}$"
@@ -28,6 +35,11 @@ class AsaasPaymentUserCorrelation:
     provider: str = "asaas"
     environment: str = "sandbox"
     raw_external_reference_stored: bool = False
+    # Valor da cobrança preparada (P0.3), quando a correlação foi
+    # registrada por prepare_asaas_correlated_pix_payment com o valor
+    # persistido. None = indisponível (ex.: registro legado) e o crédito
+    # sandbox deve falhar fechado.
+    prepared_amount: Decimal | None = field(default=None, repr=False)
 
     def safe_summary(self) -> dict[str, Any]:
         return {
@@ -129,6 +141,45 @@ def build_asaas_payment_user_correlation_record(
     )
 
 
+def _stored_prepared_amount(
+    stored_contract: dict,
+    *,
+    request_hash: str | None,
+) -> Decimal | None:
+    if (
+        stored_contract.get("preparation_contract")
+        != _ASAAS_PIX_PAYMENT_PREPARATION_CONTRACT
+    ):
+        return None
+
+    if (
+        not request_hash
+        or stored_contract.get("prepared_request_hash") != request_hash
+        or stored_contract.get("billing_type") != "PIX"
+        or stored_contract.get("prepared_currency") != "BRL"
+        or stored_contract.get("real_money_enabled") is not False
+    ):
+        return None
+
+    raw_amount = stored_contract.get("prepared_amount")
+    if not isinstance(raw_amount, str):
+        return None
+
+    try:
+        amount = Decimal(raw_amount)
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+    if (
+        not amount.is_finite()
+        or amount <= Decimal("0.00")
+        or amount != amount.quantize(Decimal("0.01"))
+    ):
+        return None
+
+    return amount.quantize(Decimal("0.01"))
+
+
 def resolve_asaas_payment_user_correlation(
     db,
     *,
@@ -167,6 +218,10 @@ def resolve_asaas_payment_user_correlation(
     return AsaasPaymentUserCorrelation(
         user_id=user_id,
         correlation_key=correlation_key,
+        prepared_amount=_stored_prepared_amount(
+            stored_contract,
+            request_hash=getattr(record, "request_hash", None),
+        ),
     )
 
 

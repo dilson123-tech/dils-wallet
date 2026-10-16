@@ -161,10 +161,18 @@ def _stored_preparation_contract(
     *,
     correlation_record: IdempotencyKey,
     preparation_hash: str,
+    value: Decimal,
 ) -> str:
     stored_contract = json.loads(
         correlation_record.response_json or "{}"
     )
+    # P0.3: o valor da cobrança preparada é a única fonte do valor de
+    # crédito sandbox. Só é persistido quando já está em centavos exatos;
+    # caso contrário fica ausente e o crédito falha fechado.
+    quantized_value = value.quantize(Decimal("0.01"))
+    if quantized_value == value:
+        stored_contract["prepared_amount"] = format(quantized_value, "f")
+        stored_contract["prepared_currency"] = "BRL"
     stored_contract.update(
         {
             "preparation_contract": (
@@ -293,6 +301,7 @@ def prepare_asaas_correlated_pix_payment(
         _stored_preparation_contract(
             correlation_record=correlation_record,
             preparation_hash=preparation_hash,
+            value=normalized_value,
         )
     )
 
