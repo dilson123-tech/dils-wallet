@@ -238,6 +238,13 @@ def refresh(body: RefreshRequest, request: Request, db: Session = Depends(get_db
         # Reuse confirmado: revoga só esta família (o RT atual dela morre
         # junto). Outras sessões do usuário seguem vivas.
         family_id, user_id = family.id, family.user_id
+        # Os DELETEs em massa abaixo (synchronize_session=False) não tiram
+        # `family` nem `retired` da Session. Sem o expunge elas seguiriam
+        # no identity map e, como o SQLite reutiliza ids, colidiriam com a
+        # família/hash novos no flush de um login/refresh posterior na
+        # mesma Session (SAWarning + AttributeError no commit).
+        db.expunge(family)
+        db.expunge(retired)
         _delete_families(db, [family_id])
         db.query(RefreshToken).filter(RefreshToken.id == family_id).delete(
             synchronize_session=False
