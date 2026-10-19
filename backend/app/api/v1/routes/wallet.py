@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
+import re
 from pydantic import BaseModel, Field
 
 from app.database import get_db
@@ -15,7 +16,12 @@ from app.models.transaction import Transaction
 from app.models.pix_ledger import PixLedger
 from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
-from app.config import WALLET_MODE, IS_PARTNER_WALLET, is_asaas_sandbox_credit_enabled
+from app.config import (
+    WALLET_MODE,
+    IS_PARTNER_WALLET,
+    is_asaas_sandbox_charge_http_enabled,
+    is_asaas_sandbox_credit_enabled,
+)
 from app.partner import (
     PartnerWebhookEvent,
     StatementItem,
@@ -23,13 +29,26 @@ from app.partner import (
 )
 from app.partner.asaas_config import AsaasConfigError, load_asaas_sandbox_config
 from app.partner.asaas_client import AsaasSandboxClient
+from app.partner.asaas_http_transport import (
+    AsaasSandboxHttpTransport,
+    AsaasSandboxTransportError,
+)
 from app.partner.asaas_payment_correlation import (
     resolve_asaas_payment_user_correlation_from_payment,
 )
 from app.services.asaas_correlated_pix_payment_service import (
+    ASAAS_WEBHOOK_CHARGE_CREDITABLE_STATUSES,
+    AsaasCorrelatedPixChargeConflictError,
+    AsaasCorrelatedPixChargeCustomerMismatchError,
+    AsaasCorrelatedPixChargeIndeterminateError,
+    AsaasCorrelatedPixChargePendingError,
+    AsaasCorrelatedPixChargeProviderRejectedError,
+    AsaasCorrelatedPixChargeProviderUnavailableError,
     AsaasCorrelatedPixPaymentCapacityError,
     AsaasCorrelatedPixPaymentConflictError,
     AsaasCorrelatedPixPaymentStorageError,
+    apply_asaas_webhook_charge_transition,
+    create_asaas_correlated_pix_charge,
     prepare_asaas_correlated_pix_payment as prepare_correlated_pix_payment,
 )
 from app.services.sandbox_namespace_cap import (
@@ -1593,6 +1612,18 @@ def handle_asaas_sandbox_webhook_receiver(
                 payment_correlation=payment_correlation,
             )
         )
+        if credit_status == "eligible":
+            # P0: o webhook também reconcilia charge_http_state (CAS, sem
+            # commit -- persiste no MESMO commit do crédito). Estado
+            # divergente/incerto => sem crédito.
+            charge_transition = apply_asaas_webhook_charge_transition(
+                db,
+                correlation_key=payment_correlation.correlation_key,
+                user_id=payment_correlation.user_id,
+                payment_id=str(payment_payload.get("id") or "").strip(),
+            )
+            if charge_transition not in ASAAS_WEBHOOK_CHARGE_CREDITABLE_STATUSES:
+                credit_status = f"charge_{charge_transition}"
         credited = credit_status == "eligible"
 
         if credited:
@@ -2422,6 +2453,163 @@ class WalletAsaasCorrelatedPixPaymentPreparationIn(BaseModel):
     )
 
 
+_ASAAS_SANDBOX_CHARGE_IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9_\-:.]{8,128}$")
+
+
+def _build_asaas_sandbox_charge_transport(config):
+    # Ponto único de construção do transporte HTTP real (Sandbox only,
+    # timeout 10s, sem retry). Substituível em teste.
+    return AsaasSandboxHttpTransport(config)
+
+
+def _asaas_sandbox_charge_external_reference(
+    user_id: int,
+    idempotency_key: str,
+) -> str:
+    # Escopo por usuário: a mesma chave de outro usuário gera outra
+    # referência. Não expõe a chave nem o user_id ao Asaas.
+    digest = hashlib.sha256(
+        f"asaas-sandbox-charge:v1:{user_id}:{idempotency_key}".encode("utf-8")
+    ).hexdigest()
+    return f"agpay_{digest[:32]}"
+
+
+def _create_wallet_asaas_sandbox_pix_charge(
+    *,
+    db: Session,
+    user_id: int,
+    payload: WalletAsaasCorrelatedPixPaymentPreparationIn,
+    idempotency_key: str | None,
+):
+    key = (idempotency_key or "").strip()
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail="Header Idempotency-Key é obrigatório.",
+        )
+    if not _ASAAS_SANDBOX_CHARGE_IDEMPOTENCY_KEY_RE.match(key):
+        raise HTTPException(
+            status_code=422,
+            detail="Header Idempotency-Key inválido.",
+        )
+
+    try:
+        config = load_asaas_sandbox_config()
+    except AsaasConfigError:
+        raise HTTPException(
+            status_code=503,
+            detail="Configuração Asaas Sandbox indisponível para cobrança PIX.",
+        ) from None
+
+    # Transporte construído ANTES de qualquer escrita no banco.
+    try:
+        transport = _build_asaas_sandbox_charge_transport(config)
+    except AsaasSandboxTransportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Transporte Asaas Sandbox indisponível.",
+        ) from None
+
+    client = AsaasSandboxClient(config=config)
+
+    try:
+        charge = create_asaas_correlated_pix_charge(
+            db,
+            client=client,
+            user_id=user_id,
+            customer_id=payload.customer_id,
+            value=payload.amount,
+            due_date=payload.due_date,
+            description=payload.description,
+            external_reference=_asaas_sandbox_charge_external_reference(
+                user_id, key
+            ),
+            http_post=transport.post,
+            http_get=transport.get,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    except AsaasCorrelatedPixPaymentConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail="Idempotency-Key já utilizada com dados diferentes.",
+        ) from None
+    except AsaasCorrelatedPixChargeIndeterminateError:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cobrança PIX Asaas Sandbox já tentada com desfecho "
+                "incerto. Nenhuma nova cobrança foi enviada."
+            ),
+        ) from None
+    except AsaasCorrelatedPixChargePendingError:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Há cobrança PIX Asaas Sandbox com desfecho incerto. "
+                "Nenhuma nova cobrança foi enviada."
+            ),
+        ) from None
+    except AsaasCorrelatedPixChargeConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cobrança PIX Asaas Sandbox divergente; requer revisão "
+                "manual. Nenhuma nova cobrança foi enviada."
+            ),
+        ) from None
+    except AsaasCorrelatedPixChargeCustomerMismatchError:
+        raise HTTPException(
+            status_code=403,
+            detail="Customer Asaas Sandbox não pertence ao usuário.",
+        ) from None
+    except AsaasCorrelatedPixChargeProviderRejectedError:
+        raise HTTPException(
+            status_code=502,
+            detail="Asaas Sandbox recusou ou falhou ao processar a cobrança PIX.",
+        ) from None
+    except AsaasCorrelatedPixChargeProviderUnavailableError:
+        raise HTTPException(
+            status_code=503,
+            detail="Asaas Sandbox indisponível.",
+        ) from None
+    except AsaasCorrelatedPixPaymentStorageError:
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível registrar a cobrança PIX Asaas Sandbox.",
+        ) from None
+    except AsaasCorrelatedPixPaymentCapacityError:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Sandbox temporariamente indisponível. "
+                "Tente novamente em instantes."
+            ),
+            headers={"Retry-After": "30"},
+        ) from None
+
+    return {
+        "ok": True,
+        "service": "aurea-wallet",
+        "operation": "create_asaas_correlated_pix_charge",
+        "charge": charge.safe_summary(),
+        "pix_qr_code": dict(charge.pix_qr_code),
+        "wallet": {
+            "mode": WALLET_MODE,
+            "provider": "asaas",
+            "environment": "sandbox",
+            "real_money_enabled": False,
+        },
+        "can_send_http": True,
+        "can_create_charge": True,
+        "can_credit_balance": False,
+        "notice": (
+            "Cobrança PIX criada no Asaas Sandbox. "
+            "Sem dinheiro real; saldo só é creditado via webhook validado."
+        ),
+    }
+
+
 @router.post("/api/v1/wallet/pix/asaas/sandbox/prepare")
 @limiter.limit("10/minute")
 def prepare_wallet_asaas_correlated_pix_payment(
@@ -2429,11 +2617,16 @@ def prepare_wallet_asaas_correlated_pix_payment(
     payload: WalletAsaasCorrelatedPixPaymentPreparationIn,
     current_user: User = Depends(require_customer),
     db: Session = Depends(get_db),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
     """
     Prepara localmente uma cobrança PIX Asaas Sandbox correlacionada.
 
-    Segurança:
+    Com ASAAS_SANDBOX_CHARGE_HTTP_ENABLED=true (P0.4, padrão false):
+    exige Idempotency-Key, cria a cobrança no Asaas SANDBOX (POST único,
+    sem retry, timeout 10s) e devolve só os dados do QR Code PIX.
+
+    Segurança (flag desligada):
     - Exige usuário autenticado.
     - Registra correlação interna antes da entrega da preparação.
     - Não executa chamada HTTP.
@@ -2456,6 +2649,14 @@ def prepare_wallet_asaas_correlated_pix_payment(
         raise HTTPException(
             status_code=403,
             detail="Usuário autenticado inválido para preparação PIX.",
+        )
+
+    if is_asaas_sandbox_charge_http_enabled():
+        return _create_wallet_asaas_sandbox_pix_charge(
+            db=db,
+            user_id=user_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
         )
 
     try:
