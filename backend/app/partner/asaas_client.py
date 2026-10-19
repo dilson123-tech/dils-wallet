@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+import re
 from typing import Any, Callable, Literal, Mapping
+from urllib.parse import urlencode
 
 from app.partner.asaas_config import (
     ASAAS_SANDBOX_BASE_URL,
@@ -13,6 +15,11 @@ from app.partner.asaas_config import (
 
 
 AsaasHttpMethod = Literal["GET", "POST"]
+
+# Formatos opacos gerados pela Aurea Gold; validados antes de montar qualquer
+# URL de leitura para que nenhum valor arbitrário chegue ao path/query.
+_ASAAS_PAYMENT_EXTERNAL_REFERENCE_PATTERN = re.compile(r"^agpay_[a-f0-9]{32}$")
+_ASAAS_CUSTOMER_ID_PATTERN = re.compile(r"^cus_[A-Za-z0-9]{1,60}$")
 
 
 @dataclass(frozen=True)
@@ -2783,6 +2790,7 @@ class AsaasSandboxClient:
         cpf_cnpj: str,
         email: str,
         mobile_phone: str,
+        external_reference: str | None = None,
     ) -> AsaasPreparedRequest:
         payload = {
             "name": name,
@@ -2791,11 +2799,28 @@ class AsaasSandboxClient:
             "mobilePhone": mobile_phone,
         }
 
+        if external_reference is not None:
+            normalized_external_reference = str(external_reference).strip()
+            if not normalized_external_reference:
+                raise ValueError("external_reference não pode ser vazio.")
+            payload["externalReference"] = normalized_external_reference
+
         return self._prepare(
             method="POST",
             path="/customers",
             operation="create_customer",
             json=payload,
+        )
+
+    def prepare_get_customer(self, *, customer_id: str) -> AsaasPreparedRequest:
+        normalized = str(customer_id or "").strip()
+        if not _ASAAS_CUSTOMER_ID_PATTERN.fullmatch(normalized):
+            raise ValueError("customer_id Asaas inválido.")
+
+        return self._prepare(
+            method="GET",
+            path=f"/customers/{normalized}",
+            operation="get_customer",
         )
 
     def dry_run_create_customer(
@@ -4095,6 +4120,25 @@ class AsaasSandboxClient:
             method="GET",
             path=f"/payments/{payment_id}",
             operation="get_payment_status",
+        )
+
+    def prepare_list_payments_by_external_reference(
+        self,
+        *,
+        external_reference: str,
+        limit: int = 2,
+    ) -> AsaasPreparedRequest:
+        normalized = str(external_reference or "").strip()
+        if not _ASAAS_PAYMENT_EXTERNAL_REFERENCE_PATTERN.fullmatch(normalized):
+            raise ValueError("external_reference Asaas inválido.")
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 10:
+            raise ValueError("limit inválido.")
+
+        query = urlencode({"externalReference": normalized, "limit": limit})
+        return self._prepare(
+            method="GET",
+            path=f"/payments?{query}",
+            operation="list_payments_by_external_reference",
         )
 
     def dry_run_get_payment_status(
