@@ -66,6 +66,12 @@ _ASAAS_CHARGE_HTTP_TERMINAL_STATES = frozenset(
     }
 )
 _ASAAS_PAYMENT_ID_PATTERN = re.compile(r"^pay_[A-Za-z0-9]{1,60}$")
+# Diagnóstico de 4xx: só códigos de erro do Asaas documentados oficialmente
+# (docs.asaas.com, "Códigos HTTP das respostas"). Código desconhecido é
+# descartado: valor externo pode carregar dado pessoal mesmo com formato válido.
+# Nunca description, corpo bruto ou headers.
+_ASAAS_KNOWN_ERROR_CODES = frozenset({"invalid_value", "invalid_dueDate"})
+_ASAAS_ERROR_ITEMS_SCANNED_MAX = 10
 
 # Lock por usuário: no máximo uma cobrança com desfecho incerto por vez.
 ASAAS_SANDBOX_CHARGE_PENDING_LOCK_PREFIX = "asaas-sandbox-charge-pending:"
@@ -524,6 +530,23 @@ def _load_stored_contract(db, *, correlation_key: str) -> tuple[str, dict]:
             "Estado da cobrança Asaas Sandbox indisponível."
         )
     return raw, contract
+
+
+def _safe_asaas_error_codes(body) -> list:
+    """Extrai de um corpo 4xx apenas os `errors[].code` reconhecidos."""
+    errors = body.get("errors") if isinstance(body, dict) else None
+    if not isinstance(errors, list):
+        return []
+    codes = []
+    for item in errors[:_ASAAS_ERROR_ITEMS_SCANNED_MAX]:
+        code = item.get("code") if isinstance(item, dict) else None
+        if (
+            isinstance(code, str)
+            and code in _ASAAS_KNOWN_ERROR_CODES
+            and code not in codes
+        ):
+            codes.append(code)
+    return codes
 
 
 def _compare_and_set_contract(
@@ -1222,6 +1245,10 @@ def create_asaas_correlated_pix_charge(
     if isinstance(status, int) and 400 <= status < 500:
         rejected_contract = dict(attempted_contract)
         rejected_contract["charge_http_state"] = ASAAS_CHARGE_HTTP_REJECTED
+        rejected_contract["charge_http_status"] = status
+        rejected_contract["charge_provider_error_codes"] = (
+            _safe_asaas_error_codes(body)
+        )
         try:
             rejected, _ = _compare_and_set_contract(
                 db,

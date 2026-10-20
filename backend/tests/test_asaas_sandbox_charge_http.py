@@ -384,6 +384,188 @@ def test_post_4xx_fails_closed_marks_rejected_and_never_reposts(db_session, cust
     assert len(fake.post_calls) == 1
 
 
+def _rejected_with(db, user_id, body, status=400) -> dict:
+    fake = FakeAsaas(post=(status, body))
+    reference = _new_reference()
+    with pytest.raises(AsaasCorrelatedPixChargeProviderRejectedError) as exc_info:
+        _charge(db, user_id, fake, reference=reference)
+    assert str(exc_info.value) == "Asaas Sandbox recusou a criação da cobrança."
+    assert len(fake.post_calls) == 1
+    return _stored(db, reference)
+
+
+@pytest.mark.parametrize("status", [400, 404, 422])
+def test_post_4xx_keeps_only_http_status_and_safe_error_codes(db_session, customer, status):
+    body = {
+        "errors": [
+            {"code": "invalid_dueDate", "description": f"Data inválida {API_KEY}"},
+            {"code": "invalid_value", "description": "joao@exemplo.com 123.456.789-00"},
+        ],
+        "headers": {"access_token": API_KEY},
+    }
+
+    stored = _rejected_with(db_session, customer.id, body, status=status)
+
+    assert stored["charge_http_state"] == "rejected"
+    assert stored["charge_http_status"] == status
+    assert stored["charge_provider_error_codes"] == ["invalid_dueDate", "invalid_value"]
+    raw = json.dumps(stored)
+    assert API_KEY not in raw
+    assert "description" not in raw
+    assert "Data inválida" not in raw
+    assert "joao@exemplo.com" not in raw
+    assert "123.456.789-00" not in raw
+    assert "headers" not in raw
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        # Formato de código válido, mas carregando dado pessoal.
+        "x12345678900",
+        "cpf12345678900",
+        "invalid_dueDate12345678900",
+        "joao_silva",
+        "joao_silva_exemplo_com",
+        "invalid_email_joao",
+        # Códigos plausíveis, mas não comprovados na documentação oficial.
+        "invalid_customer",
+        "invalid_billingType",
+        "invalid_object",
+        "internal_error",
+        # Variações de códigos conhecidos.
+        "INVALID_VALUE",
+        "invalid_duedate",
+        " invalid_value",
+        "invalid_dueDate\n",
+        # Formatos claramente inseguros ou inválidos.
+        "joao@exemplo.com",
+        "123.456.789-00",
+        "12345678900",
+        "",
+        None,
+        42,
+        ["invalid_value"],
+        {"code": "invalid_value"},
+    ],
+)
+def test_post_4xx_discards_unknown_error_codes(db_session, customer, code):
+    stored = _rejected_with(
+        db_session, customer.id, {"errors": [{"code": code}, {"code": "invalid_value"}]}
+    )
+
+    assert stored["charge_provider_error_codes"] == ["invalid_value"]
+    if isinstance(code, str) and code:
+        assert code not in json.dumps(stored)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"errors": []},
+        {"errors": None},
+        {"errors": "invalid_value"},
+        {"errors": {"code": "invalid_value"}},
+        {"errors": ["invalid_value", 1, None]},
+        {"errors": [{"code": "x12345678900"}, {"code": "joao_silva"}]},
+        {"code": "invalid_value"},
+        [],
+        None,
+        "invalid_value",
+    ],
+)
+def test_post_4xx_without_known_errors_stores_empty_codes(db_session, customer, body):
+    stored = _rejected_with(db_session, customer.id, body)
+
+    assert stored["charge_http_status"] == 400
+    assert stored["charge_provider_error_codes"] == []
+
+
+def test_post_4xx_error_codes_are_deduplicated(db_session, customer):
+    errors = [
+        {"code": "invalid_value"},
+        {"code": "invalid_dueDate"},
+        {"code": "invalid_value"},
+        {"code": "invalid_dueDate"},
+    ]
+
+    stored = _rejected_with(db_session, customer.id, {"errors": errors})
+
+    assert stored["charge_provider_error_codes"] == ["invalid_value", "invalid_dueDate"]
+
+
+def test_post_4xx_scans_only_first_error_items(db_session, customer):
+    limit = charge_service._ASAAS_ERROR_ITEMS_SCANNED_MAX
+    errors = [{"code": "unknown"}] * (limit - 1) + [
+        {"code": "invalid_value"},
+        {"code": "invalid_dueDate"},
+    ]
+
+    stored = _rejected_with(db_session, customer.id, {"errors": errors})
+
+    assert stored["charge_provider_error_codes"] == ["invalid_value"]
+
+
+def test_post_4xx_huge_error_list_is_bounded(db_session, customer):
+    errors = [{"code": "x12345678900"}] * 100_000 + [{"code": "invalid_value"}]
+
+    stored = _rejected_with(db_session, customer.id, {"errors": errors})
+
+    assert stored["charge_provider_error_codes"] == []
+
+
+def test_post_4xx_diagnostic_does_not_change_replay_or_lock(db_session, customer):
+    reference = _new_reference()
+    fake = FakeAsaas(post=(400, {"errors": [{"code": "invalid_dueDate"}]}))
+    with pytest.raises(AsaasCorrelatedPixChargeProviderRejectedError):
+        _charge(db_session, customer.id, fake, reference=reference)
+
+    with pytest.raises(AsaasCorrelatedPixChargeProviderRejectedError):
+        _charge(db_session, customer.id, fake, reference=reference)
+    assert len(fake.post_calls) == 1
+    assert fake.list_calls == []
+    assert _stored(db_session, reference)["charge_provider_error_codes"] == ["invalid_dueDate"]
+
+    # Lock liberado: outra referência do mesmo usuário pode cobrar.
+    ok = FakeAsaas()
+    _charge(db_session, customer.id, ok, reference=_new_reference())
+    assert len(ok.post_calls) == 1
+
+
+def test_post_4xx_diagnostic_cas_failure_stays_attempted_without_codes(db_session, customer, monkeypatch):
+    def lose_cas(db, **kwargs):
+        if kwargs["contract"].get("charge_http_state") == "rejected":
+            return False, None
+        return original(db, **kwargs)
+
+    original = charge_service._compare_and_set_contract
+    monkeypatch.setattr(charge_service, "_compare_and_set_contract", lose_cas)
+    reference = _new_reference()
+    fake = FakeAsaas(post=(400, {"errors": [{"code": "invalid_dueDate"}]}))
+
+    with pytest.raises(AsaasCorrelatedPixChargeProviderRejectedError):
+        _charge(db_session, customer.id, fake, reference=reference)
+
+    stored = _stored(db_session, reference)
+    assert stored["charge_http_state"] == "attempted"
+    assert "charge_http_status" not in stored
+    assert "charge_provider_error_codes" not in stored
+
+
+@pytest.mark.parametrize("status", [500, 503])
+def test_post_5xx_does_not_store_error_diagnostic(db_session, customer, status):
+    fake = FakeAsaas(post=(status, {"errors": [{"code": "internal_error"}]}))
+    reference = _new_reference()
+
+    with pytest.raises(AsaasCorrelatedPixChargeProviderRejectedError):
+        _charge(db_session, customer.id, fake, reference=reference)
+
+    stored = _stored(db_session, reference)
+    assert "charge_http_status" not in stored
+    assert "charge_provider_error_codes" not in stored
+
+
 @pytest.mark.parametrize("status", [500, 502, 503, 504])
 def test_post_5xx_fails_closed_and_stays_indeterminate(db_session, customer, status):
     fake = FakeAsaas(post=(status, {}))
@@ -915,6 +1097,23 @@ def test_endpoint_flag_on_provider_failures_fail_closed(
     assert exc_info.value.status_code == status
     assert API_KEY not in str(exc_info.value.detail)
     assert PAYMENT_ID not in str(exc_info.value.detail)
+
+
+def test_endpoint_flag_on_4xx_detail_stays_generic_without_error_codes(
+    db_session, customer, endpoint, charge_on
+):
+    endpoint.fake.post_response = (
+        400,
+        {"errors": [{"code": "invalid_dueDate", "description": "Data de vencimento inválida"}]},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        _call(db_session, customer, idempotency_key="charge-key-0001")
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Asaas Sandbox recusou ou falhou ao processar a cobrança PIX."
+    assert "invalid_dueDate" not in str(exc_info.value.detail)
+    assert "400" not in str(exc_info.value.detail)
 
 
 def test_endpoint_flag_on_indeterminate_replay_is_409_without_post(db_session, customer, endpoint, charge_on):
