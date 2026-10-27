@@ -309,7 +309,7 @@ def send_pix(
     if idempotency_key:
         response_payload = json.dumps({
             "id": tx.id,
-            "valor": str(tx.valor),
+            "valor": str(valor),
             "taxa_percentual": str(taxa_percentual),
             "taxa_valor": str(taxa_valor),
             "valor_liquido": str(valor_liquido),
