@@ -529,3 +529,36 @@ def test_send_pix_preserves_leading_trailing_whitespace_as_distinct_key(db_sessi
     assert scoped_padded != scoped_plain
     assert db_session.query(IdempotencyKey).filter_by(key=scoped_padded).first() is not None
     assert db_session.query(IdempotencyKey).filter_by(key=scoped_plain).first() is not None
+
+
+# --- 23: replay preserva o valor Decimal exato ------------------------------
+
+
+def test_replay_preserves_decimal_valor_string_without_second_debit(db_session):
+    # Regressão: o payload idempotente era serializado a partir de tx.valor
+    # (float da coluna double precision), gravando "10.5" em vez de "10.50".
+    _fund(db_session, user_id=1, amount=100)
+
+    first = send_pix(
+        db_session, user_id=1, valor=Decimal("10.50"), chave_pix="dest@a", descricao="PIX",
+        idempotency_key="K-decimal-valor",
+    )
+
+    raw_row = db_session.query(IdempotencyKey).filter_by(key="K-decimal-valor").first()
+    scoped_key = _pix_send_scoped_key(1, "K-decimal-valor")
+    scoped_row = db_session.query(IdempotencyKey).filter_by(key=scoped_key).first()
+    assert json.loads(raw_row.response_json)["valor"] == "10.50"
+    assert json.loads(scoped_row.response_json)["valor"] == "10.50"
+
+    second = send_pix(
+        db_session, user_id=1, valor=Decimal("10.50"), chave_pix="dest@a", descricao="PIX",
+        idempotency_key="K-decimal-valor",
+    )
+
+    assert isinstance(second, dict)
+    assert second["id"] == first.id
+    assert second["valor"] == "10.50"
+    assert second["valor_liquido"] == "10.50"
+    assert _count(db_session, Transaction) == 1
+    assert _count(db_session, PixLedger) == 2  # crédito de fundo + um único débito
+    assert _get_user_balance(db_session, 1) == Decimal("89.50")
