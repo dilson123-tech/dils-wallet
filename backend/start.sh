@@ -19,6 +19,9 @@ export BOOT_MODE="startsh"
 PORT="${PORT:-${RAILWAY_TCP_PROXY_PORT:-8080}}"
 echo "[AUREA] Porta final detectada: ${PORT}"
 
+# Priorizar o SHA real fornecido pela Railway, preservando o ambiente local.
+if [ -n "${RAILWAY_GIT_COMMIT_SHA:-}" ]; then export GIT_SHA="$RAILWAY_GIT_COMMIT_SHA"; fi
+
 echo "[BOOT] init_db (fail-fast)..."
 python -m app.utils.init_db
 
