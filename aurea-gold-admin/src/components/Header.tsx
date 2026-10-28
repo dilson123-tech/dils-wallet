@@ -1,7 +1,17 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { logout } from "../lib/auth";
+
 export default function Header() {
-  const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    window.location.href = "/login";
+  const navigate = useNavigate();
+  const [leaving, setLeaving] = useState(false);
+
+  const handleLogout = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    await logout();
+    setLeaving(false);
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -10,7 +20,7 @@ export default function Header() {
         <h1 className="text-xl font-extrabold tracking-wide">
           <span className="text-gray-900">Aurea</span> Gold <span className="font-light">Admin</span>
         </h1>
-        <button onClick={handleLogout} className="gold-button gold-shine">Sair</button>
+        <button onClick={handleLogout} disabled={leaving} className="gold-button gold-shine">Sair</button>
       </div>
     </header>
   );
