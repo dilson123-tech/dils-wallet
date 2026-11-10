@@ -11,3 +11,8 @@ pnpm-lock.yaml
 # segredos/env locais: o Vite carrega .env* sozinho no build e pode embutir VITE_* no bundle
 **/.env*
 !.env.example
+**/*.bak*
+**/*backup*/
+android/local.properties
+**/node_modules
+.npmrc
