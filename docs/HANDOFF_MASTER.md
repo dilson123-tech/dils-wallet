@@ -329,3 +329,56 @@ Depois: ler este documento e `docs/AUREA_GOLD_PROJECT_STATE.md`, revalidar contr
 | Data | Base `origin/main` | Autor | Alteração |
 |---|---|---|---|
 | 2026-10-28 | `d85c919a` | Dilson Pereira (com Claude Code) | Criação do documento: 13 seções, reconciliação das 22 pendências, estado do PR #315 e da IaC. Nenhuma alteração de código. |
+
+---
+
+## 14. Continuidade operacional — Railway frontend (2026-11-18)
+
+**Objetivo:** retomar a recuperação do frontend Aurea Gold sem repetir a investigação já concluída.
+
+### Identificação Railway
+
+- Projeto: `sincere-amazement` (`08df05ff-1523-4df8-8ca3-0af2ea296587`).
+- Ambiente: `production` (`8469d171-80b7-43a4-b31a-248138052f1a`).
+- Serviço frontend: `aurea-gold-client` (`fc70aab8-0e66-4011-b194-1764ba04da2d`).
+- Backend: serviço separado `dils-wallet`; não modificar.
+- Repositório GitHub: `dilson123-tech/dils-wallet`.
+- Root Directory do frontend: `aurea-gold-client`.
+
+### Configuração comprovada
+
+- Frontend React/Vite com Dockerfile próprio.
+- Dockerfile utiliza `ARG VITE_API_BASE` e exige valor não vazio durante o build.
+- Variável `VITE_API_BASE` identificada no Railway; valor não registrado por segurança.
+- Container utiliza porta 8080, compatível com a configuração pública do serviço.
+- Healthcheck configurado em `/`.
+- Configuração anterior do serviço apresentava Nixpacks/RAILPACK e histórico de `railway.toml` com Nixpacks.
+- O `aurea-gold-client/railway.toml` foi corrigido localmente para `builder = "DOCKERFILE"` e `dockerfilePath = "Dockerfile"`.
+- Watch Paths: `aurea-gold-client/Dockerfile` existente; `aurea-gold-client/**` preparado adicionalmente na interface.
+- A alteração de Watch Paths permanece pendente no Railway. **Não clicar em Apply/Deploy Changes sem autorização específica.**
+- Frontend permanece sem recuperação comprovada em produção.
+- Conexão do ambiente à branch de publicação ainda não foi concluída.
+
+### Git e validações
+
+- Branch de trabalho: `fix/aurea-client-dockerfile-build`.
+- Commits anteriores: `a3be1976` e `d6e3cab4`, restritos ao frontend.
+- Commit adicional: `6b731533` — `fix(client): configure Railway Dockerfile builder`.
+- `git diff --check` aprovado e pre-commit do commit `6b731533` aprovado.
+- Simulação `git merge-tree --write-tree HEAD origin/main` produziu árvore `4ac1efb70eaf2ef39f9a5f18c31b5e3966c20063`, sem conflitos relatados.
+- `origin/main` consultada em `d85c919a5f5bdae0fafd628d66d5a042b77f764a`.
+- Nenhum push, PR, merge ou deploy desta correção foi realizado nesta sessão.
+- Branch documental atual: `docs/handoff-master`; este registro é uma atualização local pendente de revisão e autorização de commit.
+- `.railway/` permanece não rastreada e protegida. Não incluir em commit.
+
+### Próximo passo operacional
+
+1. Revisar o diff desta atualização documental; solicitar autorização específica antes de commit e push.
+2. Retornar à branch `fix/aurea-client-dockerfile-build` de forma controlada.
+3. Preparar a publicação dos três commits do frontend, com autorizações separadas para push, PR e merge.
+4. Reconciliar a configuração efetiva do serviço Railway com a configuração versionada, sem alterar backend ou IaC.
+5. Somente após autorização explícita, aplicar mudanças de produção e validar deployment, SHA, saúde do serviço e funcionamento visual do frontend.
+
+### Regra permanente de continuidade
+
+Antes de iniciar nova sessão ou investigação, consultar `docs/HANDOFF_MASTER.md`, o Git atual e as evidências já registradas. **Não repetir auditorias, buscas no Railway ou reconstrução de histórico sem divergência nova e comprovada.** Trabalhar somente no delta pendente. Preservar autorizações específicas, especialmente para Git de escrita, Railway, segredos, banco e deploy.
