@@ -18,6 +18,7 @@ from app.models.idempotency import IdempotencyKey
 from app.models.user_main import User
 from app.config import (
     WALLET_MODE,
+    WALLET_PARTNER_PROVIDER,
     IS_PARTNER_WALLET,
     is_asaas_sandbox_charge_http_enabled,
     is_asaas_sandbox_credit_enabled,
@@ -2804,7 +2805,25 @@ def get_wallet_partner_status():
     Serve para QA, diagnóstico, apresentação técnica e validação
     de modo demo/partner.
     """
-    adapter = get_partner_adapter()
+    try:
+        adapter = get_partner_adapter()
+    except RuntimeError as exc:
+        # Indisponibilidade conhecida: WALLET_MODE=partner com provedor sem
+        # Partner Adapter registrado (ex.: asaas), sinalizada pelo registry.
+        # Qualquer outro RuntimeError é propagado.
+        if not IS_PARTNER_WALLET or (
+            "nenhum Partner Adapter real foi registrado" not in str(exc)
+        ):
+            raise
+        return {
+            "ok": True,
+            "service": "aurea-wallet",
+            "wallet_mode": WALLET_MODE,
+            "provider": WALLET_PARTNER_PROVIDER,
+            "real_money": False,
+            "provider_adapter_ready": False,
+            "provider_adapter_error": "partner_adapter_unavailable",
+        }
 
     return {
         "ok": True,
@@ -2812,5 +2831,7 @@ def get_wallet_partner_status():
         "wallet_mode": WALLET_MODE,
         "provider": adapter.provider_name,
         "real_money": bool(IS_PARTNER_WALLET),
+        "provider_adapter_ready": True,
+        "provider_adapter_error": None,
     }
 
