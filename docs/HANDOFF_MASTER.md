@@ -382,3 +382,49 @@ Depois: ler este documento e `docs/AUREA_GOLD_PROJECT_STATE.md`, revalidar contr
 ### Regra permanente de continuidade
 
 Antes de iniciar nova sessão ou investigação, consultar `docs/HANDOFF_MASTER.md`, o Git atual e as evidências já registradas. **Não repetir auditorias, buscas no Railway ou reconstrução de histórico sem divergência nova e comprovada.** Trabalhar somente no delta pendente. Preservar autorizações específicas, especialmente para Git de escrita, Railway, segredos, banco e deploy.
+
+---
+
+## 15. Recuperação do Áurea Gold em produção — 2026-11-19
+
+### Entregas confirmadas
+
+- PR #322: correção de segurança `dnspython` 2.9.0 → 2.9.2, integrado à `main` no commit `30e79a56`.
+- PR #321: correções do Dockerfile, contexto de build e configuração Railway do frontend, integrado à `main` no commit `1b79da9b`.
+- CI do PR #321: 13 verificações aprovadas, 2 ignoradas e nenhuma falha.
+- Railway: serviço `aurea-gold-client` em `production`, com deployment bem-sucedido e status ACTIVE.
+- Frontend público: https://aurea-gold-client-production.up.railway.app
+- Página de login carregada visualmente; sete requisições de recursos estáticos retornaram HTTP 200.
+- Backend público: https://dils-wallet-production.up.railway.app
+- Endpoint `/` do backend retornou HTTP 200 com `{"ok":true,"service":"dils-wallet"}`.
+- Endpoint `/health` retornou HTTP 404; essa rota não deve ser utilizada como prova de indisponibilidade.
+- JavaScript publicado `/assets/index-nA1Fo5Jn.js` contém o endereço HTTPS correto do backend.
+- `src/lib/apiBase.ts` prioriza `VITE_API_BASE`, depois `VITE_API_BASE_URL`, com fallback local.
+- Dockerfile exige `VITE_API_BASE` não vazia durante o build.
+
+### Configuração Railway confirmada
+
+- Serviço frontend conectado à branch `main`.
+- Auto Deploy desativado.
+- Root Directory: `aurea-gold-client`.
+- Config File: `/aurea-gold-client/railway.toml`.
+- Builder configurado como Dockerfile.
+- Watch Patterns: `aurea-gold-client/Dockerfile` e `aurea-gold-client/**`.
+- Mudanças de configuração aplicadas mediante autorização.
+- Backend não foi redeployado durante essa recuperação.
+
+### Pendências reais
+
+1. Validar comunicação efetiva frontend/backend e autenticação, sem operações financeiras reais.
+2. Confirmar os resultados de login e chamadas autenticadas antes de declarar recuperação funcional completa.
+3. Avaliar posteriormente a migração da configuração Railway para IaC compatível, considerando a descontinuação anunciada de `railway.toml` em 2026-12-01; não modificar `.railway/` sem autorização específica.
+
+### Estado e regras de continuidade
+
+- Esta seção substitui operacionalmente as pendências já resolvidas da seção 14, sem apagar o histórico.
+- Branch documental: `docs/handoff-master`.
+- `.railway/` permanece não rastreada e protegida.
+- Preservar os stashes existentes.
+- Não repetir auditorias concluídas; investigar apenas divergências novas e comprovadas.
+- Não realizar commit, push, merge, deploy, mudanças no backend, banco, Asaas ou operações financeiras sem autorização específica.
+- Esta atualização documental permanece local até revisão do diff e autorização posterior.
