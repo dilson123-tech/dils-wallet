@@ -1,7 +1,7 @@
 export function resolveApiBase(): string {
   const raw = String(
-    (import.meta as any)?.env?.VITE_API_BASE ??
-    (import.meta as any)?.env?.VITE_API_BASE_URL ??
+    import.meta.env.VITE_API_BASE ??
+    import.meta.env.VITE_API_BASE_URL ??
     ""
   ).trim().replace(/\/+$|\s+/g, "");
 

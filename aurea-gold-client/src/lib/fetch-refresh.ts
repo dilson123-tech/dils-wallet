@@ -6,7 +6,7 @@
   W.__AUREA_FETCH_REFRESH__ = "v2";
 
   const API_BASE: string =
-    String(((import.meta as any)?.env?.VITE_API_BASE as string) || "").trim();
+    String((import.meta.env.VITE_API_BASE as string) || "").trim();
 
   const LOGIN_PATH = "/api/v1/auth/login";
   const REFRESH_PATH = "/api/v1/auth/refresh";

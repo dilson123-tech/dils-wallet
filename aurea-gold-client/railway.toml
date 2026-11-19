@@ -1,4 +1,3 @@
 [build]
-builder = "Nixpacks"
-buildCommand = "npm ci && npm run build"
-startCommand = "npm run preview"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
