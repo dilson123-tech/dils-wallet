@@ -45,6 +45,15 @@ def is_asaas_sandbox_credit_enabled() -> bool:
 def is_asaas_sandbox_charge_http_enabled() -> bool:
     return (os.getenv("ASAAS_SANDBOX_CHARGE_HTTP_ENABLED") or "").strip().lower() == "true"
 
+
+# P0.5: consulta/criação controlada do customer Asaas SANDBOX do usuário
+# (GET /customers?externalReference + POST /customers só se ausente).
+# Mesmo padrão fail-closed: só "true" habilita; lido a cada chamada.
+# Desligado = nenhuma chamada HTTP de customer; a cobrança exige
+# customer_id informado. Apenas sandbox -- nunca habilitar em produção.
+def is_asaas_sandbox_customer_http_enabled() -> bool:
+    return (os.getenv("ASAAS_SANDBOX_CUSTOMER_HTTP_ENABLED") or "").strip().lower() == "true"
+
 # Limite operacional de segurança (soft cap) de cardinalidade por
 # namespace sandbox na tabela compartilhada idempotency_keys (P0-B).
 # NÃO é TTL, NÃO é período de retenção, NÃO é capacidade derivada de
