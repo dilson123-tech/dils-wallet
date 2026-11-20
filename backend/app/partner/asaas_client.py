@@ -20,6 +20,7 @@ AsaasHttpMethod = Literal["GET", "POST"]
 # URL de leitura para que nenhum valor arbitrário chegue ao path/query.
 _ASAAS_PAYMENT_EXTERNAL_REFERENCE_PATTERN = re.compile(r"^agpay_[a-f0-9]{32}$")
 _ASAAS_CUSTOMER_ID_PATTERN = re.compile(r"^cus_[A-Za-z0-9]{1,60}$")
+_ASAAS_CUSTOMER_EXTERNAL_REFERENCE_PATTERN = re.compile(r"^agcus_[a-f0-9]{32}$")
 
 
 @dataclass(frozen=True)
@@ -2821,6 +2822,22 @@ class AsaasSandboxClient:
             method="GET",
             path=f"/customers/{normalized}",
             operation="get_customer",
+        )
+
+    def prepare_list_customers_by_external_reference(
+        self, *, external_reference: str, limit: int = 2
+    ) -> AsaasPreparedRequest:
+        normalized = str(external_reference or "").strip()
+        if not _ASAAS_CUSTOMER_EXTERNAL_REFERENCE_PATTERN.fullmatch(normalized):
+            raise ValueError("external_reference de customer Asaas inválido.")
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 10:
+            raise ValueError("limit inválido.")
+
+        query = urlencode({"externalReference": normalized, "limit": limit})
+        return self._prepare(
+            method="GET",
+            path=f"/customers?{query}",
+            operation="list_customers_by_external_reference",
         )
 
     def dry_run_create_customer(

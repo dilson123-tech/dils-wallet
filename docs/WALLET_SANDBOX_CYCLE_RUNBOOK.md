@@ -187,7 +187,73 @@ Provavelmente frontend já está rodando.
 
 Provavelmente backend antigo está rodando.
 
-## 9. Próximos passos antes de PIX real
+## 9. Customer Asaas Sandbox (P0.5) — flags e trava pendente
+
+Escopo: somente Asaas Sandbox, com dados fictícios. Nenhum dinheiro real.
+
+### Dependência entre flags
+
+- `ASAAS_SANDBOX_CUSTOMER_HTTP_ENABLED` só tem efeito junto com
+  `ASAAS_SANDBOX_CHARGE_HTTP_ENABLED`. As duas são fail-closed: somente o valor
+  literal `true` habilita.
+- Com `CHARGE_HTTP` desligada, `POST /api/v1/wallet/pix/asaas/sandbox/prepare`
+  segue o caminho local de preparação e não faz chamada HTTP. Nesse caso
+  nenhum customer é consultado ou criado, mesmo com `CUSTOMER_HTTP=true`.
+- Com as duas ligadas, a rota consulta o customer do usuário pelo
+  `externalReference` (`agcus_<32 hex>`). Só cria o customer quando a consulta
+  comprova que não existe nenhum, e faz no máximo 1 POST por tentativa, sem
+  retry.
+
+### Como identificar uma trava pendente
+
+- Sintoma: a rota `prepare` responde HTTP 409 com "Criação do customer Asaas
+  Sandbox em andamento ou com desfecho incerto" e o 409 persiste nas
+  requisições seguintes do mesmo usuário. Esse mesmo 409 também aparece se
+  outra requisição do usuário estiver em andamento ao mesmo tempo.
+- Causa: a trava fica mantida após um desfecho incerto, como timeout, 5xx ou
+  corpo inválido no POST com reconsulta inconclusiva, ou após queda do
+  processo no meio do fluxo.
+- Registro: a trava é uma linha na tabela `idempotency_keys` com
+  `key = "asaas-sandbox-customer-pending:" + sha256(str(user_id))` e
+  `response_json` com `"contract": "asaas_sandbox_customer_pending_lock_v1"`.
+- Conferir essa linha exige acesso de leitura ao banco devidamente autorizado.
+  Somente SELECT.
+- **Não existe expiração automática da trava.** Ela não tem TTL nem job de
+  limpeza, e o soft cap de namespace não se aplica a esse prefixo.
+
+### Como confirmar no painel Asaas Sandbox
+
+No painel do Asaas **Sandbox**, nunca em Production, procure os clientes por
+qualquer um destes campos:
+
+- referência externa `agcus_...` do usuário;
+- nome `Aurea Gold Sandbox agcus_...`;
+- e-mail `agcus_...@example.com`.
+
+O CPF fictício `12345678909` é o mesmo para todos os usuários e não serve para
+identificar um customer.
+
+### Recuperação segura
+
+1. **Exatamente 1 customer ativo no painel:** basta uma nova requisição à rota
+   `prepare`. A consulta confirma o customer, remove a trava sozinha e o fluxo
+   segue. Não é preciso intervir no banco.
+2. **Nenhum customer, ou resultado ainda incerto:** **não remover a trava.**
+   Escalar e aguardar a confirmação. Remover a trava com o resultado incerto
+   pode causar um segundo POST e duplicar o customer.
+3. **Mais de 1 customer:** a rota responde 409 de duplicidade e exige revisão
+   manual no painel Sandbox. Nenhuma cobrança é enviada.
+
+A remoção manual da trava só é aceitável depois que a ausência do customer for
+confirmada no painel e mediante **autorização específica**.
+
+### Banco de dados
+
+Nenhuma exclusão, alteração ou limpeza na tabela `idempotency_keys`, ou em
+qualquer outra tabela, pode ser executada sem autorização específica e
+explícita para aquela operação.
+
+## 10. Próximos passos antes de PIX real
 
 Antes de qualquer dinheiro real:
 
