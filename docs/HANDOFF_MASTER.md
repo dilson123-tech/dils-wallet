@@ -428,3 +428,155 @@ Antes de iniciar nova sessão ou investigação, consultar `docs/HANDOFF_MASTER.
 - Não repetir auditorias concluídas; investigar apenas divergências novas e comprovadas.
 - Não realizar commit, push, merge, deploy, mudanças no backend, banco, Asaas ou operações financeiras sem autorização específica.
 - Esta atualização documental permanece local até revisão do diff e autorização posterior.
+
+---
+
+## 16. Integração controlada e árvore mestre — 2026-11-24
+
+### 16.1. Estado confirmado
+
+- Repositório: dilson123-tech/dils-wallet.
+- PR #325 integrado à main.
+- Commit: d961c0f4f6212398a789e5f6c1589dabc8c6d959.
+- PR #323 integrado à main.
+- Commit: 3b85b17e9854ed27d2b574829ddc2b5e8023a806.
+- PR #324 permanece BLOQUEADO.
+- Dinheiro real permanece desabilitado.
+- Nenhum deploy autorizado nesta etapa.
+
+### 16.2. Árvore mestre de desenvolvimento
+
+- [x] AG-01 — Planejamento técnico.
+- [x] AG-02 — Implementação do helper monetário.
+- [x] AG-03 — Compatibilidade e regressão.
+- [x] AG-04 — Commit e publicação do PR #325.
+- [x] AG-05 — Validação CI dos PRs.
+- [x] AG-06 — Controle de publicação automática.
+- [x] AG-07 — Auditoria independente Codex.
+- [ ] AG-08 — Integração controlada.
+  - [x] Merge do PR #325.
+  - [x] Atualização da branch do PR #323.
+  - [x] Validação do diff e CI do PR #323.
+  - [x] Merge do PR #323.
+  - [x] Validação pós-merge do PR #323.
+  - [ ] Versionamento desta atualização documental.
+  - [ ] Correção e integração segura do PR #324.
+
+### 16.3. Precisão monetária — PR #325
+
+- Helper isolado em backend/app/utils/money.py.
+- Conversão Decimal, quantização em centavos e ROUND_HALF_UP.
+- 54 testes específicos.
+- Suite local: 874 aprovados e 9 ignorados.
+- Auditoria Codex: APROVADO COM RESSALVAS.
+- Definir precisão e limites determinísticos antes de integrar consumidores.
+- Não modificar o formato utilizado pelo hash de preparação Asaas.
+- Alterações de zeros decimais podem comprometer idempotência.
+- Migração monetária do banco permanece pendente e não autorizada.
+
+### 16.4. Diagnóstico Asaas — PR #323
+
+- Endpoint de status retorna diagnóstico controlado quando
+  o adapter Asaas não está registrado.
+- provider_adapter_ready=false no cenário indisponível.
+- real_money=false nesse cenário.
+- HTTP 200 representa sucesso do diagnóstico, não prontidão financeira.
+- Erros inesperados continuam sendo propagados.
+- Auditoria Codex: APROVADO COM RESSALVAS.
+- Corrigir futuramente a semântica de real_money e avaliar
+  exceção tipada antes de registrar adapter real.
+- Branch atualizada conforme Ruleset 13353521.
+- CI anterior ao merge: 16 aprovados, 2 ignorados, zero falhas.
+- CI posterior ao merge: 12 workflows concluídos,
+  9 aprovados, 3 ignorados, zero falhas.
+- Nenhuma publicação GHCR identificada na consulta pós-merge.
+
+### 16.5. PR #324 — BLOQUEIO TÉCNICO
+
+Branch: feat/asaas-sandbox-customer-ensure.
+Worktree: ~/dils-wallet-wt/asaas-sandbox-customer.
+Baseline local: 5f8ee3d2.
+
+Auditoria Codex: BLOQUEADO.
+
+Correções obrigatórias:
+
+1. Eliminar risco ABA na aquisição e liberação de locks.
+2. Utilizar token exclusivo por aquisição.
+3. Impedir que concorrentes removam locks de operações ativas.
+4. Definir recuperação segura de locks sem expiração automática insegura.
+5. Validar rigorosamente paginação, hasMore e totalCount.
+6. Não liberar locks após respostas HTTP ambíguas.
+7. Liberar somente diante de rejeição definitiva comprovada.
+8. Cobrir concorrência real com PostgreSQL local.
+9. Testar regressões ABA, remoção indevida de lock,
+   paginação inválida e respostas HTTP 4xx.
+10. Submeter o delta corrigido à revisão independente Codex.
+
+Condição de avanço: implementação autorizada, testes aprovados,
+revisão independente favorável e autorização específica de merge.
+
+Proibidas chamadas financeiras reais e operações em produção.
+
+### 16.6. Controle de publicação
+
+- Workflow GHCR ID 187617251: disabled_manually.
+- Railway backend dils-wallet: Auto Deploy desabilitado.
+- Railway frontend aurea-gold-client: Auto Deploy desabilitado.
+- Serviços observados em estado Sleeping durante a verificação.
+- Não reativar publicação sem autorização específica.
+- A ausência de workflow GHCR não comprova isoladamente
+  a inexistência de outros mecanismos externos de publicação.
+
+### 16.7. Preservação do ambiente
+
+Worktrees preservados:
+
+- ~/dils-wallet
+- ~/aurea-gold-clean
+- ~/dils-wallet-wt/asaas-sandbox-customer
+- ~/dils-wallet-wt/fix-wallet-partner-status
+- ~/dils-wallet-wt/handoff-master
+
+O quinto worktree foi criado exclusivamente para documentação.
+
+Preservar os quatro stashes anteriormente identificados.
+Preservar alterações locais preexistentes em wallet.py,
+test_wallet_partner_status.py e .railway/.
+
+Não aplicar ou descartar stashes.
+Não limpar, sobrescrever ou remover worktrees.
+Não presumir que referências locais estejam atualizadas.
+
+### 16.8. Governança permanente
+
+- ChatGPT: coordenação técnica e árvore mestre.
+- Claude Code: implementação de tarefas complexas autorizadas.
+- Codex: revisão independente e validação de segurança.
+- Operações simples de Git: execução manual pelo responsável
+  no terminal VS Code, um comando por vez.
+- Economizar cotas dos agentes.
+- Executar etapas previamente autorizadas sem confirmações redundantes.
+- Interromper diante de divergência, risco ou operação não autorizada.
+- Não repetir auditorias sem evidência nova.
+- Atualizar este Handoff após entregas e operações Git autorizadas.
+- Não criar documentação redundante.
+- Preservar autorizações separadas de commit, push, PR, merge e deploy.
+
+### 16.9. Próxima sequência operacional
+
+1. Revisar a atualização deste Handoff com git diff --check e git diff.
+2. Solicitar autorização para commit documental.
+3. Solicitar autorização para push documental.
+4. Preparar missão de correção do PR #324 no worktree existente.
+5. Autorizar implementação delimitada ao bloqueio identificado.
+6. Executar testes locais e revisão independente Codex.
+7. Integrar somente após aprovação técnica e humana.
+
+Pendências posteriores:
+
+- Migração monetária segura e validada.
+- Integração BaaS Asaas condicionada à aprovação comercial.
+- Adapter real, KYC/KYB, transferências e reconciliação.
+- Avaliação da migração de configuração Railway.
+- Validação funcional completa antes de qualquer operação real.
