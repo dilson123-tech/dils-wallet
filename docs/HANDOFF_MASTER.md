@@ -815,3 +815,205 @@ Não alterar a estratégia.
 Não criar outro Handoff.
 
 O próximo chat deve continuar a missão existente, respeitando integralmente o trabalho, a direção estratégica e as decisões consolidadas.
+
+## 18. Encerramento AG-08 e continuidade estratégica — 25/11/2026
+
+Esta seção consolida o estado vigente e substitui os estados
+operacionais anteriores das seções 17.3, 17.4 e 17.5.
+A diretriz estratégica 17.1 permanece integralmente vigente.
+
+### 18.1. Revisão independente e correções
+
+AG-08.4: CONCLUÍDA.
+A revisão inicial Codex identificou bloqueadores relacionados
+a respostas HTTP ambíguas, recuperação manual, paginação
+e isolamento dos testes PostgreSQL.
+
+AG-08.4.1: CONCLUÍDA COM RESSALVAS.
+Correções executadas pelo Claude Code:
+
+- HTTP 400 estruturado não autoriza mais liberação do lock.
+- Respostas ambíguas preservam o lock.
+- Recuperação manual exige quiescência, reconciliação,
+  autorização e liberação CAS.
+- Proteções ABA e exclusividade preservadas.
+- Sem retry automático de POST.
+- Proteção adicional do ambiente PostgreSQL de testes.
+- Testes concorrenciais incorporados ao CI existente.
+- Flags fail-closed preservadas.
+
+Resultados reportados pelo executor:
+- Com PostgreSQL: 992 passed, 3 skipped.
+- Sem PostgreSQL: 975 passed, 20 skipped.
+- Testes PostgreSQL combinados: 43 aprovados.
+- Testes específicos: 134 aprovados.
+
+AG-08.4.2: CONCLUÍDA COM RESSALVAS.
+Revalidação independente Codex aprovada para integração
+com funcionalidades financeiras desabilitadas.
+
+Ressalvas remanescentes:
+- Contrato Asaas de paginação ainda não integralmente comprovado.
+- Risco residual TOCTOU na proteção PostgreSQL fora do CI isolado.
+- Teste negativo sentinela reportado, mas não persistido.
+- Locks órfãos exigem recuperação manual controlada.
+- Flags efetivas do ambiente de produção não foram consultadas.
+
+### 18.2. Integração oficial PR #324
+
+AG-08.5: CONCLUÍDA.
+Commit de hardening:
+    52ca84abee82379ae7ee0fb449c49651aee1776c
+
+Sincronização com main:
+    cf350de52a84ace253fb532f77efb2b0598e291f
+
+Commit adicional de proteção CI:
+    2781998beb2de4021d4d6a79104ceb1c080c66c6
+
+AG-08.6: CONCLUÍDA.
+CI final do PR:
+    16 successful, 2 skipped, 0 failed, 0 pending.
+
+AG-08.7: CONCLUÍDA.
+PR #324 integrado mediante autorização expressa do proprietário.
+
+Estado: MERGED.
+Método: squash merge.
+Data: 25/11/2026, 16:30:45 BRT.
+Commit oficial na main:
+    5ea1001876ff5760297b6e23e7440219da15ec28
+
+Branch de desenvolvimento preservada.
+
+### 18.3. Proteção dos mecanismos de produção
+
+Investigação identificou workflows capazes de acessar
+e despertar o backend Railway mesmo sem auto deploy.
+
+A reativação observada era compatível com execução
+de smoke tests, mas seu gatilho exato não foi comprovado.
+
+Workflows confirmados como disabled_manually:
+
+- GHCR: 187617251.
+- health-prod: 191964509.
+- Smoke Prod: 194655143.
+
+Os demais 14 workflows permaneceram ativos.
+
+O CI principal foi preservado integralmente, acrescentando
+somente uma condição explícita ao job smoke-prod:
+
+    github.ref == 'refs/heads/main' && vars.PROD_SMOKE_ENABLED == 'true'
+
+Variável PROD_SMOKE_ENABLED ausente na última conferência.
+Repositório pertencente a conta pessoal.
+
+Auto deploy Railway backend e frontend desabilitados
+na última conferência.
+
+Não presumir ausência absoluta de mecanismos externos.
+
+### 18.4. Validação pós-merge
+
+CI principal:
+    Run ID: 45685922242
+    Resultado: SUCCESS
+
+Jobs:
+- backend-tests: SUCCESS.
+- backend-build: SUCCESS.
+- client-build: SUCCESS.
+- lint: SUCCESS.
+- smoke-prod: SKIPPED.
+
+Trava de produção comprovada na execução da main.
+
+Demais workflows pós-merge:
+- PostgreSQL concorrência: SUCCESS.
+- CodeQL: SUCCESS.
+- Pip Audit: SUCCESS.
+- Smoke PIX Idempotency: SUCCESS.
+- smoke-pix: SUCCESS.
+- aurea-gold-smoke: SUCCESS.
+- notify-canary: SUCCESS.
+- Fail Fast: SKIPPED.
+- notify-on-failure: SKIPPED.
+
+Consolidado:
+    8 success, 2 skipped, 0 failed, 0 pending.
+
+### 18.5. Árvore mestre vigente
+
+AG-01 Planejamento: CONCLUÍDO.
+AG-02 Precisão monetária: CONCLUÍDO.
+AG-03 Compatibilidade: CONCLUÍDO.
+AG-04 Publicação do PR: CONCLUÍDO.
+AG-05 Validação CI: CONCLUÍDO.
+AG-06 Controle de publicação: CONCLUÍDO.
+AG-07 Auditoria independente inicial: CONCLUÍDO.
+
+AG-08 Integração controlada: CONCLUÍDA COM RESSALVAS.
+    PR #325: MERGED.
+    PR #323: MERGED.
+    PR #324: MERGED.
+    AG-08.3 Implementação: CONCLUÍDA.
+    AG-08.4 Revisão independente: CONCLUÍDA.
+    AG-08.4.1 Correções: CONCLUÍDAS.
+    AG-08.4.2 Revalidação: CONCLUÍDA COM RESSALVAS.
+    AG-08.5 Commit e push: CONCLUÍDOS.
+    AG-08.6 CI: APROVADO.
+    AG-08.7 Merge: CONCLUÍDO.
+    CI pós-merge: APROVADO.
+    Trava de produção: VALIDADA.
+
+AG-09 Consolidação documental:
+    Registro anterior publicado: 297e256f.
+    Atualização seção 18: edição local autorizada.
+    Commit e push desta atualização: pendentes de autorização.
+
+### 18.6. Travas obrigatórias
+
+- REAL_MONEY_ENABLED=false permanece requisito obrigatório.
+- Estado efetivo das flags em produção não foi verificado.
+- Nenhuma operação financeira real autorizada.
+- Nenhuma chamada real ao Asaas autorizada.
+- Nenhum deploy autorizado.
+- Nenhuma migração autorizada.
+- Nenhuma alteração de segredo autorizada.
+- Não habilitar PROD_SMOKE_ENABLED.
+- Não reativar os três workflows desabilitados.
+- Preservar worktrees, stashes e alterações locais alheias.
+- Integração comercial BaaS definitiva permanece pendente.
+- Resposta comercial genérica não equivale à aprovação BaaS.
+
+Código integrado não significa produto implantado
+ou autorizado para movimentação financeira.
+
+### 18.7. Próximo ponto de retomada
+
+AG-08 tecnicamente encerrada com ressalvas.
+
+Concluir a publicação autorizada desta atualização documental.
+
+Depois, identificar exclusivamente o próximo delta funcional
+necessário para finalizar o fluxo Asaas Sandbox existente.
+
+A próxima missão deverá ser definida e autorizada pelo
+proprietário, priorizando a conclusão comercial do produto.
+
+Não repetir auditorias já concluídas.
+Não reinventar arquitetura.
+Não criar funcionalidades paralelas desnecessárias.
+Não criar outro Handoff.
+Não alterar a estratégia definida na seção 17.1.
+
+ChatGPT coordena.
+Claude Code implementa tarefas complexas autorizadas.
+Codex realiza revisão independente quando necessária.
+Proprietário executa operações simples pelo terminal.
+
+Agentes devem executar autonomamente as etapas autorizadas,
+interrompendo somente diante de risco, divergência ou
+operação fora do escopo.
