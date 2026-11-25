@@ -187,7 +187,131 @@ Provavelmente frontend já está rodando.
 
 Provavelmente backend antigo está rodando.
 
-## 9. Próximos passos antes de PIX real
+## 9. Customer Asaas Sandbox (P0.5) — flags e trava pendente
+
+Escopo: somente Asaas Sandbox, com dados fictícios. Nenhum dinheiro real.
+
+### Dependência entre flags
+
+- `ASAAS_SANDBOX_CUSTOMER_HTTP_ENABLED` só tem efeito junto com
+  `ASAAS_SANDBOX_CHARGE_HTTP_ENABLED`. As duas são fail-closed: somente o valor
+  literal `true` habilita.
+- Com `CHARGE_HTTP` desligada, `POST /api/v1/wallet/pix/asaas/sandbox/prepare`
+  segue o caminho local de preparação e não faz chamada HTTP. Nesse caso
+  nenhum customer é consultado ou criado, mesmo com `CUSTOMER_HTTP=true`.
+- Com as duas ligadas, a rota consulta o customer do usuário pelo
+  `externalReference` (`agcus_<32 hex>`). Só cria o customer quando a consulta
+  comprova que não existe nenhum, e faz no máximo 1 POST por tentativa, sem
+  retry.
+
+### Como identificar uma trava pendente
+
+- Sintoma: a rota `prepare` responde HTTP 409 com "Criação do customer Asaas
+  Sandbox em andamento ou com desfecho incerto" e o 409 persiste nas
+  requisições seguintes do mesmo usuário. Esse mesmo 409 também aparece se
+  outra requisição do usuário estiver em andamento ao mesmo tempo.
+- Causa: a trava fica mantida após qualquer POST sem sucesso comprovado:
+  timeout, 5xx, 4xx sem rejeição estruturada, corpo inválido, reconsulta
+  inconclusiva, ou queda do processo no meio do fluxo. **Inclusive** um HTTP
+  400 com `errors` estruturado seguido de reconsulta com 0 customers: a rota
+  classifica como rejeição, mas a trava é **mantida**, porque um GET vazio
+  logo após o 400 não comprova ausência de efeito remoto. Não há lista de
+  códigos de erro Asaas que libere a trava, nem retry de POST. Novas
+  tentativas só fazem GET.
+- A trava só é liberada automaticamente quando o próprio dono comprova
+  exatamente 1 customer válido (POST 2xx válido ou reconsulta com 1).
+- Listagem malformada (`hasMore` não booleano, `totalCount` inválido ou
+  incoerente com a página) nunca é tratada como ausência de customer.
+- Registro: a trava é uma linha na tabela `idempotency_keys` com
+  `key = "asaas-sandbox-customer-pending:" + sha256(str(user_id))` e
+  `response_json` com `"contract": "asaas_sandbox_customer_pending_lock_v2"` e
+  um `token` aleatório exclusivo de cada aquisição. Somente o dono (mesmo
+  token) remove a trava, por DELETE atômico condicionado ao token; um dono
+  antigo nunca remove uma trava mais nova.
+- Conferir essa linha exige acesso de leitura ao banco devidamente autorizado.
+  Somente SELECT.
+- **Não existe expiração automática da trava.** Ela não tem TTL nem job de
+  limpeza, e o soft cap de namespace não se aplica a esse prefixo.
+
+### Como confirmar no painel Asaas Sandbox
+
+No painel do Asaas **Sandbox**, nunca em Production, procure os clientes por
+qualquer um destes campos:
+
+- referência externa `agcus_...` do usuário;
+- nome `Aurea Gold Sandbox agcus_...`;
+- e-mail `agcus_...@example.com`.
+
+O CPF fictício `12345678909` é o mesmo para todos os usuários e não serve para
+identificar um customer.
+
+### Recuperação segura
+
+1. **Exatamente 1 customer ativo no painel:** basta uma nova requisição à rota
+   `prepare`. A consulta confirma o customer e o fluxo segue, sem novo POST.
+   A trava não é do dono dessa requisição e por isso permanece no banco,
+   inerte. Não é preciso intervir no banco.
+2. **Mais de 1 customer:** a rota responde 409 de duplicidade e exige revisão
+   manual no painel Sandbox. Nenhuma cobrança é enviada.
+3. **Nenhum customer, ou resultado ainda incerto (inclusive após 400
+   estruturado):** **não remover a trava** enquanto **todas** as condições
+   abaixo não estiverem comprovadas. Remover a trava com qualquer uma delas em
+   aberto pode causar um segundo POST e duplicar o customer.
+
+#### Condições cumulativas para remoção manual da trava
+
+A remoção só é permitida se **todas** forem comprovadas e registradas. Se
+qualquer uma não puder ser comprovada, a trava **permanece**.
+
+1. **Operação anterior encerrada ou quiescente:** comprovar que o processo
+   ou worker que adquiriu a trava terminou, ou está parado e não pode retomar,
+   por exemplo por logs, reinício de deploy registrado ou ausência do
+   processo.
+2. **Nenhuma requisição em voo:** comprovar que não existe POST `/customers`
+   pendente desse usuário, incluindo um timeout do lado cliente cujo request
+   ainda pode ser processado pelo Asaas, nem requisição concorrente à rota
+   `prepare`.
+3. **Reconciliação remota conclusiva:** no painel Asaas **Sandbox**, a busca
+   pelos três identificadores de "Como confirmar no painel Asaas Sandbox"
+   comprova a ausência do customer, feita **depois** das condições 1 e 2.
+4. **Autorização humana específica:** autorização explícita do responsável
+   para aquela remoção, daquele usuário, naquele momento. Uma autorização
+   genérica ou anterior não vale.
+5. **Remoção condicionada à identidade exata da trava:** primeiro um SELECT
+   do `response_json` completo, depois um DELETE condicionado à `key` **e** ao
+   `response_json` idêntico ao conferido. É o mesmo CAS de `_release_lock`.
+   Se 0 linhas forem afetadas, a trava mudou: não repetir, e reavaliar desde
+   a condição 1. Nunca apagar só pela `key` nem por prefixo.
+
+Não existe serviço de recuperação, endpoint administrativo, TTL ou automação
+para isso, e nenhum deve ser criado sem decisão do responsável.
+
+### Contrato de paginação Asaas (pendente de confirmação)
+
+A listagem `GET /customers` é validada de forma estrita: `data`, `hasMore`
+booleano, `totalCount`, `limit`, `offset` e a coerência entre eles. Qualquer
+divergência é tratada como indisponível ou pendente, nunca como ausência de
+customer.
+
+**Pendente de confirmação:** o formato real da resposta do Asaas para
+`limit`, `offset` e `deleted` ainda não foi confirmado. Ainda não se sabe se
+`limit` e `offset` sempre aparecem na resposta, com que tipos, e se customers
+removidos (`deleted: true`) aparecem ou não na listagem por
+`externalReference`. Até essa confirmação documental e contratual:
+
+- a validação estrita permanece como está;
+- o fluxo de customer fica **desligado**, com `ASAAS_SANDBOX_CUSTOMER_HTTP_ENABLED`
+  diferente de `true`;
+- nenhuma chamada ao Asaas, nem ao Sandbox remoto, é feita para "descobrir"
+  o formato sem autorização específica.
+
+### Banco de dados
+
+Nenhuma exclusão, alteração ou limpeza na tabela `idempotency_keys`, ou em
+qualquer outra tabela, pode ser executada sem autorização específica e
+explícita para aquela operação.
+
+## 10. Próximos passos antes de PIX real
 
 Antes de qualquer dinheiro real:
 

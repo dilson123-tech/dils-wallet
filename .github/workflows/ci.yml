@@ -96,7 +96,7 @@ jobs:
 
     needs: [backend-build, client-build]
 
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && vars.PROD_SMOKE_ENABLED == 'true' }}
 
     env:
 

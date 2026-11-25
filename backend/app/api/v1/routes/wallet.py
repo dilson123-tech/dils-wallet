@@ -22,6 +22,7 @@ from app.config import (
     IS_PARTNER_WALLET,
     is_asaas_sandbox_charge_http_enabled,
     is_asaas_sandbox_credit_enabled,
+    is_asaas_sandbox_customer_http_enabled,
 )
 from app.partner import (
     PartnerWebhookEvent,
@@ -51,6 +52,15 @@ from app.services.asaas_correlated_pix_payment_service import (
     apply_asaas_webhook_charge_transition,
     create_asaas_correlated_pix_charge,
     prepare_asaas_correlated_pix_payment as prepare_correlated_pix_payment,
+)
+from app.services.asaas_sandbox_customer_service import (
+    AsaasSandboxCustomerDuplicateError,
+    AsaasSandboxCustomerIndeterminateError,
+    AsaasSandboxCustomerPendingError,
+    AsaasSandboxCustomerRejectedError,
+    AsaasSandboxCustomerStorageError,
+    AsaasSandboxCustomerUnavailableError,
+    ensure_asaas_sandbox_customer,
 )
 from app.services.sandbox_namespace_cap import (
     SandboxNamespaceCapExceeded,
@@ -2446,7 +2456,10 @@ class WalletAsaasCorrelatedPixPaymentPreparationIn(BaseModel):
     # response_json hoje (confirmado na auditoria), mas ainda assim
     # limitamos o tamanho aceito na entrada para conter o custo
     # transiente de CPU/parse por requisição.
-    customer_id: str = Field(..., max_length=64)
+    # Opcional apenas para permitir a resolução automática do customer
+    # Asaas Sandbox (ASAAS_SANDBOX_CUSTOMER_HTTP_ENABLED=true). Sem a flag,
+    # ausência continua sendo rejeitada com 422.
+    customer_id: str | None = Field(None, max_length=64)
     amount: Decimal
     due_date: str = Field(..., max_length=32)
     description: str = Field(
@@ -2455,6 +2468,69 @@ class WalletAsaasCorrelatedPixPaymentPreparationIn(BaseModel):
 
 
 _ASAAS_SANDBOX_CHARGE_IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9_\-:.]{8,128}$")
+
+
+def _require_asaas_sandbox_customer_id(customer_id: str | None) -> str:
+    if customer_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="customer_id Asaas Sandbox é obrigatório.",
+        )
+    return customer_id
+
+
+def _ensure_wallet_asaas_sandbox_customer(
+    *,
+    db: Session,
+    client,
+    transport,
+    user_id: int,
+) -> str:
+    # GET por externalReference antes de qualquer POST /customers; no
+    # máximo 1 POST, sem retry. Ownership continua verificada no fluxo
+    # da cobrança.
+    try:
+        return ensure_asaas_sandbox_customer(
+            db,
+            client=client,
+            user_id=user_id,
+            http_get=transport.get,
+            http_post=transport.post,
+        )
+    except AsaasSandboxCustomerDuplicateError:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Customer Asaas Sandbox duplicado; requer revisão manual. "
+                "Nenhuma cobrança foi enviada."
+            ),
+        ) from None
+    except (
+        AsaasSandboxCustomerIndeterminateError,
+        AsaasSandboxCustomerPendingError,
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Criação do customer Asaas Sandbox em andamento ou com "
+                "desfecho incerto. Nenhuma cobrança foi enviada."
+            ),
+        ) from None
+    except AsaasSandboxCustomerRejectedError:
+        raise HTTPException(
+            status_code=502,
+            detail="Asaas Sandbox recusou a criação do customer.",
+        ) from None
+    except AsaasSandboxCustomerUnavailableError:
+        raise HTTPException(
+            status_code=503,
+            detail="Asaas Sandbox indisponível.",
+        ) from None
+    except AsaasSandboxCustomerStorageError:
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível registrar o customer Asaas Sandbox.",
+        ) from None
 
 
 def _build_asaas_sandbox_charge_transport(config):
@@ -2513,12 +2589,22 @@ def _create_wallet_asaas_sandbox_pix_charge(
 
     client = AsaasSandboxClient(config=config)
 
+    customer_id = payload.customer_id
+    if customer_id is None and is_asaas_sandbox_customer_http_enabled():
+        customer_id = _ensure_wallet_asaas_sandbox_customer(
+            db=db,
+            client=client,
+            transport=transport,
+            user_id=user_id,
+        )
+    customer_id = _require_asaas_sandbox_customer_id(customer_id)
+
     try:
         charge = create_asaas_correlated_pix_charge(
             db,
             client=client,
             user_id=user_id,
-            customer_id=payload.customer_id,
+            customer_id=customer_id,
             value=payload.amount,
             due_date=payload.due_date,
             description=payload.description,
@@ -2673,12 +2759,15 @@ def prepare_wallet_asaas_correlated_pix_payment(
 
     client = AsaasSandboxClient(config=config)
 
+    # Caminho local (sem HTTP): nunca resolve customer remotamente.
+    customer_id = _require_asaas_sandbox_customer_id(payload.customer_id)
+
     try:
         result = prepare_correlated_pix_payment(
             db,
             client=client,
             user_id=user_id,
-            customer_id=payload.customer_id,
+            customer_id=customer_id,
             value=payload.amount,
             due_date=payload.due_date,
             description=payload.description,
