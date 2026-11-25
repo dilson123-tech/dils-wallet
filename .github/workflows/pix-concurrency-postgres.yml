@@ -65,4 +65,4 @@ jobs:
 
       - name: Run PIX send concurrency test (PostgreSQL real, descartável)
         run: |
-          python -m pytest tests/test_pix_send_concurrency_postgres.py -v
+          python -m pytest tests/test_pix_send_concurrency_postgres.py tests/test_asaas_sandbox_customer_concurrency_postgres.py -v

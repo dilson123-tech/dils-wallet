@@ -51,6 +51,9 @@ from app.services.asaas_sandbox_customer_service import (
     AsaasSandboxCustomerRejectedError,
     AsaasSandboxCustomerStorageError,
     AsaasSandboxCustomerUnavailableError,
+    _acquire_lock,
+    _lock_key,
+    _release_lock,
     ensure_asaas_sandbox_customer,
 )
 
@@ -94,8 +97,34 @@ def _item(user_id: int, customer_id: str | None = None, **overrides) -> dict:
     return item
 
 
-def _page(*items, has_more=False) -> tuple:
-    return (200, {"data": list(items), "totalCount": len(items), "hasMore": has_more})
+_LIMIT = 2
+
+
+def _page(*items, has_more=False, total_count=None, **overrides) -> tuple:
+    """Primeira página coerente com o contrato de paginação do Asaas."""
+    if total_count is None:
+        total_count = _LIMIT + 1 if has_more else len(items)
+    body = {
+        "data": list(items),
+        "totalCount": total_count,
+        "hasMore": has_more,
+        "limit": _LIMIT,
+        "offset": 0,
+    }
+    body.update(overrides)
+    return (200, body)
+
+
+def _without(key):
+    status, body = _page()
+    body.pop(key)
+    return status, body
+
+
+_STRUCTURED_400 = (
+    400,
+    {"errors": [{"code": "invalid_cpfCnpj", "description": "CPF/CNPJ inválido."}]},
+)
 
 
 def _created_customer(user_id: int):
@@ -339,10 +368,14 @@ def test_second_call_after_creation_reuses_customer_without_post(db_session, cus
     "listing_factory",
     [
         lambda uid: _page(_item(uid, "cus_a1"), _item(uid, "cus_b2")),
-        lambda uid: _page(_item(uid, "cus_a1"), has_more=True),
-        lambda uid: _page(has_more=True),
+        lambda uid: _page(_item(uid, "cus_a1"), _item(uid, "cus_b2"), has_more=True),
+        lambda uid: _page(
+            _item(uid, "cus_a1", deleted=True),
+            _item(uid, "cus_b2", deleted=True),
+            has_more=True,
+        ),
     ],
-    ids=["two-active", "has-more", "has-more-empty"],
+    ids=["two-active", "has-more", "has-more-deleted"],
 )
 def test_duplicate_listing_never_posts(db_session, customer, listing_factory):
     fake = FakeAsaas(listings=[listing_factory(customer.id)])
@@ -368,6 +401,32 @@ def test_duplicate_listing_never_posts(db_session, customer, listing_factory):
         (True, {"data": []}),
         (200, {"data": ["not-a-dict"]}),
         (200, {"data": [{"id": "invalid", "externalReference": "x"}]}),
+        # hasMore ausente / não-bool
+        _without("hasMore"),
+        _page(hasMore="false"),
+        _page(hasMore=0),
+        _page(hasMore=None),
+        # totalCount ausente / inválido / incoerente
+        _without("totalCount"),
+        _page(totalCount=True),
+        _page(totalCount=-1),
+        _page(totalCount="0"),
+        _page(totalCount=1.0),
+        _page(total_count=1),
+        _page(total_count=5),
+        # paginação ausente / divergente
+        _without("limit"),
+        _without("offset"),
+        _page(limit=10),
+        _page(limit="2"),
+        _page(offset=2),
+        _page(offset=None),
+        # hasMore incoerente com totalCount
+        _page(has_more=True, total_count=0),
+        _page(has_more=False, total_count=3),
+        # data maior que o limite / não-lista
+        _page({}, {}, {}, total_count=3),
+        _page(data=None),
     ],
 )
 def test_unreliable_first_listing_is_unavailable_without_post(db_session, customer, response):
@@ -400,20 +459,171 @@ def test_invalid_customer_id_in_listing_is_unavailable(db_session, customer):
     assert fake.customer_post_calls == []
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [{"deleted": None}, {"deleted": "false"}, {"deleted": 0}],
+    ids=["deleted-none", "deleted-str", "deleted-int"],
+)
+def test_item_with_non_bool_deleted_is_unavailable(db_session, customer, overrides):
+    item = _item(customer.id, **overrides)
+    fake = FakeAsaas(listings=[_page(item)], create=_created_customer(customer.id))
+
+    with pytest.raises(AsaasSandboxCustomerUnavailableError):
+        _ensure(db_session, customer.id, fake)
+
+    assert fake.customer_post_calls == []
+    assert _lock_rows(db_session) == []
+
+
+def test_item_without_deleted_is_unavailable(db_session, customer):
+    item = _item(customer.id)
+    item.pop("deleted")
+    fake = FakeAsaas(listings=[_page(item)], create=_created_customer(customer.id))
+
+    with pytest.raises(AsaasSandboxCustomerUnavailableError):
+        _ensure(db_session, customer.id, fake)
+
+    assert fake.customer_post_calls == []
+
+
+def test_listing_requests_the_validated_limit(db_session, customer):
+    fake = FakeAsaas(listings=[_page(_item(customer.id))])
+
+    assert _ensure(db_session, customer.id, fake) == _customer_id(customer.id)
+    assert f"limit={_LIMIT}" in fake.customer_list_calls[0].url
+
+
 # --- service: desfechos do POST --------------------------------------------
 
 
-@pytest.mark.parametrize("status", [400, 401, 409, 422])
-def test_post_4xx_is_rejected_and_releases_lock(db_session, customer, status):
-    fake = FakeAsaas(create=(status, {"errors": [{"description": API_KEY}]}))
+def test_structured_400_with_empty_recheck_is_rejected_and_keeps_lock(
+    db_session, customer
+):
+    # 400 estruturado + GET vazio NÃO comprova ausência de efeito remoto:
+    # o lock é mantido (fail-closed), sem allowlist de códigos de erro.
+    body = {"errors": [{"code": "invalid_cpfCnpj", "description": API_KEY}]}
+    fake = FakeAsaas(listings=[_page(), _page()], create=(400, body))
 
     with pytest.raises(AsaasSandboxCustomerRejectedError) as exc:
         _ensure(db_session, customer.id, fake)
 
     assert len(fake.customer_post_calls) == 1
-    assert len(fake.customer_list_calls) == 1
-    assert _lock_rows(db_session) == []
+    assert len(fake.customer_list_calls) == 2
+    assert len(_lock_rows(db_session)) == 1
     _assert_safe_message(exc.value, customer.id)
+
+
+def test_structured_400_retries_never_post_again(db_session, customer):
+    fake = FakeAsaas(listings=[_page(), _page()], create=_STRUCTURED_400)
+    with pytest.raises(AsaasSandboxCustomerRejectedError):
+        _ensure(db_session, customer.id, fake)
+    lock_before = _lock_row_json(db_session, customer.id)
+    assert lock_before is not None
+
+    # Novas tentativas (mesmo com o Asaas "pronto" para criar) só fazem GET.
+    for _ in range(3):
+        retry = FakeAsaas(listings=[_page()], create=_created_customer(customer.id))
+        with pytest.raises(AsaasSandboxCustomerPendingError) as exc:
+            _ensure(db_session, customer.id, retry)
+        assert retry.customer_post_calls == []
+        assert len(retry.customer_list_calls) == 1
+        _assert_safe_message(exc.value, customer.id)
+
+    assert len(fake.customer_post_calls) == 1
+    # O lock é exatamente o mesmo (nenhuma tentativa o removeu/recriou).
+    assert _lock_row_json(db_session, customer.id) == lock_before
+
+
+_STRUCTURED_ERRORS = {"errors": [{"code": "x", "description": "y"}]}
+
+
+@pytest.mark.parametrize(
+    "create",
+    [
+        # 4xx ambíguos (mesmo com corpo de erro estruturado)
+        (401, _STRUCTURED_ERRORS),
+        (403, _STRUCTURED_ERRORS),
+        (404, _STRUCTURED_ERRORS),
+        (409, _STRUCTURED_ERRORS),
+        (422, _STRUCTURED_ERRORS),
+        (429, _STRUCTURED_ERRORS),
+        # 400 malformado
+        (400, {}),
+        (400, None),
+        (400, "bad request"),
+        (400, {"errors": []}),
+        (400, {"errors": "invalid"}),
+        (400, {"errors": ["invalid"]}),
+        (400, {"errors": [{"description": "sem code"}]}),
+        (400, {"errors": [{"code": "", "description": "code vazio"}]}),
+        (400, {"errors": [{"code": "   ", "description": "code branco"}]}),
+        (400, {"errors": [{"code": 1, "description": "code int"}]}),
+        (400, {"errors": [{"code": "x"}]}),
+        (400, {"errors": [{"code": "x", "description": "y"}, "z"]}),
+    ],
+)
+def test_ambiguous_4xx_is_indeterminate_and_keeps_lock(db_session, customer, create):
+    fake = FakeAsaas(listings=[_page(), _page()], create=create)
+
+    with pytest.raises(AsaasSandboxCustomerIndeterminateError) as exc:
+        _ensure(db_session, customer.id, fake)
+
+    assert len(fake.customer_post_calls) == 1
+    assert len(fake.customer_list_calls) == 2
+    assert len(_lock_rows(db_session)) == 1
+    _assert_safe_message(exc.value, customer.id)
+
+    # Lock mantido: nova tentativa só faz GET, nunca um 2º POST.
+    fake.listings = [_page()]
+    with pytest.raises(AsaasSandboxCustomerPendingError):
+        _ensure(db_session, customer.id, fake)
+    assert len(fake.customer_post_calls) == 1
+    assert len(_lock_rows(db_session)) == 1
+
+
+@pytest.mark.parametrize(
+    "recheck",
+    [
+        AsaasSandboxTransportError("timeout"),
+        TimeoutError("timeout"),
+        (500, {}),
+        _without("hasMore"),
+        _page(total_count=1),
+    ],
+    ids=["transport", "timeout", "5xx", "no-has-more", "bad-total"],
+)
+def test_structured_400_with_unreliable_recheck_keeps_lock(db_session, customer, recheck):
+    fake = FakeAsaas(listings=[_page(), recheck], create=_STRUCTURED_400)
+
+    with pytest.raises(AsaasSandboxCustomerIndeterminateError):
+        _ensure(db_session, customer.id, fake)
+
+    assert len(fake.customer_post_calls) == 1
+    assert len(_lock_rows(db_session)) == 1
+
+
+@pytest.mark.parametrize(
+    "create", [_STRUCTURED_400, (409, _STRUCTURED_ERRORS), (429, {})]
+)
+def test_4xx_with_recheck_finding_customer_returns_it(db_session, customer, create):
+    fake = FakeAsaas(listings=[_page(), _page(_item(customer.id))], create=create)
+
+    assert _ensure(db_session, customer.id, fake) == _customer_id(customer.id)
+    assert len(fake.customer_post_calls) == 1
+    assert _lock_rows(db_session) == []
+
+
+def test_4xx_with_duplicate_recheck_keeps_lock(db_session, customer):
+    fake = FakeAsaas(
+        listings=[_page(), _page(_item(customer.id, "cus_a1"), _item(customer.id, "cus_b2"))],
+        create=_STRUCTURED_400,
+    )
+
+    with pytest.raises(AsaasSandboxCustomerDuplicateError):
+        _ensure(db_session, customer.id, fake)
+
+    assert len(fake.customer_post_calls) == 1
+    assert len(_lock_rows(db_session)) == 1
 
 
 @pytest.mark.parametrize(
@@ -479,15 +689,17 @@ def test_uncertain_post_with_duplicate_recheck_keeps_lock(db_session, customer):
     assert len(_lock_rows(db_session)) == 1
 
 
-def test_held_lock_is_released_once_get_proves_customer(db_session, customer):
+def test_held_lock_returns_proven_customer_without_removing_lock(db_session, customer):
     fake = FakeAsaas(listings=[_page(), _page()], create=(502, {}))
     with pytest.raises(AsaasSandboxCustomerIndeterminateError):
         _ensure(db_session, customer.id, fake)
-    assert len(_lock_rows(db_session)) == 1
+    locks_before = [(r.key, r.response_json) for r in _lock_rows(db_session)]
+    assert len(locks_before) == 1
 
+    # Não-dono: devolve o customer comprovado, mas NUNCA remove lock alheio.
     fake.listings = [_page(_item(customer.id))]
     assert _ensure(db_session, customer.id, fake) == _customer_id(customer.id)
-    assert _lock_rows(db_session) == []
+    assert [(r.key, r.response_json) for r in _lock_rows(db_session)] == locks_before
     assert len(fake.customer_post_calls) == 1
 
 
@@ -495,8 +707,12 @@ def test_held_lock_is_released_once_get_proves_customer(db_session, customer):
     "listing,error",
     [
         (AsaasSandboxTransportError("timeout"), AsaasSandboxCustomerPendingError),
-        (lambda r: _page(has_more=True), AsaasSandboxCustomerDuplicateError),
+        ((500, {}), AsaasSandboxCustomerPendingError),
+        (_without("hasMore"), AsaasSandboxCustomerPendingError),
+        (_page(total_count=4), AsaasSandboxCustomerPendingError),
+        (_page(), AsaasSandboxCustomerPendingError),
     ],
+    ids=["transport", "5xx", "no-has-more", "bad-total", "empty"],
 )
 def test_held_lock_never_posts(db_session, customer, listing, error):
     fake = FakeAsaas(listings=[_page(), _page()], create=(500, {}))
@@ -505,6 +721,20 @@ def test_held_lock_never_posts(db_session, customer, listing, error):
 
     fake.listings = [listing]
     with pytest.raises(error):
+        _ensure(db_session, customer.id, fake)
+    assert len(fake.customer_post_calls) == 1
+    assert len(_lock_rows(db_session)) == 1
+
+
+@pytest.mark.parametrize("has_more", [False, True], ids=["two-active", "has-more"])
+def test_held_lock_duplicate_listing_never_posts(db_session, customer, has_more):
+    fake = FakeAsaas(listings=[_page(), _page()], create=(500, {}))
+    with pytest.raises(AsaasSandboxCustomerIndeterminateError):
+        _ensure(db_session, customer.id, fake)
+
+    uid = customer.id
+    fake.listings = [_page(_item(uid, "cus_a1"), _item(uid, "cus_b2"), has_more=has_more)]
+    with pytest.raises(AsaasSandboxCustomerDuplicateError):
         _ensure(db_session, customer.id, fake)
     assert len(fake.customer_post_calls) == 1
     assert len(_lock_rows(db_session)) == 1
@@ -535,6 +765,85 @@ def test_storage_failure_on_lock_never_calls_http(db_session, customer, monkeypa
 
     assert fake.customer_list_calls == []
     assert fake.customer_post_calls == []
+
+
+
+# --- lock com token (posse) ---------------------------------------------------
+
+
+def _lock_row_json(db, user_id):
+    db.expire_all()
+    row = db.query(IdempotencyKey).filter(IdempotencyKey.key == _lock_key(user_id)).one_or_none()
+    return None if row is None else row.response_json
+
+
+def test_lock_contract_v2_has_unique_token_per_acquisition(db_session, customer):
+    first = _acquire_lock(db_session, user_id=customer.id)
+    assert first is not None
+    payload = json.loads(first)
+    assert payload["contract"] == "asaas_sandbox_customer_pending_lock_v2"
+    assert payload["real_money_enabled"] is False
+    assert payload["user_id"] == customer.id
+    assert isinstance(payload["token"], str) and len(payload["token"]) == 32
+
+    # Segunda aquisição com lock ativo: não adquire, não altera o lock.
+    assert _acquire_lock(db_session, user_id=customer.id) is None
+    assert _lock_row_json(db_session, customer.id) == first
+
+    assert _release_lock(db_session, user_id=customer.id, lock_json=first) is True
+    second = _acquire_lock(db_session, user_id=customer.id)
+    assert second is not None
+    assert json.loads(second)["token"] != payload["token"]
+
+
+def test_release_with_foreign_token_deletes_nothing(db_session, customer):
+    owner = _acquire_lock(db_session, user_id=customer.id)
+    forged = json.dumps({**json.loads(owner), "token": "0" * 32}, sort_keys=True)
+
+    assert _release_lock(db_session, user_id=customer.id, lock_json=forged) is False
+    assert _lock_row_json(db_session, customer.id) == owner
+    # Lock de outro usuário com o mesmo conteúdo também não é tocado.
+    assert _release_lock(db_session, user_id=customer.id + 1, lock_json=owner) is False
+    assert _lock_row_json(db_session, customer.id) == owner
+
+
+def test_old_owner_never_releases_newer_lock_aba(db_session, customer):
+    old = _acquire_lock(db_session, user_id=customer.id)
+    # Recuperação manual autorizada remove o lock; novo dono adquire.
+    db_session.query(IdempotencyKey).filter(
+        IdempotencyKey.key == _lock_key(customer.id)
+    ).delete(synchronize_session=False)
+    db_session.commit()
+    new = _acquire_lock(db_session, user_id=customer.id)
+    assert new is not None and new != old
+
+    assert _release_lock(db_session, user_id=customer.id, lock_json=old) is False
+    assert _lock_row_json(db_session, customer.id) == new
+    assert _release_lock(db_session, user_id=customer.id, lock_json=new) is True
+    assert _lock_row_json(db_session, customer.id) is None
+
+
+def test_manual_recovery_after_indeterminate_allows_single_new_attempt(db_session, customer):
+    fake = FakeAsaas(listings=[_page(), _page()], create=(500, {}))
+    with pytest.raises(AsaasSandboxCustomerIndeterminateError):
+        _ensure(db_session, customer.id, fake)
+    assert len(_lock_rows(db_session)) == 1
+
+    # Sem recuperação: nunca há segundo POST.
+    blocked = FakeAsaas(listings=[_page()], create=_created_customer(customer.id))
+    with pytest.raises(AsaasSandboxCustomerPendingError):
+        _ensure(db_session, customer.id, blocked)
+    assert blocked.customer_post_calls == []
+
+    # Recuperação manual (runbook §9: condições cumulativas comprovadas e
+    # autorização humana), condicionada à identidade exata do lock (CAS).
+    held = _lock_row_json(db_session, customer.id)
+    assert _release_lock(db_session, user_id=customer.id, lock_json=held) is True
+
+    recovered = FakeAsaas(create=_created_customer(customer.id))
+    assert _ensure(db_session, customer.id, recovered) == _customer_id(customer.id)
+    assert len(recovered.customer_post_calls) == 1
+    assert _lock_rows(db_session) == []
 
 
 # --- rota -------------------------------------------------------------------
@@ -667,9 +976,9 @@ def test_route_local_path_never_resolves_customer(db_session, customer, endpoint
 @pytest.mark.parametrize(
     "listings,create,status",
     [
-        ([_page(has_more=True)], None, 409),
+        (None, None, 409),
         ([_page(), _page()], (500, {}), 409),
-        ([_page()], (400, {}), 502),
+        ([_page(), _page()], _STRUCTURED_400, 502),
         ([(500, {})], None, 503),
     ],
     ids=["duplicate", "indeterminate", "rejected", "unavailable"],
@@ -677,6 +986,9 @@ def test_route_local_path_never_resolves_customer(db_session, customer, endpoint
 def test_route_maps_customer_errors_without_charging(
     db_session, customer, endpoint, charge_on, customer_on, listings, create, status
 ):
+    if listings is None:
+        uid = customer.id
+        listings = [_page(_item(uid, "cus_a1"), _item(uid, "cus_b2"), has_more=True)]
     endpoint.fake.listings = listings
     endpoint.fake.create_response = create
 
@@ -690,11 +1002,14 @@ def test_route_maps_customer_errors_without_charging(
     assert _ref(customer.id) not in str(exc.value.detail)
 
 
+@pytest.mark.parametrize(
+    "create", [(500, {}), _STRUCTURED_400], ids=["indeterminate", "rejected"]
+)
 def test_route_pending_after_indeterminate_is_409_without_post(
-    db_session, customer, endpoint, charge_on, customer_on
+    db_session, customer, endpoint, charge_on, customer_on, create
 ):
     endpoint.fake.listings = [_page(), _page()]
-    endpoint.fake.create_response = (500, {})
+    endpoint.fake.create_response = create
     with pytest.raises(HTTPException):
         _call(db_session, customer)
 
