@@ -580,3 +580,238 @@ Pendências posteriores:
 - Adapter real, KYC/KYB, transferências e reconciliação.
 - Avaliação da migração de configuração Railway.
 - Validação funcional completa antes de qualquer operação real.
+
+---
+
+## 17. Consolidação estratégica e transferência de continuidade — 24/11/2026
+
+### 17.1. DIRETRIZ PERMANENTE DO PROPRIETÁRIO — PRESERVAÇÃO INTEGRAL DA ESTRATÉGIA
+
+Antes da atual reorganização conduzida pelo ChatGPT, o projeto vinha acumulando implementações, funcionalidades, investigações e estruturas desnecessárias, aumentando a complexidade, o retrabalho, os custos e o prazo de entrega.
+
+A atual coordenação identificou esse problema, corrigiu a direção do desenvolvimento e estabeleceu uma estratégia objetiva, orientada à conclusão de um produto comercial real, seguro e funcional.
+
+O proprietário aprovou expressamente essa reorganização e determina que nenhuma troca de chat, sessão ou agente poderá modificar a estratégia consolidada.
+
+REGRAS PERMANENTES:
+
+- Preservar integralmente a linha de desenvolvimento estabelecida pela atual coordenação.
+- Não alterar arquitetura, estratégia, metodologia ou escopo aprovado sem autorização expressa do proprietário.
+- Não retornar ao modelo anterior de desenvolvimento excessivo.
+- Não reinventar o projeto.
+- Não reconstruir componentes que já funcionam corretamente.
+- Se já está correto, não mexer.
+- Não criar funcionalidades sem necessidade comprovada.
+- Não criar estruturas, abstrações ou documentação redundantes.
+- Não repetir auditorias, investigações ou implementações concluídas sem justificativa técnica comprovada.
+- Trabalhar exclusivamente no delta pendente da árvore mestre.
+- Priorizar integração Asaas, confiabilidade financeira, segurança e entrega comercial.
+- Não priorizar melhorias cosméticas antes da conclusão funcional.
+- Não transformar o projeto em uma plataforma desnecessariamente complexa.
+- Consultar obrigatoriamente este Handoff antes de propor novas missões.
+- Preservar o trabalho realizado, inclusive alterações locais ainda não commitadas.
+- Qualquer mudança estratégica exige autorização expressa do proprietário.
+
+METODOLOGIA OBRIGATÓRIA:
+
+- ChatGPT: coordenação, planejamento e governança.
+- Claude Code: implementação de tarefas complexas autorizadas.
+- Codex: revisão técnica independente e direcionada.
+- Proprietário: autorizações e operações simples no terminal VS Code.
+- Economizar cotas dos agentes.
+- Operações manuais: um comando por vez, aguardando retorno.
+- Agentes: execução autônoma das etapas autorizadas, sem perguntas intermediárias desnecessárias.
+- Atualizar este Handoff e a árvore mestre após marcos comprovados.
+- Nenhuma autorização crítica pode ser presumida.
+
+A troca de chat não constitui autorização para alterar decisões anteriores.
+
+NÃO ESTAMOS MAIS NA FASE DE INVENTAR O ÁUREA GOLD.
+ESTAMOS NA FASE DE TERMINAR O ÁUREA GOLD.
+
+Continuidade significa avançar, não reconstruir.
+
+Esta determinação permanece vigente até alteração expressamente autorizada pelo proprietário.
+
+### 17.2. Resultado AG-08.3 — Correção local do PR #324
+
+Implementação autorizada pelo proprietário e executada pelo Claude Code em 24/11/2026.
+
+Veredito do executor: APROVADO COM RESSALVAS.
+Veredito independente: PENDENTE.
+PR #324: BLOQUEADO.
+
+Worktree:
+    /home/dilsondev/dils-wallet-wt/asaas-sandbox-customer
+
+Branch:
+    feat/asaas-sandbox-customer-ensure
+
+HEAD:
+    5f8ee3d221ddde141f012b34963608418d25c640
+
+Preflight inicial confirmado: árvore limpa e baseline correspondente à auditoria anterior.
+
+Correções reportadas:
+
+- Lock v2 com token exclusivo por aquisição.
+- Token gerado por secrets.token_hex(16).
+- Liberação atômica CAS condicionada à chave e ao JSON exato.
+- Proteção contra ABA e remoção por proprietário antigo.
+- Concorrentes não removem locks alheios.
+- Concorrentes com lock ocupado executam somente GET.
+- Sem TTL ou expiração automática.
+- Validação estrita de data, hasMore, totalCount, limit, offset e deleted.
+- Listagem inválida nunca comprova ausência de customer.
+- Tratamento conservador de respostas HTTP ambíguas.
+- HTTP 400 estruturado seguido de GET vazio tratado pelo executor como rejeição definitiva.
+- Demais desfechos ambíguos preservam o lock.
+- Sem retry automático de POST.
+- Flags fail-closed preservadas.
+- Runbook existente atualizado.
+
+Arquivos modificados localmente:
+
+    M backend/app/services/asaas_sandbox_customer_service.py
+    M backend/tests/test_asaas_sandbox_customer_ensure.py
+    M docs/WALLET_SANDBOX_CYCLE_RUNBOOK.md
+    ?? backend/tests/test_asaas_sandbox_customer_concurrency_postgres.py
+
+O arquivo novo de testes ainda não está rastreado.
+Deverá ser incluído em eventual commit autorizado.
+
+Resultados reportados pelo Claude Code:
+
+- Suíte sem PostgreSQL: 945 passed, 19 skipped, 0 failed.
+- Suíte com PostgreSQL: 961 passed, 3 skipped, 0 failed.
+- Testes concorrenciais PostgreSQL: 10/10 aprovados em cinco execuções consecutivas.
+- PostgreSQL 18.7 local, isolado e efêmero.
+- Conexões independentes e sincronização determinística.
+- Dez aquisições simultâneas: exatamente um proprietário.
+- Oito chamadas concorrentes: um POST e sete Pending.
+- Oito reutilizações posteriores: nenhum POST adicional.
+- Proteção ABA comprovada nos testes reportados.
+- Teste de mutação: quatro falhas esperadas ao remover condição de token.
+- Código original corrigido restaurado com SHA256 idêntico.
+- git diff --check: exit 0.
+- Tempo reportado: aproximadamente 18 minutos de execução.
+- Cluster temporário desligado ao final.
+
+Esses resultados são evidências reportadas pelo executor, não constituindo aprovação independente.
+
+Nenhum commit, push, merge, deploy, chamada real ao Asaas, operação financeira, alteração de segredo, migração ou acesso ao banco de produção foi reportado.
+
+Quatro stashes e demais worktrees preservados.
+
+### 17.3. Árvore mestre atualizada
+
+AG-01 Planejamento: CONCLUÍDO
+AG-02 Precisão monetária: CONCLUÍDO
+AG-03 Compatibilidade: CONCLUÍDO
+AG-04 Publicação do PR: CONCLUÍDO
+AG-05 Validação CI: CONCLUÍDO
+AG-06 Controle de publicação: CONCLUÍDO
+AG-07 Auditoria independente inicial: CONCLUÍDO
+
+AG-08 Integração controlada:
+    PR #325: MERGED
+    PR #323: MERGED
+    CI pós-merge: CONCLUÍDO
+    AG-08.3 Implementação local PR #324: CONCLUÍDA COM RESSALVAS
+    AG-08.4 Revisão independente Codex: PENDENTE
+    AG-08.5 Commit e push da correção: NÃO AUTORIZADOS
+    AG-08.6 Validação CI: PENDENTE
+    AG-08.7 Merge PR #324: BLOQUEADO
+
+AG-09 Consolidação documental e transferência:
+    Diretriz estratégica: APROVADA
+    Registro na memória do Claude Code: REPORTADO
+    Atualização local do Handoff: AUTORIZADA
+    Validação documental: PENDENTE
+    Commit documental: PENDENTE DE AUTORIZAÇÃO
+    Push documental: PENDENTE DE AUTORIZAÇÃO
+    Transferência de chat: PENDENTE
+
+A atualização documental anterior da seção 16 foi commitada e publicada com sucesso:
+
+    Branch: docs/handoff-master
+    Commit: c6caec1b
+
+PR #325 integrado na main:
+    d961c0f4f6212398a789e5f6c1589dabc8c6d959
+
+PR #323 integrado na main:
+    3b85b17e9854ed27d2b574829ddc2b5e8023a806
+
+CI pós-merge #323:
+    9 success, 3 skipped, 0 failed, 0 pending.
+
+### 17.4. Ressalvas e bloqueios obrigatórios
+
+A revisão Codex deverá verificar exclusivamente o delta da AG-08.3, incluindo:
+
+- Efetividade da proteção ABA.
+- Exclusividade da propriedade e liberação dos locks.
+- Segurança da recuperação manual.
+- Consistência da paginação.
+- Garantia contra POST duplicado.
+- Se HTTP 400 estruturado seguido de GET vazio comprova realmente ausência de efeitos remotos, considerando eventual consistência.
+- Adequação do contrato de resposta Asaas.
+- Qualidade e isolamento dos testes PostgreSQL.
+- Se os novos testes concorrenciais serão efetivamente executados no CI.
+- Compatibilidade com o fluxo existente.
+- Ausência de alterações fora do escopo.
+
+Riscos residuais:
+
+- Locks órfãos exigem recuperação manual.
+- Locks inertes podem permanecer no banco.
+- Respostas HTTP ambíguas podem exigir intervenção manual.
+- Testes PostgreSQL dependem de configuração apropriada.
+- A classificação de rejeição definitiva precisa de validação independente.
+
+Travas vigentes:
+
+- PR #324 permanece BLOQUEADO.
+- REAL_MONEY_ENABLED=false.
+- Nenhuma operação financeira real autorizada.
+- Nenhuma alteração em produção autorizada.
+- Nenhuma chamada real ao Asaas autorizada nesta missão.
+- Nenhum deploy autorizado.
+- Nenhuma migração de banco autorizada.
+- GHCR workflow 187617251: disabled_manually na última verificação.
+- Auto deploy Railway backend e frontend: desabilitados na última verificação.
+- Não presumir que todos os mecanismos externos de publicação estejam bloqueados.
+- Não reativar mecanismos de publicação sem autorização expressa.
+
+A integração BaaS comercial definitiva com Asaas permanece pendente de confirmação específica.
+A resposta comercial genérica recebida não equivale à aprovação do contrato BaaS.
+
+### 17.5. Ponto exato de retomada no próximo chat
+
+PRÓXIMA MISSÃO TÉCNICA: AG-08.4 — Revisão independente Codex.
+
+Antes de iniciar:
+
+1. Ler este Handoff, especialmente as seções 16 e 17.
+2. Preservar obrigatoriamente a diretriz estratégica 17.1.
+3. Confirmar estado Git do worktree asaas-sandbox-customer.
+4. Confirmar HEAD e os quatro arquivos da implementação local.
+5. Preparar missão Codex somente leitura, direcionada ao delta corrigido.
+6. Obter autorização do proprietário para iniciar a revisão.
+7. Aguardar veredito independente antes de autorizar qualquer integração.
+
+Primeiro comando de retomada:
+
+    git -C ~/dils-wallet-wt/asaas-sandbox-customer status --short --branch
+
+Não limpar, descartar, guardar em stash ou sobrescrever as alterações locais.
+
+Não atualizar a branch remotamente, realizar rebase ou merge sem autorização.
+
+Não repetir a auditoria inicial completa.
+Não iniciar novas funcionalidades.
+Não alterar a estratégia.
+Não criar outro Handoff.
+
+O próximo chat deve continuar a missão existente, respeitando integralmente o trabalho, a direção estratégica e as decisões consolidadas.
