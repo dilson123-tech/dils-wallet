@@ -1017,3 +1017,245 @@ Proprietário executa operações simples pelo terminal.
 Agentes devem executar autonomamente as etapas autorizadas,
 interrompendo somente diante de risco, divergência ou
 operação fora do escopo.
+
+---
+
+## 19. Reconciliação estratégica definitiva — AG-10
+
+Data: 25/11/2026.
+Baseline main: 5ea1001876ff5760297b6e23e7440219da15ec28.
+Baseline documental anterior: 477f4d0e.
+
+### 19.1. Decisão estratégica permanente
+
+A Áurea Gold é um produto comercial real, operado por
+meio de parceiro financeiro regulado.
+
+O objetivo é concluir o produto existente, sem reconstruir
+a arquitetura, ampliar escopo ou repetir implementações.
+
+A estratégia da seção 17.1 permanece integralmente vigente.
+
+Nenhuma troca de chat, agente ou sessão autoriza:
+
+- Redefinir a estratégia ou a arquitetura.
+- Reiniciar etapas comprovadamente concluídas.
+- Desconsiderar implementações anteriores.
+- Ampliar requisitos sem autorização do proprietário.
+- Repetir auditorias sem fato novo.
+- Substituir funcionalidades existentes sem evidência.
+- Alterar estimativas sem fundamentação verificável.
+
+Antes de implementar qualquer tarefa, verificar o patrimônio
+existente e identificar exclusivamente o delta necessário.
+
+Separar desenvolvimento, integração, homologação,
+autorização financeira e dependências comerciais.
+
+### 19.2. Encerramento da AG-10
+
+AG-10.7: levantamento inicial considerado inadequado.
+
+AG-10.8: varredura patrimonial e reconciliação estratégica.
+
+AG-10.9: revisão independente APROVADA COM RESSALVAS.
+
+Os levantamentos confirmaram a preservação da estratégia
+e identificaram riscos de duplicidade e inflação de escopo.
+
+As estimativas anteriores de 41%, 81,5%, 72,5%,
+205,5h e 58h não constituem baseline oficial.
+
+Preservar a metodologia de maturidade da seção 6,
+sem percentuais arbitrários.
+
+Não realizar nova auditoria geral sem fato novo.
+
+### 19.3. Patrimônio tecnológico a preservar
+
+- Autenticação, refresh e logout implementados.
+- Customer Asaas integrado pelo PR #324.
+- Cobrança PIX e QR Code implementados no backend.
+- Webhook autenticado e crédito idempotente.
+- Locks de concorrência e proteção fail-closed.
+- Procedimento manual de recuperação de locks aprovado.
+- Ledger, saldo e extrato estruturado existentes.
+- Helper monetário money.py integrado pelo PR #325.
+- Status do parceiro integrado pelo PR #323.
+- Backend administrativo existente.
+- Frontend administrativo reaproveitável no PR #315.
+- Infraestrutura e pipelines existentes.
+
+Não reconstruir essas funcionalidades.
+
+O procedimento manual de recuperação de locks permanece
+como solução aprovada. Não automatizar sem necessidade
+comprovada e autorização expressa.
+
+### 19.4. Correções técnicas da revisão AG-10.9
+
+A rota pix/sandbox-reconciliation/{ref} pertence ao
+adaptador sandbox interno, não ao Asaas.
+
+Não confundir reconciliação simulada com reconciliação
+efetiva junto ao parceiro.
+
+Reaproveitar os componentes existentes em:
+
+- asaas_correlated_pix_payment_service.py
+- asaas_http_transport.py
+- asaas_client.py
+
+O frontend ainda não possui integração com o endpoint
+/wallet/pix/asaas/sandbox/prepare.
+
+A precisão monetária permanece parcial:
+
+- transaction.py utiliza DOUBLE_PRECISION.
+- account.py utiliza Float.
+- money.py existe, mas ainda não possui consumidores
+  operacionais comprovados.
+
+A migração monetária para precisão adequada constitui
+bloqueio obrigatório antes de dinheiro real.
+
+O PR #315 deve ser reaproveitado, corrigindo seu build
+e validando a integração, sem reconstruir o painel.
+
+### 19.5. Evidências Asaas e limitações
+
+Separar evidências históricas das evidências da baseline
+atual e dos testes com transporte simulado.
+
+Existe registro documental histórico de webhook Sandbox
+em WEBHOOK_COMPLIANCE_EVIDENCE_V1.
+
+A comprovação integral do ciclo remoto na baseline atual
+continua pendente.
+
+Evidências anteriores de customer, subcontas e demais
+operações remotas devem ser preservadas quando localizadas,
+sem declarar homologação atual por inferência.
+
+O contrato de paginação permanece pendente de confirmação.
+
+Preservar todas as ressalvas da AG-08, incluindo TOCTOU
+PostgreSQL e ausência de verificação das flags efetivas
+de produção.
+
+### 19.6. Árvore mestre vigente
+
+AG-01 a AG-07: CONCLUÍDAS.
+AG-08: CONCLUÍDA COM RESSALVAS.
+AG-09: documentação publicada na branch oficial.
+AG-10: reconciliação estratégica concluída com ressalvas.
+
+AG-11 — Conclusão funcional Asaas Sandbox.
+
+- AG-11.1: confirmar contrato de paginação.
+- AG-11.2: ativação isolada mediante autorização.
+- AG-11.3: validar ciclo integrado pelo backend.
+- AG-11.4: integrar QR e copia-e-cola no frontend.
+- AG-11.5: integrar reconciliação Asaas por reaproveitamento.
+- AG-11.6: validar ciclo completo pela interface.
+
+Estimativa técnica AG-11: 22 a 25 horas.
+Estimativa preliminar, não garantia de prazo.
+
+AG-12 — Precisão monetária e pendências técnicas.
+
+- Reaproveitar money.py.
+- Adequar account e transaction.
+- Resolver pendências existentes da seção 8.
+- Preservar a precisão monetária como bloqueio financeiro.
+
+AG-13 — Integração comercial.
+
+- Aprovação formal BaaS.
+- Definição do modelo comercial.
+- Adapter financeiro.
+- KYC/KYB.
+- Transferências.
+- Reconciliação financeira.
+
+AG-14 — Homologação e lançamento comercial.
+
+Atividades paralelas, mediante autorização específica:
+
+- Reaproveitar PR #315.
+- Validar integração autenticada frontend/backend.
+- Infraestrutura Railway, respeitando travas vigentes.
+
+Subcontas, split e cadastro dependem do modelo comercial.
+KYC/KYB, transferências e reconciliação necessários ao
+lançamento não devem ser confundidos com opcionais.
+
+A estimativa total de lançamento permanece indeterminada
+até confirmação das dependências comerciais e técnicas.
+
+### 19.7. Preservação patrimonial e Git
+
+Manter os cinco worktrees e quatro stashes existentes.
+
+Não reaplicar trabalhos absorvidos pela main.
+
+Stash{0}: majoritariamente absorvido, com resíduos.
+Stashes{1..3}: legado, fora do caminho crítico atual.
+
+Não excluir nenhum stash ou branch sem autorização.
+
+Preservar as alterações locais de wallet.py,
+test_wallet_partner_status.py e .railway/.
+
+O estado atual do PR #315 não foi confirmado ao vivo
+devido ao limite de requisições GitHub.
+
+O Handoff permanece na branch docs/handoff-master.
+O merge do PR #316 exige autorização separada.
+
+### 19.8. Continuidade obrigatória entre sessões
+
+O Handoff Master é a fonte oficial de continuidade.
+
+Toda nova sessão deve recuperar:
+
+- Estratégia original.
+- Árvore mestre vigente.
+- Entregas comprovadas.
+- Patrimônio reaproveitável.
+- Pendências reais.
+- Estimativas vigentes.
+- Bloqueios e ressalvas.
+- Estado Git.
+- Próxima missão autorizada.
+
+Atualizar este documento após cada entrega comprovada
+e publicada, sem criar documentação paralela redundante.
+
+Preparar a transferência de contexto antes do esgotamento
+da conversa, evitando perda de decisões estratégicas.
+
+ChatGPT coordena.
+Claude Code executa tarefas complexas autorizadas.
+Codex realiza revisão independente quando necessária.
+O proprietário autoriza operações críticas e executa
+operações simples pelo terminal.
+
+### 19.9. Próxima missão
+
+AG-11.1 — Confirmar o contrato de paginação Asaas.
+
+Começar pela confirmação documental, sem código novo
+e sem chamadas financeiras.
+
+AG-11.2 e AG-11.3 exigem autorização específica.
+
+Nenhuma ativação de flags está autorizada por esta seção.
+
+REAL_MONEY_ENABLED=false permanece como requisito.
+
+Não autorizar produção, deploy, dinheiro real,
+migrações, reativação de workflows ou chamadas ao
+Asaas de produção.
+
+Todas as travas anteriores permanecem vigentes.
